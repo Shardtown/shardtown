@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shard | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #000000; --text: #ffffff; --muted: #888888; --border: #1a1a1a; }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: #000;
+            background-image: 
+                radial-gradient(at 50% 0%, rgba(37, 99, 235, 0.2) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(37, 99, 235, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text); margin: 0; padding: 0;
+        }
+
+        .bg-glow {
+            position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; height: 100vh;
+            background: radial-gradient(circle at 50% -20%, rgba(37, 99, 235, 0.1) 0%, transparent 70%);
+            pointer-events: none; z-index: -1;
+        }
+
+        .container-wide { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+        .btn-white { background: #fff; color: #000; padding: 10px 24px; border-radius: 100px; font-weight: 700; font-size: 0.875rem; transition: opacity 0.2s; }
+        .btn-white:hover { opacity: 0.9; }
+
+        .product-card {
+            background: #0a0a0a; border: 1px solid #1a1a1a; padding: 32px; border-radius: 24px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer;
+            position: relative; overflow: hidden; text-decoration: none; color: inherit;
+        }
+        .product-card:hover { border-color: #333; transform: translateY(-4px); }
+
+        .stat-card { background: #0a0a0a; border: 1px solid #1a1a1a; padding: 32px; border-radius: 24px; }
+        .stat-number { font-size: 3rem; font-weight: 800; margin-bottom: 0.5rem; }
+
+        .guild-icon { width: 64px; height: 64px; border-radius: 16px; object-fit: cover; border: 1px solid rgba(255,255,255,0.05); }
+
+        .badge { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 12px; border-radius: 10px; display: inline-flex; align-items: center; gap: 6px; }
+        .badge-active { background: rgba(37, 99, 235, 0.1); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.2); }
+        .badge-inactive { background: rgba(255,255,255,0.05); color: #888; border: 1px solid #1a1a1a; }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+
+    <div class="fixed top-6 left-0 right-0 z-50 px-6">
+        <header id="main-header" class="container-wide flex justify-between items-center bg-transparent rounded-full transition-all duration-300 py-4 px-8 border border-white/10">
+            <a href="/" class="flex items-center gap-2">
+                <img src="/image/shard.png" alt="Shard Logo" class="w-10 h-10 rounded-full object-cover">
+                <span class="font-bold tracking-tight text-xl uppercase">Shard</span>
+            </a>
+            <div class="flex items-center gap-6">
+                <div class="hidden md:flex items-center gap-4 px-4 py-2 bg-white/5 rounded-full border border-white/5">
+                    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="w-8 h-8 rounded-full border border-white/10" alt="">
+                    <span class="font-bold text-sm"><%= user.username %></span>
+                </div>
+                <a href="/shard/logout" class="text-xs font-bold uppercase tracking-widest text-red-500/70 hover:text-red-500 transition-colors">Déconnexion</a>
+            </div>
+        </header>
+    </div>
+
+    <script>
+        console.log(
+            '%c' +
+            '███  █  █  ██  ███  ███  ████  ██  █   █ █  █\n' +
+            '█    █  █ █  █ █  █ █  █  █   █  █ █   █ ██ █\n' +
+            '███  ████ ████ ███  █  █  █   █  █ █ █ █ █ ██\n' +
+            '  █  █  █ █  █ █ █  █  █  █   █  █ ██ ██ █  █\n' +
+            '███  █  █ █  █ █  █ ███   █    ██  █   █ █  █\n',
+            'color: #3b82f6; font-family: monospace; font-size: 13px; line-height: 1; font-weight: bold;'
+        );
+        console.log('%c© 2026 Shardtown — shardtown.fr', 'color: #444; font-family: monospace; font-size: 10px;');
+
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('main-header');
+            if (window.scrollY > 50) {
+                header.classList.remove('bg-transparent', 'border-white/10');
+                header.classList.add('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+            } else {
+                header.classList.add('bg-transparent', 'border-white/10');
+                header.classList.remove('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+            }
+        });
+    </script>
+
+    <main class="pt-48 pb-24">
+        <div class="container-wide">
+            <div class="grid md:grid-cols-3 gap-8 mb-20">
+                <div class="stat-card">
+                    <div class="stat-number"><%= guilds.length %></div>
+                    <p class="text-sm font-bold text-white/40 uppercase tracking-widest">Communautés</p>
+                </div>
+                <div class="stat-card border-blue-500/20">
+                    <div class="stat-number text-blue-500"><%= botGuildIds.length %></div>
+                    <p class="text-sm font-bold text-white/40 uppercase tracking-widest">Serveurs Actifs</p>
+                </div>
+                <div class="stat-card overflow-hidden">
+                    <div class="stat-number bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">PREMIUM</div>
+                    <p class="text-sm font-bold text-white/40 uppercase tracking-widest">Statut du Compte</p>
+                </div>
+            </div>
+
+            <div class="mb-12">
+                <p class="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Gestion</p>
+                <h2 class="text-4xl font-bold uppercase">Vos Serveurs</h2>
+            </div>
+
+            <% 
+                const guildsWithBot = guilds.filter(g => botGuildIds.includes(g.id));
+                const guildsWithoutBot = guilds.filter(g => !botGuildIds.includes(g.id));
+            %>
+
+            <% if (guildsWithBot.length > 0) { %>
+                <div class="flex flex-wrap justify-center gap-6 mb-12">
+                    <% guildsWithBot.forEach(guild => { %>
+                        <a href="/shard/guild/<%= guild.id %>" class="product-card flex items-center gap-6 group w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
+                            <div class="relative">
+                                <% if (guild.icon) { %>
+                                    <img src="https://cdn.discordapp.com/icons/<%= guild.id %>/<%= guild.icon %>.png" class="guild-icon group-hover:scale-110 transition-transform duration-500" alt="">
+                                <% } else { %>
+                                    <div class="guild-icon bg-white/5 flex items-center justify-center font-bold text-xl text-white/20 group-hover:scale-110 transition-transform duration-500">
+                                        <%= guild.name.split(' ').map(w => w[0]).join('').slice(0, 2) %>
+                                    </div>
+                                <% } %>
+                                <div class="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-4 border-black"></div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-bold text-lg truncate mb-2 text-center md:text-left"><%= guild.name %></h3>
+                                <div class="badge badge-active">Configurer</div>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all duration-300">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                            </div>
+                        </a>
+                    <% }) %>
+                </div>
+            <% } else { %>
+                <div class="text-center py-12 bg-white/5 rounded-3xl border border-white/5 mb-12">
+                    <p class="text-white/40 font-bold uppercase tracking-widest text-xs">Aucun serveur actif</p>
+                </div>
+            <% } %>
+
+            <% if (guildsWithoutBot.length > 0) { %>
+                <div class="relative py-20">
+                    <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                        <div class="w-full border-t border-white/[0.03]"></div>
+                    </div>
+                    <div class="relative flex justify-center">
+                        <div class="bg-black/40 backdrop-blur-xl border border-white/5 px-8 py-3 rounded-full shadow-2xl">
+                            <span class="text-[11px] font-black tracking-[0.3em] text-white/20 uppercase">Autres Communautés</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap justify-center gap-6">
+                    <% guildsWithoutBot.forEach(guild => { %>
+                        <div onclick="inviteBot('<%= guild.id %>')" class="product-card flex items-center gap-6 group opacity-60 hover:opacity-100 grayscale hover:grayscale-0 transition-all duration-300 w-full md:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)]">
+                            <div class="relative">
+                                <% if (guild.icon) { %>
+                                    <img src="https://cdn.discordapp.com/icons/<%= guild.id %>/<%= guild.icon %>.png" class="guild-icon group-hover:scale-110 transition-transform duration-500" alt="">
+                                <% } else { %>
+                                    <div class="guild-icon bg-white/5 flex items-center justify-center font-bold text-xl text-white/20 group-hover:scale-110 transition-transform duration-500">
+                                        <%= guild.name.split(' ').map(w => w[0]).join('').slice(0, 2) %>
+                                    </div>
+                                <% } %>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-bold text-lg truncate mb-2 text-center md:text-left"><%= guild.name %></h3>
+                                <div class="badge badge-inactive">Inviter Shard</div>
+                            </div>
+                            <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all duration-300">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            <% } %>
+        </div>
+    </main>
+
+    <footer class="py-20 border-t border-white/5">
+        <div class="container-wide">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-8">
+                <div class="flex items-center gap-2">
+                    <img src="/image/shardtown.jpeg" alt="Shardtown Logo" class="w-6 h-6 rounded-full object-cover">
+                    <span class="font-bold tracking-tight text-sm uppercase">Shardtown</span>
+                </div>
+                <div class="flex gap-8">
+                    <a href="/terms" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Conditions Générales</a>
+                    <a href="/privacy" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Politique de Confidentialité</a>
+                    <a href="/admin" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Administrateur</a>
+                </div>
+                <p class="text-xs font-bold text-white/30">Copyright © 2026 Shardtown. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function inviteBot(guildId) {
+            const url = `https://discord.com/api/oauth2/authorize?client_id=1494091615650840666&permissions=8&scope=bot%20applications.commands&guild_id=${guildId}`;
+            window.open(url, '_blank');
+        }
+    </script>
+</body>
+</html>

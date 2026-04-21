@@ -1,0 +1,910 @@
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+const {
+    Client, GatewayIntentBits, EmbedBuilder,
+    ButtonBuilder, ActionRowBuilder, ButtonStyle,
+    ModalBuilder, TextInputBuilder, TextInputStyle,
+    MessageFlags, SlashCommandBuilder, REST, Routes,
+    PermissionFlagsBits
+} = require('discord.js');
+const mysql = require('mysql2/promise');
+
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildMessageReactions
+    ]
+});
+
+const tempChannels = new Map();
+const xpCooldowns = new Map();
+
+let db;
+async function connectDB() {
+    try {
+        db = await mysql.createPool({
+            host: process.env.DB_HOST,
+            user: process.env.DB_USER,
+            password: process.env.DB_PASS,
+            database: process.env.DB_NAME,
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
+        });
+        console.log('✅ Shard connecté à MySQL');
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_settings (
+                guildId VARCHAR(255) PRIMARY KEY,
+                welcomeChannelId VARCHAR(255) DEFAULT '',
+                welcomeMessage TEXT,
+                leaveChannelId VARCHAR(255) DEFAULT '',
+                leaveMessage TEXT
+            )
+        `);
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_levels (
+                guildId VARCHAR(255) NOT NULL,
+                userId VARCHAR(255) NOT NULL,
+                xp BIGINT DEFAULT 0,
+                level INT DEFAULT 0,
+                PRIMARY KEY (guildId, userId)
+            )
+        `);
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_tickets (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guildId VARCHAR(255) NOT NULL,
+                userId VARCHAR(255) NOT NULL,
+                channelId VARCHAR(255) NOT NULL,
+                status ENUM('open','closed') DEFAULT 'open',
+                createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_status (
+                bot_label VARCHAR(50),
+                shard_id INT,
+                status VARCHAR(20),
+                ping INT,
+                guild_count INT,
+                last_update DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (bot_label, shard_id)
+            )
+        `);
+    } catch (err) {
+        console.error('❌ Erreur MySQL Shard:', err.message);
+        process.exit(1);
+    }
+}
+
+async function getSettings(guildId) {
+    try {
+        const [rows] = await db.execute('SELECT * FROM shard_settings WHERE guildId = ?', [guildId]);
+        return rows[0] || {
+            welcomeChannelId: '', welcomeTitle: '', welcomeMessage: 'Bienvenue {user} sur **{server}** !', welcomeFooter: '', welcomeColor: '#3b82f6',
+            leaveChannelId: '', leaveTitle: '', leaveMessage: '{username} a quitté **{server}**.', leaveFooter: '', leaveColor: '#6b7280'
+        };
+    } catch { return null; }
+}
+
+function fmt(template, member) {
+    return String(template || '')
+        .replace(/{user}/g, `<@${member.id}>`)
+        .replace(/{username}/g, member.user.username)
+        .replace(/{server}/g, member.guild.name)
+        .replace(/{memberCount}/g, member.guild.memberCount);
+}
+
+function hexToInt(hex) {
+    return parseInt(String(hex || '#3b82f6').replace('#', ''), 16) || 0x3b82f6;
+}
+
+client.once('ready', async () => {
+    await connectDB();
+    console.log(`✅ Shard connecté en tant que ${client.user.tag}`);
+
+    // Mise à jour périodique du statut du shard
+    async function updateShardStatus() {
+        try {
+            const shardId = client.shard ? client.shard.ids[0] : 0;
+            const guildCount = client.guilds.cache.size;
+            const ping = client.ws.ping;
+            
+            await db.execute(
+                'INSERT INTO shard_status (bot_label, shard_id, status, ping, guild_count) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE status = VALUES(status), ping = VALUES(ping), guild_count = VALUES(guild_count), last_update = CURRENT_TIMESTAMP',
+                ['Shard', shardId, 'Online', ping, guildCount]
+            );
+        } catch (err) {
+            console.error('Erreur mise à jour statut shard:', err.message);
+        }
+    }
+
+    setInterval(updateShardStatus, 30000);
+    updateShardStatus();
+
+    // Synchronisation des serveurs du shard
+    async function syncGuilds() {
+        try {
+            const shardId = client.shard ? client.shard.ids[0] : 0;
+            // Supprimer les anciens serveurs de ce shard pour ce bot
+            await db.execute('DELETE FROM shard_guilds WHERE bot_label = ? AND shard_id = ?', ['Shard', shardId]);
+            
+            // Insérer les nouveaux
+            for (const guild of client.guilds.cache.values()) {
+                await db.execute(
+                    'INSERT INTO shard_guilds (bot_label, shard_id, guild_id, guild_name) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE shard_id = VALUES(shard_id), guild_name = VALUES(guild_name)',
+                    ['Shard', shardId, guild.id, guild.name]
+                );
+            }
+        } catch (err) {
+            console.error('Erreur syncGuilds Shard:', err.message);
+        }
+    }
+
+    syncGuilds();
+    client.on('guildCreate', syncGuilds);
+    client.on('guildDelete', syncGuilds);
+
+    const commands = [
+        new SlashCommandBuilder()
+            .setName('embed')
+            .setDescription('Crée et envoie un embed personnalisé')
+            .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+            .addStringOption(o => o.setName('description').setDescription('Contenu principal').setRequired(true))
+            .addStringOption(o => o.setName('titre').setDescription('Titre de l\'embed'))
+            .addStringOption(o => o.setName('footer').setDescription('Texte du footer'))
+            .addStringOption(o => o.setName('couleur').setDescription('Couleur hex (ex: #3b82f6)'))
+            .addStringOption(o => o.setName('image').setDescription('URL de l\'image'))
+            .addChannelOption(o => o.setName('salon').setDescription('Salon cible (défaut: salon actuel)'))
+            .toJSON(),
+        new SlashCommandBuilder()
+            .setName('daily')
+            .setDescription('Réclamez votre récompense quotidienne')
+            .toJSON(),
+        new SlashCommandBuilder()
+            .setName('balance')
+            .setDescription('Voir votre solde ou celui d\'un membre')
+            .addUserOption(o => o.setName('membre').setDescription('Membre cible'))
+            .toJSON(),
+        new SlashCommandBuilder()
+            .setName('shop')
+            .setDescription('Voir les articles disponibles dans le shop')
+            .toJSON(),
+        new SlashCommandBuilder()
+            .setName('buy')
+            .setDescription('Acheter un rôle dans le shop')
+            .addStringOption(o => o.setName('role_id').setDescription('ID du rôle à acheter').setRequired(true))
+            .toJSON(),
+        new SlashCommandBuilder()
+            .setName('birthday')
+            .setDescription('Gérer votre date d\'anniversaire')
+            .addSubcommand(s => s.setName('set').setDescription('Définir votre date d\'anniversaire')
+                .addIntegerOption(o => o.setName('jour').setDescription('Jour (1-31)').setRequired(true).setMinValue(1).setMaxValue(31))
+                .addIntegerOption(o => o.setName('mois').setDescription('Mois (1-12)').setRequired(true).setMinValue(1).setMaxValue(12)))
+            .addSubcommand(s => s.setName('remove').setDescription('Supprimer votre date d\'anniversaire'))
+            .toJSON()
+    ];
+
+    const rest = new REST({ version: '10' }).setToken(process.env.SHARD_TOKEN);
+    try {
+        await rest.put(Routes.applicationCommands(process.env.SHARD_CLIENT_ID), { body: commands });
+        console.log('✅ Commandes slash Shard enregistrées');
+    } catch (err) {
+        console.error('Erreur enregistrement commandes:', err.message);
+    }
+
+    async function runScheduled() {
+        try {
+            const now = new Date();
+            const [rows] = await db.execute(`SELECT * FROM shard_scheduled WHERE nextRun <= ?`, [now]);
+            for (const row of rows) {
+                try {
+                    const guild = client.guilds.cache.get(row.guildId);
+                    if (!guild) continue;
+                    const channel = guild.channels.cache.get(row.channelId);
+                    if (channel) await channel.send(row.message);
+                    const next = new Date(now.getTime() + row.intervalHours * 3600000);
+                    await db.execute(`UPDATE shard_scheduled SET nextRun = ? WHERE id = ?`, [next, row.id]);
+                } catch {}
+            }
+        } catch {}
+    }
+    setInterval(runScheduled, 60000);
+    runScheduled();
+
+    async function checkGiveaways() {
+        try {
+            const now = new Date();
+            const [rows] = await db.execute(`SELECT * FROM shard_giveaways WHERE ended = 0 AND endsAt <= ?`, [now]);
+            for (const gw of rows) {
+                try {
+                    const [entries] = await db.execute(`SELECT userId FROM shard_giveaway_entries WHERE giveawayId = ?`, [gw.id]);
+                    const shuffled = entries.sort(() => Math.random() - 0.5);
+                    const winnerIds = shuffled.slice(0, gw.winnersCount).map(e => e.userId);
+                    const winnersText = winnerIds.length ? winnerIds.map(id => `<@${id}>`).join(', ') : 'Aucun participant';
+                    await db.execute(`UPDATE shard_giveaways SET ended = 1 WHERE id = ?`, [gw.id]);
+                    const guild = client.guilds.cache.get(gw.guildId);
+                    if (!guild) continue;
+                    const channel = guild.channels.cache.get(gw.channelId);
+                    if (channel) {
+                        try {
+                            const msg = await channel.messages.fetch(gw.messageId);
+                            await msg.edit({
+                                embeds: [{ color: 0x6b7280, title: '🎉 GIVEAWAY TERMINÉ', description: `**${gw.prize}**\n\n🏆 Gagnant(s) : ${winnersText}`, footer: { text: `${gw.winnersCount} gagnant(s)` }, timestamp: new Date().toISOString() }],
+                                components: [{ type: 1, components: [{ type: 2, style: 2, label: 'Terminé', custom_id: 'giveaway_ended', disabled: true }] }]
+                            });
+                        } catch {}
+                        if (winnerIds.length) await channel.send(`🎊 Félicitations ${winnersText} ! Vous avez gagné **${gw.prize}** !`).catch(() => {});
+                    }
+                } catch {}
+            }
+        } catch {}
+    }
+    setInterval(checkGiveaways, 60000);
+    checkGiveaways();
+
+    async function checkBirthdays() {
+        try {
+            const now = new Date();
+            const day = now.getDate();
+            const month = now.getMonth() + 1;
+            const [birthdays] = await db.execute(`SELECT b.*, s.birthdayChannelId, s.birthdayMessage, s.birthdayRoleId FROM shard_birthdays b JOIN shard_settings s ON b.guildId = s.guildId WHERE b.day = ? AND b.month = ? AND s.birthdayChannelId != ''`, [day, month]);
+            for (const bd of birthdays) {
+                try {
+                    const guild = client.guilds.cache.get(bd.guildId);
+                    if (!guild) continue;
+                    const member = await guild.members.fetch(bd.userId).catch(() => null);
+                    if (!member) continue;
+                    if (bd.birthdayChannelId) {
+                        const channel = guild.channels.cache.get(bd.birthdayChannelId);
+                        if (channel) {
+                            const msg = String(bd.birthdayMessage || '🎂 Joyeux anniversaire {user} !')
+                                .replace(/{user}/g, `<@${member.id}>`).replace(/{username}/g, member.user.username);
+                            await channel.send(msg).catch(() => {});
+                        }
+                    }
+                    if (bd.birthdayRoleId) {
+                        try {
+                            await member.roles.add(bd.birthdayRoleId);
+                            setTimeout(async () => { try { await member.roles.remove(bd.birthdayRoleId); } catch {} }, 86400000);
+                        } catch {}
+                    }
+                } catch {}
+            }
+        } catch {}
+    }
+    setInterval(checkBirthdays, 3600000);
+    checkBirthdays();
+
+    async function checkPolls() {
+        try {
+            const now = new Date();
+            const [rows] = await db.execute(`SELECT * FROM shard_polls WHERE ended = 0 AND endsAt IS NOT NULL AND endsAt <= ?`, [now]);
+            const EMOJIS = ['🔵', '🟢', '🟡', '🟠', '🔴'];
+            for (const poll of rows) {
+                try {
+                    const choices = typeof poll.choices === 'string' ? JSON.parse(poll.choices) : poll.choices;
+                    const [votes] = await db.execute(`SELECT choiceIndex, COUNT(*) as count FROM shard_poll_votes WHERE pollId = ? GROUP BY choiceIndex ORDER BY choiceIndex`, [poll.id]);
+                    const total = votes.reduce((s, v) => s + Number(v.count), 0);
+                    await db.execute(`UPDATE shard_polls SET ended = 1 WHERE id = ?`, [poll.id]);
+                    const resultsDesc = choices.map((c, i) => {
+                        const v = votes.find(v => v.choiceIndex === i);
+                        const count = v ? Number(v.count) : 0;
+                        const pct = total ? Math.round(count / total * 100) : 0;
+                        const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
+                        return `${EMOJIS[i]} **${c}**\n\`${bar}\` ${pct}% (${count} vote${count !== 1 ? 's' : ''})`;
+                    }).join('\n\n');
+                    const guild = client.guilds.cache.get(poll.guildId);
+                    if (!guild) continue;
+                    const channel = guild.channels.cache.get(poll.channelId);
+                    if (channel) {
+                        try {
+                            const msg = await channel.messages.fetch(poll.messageId);
+                            await msg.edit({
+                                embeds: [{ color: 0x6b7280, title: `📊 ${poll.question} — Résultats`, description: resultsDesc || 'Aucun vote.', footer: { text: `${total} vote(s) au total` }, timestamp: new Date().toISOString() }],
+                                components: [{ type: 1, components: choices.slice(0, 5).map((c, i) => ({ type: 2, style: 2, label: c.slice(0, 80), emoji: { name: EMOJIS[i] }, custom_id: `poll_ended_${i}`, disabled: true })) }]
+                            });
+                        } catch {}
+                    }
+                } catch {}
+            }
+        } catch {}
+    }
+    setInterval(checkPolls, 60000);
+    checkPolls();
+});
+
+client.on('guildMemberAdd', async (member) => {
+    const settings = await getSettings(member.guild.id);
+    if (!settings) return;
+
+    if (settings.autoRoleId) {
+        try {
+            await member.roles.add(settings.autoRoleId);
+        } catch (err) {
+            console.error('Erreur auto role:', err.message);
+        }
+    }
+
+    if (settings.welcomeChannelId) {
+        try {
+            const channel = await member.guild.channels.fetch(settings.welcomeChannelId);
+            if (channel) {
+                const embed = new EmbedBuilder()
+                    .setColor(hexToInt(settings.welcomeColor))
+                    .setDescription(fmt(settings.welcomeMessage, member) || null)
+                    .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+                    .setTimestamp();
+                if (settings.welcomeTitle) embed.setTitle(fmt(settings.welcomeTitle, member));
+                if (settings.welcomeFooter) embed.setFooter({ text: fmt(settings.welcomeFooter, member) });
+                await channel.send({ embeds: [embed] });
+            }
+        } catch (err) {
+            console.error('Erreur welcome:', err.message);
+        }
+    }
+});
+
+client.on('guildMemberRemove', async (member) => {
+    const settings = await getSettings(member.guild.id);
+    if (!settings || !settings.leaveChannelId) return;
+    try {
+        const channel = await member.guild.channels.fetch(settings.leaveChannelId);
+        if (!channel) return;
+        const embed = new EmbedBuilder()
+            .setColor(hexToInt(settings.leaveColor))
+            .setDescription(fmt(settings.leaveMessage, member) || null)
+            .setTimestamp();
+        if (settings.leaveTitle) embed.setTitle(fmt(settings.leaveTitle, member));
+        if (settings.leaveFooter) embed.setFooter({ text: fmt(settings.leaveFooter, member) });
+        await channel.send({ embeds: [embed] });
+    } catch (err) {
+        console.error('Erreur leave:', err.message);
+    }
+});
+
+function buildControlPanel(data) {
+    const embed = new EmbedBuilder()
+        .setColor(data.locked ? 0xef4444 : 0x3b82f6)
+        .setTitle('Gestion du salon')
+        .addFields(
+            { name: 'Statut', value: data.locked ? 'Fermé' : 'Ouvert', inline: true },
+            { name: 'Limite', value: data.limit > 0 ? `${data.limit} membres max` : 'Illimité', inline: true }
+        )
+        .setFooter({ text: 'Seul le créateur peut modifier ce salon · Supprimé automatiquement si vide' });
+
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('tv_lock')
+            .setLabel(data.locked ? 'Ouvrir' : 'Fermer')
+            .setStyle(data.locked ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId('tv_limit')
+            .setLabel('Limiter')
+            .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId('tv_rename')
+            .setLabel('Renommer')
+            .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId('tv_delete')
+            .setLabel('Supprimer')
+            .setStyle(ButtonStyle.Danger)
+    );
+
+    return { embeds: [embed], components: [row] };
+}
+
+client.on('voiceStateUpdate', async (oldState, newState) => {
+    const guildId = newState.guild.id || oldState.guild.id;
+    const settings = await getSettings(guildId);
+    if (!settings || !settings.tempVoiceTrigger) return;
+
+    if (newState.channelId === settings.tempVoiceTrigger && newState.member) {
+        try {
+            const member = newState.member;
+            const guild = newState.guild;
+
+            const channelName = String(settings.tempVoiceName || 'Salon de {username}')
+                .replace(/{username}/g, member.user.username)
+                .replace(/{server}/g, guild.name);
+
+            const createOptions = { name: channelName, type: 2, reason: 'Salon vocal temporaire' };
+            if (settings.tempVoiceCategory) {
+                createOptions.parent = settings.tempVoiceCategory;
+            } else {
+                const triggerChannel = guild.channels.cache.get(settings.tempVoiceTrigger);
+                if (triggerChannel?.parentId) createOptions.parent = triggerChannel.parentId;
+            }
+
+            const newChannel = await guild.channels.create(createOptions);
+            const data = { ownerId: member.id, locked: false, limit: 0, messageId: null };
+            tempChannels.set(newChannel.id, data);
+
+            await member.voice.setChannel(newChannel);
+
+            const msg = await newChannel.send(buildControlPanel(data));
+            data.messageId = msg.id;
+        } catch (err) {
+            console.error('Erreur création vocal temporaire:', err.message);
+        }
+    }
+
+    if (oldState.channelId && tempChannels.has(oldState.channelId)) {
+        try {
+            const channel = oldState.guild.channels.cache.get(oldState.channelId);
+            if (channel && channel.members.size === 0) {
+                await channel.delete('Salon vocal temporaire vide');
+                tempChannels.delete(oldState.channelId);
+            }
+        } catch (err) {
+            console.error('Erreur suppression vocal temporaire:', err.message);
+        }
+    }
+});
+
+client.on('messageCreate', async (message) => {
+    if (message.author.bot || !message.guild) return;
+    const settings = await getSettings(message.guild.id);
+    if (!settings) return;
+
+    if (settings.autoReactions) {
+        try {
+            const reactions = typeof settings.autoReactions === 'string'
+                ? JSON.parse(settings.autoReactions) : settings.autoReactions;
+            const content = message.content.toLowerCase();
+            for (const r of reactions) {
+                if (r.text && content.includes(r.text.toLowerCase())) {
+                    await message.react(r.emoji).catch(() => {});
+                }
+            }
+        } catch {}
+    }
+
+    if (settings.levelsEnabled) {
+        const key = `${message.guild.id}:${message.author.id}`;
+        const now = Date.now();
+        const cooldown = (settings.xpCooldown || 60) * 1000;
+        if (xpCooldowns.has(key) && now - xpCooldowns.get(key) < cooldown) return;
+        xpCooldowns.set(key, now);
+
+        const xpMin = parseInt(settings.xpMin) || 15;
+        const xpMax = parseInt(settings.xpMax) || 25;
+        const gained = Math.floor(Math.random() * (xpMax - xpMin + 1)) + xpMin;
+
+        const defaultThresholds = [100, 250, 500, 1000, 2000, 3500, 5500, 8000, 11500, 15000];
+        let thresholds = settings.levelThresholds;
+        if (!thresholds) thresholds = defaultThresholds;
+        else if (typeof thresholds === 'string') { try { thresholds = JSON.parse(thresholds); } catch { thresholds = defaultThresholds; } }
+        if (!Array.isArray(thresholds) || thresholds.length === 0) thresholds = defaultThresholds;
+
+        function getLevelFromXP(totalXp) {
+            let cumulative = 0;
+            for (let i = 0; i < thresholds.length; i++) {
+                cumulative += thresholds[i];
+                if (totalXp < cumulative) return i;
+            }
+            return thresholds.length;
+        }
+
+        try {
+            await db.execute(`
+                INSERT INTO shard_levels (guildId, userId, xp, level) VALUES (?, ?, ?, 0)
+                ON DUPLICATE KEY UPDATE xp = xp + ?
+            `, [message.guild.id, message.author.id, gained, gained]);
+
+            const [[row]] = await db.execute('SELECT xp, level FROM shard_levels WHERE guildId = ? AND userId = ?', [message.guild.id, message.author.id]);
+            const currentLevel = row.level;
+            const newLevel = getLevelFromXP(row.xp);
+
+            if (newLevel > currentLevel) {
+                await db.execute('UPDATE shard_levels SET level = ? WHERE guildId = ? AND userId = ?', [newLevel, message.guild.id, message.author.id]);
+
+                if (settings.levelUpChannelId) {
+                    try {
+                        const chan = await message.guild.channels.fetch(settings.levelUpChannelId);
+                        if (chan) {
+                            const colorHex = String(settings.levelUpColor || '#3b82f6');
+                            const colorInt = parseInt(colorHex.replace('#', ''), 16) || 0x3b82f6;
+                            const rawMsg = String(settings.levelUpMessage || '{user} est passé au niveau **{level}** !')
+                                .replace(/{user}/g, `<@${message.author.id}>`)
+                                .replace(/{username}/g, message.author.username)
+                                .replace(/{level}/g, String(newLevel))
+                                .replace(/{xp}/g, String(row.xp));
+                            const embed = new EmbedBuilder()
+                                .setColor(colorInt)
+                                .setDescription(rawMsg)
+                                .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+                                .setTimestamp();
+                            await chan.send({ embeds: [embed] });
+                        }
+                    } catch {}
+                }
+
+                const rewards = typeof settings.levelRewards === 'string'
+                    ? JSON.parse(settings.levelRewards || '[]') : (settings.levelRewards || []);
+                const reward = rewards.find(r => r.level === newLevel);
+                if (reward) {
+                    try {
+                        const member = await message.guild.members.fetch(message.author.id);
+                        await member.roles.add(reward.roleId);
+                    } catch {}
+                }
+            }
+        } catch (err) { console.error('Erreur XP:', err.message); }
+    }
+});
+
+client.on('interactionCreate', async (interaction) => {
+    if (interaction.isChatInputCommand() && interaction.commandName === 'embed') {
+        if (!interaction.memberPermissions.has(PermissionFlagsBits.ManageMessages)) {
+            return interaction.reply({ content: 'Permission refusée.', flags: MessageFlags.Ephemeral });
+        }
+        const description = interaction.options.getString('description');
+        const titre = interaction.options.getString('titre');
+        const footer = interaction.options.getString('footer');
+        const couleur = interaction.options.getString('couleur') || '#3b82f6';
+        const image = interaction.options.getString('image');
+        const salon = interaction.options.getChannel('salon') || interaction.channel;
+
+        const colorInt = parseInt(couleur.replace('#', ''), 16) || 0x3b82f6;
+        const embed = new EmbedBuilder().setColor(colorInt).setDescription(description).setTimestamp();
+        if (titre) embed.setTitle(titre);
+        if (footer) embed.setFooter({ text: footer });
+        if (image && image.startsWith('http')) embed.setImage(image);
+
+        try {
+            await salon.send({ embeds: [embed] });
+            await interaction.reply({ content: `Embed envoyé dans ${salon}.`, flags: MessageFlags.Ephemeral });
+        } catch (err) {
+            await interaction.reply({ content: `Erreur : ${err.message}`, flags: MessageFlags.Ephemeral });
+        }
+        return;
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'daily') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const settings = await getSettings(interaction.guildId);
+        if (!settings?.economyEnabled) return interaction.editReply({ content: 'Le système d\'économie est désactivé sur ce serveur.' });
+        const [rows] = await db.execute(`SELECT * FROM shard_economy WHERE guildId = ? AND userId = ?`, [interaction.guildId, interaction.user.id]);
+        const eco = rows[0];
+        if (eco?.lastDaily) {
+            const next = new Date(eco.lastDaily).getTime() + 86400000;
+            if (Date.now() < next) {
+                const remaining = Math.ceil((next - Date.now()) / 3600000);
+                return interaction.editReply({ content: `⏰ Vous avez déjà réclamé votre daily. Revenez dans **${remaining}h**.` });
+            }
+        }
+        const min = settings.economyDailyMin || 50;
+        const max = settings.economyDailyMax || 200;
+        const amount = Math.floor(Math.random() * (max - min + 1)) + min;
+        const currency = settings.economyCurrencyName || 'coins';
+        await db.execute(`INSERT INTO shard_economy (guildId, userId, balance, lastDaily) VALUES (?, ?, ?, NOW()) ON DUPLICATE KEY UPDATE balance = balance + ?, lastDaily = NOW()`, [interaction.guildId, interaction.user.id, amount, amount]);
+        const [newRows] = await db.execute(`SELECT balance FROM shard_economy WHERE guildId = ? AND userId = ?`, [interaction.guildId, interaction.user.id]);
+        return interaction.editReply({ content: `💰 Vous avez reçu **+${amount} ${currency}** !\nSolde total : **${newRows[0]?.balance || amount} ${currency}**` });
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'balance') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const settings = await getSettings(interaction.guildId);
+        if (!settings?.economyEnabled) return interaction.editReply({ content: 'Le système d\'économie est désactivé.' });
+        const target = interaction.options.getUser('membre') || interaction.user;
+        const currency = settings.economyCurrencyName || 'coins';
+        const [rows] = await db.execute(`SELECT balance FROM shard_economy WHERE guildId = ? AND userId = ?`, [interaction.guildId, target.id]);
+        const balance = rows[0]?.balance || 0;
+        return interaction.editReply({ content: `💳 **${target.username}** possède **${balance} ${currency}**.` });
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'shop') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const settings = await getSettings(interaction.guildId);
+        if (!settings?.economyEnabled) return interaction.editReply({ content: 'Le système d\'économie est désactivé.' });
+        const currency = settings.economyCurrencyName || 'coins';
+        const [items] = await db.execute(`SELECT * FROM shard_shop WHERE guildId = ? ORDER BY price ASC`, [interaction.guildId]);
+        if (!items.length) return interaction.editReply({ content: 'Le shop est vide.' });
+        const lines = items.map(item => {
+            const role = interaction.guild.roles.cache.get(item.roleId);
+            return `• **@${role?.name || item.roleId}** — ${item.price} ${currency} (ID: \`${item.id}\`)`;
+        }).join('\n');
+        return interaction.editReply({ content: `🛒 **Shop**\n\n${lines}\n\nUtilisez \`/buy <id>\` pour acheter.` });
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'buy') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const settings = await getSettings(interaction.guildId);
+        if (!settings?.economyEnabled) return interaction.editReply({ content: 'Le système d\'économie est désactivé.' });
+        const itemId = interaction.options.getString('role_id');
+        const currency = settings.economyCurrencyName || 'coins';
+        const [items] = await db.execute(`SELECT * FROM shard_shop WHERE id = ? AND guildId = ?`, [itemId, interaction.guildId]);
+        if (!items[0]) return interaction.editReply({ content: 'Article introuvable.' });
+        const item = items[0];
+        const [rows] = await db.execute(`SELECT balance FROM shard_economy WHERE guildId = ? AND userId = ?`, [interaction.guildId, interaction.user.id]);
+        const balance = rows[0]?.balance || 0;
+        if (balance < item.price) return interaction.editReply({ content: `❌ Solde insuffisant. Vous avez **${balance} ${currency}**, cet article coûte **${item.price} ${currency}**.` });
+        await db.execute(`UPDATE shard_economy SET balance = balance - ? WHERE guildId = ? AND userId = ?`, [item.price, interaction.guildId, interaction.user.id]);
+        try {
+            await interaction.member.roles.add(item.roleId);
+            const role = interaction.guild.roles.cache.get(item.roleId);
+            return interaction.editReply({ content: `✅ Vous avez acheté **@${role?.name || item.roleId}** pour **${item.price} ${currency}** !` });
+        } catch {
+            await db.execute(`UPDATE shard_economy SET balance = balance + ? WHERE guildId = ? AND userId = ?`, [item.price, interaction.guildId, interaction.user.id]);
+            return interaction.editReply({ content: '❌ Impossible d\'attribuer le rôle. Vérifiez les permissions du bot.' });
+        }
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'birthday') {
+        const sub = interaction.options.getSubcommand();
+        if (sub === 'set') {
+            const day = interaction.options.getInteger('jour');
+            const month = interaction.options.getInteger('mois');
+            await db.execute(`INSERT INTO shard_birthdays (guildId, userId, day, month) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE day = ?, month = ?`, [interaction.guildId, interaction.user.id, day, month, day, month]);
+            return interaction.reply({ content: `🎂 Votre anniversaire a été enregistré : **${day}/${month}**.`, flags: MessageFlags.Ephemeral });
+        }
+        if (sub === 'remove') {
+            await db.execute(`DELETE FROM shard_birthdays WHERE guildId = ? AND userId = ?`, [interaction.guildId, interaction.user.id]);
+            return interaction.reply({ content: 'Votre date d\'anniversaire a été supprimée.', flags: MessageFlags.Ephemeral });
+        }
+    }
+
+    if (interaction.isButton() && interaction.customId.startsWith('poll_vote_')) {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const choiceIndex = parseInt(interaction.customId.split('_')[2]);
+        const msgId = interaction.message.id;
+        const [rows] = await db.execute(`SELECT * FROM shard_polls WHERE messageId = ? AND ended = 0`, [msgId]);
+        if (!rows[0]) return interaction.editReply({ content: 'Ce sondage est terminé.' });
+        const poll = rows[0];
+        const choices = typeof poll.choices === 'string' ? JSON.parse(poll.choices) : poll.choices;
+        const EMOJIS = ['🔵', '🟢', '🟡', '🟠', '🔴'];
+        try {
+            await db.execute(`INSERT INTO shard_poll_votes (pollId, userId, choiceIndex) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE choiceIndex = VALUES(choiceIndex)`, [poll.id, interaction.user.id, choiceIndex]);
+        } catch { return interaction.editReply({ content: 'Erreur lors du vote.' }); }
+        const [votes] = await db.execute(`SELECT choiceIndex, COUNT(*) as count FROM shard_poll_votes WHERE pollId = ? GROUP BY choiceIndex`, [poll.id]);
+        const total = votes.reduce((s, v) => s + Number(v.count), 0);
+        const updatedDesc = choices.map((c, i) => {
+            const v = votes.find(v => v.choiceIndex === i);
+            const count = v ? Number(v.count) : 0;
+            const pct = total ? Math.round(count / total * 100) : 0;
+            const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
+            return `${EMOJIS[i]} **${c}**\n\`${bar}\` ${pct}% (${count} vote${count !== 1 ? 's' : ''})`;
+        }).join('\n\n');
+        try {
+            await interaction.message.edit({ embeds: [{ color: 0x3b82f6, title: `📊 ${poll.question}`, description: updatedDesc, footer: { text: `${total} vote(s) au total` }, timestamp: new Date().toISOString() }] });
+        } catch {}
+        return interaction.editReply({ content: `${EMOJIS[choiceIndex]} Vous avez voté pour **${choices[choiceIndex]}**.` });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'giveaway_enter') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const msgId = interaction.message.id;
+        const [rows] = await db.execute(`SELECT * FROM shard_giveaways WHERE messageId = ? AND ended = 0`, [msgId]);
+        if (!rows[0]) return interaction.editReply({ content: 'Ce giveaway est terminé.' });
+        const gw = rows[0];
+        try {
+            await db.execute(`INSERT INTO shard_giveaway_entries (giveawayId, userId) VALUES (?, ?)`, [gw.id, interaction.user.id]);
+            return interaction.editReply({ content: '🎉 Vous participez au giveaway !' });
+        } catch {
+            return interaction.editReply({ content: 'Vous participez déjà à ce giveaway.' });
+        }
+    }
+
+    if (interaction.isButton() && interaction.customId === 'ticket_open') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const guild = interaction.guild;
+        const member = interaction.member;
+        const settings = await getSettings(guild.id);
+
+        if (!settings || !settings.ticketEnabled) {
+            return interaction.editReply({ content: 'Le système de tickets est désactivé.' });
+        }
+
+        const maxPerUser = settings.ticketMaxPerUser || 1;
+        const [openTickets] = await db.execute(
+            `SELECT * FROM shard_tickets WHERE guildId = ? AND userId = ? AND status = 'open'`,
+            [guild.id, member.id]
+        );
+
+        if (openTickets.length >= maxPerUser) {
+            return interaction.editReply({ content: `Vous avez déjà ${openTickets.length} ticket(s) ouvert(s). Fermez-les avant d'en ouvrir un nouveau.` });
+        }
+
+        const ticketNumber = (await db.execute(`SELECT COUNT(*) as cnt FROM shard_tickets WHERE guildId = ?`, [guild.id]))[0][0].cnt + 1;
+        const channelName = `ticket-${String(ticketNumber).padStart(4, '0')}`;
+
+        const permissionOverwrites = [
+            { id: guild.roles.everyone, deny: ['ViewChannel'] },
+            { id: member.id, allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AttachFiles'] }
+        ];
+
+        if (settings.ticketSupportRoleId) {
+            permissionOverwrites.push({
+                id: settings.ticketSupportRoleId,
+                allow: ['ViewChannel', 'SendMessages', 'ReadMessageHistory', 'AttachFiles', 'ManageMessages']
+            });
+        }
+
+        let ticketChannel;
+        try {
+            ticketChannel = await guild.channels.create({
+                name: channelName,
+                type: 0,
+                parent: settings.ticketCategoryId || null,
+                permissionOverwrites
+            });
+        } catch (err) {
+            return interaction.editReply({ content: `Impossible de créer le salon : ${err.message}` });
+        }
+
+        await db.execute(
+            `INSERT INTO shard_tickets (guildId, userId, channelId, status) VALUES (?, ?, ?, 'open')`,
+            [guild.id, member.id, ticketChannel.id]
+        );
+
+        const colorInt = parseInt((settings.ticketPanelColor || '#3b82f6').replace('#', ''), 16) || 0x3b82f6;
+        const ticketEmbed = new EmbedBuilder()
+            .setColor(colorInt)
+            .setTitle(`🎫 Ticket #${String(ticketNumber).padStart(4, '0')}`)
+            .setDescription(`Bonjour ${member}, un membre du support va vous répondre prochainement.\n\nDécrivez votre problème ci-dessous.`)
+            .setFooter({ text: `Ouvert par ${member.user.username}` })
+            .setTimestamp();
+
+        const closeBtn = new ButtonBuilder()
+            .setCustomId('ticket_close')
+            .setLabel('Fermer le ticket')
+            .setEmoji('🔒')
+            .setStyle(ButtonStyle.Danger);
+
+        const row = new ActionRowBuilder().addComponents(closeBtn);
+        await ticketChannel.send({ content: `${member} ${settings.ticketSupportRoleId ? `<@&${settings.ticketSupportRoleId}>` : ''}`, embeds: [ticketEmbed], components: [row] });
+
+        if (settings.ticketLogChannelId) {
+            const logChannel = guild.channels.cache.get(settings.ticketLogChannelId);
+            if (logChannel) {
+                const logEmbed = new EmbedBuilder()
+                    .setColor(0x3b82f6)
+                    .setTitle('🎫 Ticket ouvert')
+                    .addFields(
+                        { name: 'Membre', value: `${member} (${member.user.username})`, inline: true },
+                        { name: 'Salon', value: `${ticketChannel}`, inline: true },
+                        { name: 'Ticket', value: `#${String(ticketNumber).padStart(4, '0')}`, inline: true }
+                    )
+                    .setTimestamp();
+                logChannel.send({ embeds: [logEmbed] }).catch(() => {});
+            }
+        }
+
+        return interaction.editReply({ content: `Votre ticket a été créé : ${ticketChannel}` });
+    }
+
+    if (interaction.isButton() && interaction.customId === 'ticket_close') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const guild = interaction.guild;
+        const settings = await getSettings(guild.id);
+        const channelId = interaction.channelId;
+
+        const [rows] = await db.execute(
+            `SELECT * FROM shard_tickets WHERE channelId = ? AND status = 'open'`,
+            [channelId]
+        );
+
+        if (!rows[0]) return interaction.editReply({ content: 'Ce ticket est déjà fermé ou introuvable.' });
+
+        const ticket = rows[0];
+        const canClose = interaction.member.id === ticket.userId ||
+            interaction.memberPermissions.has(PermissionFlagsBits.ManageChannels) ||
+            (settings?.ticketSupportRoleId && interaction.member.roles.cache.has(settings.ticketSupportRoleId));
+
+        if (!canClose) return interaction.editReply({ content: 'Vous ne pouvez pas fermer ce ticket.' });
+
+        await db.execute(`UPDATE shard_tickets SET status = 'closed' WHERE channelId = ?`, [channelId]);
+
+        if (settings?.ticketLogChannelId) {
+            const logChannel = guild.channels.cache.get(settings.ticketLogChannelId);
+            if (logChannel) {
+                const closedBy = interaction.member;
+                const opener = await guild.members.fetch(ticket.userId).catch(() => null);
+                const logEmbed = new EmbedBuilder()
+                    .setColor(0xef4444)
+                    .setTitle('🔒 Ticket fermé')
+                    .addFields(
+                        { name: 'Ouvert par', value: opener ? `${opener} (${opener.user.username})` : ticket.userId, inline: true },
+                        { name: 'Fermé par', value: `${closedBy} (${closedBy.user.username})`, inline: true }
+                    )
+                    .setTimestamp();
+                logChannel.send({ embeds: [logEmbed] }).catch(() => {});
+            }
+        }
+
+        await interaction.editReply({ content: 'Ticket fermé. Le salon sera supprimé dans 5 secondes.' });
+        setTimeout(async () => {
+            try { await interaction.channel.delete('Ticket fermé'); } catch {}
+        }, 5000);
+        return;
+    }
+
+    const channelId = interaction.channelId;
+    const data = tempChannels.get(channelId);
+    const eph = { flags: MessageFlags.Ephemeral };
+
+    if (interaction.isButton() && ['tv_lock', 'tv_limit', 'tv_rename', 'tv_delete'].includes(interaction.customId)) {
+        if (!data) return interaction.reply({ content: 'Ce salon n\'est plus actif.', ...eph });
+        if (interaction.user.id !== data.ownerId) {
+            return interaction.reply({ content: 'Seul le créateur du salon peut le gérer.', ...eph });
+        }
+
+        if (interaction.customId === 'tv_lock') {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            data.locked = !data.locked;
+            await interaction.channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+                Connect: data.locked ? false : null
+            });
+            try {
+                const msg = await interaction.channel.messages.fetch(data.messageId);
+                await msg.edit(buildControlPanel(data));
+            } catch {}
+            await interaction.editReply({ content: data.locked ? 'Salon fermé.' : 'Salon ouvert.' });
+        }
+
+        if (interaction.customId === 'tv_limit') {
+            const modal = new ModalBuilder().setCustomId('tv_limit_modal').setTitle('Limiter le salon');
+            modal.addComponents(new ActionRowBuilder().addComponents(
+                new TextInputBuilder()
+                    .setCustomId('tv_limit_input')
+                    .setLabel('Nombre max de membres (0 = illimité)')
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder('Ex : 5')
+                    .setRequired(true).setMinLength(1).setMaxLength(2)
+            ));
+            await interaction.showModal(modal);
+        }
+
+        if (interaction.customId === 'tv_rename') {
+            const modal = new ModalBuilder().setCustomId('tv_rename_modal').setTitle('Renommer le salon');
+            modal.addComponents(new ActionRowBuilder().addComponents(
+                new TextInputBuilder()
+                    .setCustomId('tv_rename_input')
+                    .setLabel('Nouveau nom du salon')
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder('Ex : Salon Gaming')
+                    .setValue(interaction.channel.name)
+                    .setRequired(true).setMinLength(1).setMaxLength(100)
+            ));
+            await interaction.showModal(modal);
+        }
+
+        if (interaction.customId === 'tv_delete') {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            tempChannels.delete(channelId);
+            try { await interaction.channel.delete('Supprimé par le propriétaire'); } catch {}
+            try { await interaction.editReply({ content: 'Salon supprimé.' }); } catch {}
+        }
+    }
+
+    if (interaction.isModalSubmit()) {
+        if (!data) return interaction.reply({ content: 'Ce salon n\'est plus actif.', ...eph });
+
+        if (interaction.customId === 'tv_limit_modal') {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            const val = parseInt(interaction.fields.getTextInputValue('tv_limit_input')) || 0;
+            const clamped = Math.min(Math.max(val, 0), 99);
+            data.limit = clamped;
+            await interaction.channel.setUserLimit(clamped);
+            try {
+                const msg = await interaction.channel.messages.fetch(data.messageId);
+                await msg.edit(buildControlPanel(data));
+            } catch {}
+            await interaction.editReply({ content: clamped === 0 ? 'Limite retirée.' : `Limite fixée à **${clamped}** membres.` });
+        }
+
+        if (interaction.customId === 'tv_rename_modal') {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            const newName = interaction.fields.getTextInputValue('tv_rename_input').trim();
+            await interaction.channel.setName(newName);
+            await interaction.editReply({ content: `Salon renommé en **${newName}**.` });
+        }
+    }
+});
+
+client.login(process.env.SHARD_TOKEN);

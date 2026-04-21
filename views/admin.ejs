@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shardtown | Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000000;
+            --text: #ffffff;
+            --accent: #ffffff;
+            --muted: #888888;
+            --border: #1a1a1a;
+        }
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: #000;
+            background-image: 
+                radial-gradient(at 50% 0%, rgba(37, 99, 235, 0.2) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(37, 99, 235, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text); 
+            margin: 0;
+            padding: 0;
+        }
+
+        .bg-glow {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            height: 100vh;
+            background: radial-gradient(circle at 50% -20%, rgba(37, 99, 235, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container-wide {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .stat-card {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            padding: 32px;
+            border-radius: 24px;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+
+        .guild-card {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            padding: 24px 28px;
+            border-radius: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .guild-card:hover {
+            border-color: #2a2a2a;
+        }
+
+        .guild-card.blocked {
+            border-color: rgba(239, 68, 68, 0.2);
+            background: rgba(239, 68, 68, 0.03);
+        }
+
+        .guild-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            object-fit: cover;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .badge {
+            font-size: 0.7rem; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            padding: 5px 10px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .badge-active { background: rgba(37, 99, 235, 0.1); color: #60a5fa; border: 1px solid rgba(37, 99, 235, 0.2); }
+        .badge-blocked { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        .btn-warning {
+            background: rgba(234, 179, 8, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(234, 179, 8, 0.2);
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-warning:hover {
+            background: rgba(234, 179, 8, 0.2);
+            border-color: rgba(234, 179, 8, 0.4);
+        }
+
+        .btn-success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-success:hover {
+            background: rgba(34, 197, 94, 0.2);
+            border-color: rgba(34, 197, 94, 0.4);
+        }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: rgba(255,255,255,0.3);
+            margin-bottom: 16px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            z-index: 9999;
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            padding: 16px 24px;
+            border-radius: 14px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.success { border-color: rgba(34, 197, 94, 0.3); color: #4ade80; }
+        .toast.error { border-color: rgba(239, 68, 68, 0.3); color: #f87171; }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 0;
+            border-bottom: 1px solid #0f0f0f;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-size: 0.75rem; font-weight: 700; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.1em; min-width: 120px; }
+        .info-value { font-size: 0.875rem; font-weight: 600; color: rgba(255,255,255,0.8); font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+
+    <div class="fixed top-6 left-0 right-0 z-50 px-6">
+        <header id="main-header" class="container-wide flex justify-between items-center bg-transparent rounded-full transition-all duration-300 py-4 px-8 border border-white/10">
+            <a href="/" class="flex items-center gap-2">
+                <img src="/image/shardtown.jpeg" alt="Shardtown Logo" class="w-10 h-10 rounded-full object-cover">
+                <span class="font-bold tracking-tight text-xl uppercase">Shardtown</span>
+            </a>
+            <div class="flex items-center gap-6">
+                <div class="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/5">
+                    <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <span class="font-bold text-sm text-red-400/80 uppercase tracking-widest text-xs">Admin</span>
+                </div>
+                <a href="/admin/logout" class="text-xs font-bold uppercase tracking-widest text-red-500/70 hover:text-red-500 transition-colors">Déconnexion</a>
+            </div>
+        </header>
+    </div>
+
+    <script>
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('main-header');
+            if (window.scrollY > 50) {
+                header.classList.remove('bg-transparent', 'border-white/10');
+                header.classList.add('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+            } else {
+                header.classList.add('bg-transparent', 'border-white/10');
+                header.classList.remove('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+            }
+        });
+    </script>
+
+    <main class="pt-48 pb-24">
+        <div class="container-wide">
+
+            <!-- En-tête -->
+            <div class="mb-16">
+                <p class="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Panneau de Contrôle</p>
+                <h1 class="text-5xl font-bold uppercase tracking-tight">Administration</h1>
+            </div>
+
+            <!-- Stats globales -->
+            <div class="grid md:grid-cols-4 gap-6 mb-20">
+                <div class="stat-card">
+                    <div class="stat-number"><%= bots.length %></div>
+                    <p class="text-xs font-bold text-white/40 uppercase tracking-widest">Bots Actifs</p>
+                </div>
+                <div class="stat-card border-blue-500/20">
+                    <div class="stat-number text-blue-400"><%= totalGuilds %></div>
+                    <p class="text-xs font-bold text-white/40 uppercase tracking-widest">Serveurs Totaux</p>
+                </div>
+                <div class="stat-card border-red-500/20">
+                    <div class="stat-number text-red-400"><%= blockedGuilds.length %></div>
+                    <p class="text-xs font-bold text-white/40 uppercase tracking-widest">Serveurs Bloqués</p>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent"><%= totalMembers.toLocaleString('fr-FR') %></div>
+                    <p class="text-xs font-bold text-white/40 uppercase tracking-widest">Membres Protégés</p>
+                </div>
+            </div>
+
+            <!-- Bots -->
+            <% bots.forEach(bot => { %>
+            <div class="mb-16">
+                <div class="flex items-center gap-4 mb-6">
+                    <% if (bot.avatar) { %>
+                        <img src="https://cdn.discordapp.com/avatars/<%= bot.id %>/<%= bot.avatar %>.png" class="w-12 h-12 rounded-2xl border border-white/10">
+                    <% } else { %>
+                        <div class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center font-bold text-white/20"><%= bot.username[0] %></div>
+                    <% } %>
+                    <div>
+                        <p class="text-xs font-bold text-white/30 uppercase tracking-widest">Bot</p>
+                        <h2 class="text-2xl font-bold uppercase"><%= bot.username %></h2>
+                    </div>
+                    <div class="ml-auto flex items-center gap-3">
+                        <div class="badge badge-active"><span class="w-1.5 h-1.5 bg-blue-400 rounded-full"></span><%= bot.guilds.length %> serveurs</div>
+                    </div>
+                </div>
+
+                <!-- Info bot -->
+                <div class="guild-card mb-6">
+                    <p class="section-title">Informations</p>
+                    <div class="info-row"><span class="info-label">ID</span><span class="info-value"><%= bot.id %></span></div>
+                    <div class="info-row"><span class="info-label">Username</span><span class="info-value"><%= bot.username %>#<%= bot.discriminator %></span></div>
+                    <div class="info-row"><span class="info-label">Serveurs</span><span class="info-value"><%= bot.guilds.length %></span></div>
+                </div>
+
+                <!-- Serveurs du bot -->
+                <p class="section-title mb-4">Serveurs</p>
+                <div class="flex flex-col gap-4">
+                    <% bot.guilds.forEach(guild => { 
+                        const isBlocked = blockedGuilds.some(b => b.guild_id === guild.id);
+                    %>
+                        <div class="guild-card <%= isBlocked ? 'blocked' : '' %>" id="guild-<%= bot.id %>-<%= guild.id %>">
+                            <div class="flex items-center gap-4">
+                                <% if (guild.icon) { %>
+                                    <img src="https://cdn.discordapp.com/icons/<%= guild.id %>/<%= guild.icon %>.png" class="guild-icon" alt="">
+                                <% } else { %>
+                                    <div class="guild-icon bg-white/5 flex items-center justify-center font-bold text-white/20 text-sm">
+                                        <%= guild.name.split(' ').map(w => w[0]).join('').slice(0,2) %>
+                                    </div>
+                                <% } %>
+
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-3 mb-1">
+                                        <h3 class="font-bold truncate"><%= guild.name %></h3>
+                                        <% if (isBlocked) { %>
+                                            <span class="badge badge-blocked">Bloqué</span>
+                                        <% } else { %>
+                                            <span class="badge badge-active">Actif</span>
+                                        <% } %>
+                                    </div>
+                                    <p class="text-xs text-white/30 font-mono"><%= guild.id %></p>
+                                </div>
+
+                                <div class="flex items-center gap-2 flex-shrink-0">
+                                    <% if (!isBlocked) { %>
+                                        <button onclick="leaveGuild('<%= bot.id %>', '<%= guild.id %>', '<%= guild.name.replace(/'/g, "\\'") %>')" class="btn-warning">
+                                            Quitter
+                                        </button>
+                                        <button onclick="blockGuild('<%= bot.id %>', '<%= guild.id %>', '<%= guild.name.replace(/'/g, "\\'") %>')" class="btn-danger">
+                                            Bloquer
+                                        </button>
+                                    <% } else { %>
+                                        <button onclick="unblockGuild('<%= guild.id %>', '<%= guild.name.replace(/'/g, "\\'") %>')" class="btn-success">
+                                            Débloquer
+                                        </button>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+
+                    <% if (bot.guilds.length === 0) { %>
+                        <div class="text-center py-12 bg-white/5 rounded-3xl border border-white/5">
+                            <p class="text-white/40 font-bold uppercase tracking-widest text-xs">Aucun serveur</p>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+            <% }) %>
+
+            <!-- Serveurs Bloqués -->
+            <% if (blockedGuilds.length > 0) { %>
+            <div class="mb-16">
+                <div class="relative py-12">
+                    <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-white/[0.03]"></div></div>
+                    <div class="relative flex justify-center">
+                        <div class="bg-black/40 backdrop-blur-xl border border-red-500/10 px-8 py-3 rounded-full">
+                            <span class="text-[11px] font-black tracking-[0.3em] text-red-400/60 uppercase">Serveurs Bloqués</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    <% blockedGuilds.forEach(bg => { %>
+                        <div class="guild-card blocked" id="blocked-<%= bg.guild_id %>">
+                            <div class="flex items-center gap-4">
+                                <div class="guild-icon bg-red-500/10 flex items-center justify-center">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-3 mb-1">
+                                        <h3 class="font-bold truncate"><%= bg.guild_name || 'Serveur inconnu' %></h3>
+                                        <span class="badge badge-blocked">Bloqué</span>
+                                    </div>
+                                    <p class="text-xs text-white/30 font-mono"><%= bg.guild_id %></p>
+                                </div>
+                                <button onclick="unblockGuild('<%= bg.guild_id %>', '<%= (bg.guild_name || bg.guild_id).replace(/'/g, "\\'") %>')" class="btn-success">
+                                    Débloquer
+                                </button>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+            <% } %>
+
+        </div>
+    </main>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Modal confirmation -->
+    <div id="confirm-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-6 hidden">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeModal()"></div>
+        <div class="relative bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 w-full max-w-sm shadow-2xl">
+            <button onclick="closeModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+            <p class="text-xs font-black tracking-[0.3em] text-white/30 uppercase mb-2" id="modal-label">Confirmation</p>
+            <h3 class="text-xl font-bold uppercase mb-3" id="modal-title">Confirmer l'action</h3>
+            <p class="text-white/50 text-sm mb-8" id="modal-desc"></p>
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-3 rounded-full border border-white/10 font-bold text-sm hover:bg-white/5 transition-colors">Annuler</button>
+                <button onclick="confirmAction()" id="modal-confirm-btn" class="flex-1 py-3 rounded-full bg-white text-black font-bold text-sm hover:opacity-90 transition-opacity">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CSRF_TOKEN = '<%= csrfToken %>';
+        let pendingAction = null;
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = `toast ${type} show`;
+            setTimeout(() => toast.classList.remove('show'), 3500);
+        }
+
+        function openModal(label, title, desc, action) {
+            document.getElementById('modal-label').textContent = label;
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-desc').textContent = desc;
+            pendingAction = action;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            pendingAction = null;
+        }
+
+        async function confirmAction() {
+            closeModal();
+            if (pendingAction) await pendingAction();
+        }
+
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+        function leaveGuild(botId, guildId, guildName) {
+            openModal(
+                'Action Irréversible',
+                'Quitter le Serveur',
+                `Le bot va quitter "${guildName}". Cette action est immédiate.`,
+                async () => {
+                    try {
+                        const r = await fetch(`/admin/bot/${botId}/guild/${guildId}/leave`, { method: 'POST', headers: { 'x-csrf-token': CSRF_TOKEN } });
+                        const data = await r.json();
+                        if (data.success) {
+                            document.getElementById(`guild-${botId}-${guildId}`)?.remove();
+                            showToast(`Bot a quitté "${guildName}"`, 'success');
+                        } else {
+                            showToast(data.error || 'Erreur', 'error');
+                        }
+                    } catch { showToast('Erreur réseau', 'error'); }
+                }
+            );
+        }
+
+        function blockGuild(botId, guildId, guildName) {
+            openModal(
+                'Blocage Serveur',
+                'Bloquer ce Serveur',
+                `"${guildName}" sera bloqué. Le bot quittera immédiatement et ne pourra plus y rejoindre.`,
+                async () => {
+                    try {
+                        const r = await fetch(`/admin/bot/${botId}/guild/${guildId}/block`, { method: 'POST', headers: {'Content-Type': 'application/json', 'x-csrf-token': CSRF_TOKEN}, body: JSON.stringify({ guildName }) });
+                        const data = await r.json();
+                        if (data.success) {
+                            showToast(`"${guildName}" bloqué avec succès`, 'success');
+                            setTimeout(() => location.reload(), 1200);
+                        } else {
+                            showToast(data.error || 'Erreur', 'error');
+                        }
+                    } catch { showToast('Erreur réseau', 'error'); }
+                }
+            );
+        }
+
+        function unblockGuild(guildId, guildName) {
+            openModal(
+                'Déblocage Serveur',
+                'Débloquer ce Serveur',
+                `"${guildName}" sera retiré de la liste des serveurs bloqués.`,
+                async () => {
+                    try {
+                        const r = await fetch(`/admin/guild/${guildId}/unblock`, { method: 'POST', headers: { 'x-csrf-token': CSRF_TOKEN } });
+                        const data = await r.json();
+                        if (data.success) {
+                            document.getElementById(`blocked-${guildId}`)?.remove();
+                            showToast(`"${guildName}" débloqué`, 'success');
+                            setTimeout(() => location.reload(), 1200);
+                        } else {
+                            showToast(data.error || 'Erreur', 'error');
+                        }
+                    } catch { showToast('Erreur réseau', 'error'); }
+                }
+            );
+        }
+    </script>
+
+    <footer class="py-20 border-t border-white/5">
+        <div class="container-wide">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-8">
+                <div class="flex items-center gap-2">
+                    <img src="/image/shardtown.jpeg" alt="Shardtown Logo" class="w-6 h-6 rounded-full object-cover">
+                    <span class="font-bold tracking-tight text-sm uppercase">Shardtown</span>
+                </div>
+                <div class="flex gap-8">
+                    <a href="/terms" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Conditions Générales</a>
+                    <a href="/privacy" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Politique de Confidentialité</a>
+                    <a href="/admin" class="text-xs font-bold text-white hover:text-white transition-colors">Administrateur</a>
+                </div>
+                <p class="text-xs font-bold text-white/30">Copyright © 2026 Shardtown. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

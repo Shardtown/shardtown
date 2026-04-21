@@ -1,0 +1,1887 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shard | Configuration — <%= guild.name %></title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #000000; --text: #ffffff; --accent: #ffffff;
+            --muted: #888888; --border: #1a1a1a; --sidebar-width: 280px;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #000;
+            background-image:
+                radial-gradient(at 50% 0%, rgba(37, 99, 235, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(37, 99, 235, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text); margin: 0; padding: 0;
+            display: flex; height: 100vh; overflow: hidden;
+        }
+
+        .bg-glow {
+            position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+            width: 100%; height: 100vh;
+            background: radial-gradient(circle at 50% -20%, rgba(37, 99, 235, 0.1) 0%, transparent 70%);
+            pointer-events: none; z-index: -1;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background: rgba(10,10,10,0.5);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255,255,255,0.05);
+            padding: 32px 20px;
+            display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
+        }
+
+        .nav-item {
+            padding: 10px 14px; border-radius: 12px; cursor: pointer;
+            color: var(--muted); font-weight: 600; margin-bottom: 4px;
+            transition: all 0.2s; display: flex; align-items: center; gap: 12px;
+            border: 1px solid transparent; font-size: 0.875rem;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.03); color: var(--text); }
+        .nav-item.active { background: #fff; color: #000; }
+        .nav-item svg { width: 18px; height: 18px; }
+
+        .main-content { flex: 1; padding: 40px 60px; overflow-y: auto; position: relative; }
+
+        .content-section { display: none; width: 100%; }
+        .content-section.active { display: block; animation: fadeIn 0.4s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .success-checkmark {
+            display: flex; align-items: center; justify-content: center;
+            animation: successScale 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .success-checkmark svg { stroke-dasharray: 100; stroke-dashoffset: 100; animation: drawCheck 1.2s ease forwards 0.5s; }
+        .success-checkmark circle { stroke-dasharray: 100; stroke-dashoffset: 100; animation: drawCircle 1s ease forwards; }
+        @keyframes drawCircle { to { stroke-dashoffset: 0; } }
+        @keyframes drawCheck { to { stroke-dashoffset: 0; } }
+        @keyframes successScale { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .shard-card {
+            background: #0a0a0a; border: 1px solid #1a1a1a;
+            padding: 32px; border-radius: 24px; margin-bottom: 24px;
+        }
+
+        .field { margin-bottom: 24px; }
+        label {
+            display: block; margin-bottom: 8px; font-weight: 700;
+            font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px;
+        }
+
+        textarea, input[type="text"], input[type="number"] {
+            width: 100%; padding: 16px 20px;
+            background: rgba(255,255,255,0.03); border: 1px solid #1a1a1a;
+            color: white; border-radius: 14px; font-size: 0.92rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            outline: none; transition: all 0.2s; box-sizing: border-box;
+            letter-spacing: 0.01em;
+        }
+        textarea:focus, input[type="text"]:focus, input[type="number"]:focus { border-color: #fff; background: rgba(255,255,255,0.05); }
+        input[type="number"]::-webkit-inner-spin-button { opacity: 0.3; }
+        textarea {
+            resize: vertical; min-height: 100px;
+            line-height: 1.7; padding: 16px 20px;
+        }
+
+        .custom-select-wrapper { position: relative; width: 100%; }
+        .custom-select-trigger {
+            width: 100%; padding: 14px 18px;
+            background: rgba(255,255,255,0.03); border: 1px solid #1a1a1a;
+            color: white; border-radius: 14px; font-size: 0.9rem;
+            cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;
+        }
+        .custom-select-trigger:after {
+            content: ""; width: 8px; height: 8px;
+            border-right: 2px solid #555; border-bottom: 2px solid #555;
+            transform: rotate(45deg); margin-bottom: 4px;
+        }
+        .custom-select-wrapper.open .custom-select-trigger { border-color: #fff; }
+        .custom-options {
+            position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+            background: #0f0f0f; border: 1px solid #1a1a1a; border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; z-index: 1000;
+            max-height: 250px; overflow-y: auto; backdrop-filter: blur(20px);
+        }
+        .custom-select-wrapper.open .custom-options { display: block; }
+        .custom-option { padding: 10px 18px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; color: var(--muted); }
+        .custom-option:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .custom-option.selected { background: rgba(255,255,255,0.1); color: #fff; font-weight: 700; }
+        .hidden-select { display: none; }
+
+        .footer-bar {
+            position: fixed; bottom: 32px; right: 40px;
+            background: rgba(10,10,10,0.8); backdrop-filter: blur(20px);
+            padding: 12px 24px; border-radius: 100px; border: 1px solid #1a1a1a;
+            display: flex; align-items: center; gap: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4); z-index: 100;
+            opacity: 0; pointer-events: none; transform: translateY(20px);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .footer-bar.visible { opacity: 1; pointer-events: all; transform: translateY(0); }
+
+        .btn-white {
+            background: #fff; color: #000; padding: 10px 24px;
+            border-radius: 100px; font-weight: 700; font-size: 0.875rem;
+            transition: opacity 0.2s; cursor: pointer; border: none;
+        }
+        .btn-white:hover { opacity: 0.9; }
+
+        .field-hint { font-size: 0.7rem; color: rgba(255,255,255,0.2); margin-top: 8px; }
+        .tag {
+            display: inline-block;
+            background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); color: #60a5fa;
+            font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
+            padding: 3px 8px; border-radius: 6px; cursor: pointer; transition: all 0.15s;
+        }
+        .tag:hover { background: rgba(59,130,246,0.2); }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+        .color-preview {
+            width: 36px; height: 36px; border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1); flex-shrink: 0; cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .color-preview:hover { transform: scale(1.1); }
+        .color-input {
+            width: 36px; height: 36px; padding: 0; border: none;
+            background: none; cursor: pointer; opacity: 0; position: absolute;
+        }
+        .color-input-wrapper { position: relative; width: 36px; height: 36px; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+
+    <aside class="sidebar">
+        <div class="mb-8">
+            <a href="/shard/server" class="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-xs font-bold uppercase tracking-widest px-2">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+                Retour aux serveurs
+            </a>
+        </div>
+
+        <!-- App switcher -->
+        <div class="mb-10">
+            <div class="text-xs font-bold text-white/30 uppercase mb-3 tracking-widest px-2">Application</div>
+            <div class="relative group" id="botSelector">
+                <div class="flex items-center gap-3 p-2 bg-white/[0.03] border border-white/10 rounded-xl cursor-pointer hover:bg-white/[0.06] transition-all" onclick="toggleBotDropdown()">
+                    <img src="/image/shard.png" class="w-6 h-6 rounded-md" alt="Shard">
+                    <div class="flex-1 min-w-0"><div class="font-bold text-sm truncate">Shard</div></div>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-white/20"><path d="m6 9 6 6 6-6"></path></svg>
+                </div>
+                <div id="botDropdown" class="absolute left-0 right-0 top-full mt-2 p-1 bg-[#0f0f0f]/90 backdrop-blur-xl border border-white/10 rounded-xl opacity-0 invisible transition-all z-50">
+                    <div class="text-[9px] font-bold text-white/20 uppercase px-2 pt-2 pb-1 tracking-widest">Changer d'application</div>
+                    <a href="/shardguard/guild/<%= guild.id %>" class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/[0.04] transition-colors">
+                        <img src="/image/shardguard.png" class="w-5 h-5 rounded-md" alt="ShardGuard">
+                        <span class="font-bold text-sm">ShardGuard</span>
+                    </a>
+                    <div class="flex items-center gap-2 p-2 rounded-lg bg-white/[0.06] border border-white/10 cursor-default">
+                        <img src="/image/shard.png" class="w-5 h-5 rounded-md" alt="Shard">
+                        <span class="font-bold text-sm">Shard</span>
+                        <span class="ml-auto text-[9px] font-bold text-blue-400 uppercase tracking-widest">Actif</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function toggleBotDropdown() {
+                const d = document.getElementById('botDropdown');
+                d.classList.toggle('opacity-0');
+                d.classList.toggle('invisible');
+            }
+            window.addEventListener('click', (e) => {
+                if (!document.getElementById('botSelector').contains(e.target)) {
+                    document.getElementById('botDropdown').classList.add('opacity-0', 'invisible');
+                }
+            });
+        </script>
+
+        <nav class="flex-1">
+            <div class="nav-item active" onclick="showSection('welcome', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                Arrivée & Départ
+            </div>
+            <div class="nav-item" onclick="showSection('autorole', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                Auto Rôle
+            </div>
+            <div class="nav-item" onclick="showSection('tempvoice', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                Vocal Temporaire
+            </div>
+            <div class="nav-item" onclick="showSection('embed', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                Embed Builder
+            </div>
+            <div class="nav-item" onclick="showSection('reactions', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                Réactions Auto
+            </div>
+            <div class="nav-item" onclick="showSection('levels', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                Niveaux
+            </div>
+            <div class="nav-item" onclick="showSection('tickets', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"></path></svg>
+                Tickets
+            </div>
+            <div class="nav-item" onclick="showSection('giveaways', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v10H4V12"></path><path d="M22 7H2v5h20V7z"></path><path d="M12 22V7"></path><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>
+                Giveaways
+            </div>
+            <div class="nav-item" onclick="showSection('birthdays', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle><path d="M12 3c0-1.5 2-2 2-3.5"></path></svg>
+                Anniversaires
+            </div>
+            <div class="nav-item" onclick="showSection('scheduled', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                Annonces Planifiées
+            </div>
+            <div class="nav-item" onclick="showSection('economy', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v2m0 8v2M9.5 9.5c0-1.1.9-2 2.5-2s2.5.9 2.5 2c0 2.5-5 2.5-5 5 0 1.1.9 2 2.5 2s2.5-.9 2.5-2"></path></svg>
+                Économie
+            </div>
+            <div class="nav-item" onclick="showSection('polls', this)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                Sondages
+            </div>
+        </nav>
+
+        <div class="mt-auto p-4 bg-white/5 rounded-2xl border border-white/5">
+            <div class="text-[10px] font-bold text-white/30 uppercase mb-3 tracking-widest">Serveur Actif</div>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                    <% if (guild.icon) { %>
+                        <img src="https://cdn.discordapp.com/icons/<%= guild.id %>/<%= guild.icon %>.png" class="w-full h-full object-cover">
+                    <% } else { %>
+                        <span class="font-bold text-white/20"><%= guild.name[0] %></span>
+                    <% } %>
+                </div>
+                <div class="font-bold text-sm truncate"><%= guild.name %></div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <form id="configForm" onsubmit="return false;">
+
+            <!-- Section Arrivée & Départ -->
+            <div id="section-welcome" class="content-section active">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Arrivée & Départ</h1>
+                </div>
+
+                <!-- ARRIVÉE -->
+                <div class="shard-card">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Arrivée</h2>
+
+                    <div class="field">
+                        <label>Salon d'arrivée</label>
+                        <div class="custom-select-wrapper">
+                            <% const wChan = channels.find(c => c.id === settings.welcomeChannelId); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= wChan ? '#' + wChan.name : '— Désactivé —' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.welcomeChannelId ? 'selected' : '' %>" data-value="" onclick="selectOption(this, 'welcomeChannelId')">— Désactivé —</div>
+                                <% channels.forEach(c => { %>
+                                    <div class="custom-option <%= settings.welcomeChannelId === c.id ? 'selected' : '' %>" data-value="<%= c.id %>" onclick="selectOption(this, 'welcomeChannelId')">#<%= c.name %></div>
+                                <% }) %>
+                            </div>
+                            <select name="welcomeChannelId" class="hidden-select">
+                                <option value=""></option>
+                                <% channels.forEach(c => { %>
+                                    <option value="<%= c.id %>" <%= settings.welcomeChannelId === c.id ? 'selected' : '' %>><%= c.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Titre de l'embed</label>
+                        <input type="text" name="welcomeTitle" value="<%= settings.welcomeTitle || '' %>" placeholder="Laisser vide pour aucun titre">
+
+                    </div>
+
+                    <div class="field">
+                        <label>Description</label>
+                        <input type="text" name="welcomeMessage" value="<%= settings.welcomeMessage || 'Bienvenue {user} sur **{server}** !' %>">
+                        <p class="field-hint">
+                            Variables :
+                            <span class="tag" onclick="insertVar('welcomeMessage','{user}')">{user}</span>
+                            <span class="tag" onclick="insertVar('welcomeMessage','{username}')">{username}</span>
+                            <span class="tag" onclick="insertVar('welcomeMessage','{server}')">{server}</span>
+                            <span class="tag" onclick="insertVar('welcomeMessage','{memberCount}')">{memberCount}</span>
+                        </p>
+                    </div>
+
+                    <div class="field">
+                        <label>Footer</label>
+                        <input type="text" name="welcomeFooter" value="<%= settings.welcomeFooter || '' %>" placeholder="Laisser vide pour aucun footer">
+
+                    </div>
+
+                    <div class="field">
+                        <label>Couleur</label>
+                        <div class="flex items-center gap-3">
+                            <div class="color-input-wrapper" onclick="this.querySelector('input').click()">
+                                <div class="color-preview" id="welcomeColorPreview" style="background: <%= settings.welcomeColor || '#3b82f6' %>"></div>
+                                <input type="color" name="welcomeColor" value="<%= settings.welcomeColor || '#3b82f6' %>" class="color-input" oninput="updateColorPreview('welcomeColor', 'welcomeColorPreview', 'welcomeColorHex', this.value)">
+                            </div>
+                            <span class="text-xs text-white/30 font-mono" id="welcomeColorHex"><%= settings.welcomeColor || '#3b82f6' %></span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end mt-2">
+                        <button type="button" id="test-welcome-btn" onclick="sendTest('welcome')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-all">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            Tester arrivée
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DÉPART -->
+                <div class="shard-card">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Départ</h2>
+
+                    <div class="field">
+                        <label>Salon de départ</label>
+                        <div class="custom-select-wrapper">
+                            <% const lChan = channels.find(c => c.id === settings.leaveChannelId); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= lChan ? '#' + lChan.name : '— Désactivé —' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.leaveChannelId ? 'selected' : '' %>" data-value="" onclick="selectOption(this, 'leaveChannelId')">— Désactivé —</div>
+                                <% channels.forEach(c => { %>
+                                    <div class="custom-option <%= settings.leaveChannelId === c.id ? 'selected' : '' %>" data-value="<%= c.id %>" onclick="selectOption(this, 'leaveChannelId')">#<%= c.name %></div>
+                                <% }) %>
+                            </div>
+                            <select name="leaveChannelId" class="hidden-select">
+                                <option value=""></option>
+                                <% channels.forEach(c => { %>
+                                    <option value="<%= c.id %>" <%= settings.leaveChannelId === c.id ? 'selected' : '' %>><%= c.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Titre de l'embed</label>
+                        <input type="text" name="leaveTitle" value="<%= settings.leaveTitle || '' %>" placeholder="Laisser vide pour aucun titre">
+
+                    </div>
+
+                    <div class="field">
+                        <label>Description</label>
+                        <input type="text" name="leaveMessage" value="<%= settings.leaveMessage || '{username} a quitté **{server}**.' %>">
+                        <p class="field-hint">
+                            Variables :
+                            <span class="tag" onclick="insertVar('leaveMessage','{user}')">{user}</span>
+                            <span class="tag" onclick="insertVar('leaveMessage','{username}')">{username}</span>
+                            <span class="tag" onclick="insertVar('leaveMessage','{server}')">{server}</span>
+                            <span class="tag" onclick="insertVar('leaveMessage','{memberCount}')">{memberCount}</span>
+                        </p>
+                    </div>
+
+                    <div class="field">
+                        <label>Footer</label>
+                        <input type="text" name="leaveFooter" value="<%= settings.leaveFooter || '' %>" placeholder="Laisser vide pour aucun footer">
+
+                    </div>
+
+                    <div class="field">
+                        <label>Couleur</label>
+                        <div class="flex items-center gap-3">
+                            <div class="color-input-wrapper" onclick="this.querySelector('input').click()">
+                                <div class="color-preview" id="leaveColorPreview" style="background: <%= settings.leaveColor || '#6b7280' %>"></div>
+                                <input type="color" name="leaveColor" value="<%= settings.leaveColor || '#6b7280' %>" class="color-input" oninput="updateColorPreview('leaveColor', 'leaveColorPreview', 'leaveColorHex', this.value)">
+                            </div>
+                            <span class="text-xs text-white/30 font-mono" id="leaveColorHex"><%= settings.leaveColor || '#6b7280' %></span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end mt-2">
+                        <button type="button" id="test-leave-btn" onclick="sendTest('leave')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-all">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            Tester départ
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Auto Rôle -->
+            <div id="section-autorole" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Auto Rôle</h1>
+                </div>
+
+                <div class="shard-card">
+                    <p class="text-white/40 text-sm leading-relaxed mb-6">Le rôle sélectionné sera automatiquement attribué à chaque nouveau membre qui rejoint le serveur.</p>
+
+                    <div class="field">
+                        <label>Rôle à attribuer</label>
+                        <div class="custom-select-wrapper">
+                            <% const aRole = roles.find(r => r.id === settings.autoRoleId); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= aRole ? '@' + aRole.name : '— Désactivé —' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.autoRoleId ? 'selected' : '' %>" data-value="" onclick="selectOption(this, 'autoRoleId')">— Désactivé —</div>
+                                <% roles.forEach(r => { %>
+                                    <div class="custom-option <%= settings.autoRoleId === r.id ? 'selected' : '' %>" data-value="<%= r.id %>" onclick="selectOption(this, 'autoRoleId')" style="display:flex;align-items:center;gap:8px;">
+                                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:<%= r.color ? '#' + r.color.toString(16).padStart(6,'0') : '#888' %>;flex-shrink:0;"></span>
+                                        @<%= r.name %>
+                                    </div>
+                                <% }) %>
+                            </div>
+                            <select name="autoRoleId" class="hidden-select">
+                                <option value=""></option>
+                                <% roles.forEach(r => { %>
+                                    <option value="<%= r.id %>" <%= settings.autoRoleId === r.id ? 'selected' : '' %>><%= r.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Vocal Temporaire -->
+            <div id="section-tempvoice" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Vocal Temporaire</h1>
+                </div>
+
+                <div class="shard-card">
+                    <p class="text-white/40 text-sm leading-relaxed mb-6">Quand un membre rejoint le salon déclencheur, un salon vocal privé est créé pour lui. Le salon est supprimé automatiquement lorsqu'il se vide.</p>
+
+                    <div class="field">
+                        <label>Salon déclencheur</label>
+                        <div class="custom-select-wrapper">
+                            <% const triggerChan = voiceChannels.find(c => c.id === settings.tempVoiceTrigger); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= triggerChan ? '🔊 ' + triggerChan.name : '— Désactivé —' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.tempVoiceTrigger ? 'selected' : '' %>" data-value="" onclick="selectOption(this, 'tempVoiceTrigger')">— Désactivé —</div>
+                                <% voiceChannels.forEach(c => { %>
+                                    <div class="custom-option <%= settings.tempVoiceTrigger === c.id ? 'selected' : '' %>" data-value="<%= c.id %>" onclick="selectOption(this, 'tempVoiceTrigger')">🔊 <%= c.name %></div>
+                                <% }) %>
+                            </div>
+                            <select name="tempVoiceTrigger" class="hidden-select">
+                                <option value=""></option>
+                                <% voiceChannels.forEach(c => { %>
+                                    <option value="<%= c.id %>" <%= settings.tempVoiceTrigger === c.id ? 'selected' : '' %>><%= c.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <p class="field-hint">Créez un salon vocal nommé "➕ Créer un salon" par exemple.</p>
+                    </div>
+
+                    <div class="field">
+                        <label>Catégorie des salons créés</label>
+                        <div class="custom-select-wrapper">
+                            <% const triggerCat = categories.find(c => c.id === settings.tempVoiceCategory); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= triggerCat ? triggerCat.name : '— Même catégorie —' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.tempVoiceCategory ? 'selected' : '' %>" data-value="" onclick="selectOption(this, 'tempVoiceCategory')">— Même catégorie —</div>
+                                <% categories.forEach(c => { %>
+                                    <div class="custom-option <%= settings.tempVoiceCategory === c.id ? 'selected' : '' %>" data-value="<%= c.id %>" onclick="selectOption(this, 'tempVoiceCategory')"><%= c.name %></div>
+                                <% }) %>
+                            </div>
+                            <select name="tempVoiceCategory" class="hidden-select">
+                                <option value=""></option>
+                                <% categories.forEach(c => { %>
+                                    <option value="<%= c.id %>" <%= settings.tempVoiceCategory === c.id ? 'selected' : '' %>><%= c.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Nom des salons créés</label>
+                        <input type="text" name="tempVoiceName" value="<%= settings.tempVoiceName || 'Salon de {username}' %>" placeholder="Salon de {username}">
+                        <p class="field-hint">
+                            Variables :
+                            <span class="tag" onclick="insertVar('tempVoiceName','{username}')">{username}</span>
+                            <span class="tag" onclick="insertVar('tempVoiceName','{server}')">{server}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Embed Builder -->
+            <div id="section-embed" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Embed Builder</h1>
+                </div>
+                <div class="shard-card">
+                    <p class="text-white/40 text-sm leading-relaxed mb-6">Créez et envoyez un embed personnalisé dans n'importe quel salon. Utilisez la commande <code class="bg-white/10 px-2 py-0.5 rounded-lg text-white/70 text-xs">/embed</code> directement dans Discord pour une création rapide.</p>
+                    <div class="field">
+                        <label>Salon cible</label>
+                        <div class="custom-select-wrapper">
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span>— Choisir un salon —</span></div>
+                            <div class="custom-options">
+                                <% channels.forEach(c => { %><div class="custom-option" data-value="<%= c.id %>" onclick="selectEmbedChannel(this)">#<%= c.name %></div><% }) %>
+                            </div>
+                        </div>
+                        <input type="hidden" id="embedChannelId" value="">
+                    </div>
+                    <div class="field"><label>Titre</label><input type="text" id="embedTitle" placeholder="Laisser vide pour aucun titre"></div>
+                    <div class="field"><label>Description</label><input type="text" id="embedDescription" placeholder="Contenu de l'embed..."></div>
+                    <div class="field">
+                        <label>Couleur</label>
+                        <div class="flex items-center gap-3">
+                            <div class="color-input-wrapper" onclick="this.querySelector('input').click()">
+                                <div class="color-preview" id="embedColorPreview" style="background:#3b82f6"></div>
+                                <input type="color" id="embedColor" value="#3b82f6" class="color-input" oninput="document.getElementById('embedColorPreview').style.background=this.value;document.getElementById('embedColorHex').textContent=this.value;">
+                            </div>
+                            <span class="text-xs text-white/30 font-mono" id="embedColorHex">#3b82f6</span>
+                        </div>
+                    </div>
+                    <div class="field"><label>Footer</label><input type="text" id="embedFooter" placeholder="Texte du footer (optionnel)"></div>
+                    <div class="field"><label>URL de l'image</label><input type="text" id="embedImage" placeholder="https://... (optionnel)"></div>
+                    <div class="flex justify-end mt-4">
+                        <button type="button" id="send-embed-btn" onclick="sendEmbed()" class="btn-white">Envoyer l'embed</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Réactions Auto -->
+            <div id="section-reactions" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Réactions Auto</h1>
+                </div>
+                <div class="shard-card mb-6">
+                    <p class="text-white/40 text-sm leading-relaxed mb-6">Le bot réagira automatiquement lorsqu'un message contient le texte configuré.</p>
+                    <div id="reactions-list" class="mb-6 flex flex-col gap-3">
+                        <% const autoReactions = Array.isArray(settings.autoReactions) ? settings.autoReactions : JSON.parse(settings.autoReactions || '[]'); %>
+                        <% if (autoReactions.length === 0) { %>
+                            <p class="text-white/20 text-sm" id="reactions-empty">Aucune réaction configurée.</p>
+                        <% } %>
+                        <% autoReactions.forEach(r => { %>
+                        <div class="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4" id="reaction-<%= encodeURIComponent(r.text) %>-<%= encodeURIComponent(r.emoji) %>">
+                            <div class="flex items-center gap-4">
+                                <span class="text-white/60 text-sm font-bold">"<%= r.text %>"</span>
+                                <% if (r.emoji.startsWith('<')) {
+                                    const m = r.emoji.match(/:(\d+)>$/);
+                                    const eid = m ? m[1] : null;
+                                %>
+                                    <% if (eid) { %><img src="https://cdn.discordapp.com/emojis/<%= eid %>.webp?size=32" class="w-6 h-6 rounded" alt="<%= r.emoji %>"><% } else { %><span class="text-xl"><%= r.emoji %></span><% } %>
+                                <% } else { %>
+                                    <span class="text-xl"><%= r.emoji %></span>
+                                <% } %>
+                            </div>
+                            <button type="button" onclick="removeReaction('<%= encodeURIComponent(r.text) %>','<%= encodeURIComponent(r.emoji) %>')" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors">Supprimer</button>
+                        </div>
+                        <% }) %>
+                    </div>
+                    <div class="border-t border-white/5 pt-6">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-4">Ajouter une réaction</p>
+                        <div class="flex gap-3 items-end">
+                            <div class="flex-1 field mb-0">
+                                <label>Texte du message</label>
+                                <input type="text" id="newReactionText" placeholder="salut">
+                            </div>
+                            <div class="field mb-0" style="width:90px;flex-shrink:0;">
+                                <label>Emoji</label>
+                                <input type="text" id="newReactionEmoji" placeholder="👍" style="text-align:center;font-size:0.92rem;padding:16px 10px;">
+                            </div>
+                            <button type="button" onclick="addReaction()" class="btn-white mb-0" style="padding:16px 20px;border-radius:14px;flex-shrink:0;align-self:flex-end;">Ajouter</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Niveaux -->
+            <div id="section-levels" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Niveaux</h1>
+                </div>
+                <div class="shard-card mb-6">
+                    <div class="field flex items-center justify-between mb-6">
+                        <div>
+                            <div class="font-bold text-sm">Système de niveaux</div>
+                            <div class="text-white/30 text-xs mt-1">Les membres gagnent de l'XP en envoyant des messages.</div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="levelsEnabled" class="sr-only peer" <%= settings.levelsEnabled ? 'checked' : '' %>>
+                            <div class="w-11 h-6 bg-white/10 peer-checked:bg-blue-600 rounded-full peer transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                        </label>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="field mb-0">
+                            <label>XP min / message</label>
+                            <input type="number" name="xpMin" value="<%= settings.xpMin || 15 %>" min="1" max="100">
+                        </div>
+                        <div class="field mb-0">
+                            <label>XP max / message</label>
+                            <input type="number" name="xpMax" value="<%= settings.xpMax || 25 %>" min="1" max="100">
+                        </div>
+                        <div class="field mb-0">
+                            <label>Cooldown (secondes)</label>
+                            <input type="number" name="xpCooldown" value="<%= settings.xpCooldown || 60 %>" min="5" max="3600">
+                        </div>
+                    </div>
+                    <div class="field mt-6">
+                        <label>Salon d'annonce de niveau</label>
+                        <div class="custom-select-wrapper">
+                            <% const lvlChan = channels.find(c => c.id === settings.levelUpChannelId); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span><%= lvlChan ? '#' + lvlChan.name : '— Désactivé —' %></span></div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.levelUpChannelId ? 'selected' : '' %>" data-value="" onclick="selectOption(this,'levelUpChannelId')">— Désactivé —</div>
+                                <% channels.forEach(c => { %><div class="custom-option <%= settings.levelUpChannelId === c.id ? 'selected' : '' %>" data-value="<%= c.id %>" onclick="selectOption(this,'levelUpChannelId')">#<%= c.name %></div><% }) %>
+                            </div>
+                            <select name="levelUpChannelId" class="hidden-select"><option value=""></option><% channels.forEach(c => { %><option value="<%= c.id %>" <%= settings.levelUpChannelId === c.id ? 'selected' : '' %>><%= c.name %></option><% }) %></select>
+                        </div>
+                    </div>
+                    <div class="field mt-6">
+                        <label>Message de montée de niveau</label>
+                        <input type="text" name="levelUpMessage" value="<%= settings.levelUpMessage || '' %>" placeholder="{user} est passé au niveau **{level}** !">
+                        <p class="field-hint">Variables : <span class="tag" onclick="insertVar('levelUpMessage','{user}')">{user}</span> <span class="tag" onclick="insertVar('levelUpMessage','{username}')">{username}</span> <span class="tag" onclick="insertVar('levelUpMessage','{level}')">{level}</span> <span class="tag" onclick="insertVar('levelUpMessage','{xp}')">{xp}</span></p>
+                    </div>
+                    <div class="field">
+                        <label>Couleur de l'embed</label>
+                        <div class="flex items-center gap-3">
+                            <div class="color-input-wrapper" onclick="this.querySelector('input').click()">
+                                <div class="color-preview" id="levelUpColorPreview" style="background:<%= settings.levelUpColor || '#3b82f6' %>"></div>
+                                <input type="color" name="levelUpColor" value="<%= settings.levelUpColor || '#3b82f6' %>" class="color-input" oninput="updateColorPreview('levelUpColor','levelUpColorPreview','levelUpColorHex',this.value)">
+                            </div>
+                            <span class="text-xs text-white/30 font-mono" id="levelUpColorHex"><%= settings.levelUpColor || '#3b82f6' %></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shard-card mb-6">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-6">Paliers d'expérience</p>
+                    <p class="text-white/30 text-xs mb-6">XP nécessaire pour passer chaque niveau. Modifiez les valeurs et enregistrez.</p>
+                    <input type="hidden" name="levelThresholds" id="levelThresholdsData" value="<%= JSON.stringify(settings.levelThresholds) %>">
+                    <div id="thresholds-list" class="flex flex-col gap-2">
+                        <% settings.levelThresholds.forEach((xp, i) => { %>
+                        <div class="flex items-center gap-4 bg-white/[0.02] border border-white/5 rounded-2xl px-5 py-3" id="threshold-row-<%= i %>">
+                            <span class="text-xs font-black uppercase tracking-widest text-white/30 w-28 shrink-0">Niveau <%= i %> → <%= i+1 %></span>
+                            <input type="number" class="threshold-input flex-1" data-index="<%= i %>" value="<%= xp %>" min="1" oninput="updateThreshold(<%= i %>, this.value)" style="padding:10px 14px;font-size:0.85rem;">
+                            <span class="text-xs text-white/20">XP</span>
+                            <button type="button" onclick="removeThreshold(<%= i %>)" class="text-xs font-bold uppercase tracking-widest text-white/20 hover:text-red-400 transition-colors ml-2">Retirer</button>
+                        </div>
+                        <% }) %>
+                    </div>
+                    <button type="button" onclick="addThreshold()" class="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest border border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-all">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Ajouter un palier
+                    </button>
+                </div>
+
+                <div class="shard-card">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-6">Récompenses par niveau</p>
+                    <div id="rewards-list" class="flex flex-col gap-3 mb-6">
+                        <% const levelRewards = (Array.isArray(settings.levelRewards) ? settings.levelRewards : JSON.parse(settings.levelRewards || '[]')).sort((a,b)=>a.level-b.level); %>
+                        <% if (levelRewards.length === 0) { %>
+                            <p class="text-white/20 text-sm" id="rewards-empty">Aucune récompense configurée.</p>
+                        <% } %>
+                        <% levelRewards.forEach(r => { const rw = roles.find(ro => ro.id === r.roleId); %>
+                        <div class="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4" id="reward-<%= r.level %>-<%= r.roleId %>">
+                            <div class="flex items-center gap-4">
+                                <span class="text-xs font-black uppercase tracking-widest text-blue-400">Niveau <%= r.level %></span>
+                                <span class="text-white/60 text-sm font-bold">@<%= rw ? rw.name : r.roleId %></span>
+                            </div>
+                            <button type="button" onclick="removeReward(<%= r.level %>,'<%= r.roleId %>')" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors">Supprimer</button>
+                        </div>
+                        <% }) %>
+                    </div>
+                    <div class="border-t border-white/5 pt-6">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-4">Ajouter une récompense</p>
+                        <div class="flex gap-3 items-end">
+                            <div class="field mb-0" style="width:120px">
+                                <label>Niveau</label>
+                                <input type="number" id="newRewardLevel" placeholder="5" min="1" max="500">
+                            </div>
+                            <div class="flex-1 field mb-0">
+                                <label>Rôle</label>
+                                <div class="custom-select-wrapper">
+                                    <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span>— Choisir —</span></div>
+                                    <div class="custom-options">
+                                        <% roles.forEach(r => { %><div class="custom-option" data-value="<%= r.id %>" onclick="selectOption(this,'newRewardRole')" style="display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:<%= r.color ? '#' + r.color.toString(16).padStart(6,'0') : '#888' %>;flex-shrink:0;"></span>@<%= r.name %></div><% }) %>
+                                    </div>
+                                    <select name="newRewardRole" class="hidden-select"><option value=""></option><% roles.forEach(r => { %><option value="<%= r.id %>"><%= r.name %></option><% }) %></select>
+                                </div>
+                            </div>
+                            <button type="button" onclick="addReward()" class="btn-white" style="height:51px;padding:0 20px;border-radius:14px;">Ajouter</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Tickets -->
+            <div id="section-tickets" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Tickets</h1>
+                </div>
+
+                <div class="shard-card mb-6">
+                    <div class="field flex items-center justify-between mb-0">
+                        <div>
+                            <div class="font-bold text-sm">Système de tickets</div>
+                            <div class="text-white/30 text-xs mt-1">Permettre aux membres d'ouvrir des tickets d'assistance.</div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="ticketEnabled" class="sr-only peer" <%= settings.ticketEnabled ? 'checked' : '' %>>
+                            <div class="w-11 h-6 bg-white/10 peer-checked:bg-blue-600 rounded-full peer transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="shard-card mb-6">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Paramètres généraux</h2>
+
+                    <div class="field">
+                        <label>Catégorie des tickets</label>
+                        <div class="custom-select-wrapper">
+                            <% const tkCat = categories.find(c => c.id === settings.ticketCategoryId); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= tkCat ? tkCat.name : '— Désactivé —' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.ticketCategoryId ? 'selected' : '' %>" data-value="" onclick="selectOption(this, 'ticketCategoryId')">— Désactivé —</div>
+                                <% categories.forEach(c => { %>
+                                    <div class="custom-option <%= settings.ticketCategoryId === c.id ? 'selected' : '' %>" data-value="<%= c.id %>" onclick="selectOption(this, 'ticketCategoryId')"><%= c.name %></div>
+                                <% }) %>
+                            </div>
+                            <select name="ticketCategoryId" class="hidden-select">
+                                <option value=""></option>
+                                <% categories.forEach(c => { %>
+                                    <option value="<%= c.id %>" <%= settings.ticketCategoryId === c.id ? 'selected' : '' %>><%= c.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <p class="field-hint">Les salons de tickets seront créés dans cette catégorie.</p>
+                    </div>
+
+                    <div class="field">
+                        <label>Rôle support</label>
+                        <div class="custom-select-wrapper">
+                            <% const tkRole = roles.find(r => r.id === settings.ticketSupportRoleId); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= tkRole ? '@' + tkRole.name : '— Aucun —' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.ticketSupportRoleId ? 'selected' : '' %>" data-value="" onclick="selectOption(this, 'ticketSupportRoleId')">— Aucun —</div>
+                                <% roles.forEach(r => { %>
+                                    <div class="custom-option <%= settings.ticketSupportRoleId === r.id ? 'selected' : '' %>" data-value="<%= r.id %>" onclick="selectOption(this, 'ticketSupportRoleId')" style="display:flex;align-items:center;gap:8px;">
+                                        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:<%= r.color ? '#' + r.color.toString(16).padStart(6,'0') : '#888' %>;flex-shrink:0;"></span>
+                                        @<%= r.name %>
+                                    </div>
+                                <% }) %>
+                            </div>
+                            <select name="ticketSupportRoleId" class="hidden-select">
+                                <option value=""></option>
+                                <% roles.forEach(r => { %>
+                                    <option value="<%= r.id %>" <%= settings.ticketSupportRoleId === r.id ? 'selected' : '' %>><%= r.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <p class="field-hint">Ce rôle aura accès à tous les salons de tickets.</p>
+                    </div>
+
+                    <div class="field">
+                        <label>Salon de logs</label>
+                        <div class="custom-select-wrapper">
+                            <% const tkLog = channels.find(c => c.id === settings.ticketLogChannelId); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= tkLog ? '#' + tkLog.name : '— Désactivé —' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.ticketLogChannelId ? 'selected' : '' %>" data-value="" onclick="selectOption(this, 'ticketLogChannelId')">— Désactivé —</div>
+                                <% channels.forEach(c => { %>
+                                    <div class="custom-option <%= settings.ticketLogChannelId === c.id ? 'selected' : '' %>" data-value="<%= c.id %>" onclick="selectOption(this, 'ticketLogChannelId')">#<%= c.name %></div>
+                                <% }) %>
+                            </div>
+                            <select name="ticketLogChannelId" class="hidden-select">
+                                <option value=""></option>
+                                <% channels.forEach(c => { %>
+                                    <option value="<%= c.id %>" <%= settings.ticketLogChannelId === c.id ? 'selected' : '' %>><%= c.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field mb-0">
+                        <label>Tickets max par utilisateur</label>
+                        <input type="number" name="ticketMaxPerUser" value="<%= settings.ticketMaxPerUser || 1 %>" min="1" max="10">
+                        <p class="field-hint">Nombre maximum de tickets ouverts simultanément par membre.</p>
+                    </div>
+                </div>
+
+                <div class="shard-card">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Panel de tickets</h2>
+                    <p class="text-white/30 text-xs mb-6">Configurez l'embed qui permet aux membres d'ouvrir un ticket, puis envoyez-le dans un salon.</p>
+
+                    <div class="field">
+                        <label>Salon du panel</label>
+                        <div class="custom-select-wrapper">
+                            <% const tkPanel = channels.find(c => c.id === settings.ticketPanelChannelId); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= tkPanel ? '#' + tkPanel.name : '— Choisir un salon —' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.ticketPanelChannelId ? 'selected' : '' %>" data-value="" onclick="selectOption(this, 'ticketPanelChannelId')">— Choisir un salon —</div>
+                                <% channels.forEach(c => { %>
+                                    <div class="custom-option <%= settings.ticketPanelChannelId === c.id ? 'selected' : '' %>" data-value="<%= c.id %>" onclick="selectOption(this, 'ticketPanelChannelId')">#<%= c.name %></div>
+                                <% }) %>
+                            </div>
+                            <select name="ticketPanelChannelId" class="hidden-select">
+                                <option value=""></option>
+                                <% channels.forEach(c => { %>
+                                    <option value="<%= c.id %>" <%= settings.ticketPanelChannelId === c.id ? 'selected' : '' %>><%= c.name %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Titre du panel</label>
+                        <input type="text" name="ticketPanelTitle" value="<%= settings.ticketPanelTitle || '🎫 Ouvrir un ticket' %>" placeholder="🎫 Ouvrir un ticket">
+                    </div>
+
+                    <div class="field">
+                        <label>Description du panel</label>
+                        <textarea name="ticketPanelDescription" placeholder="Cliquez sur le bouton ci-dessous pour ouvrir un ticket."><%= settings.ticketPanelDescription || 'Cliquez sur le bouton ci-dessous pour ouvrir un ticket.' %></textarea>
+                    </div>
+
+                    <div class="field">
+                        <label>Couleur de l'embed</label>
+                        <div class="flex items-center gap-3">
+                            <div class="color-input-wrapper" onclick="this.querySelector('input').click()">
+                                <div class="color-preview" id="ticketPanelColorPreview" style="background:<%= settings.ticketPanelColor || '#3b82f6' %>"></div>
+                                <input type="color" name="ticketPanelColor" value="<%= settings.ticketPanelColor || '#3b82f6' %>" class="color-input" oninput="updateColorPreview('ticketPanelColor','ticketPanelColorPreview','ticketPanelColorHex',this.value)">
+                            </div>
+                            <span class="text-xs text-white/30 font-mono" id="ticketPanelColorHex"><%= settings.ticketPanelColor || '#3b82f6' %></span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end mt-2">
+                        <button type="button" id="send-ticket-panel-btn" onclick="sendTicketPanel()" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-all">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            Envoyer le panel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Giveaways -->
+            <div id="section-giveaways" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Giveaways</h1>
+                </div>
+
+                <div class="shard-card mb-6">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Créer un giveaway</h2>
+
+                    <div class="field">
+                        <label>Salon</label>
+                        <div class="custom-select-wrapper">
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span>— Choisir un salon —</span></div>
+                            <div class="custom-options">
+                                <% channels.forEach(c => { %><div class="custom-option" data-value="<%= c.id %>" onclick="selectOption(this,'gwChannelId')">#<%= c.name %></div><% }) %>
+                            </div>
+                            <select name="gwChannelId" id="gwChannelId" class="hidden-select"><option value=""></option><% channels.forEach(c => { %><option value="<%= c.id %>"><%= c.name %></option><% }) %></select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Lot à gagner</label>
+                        <input type="text" id="gwPrize" placeholder="Ex : Nitro Classic 1 mois">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="field mb-0">
+                            <label>Nombre de gagnants</label>
+                            <input type="number" id="gwWinners" value="1" min="1" max="20">
+                        </div>
+                        <div class="field mb-0">
+                            <label>Durée</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="gwDuration" value="24" min="1" style="flex:1">
+                                <select id="gwUnit" style="background:rgba(255,255,255,0.03);border:1px solid #1a1a1a;color:white;border-radius:14px;padding:0 14px;font-family:inherit;font-size:0.85rem;outline:none;">
+                                    <option value="hours">Heures</option>
+                                    <option value="days">Jours</option>
+                                    <option value="minutes">Minutes</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end mt-6">
+                        <button type="button" onclick="createGiveaway()" class="btn-white" style="border-radius:14px;padding:10px 24px;">🎉 Lancer le giveaway</button>
+                    </div>
+                </div>
+
+                <div class="shard-card">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Giveaways actifs</h2>
+                    <div id="giveaways-list" class="flex flex-col gap-3">
+                        <% if (!giveaways || giveaways.length === 0) { %>
+                            <p class="text-white/20 text-sm">Aucun giveaway actif.</p>
+                        <% } else { %>
+                            <% giveaways.forEach(gw => { %>
+                            <div class="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4">
+                                <div>
+                                    <div class="font-bold text-sm mb-1">🎉 <%= gw.prize %></div>
+                                    <div class="text-xs text-white/30"><%= gw.winnersCount %> gagnant(s) · se termine le <%= new Date(gw.endsAt).toLocaleString('fr-FR') %></div>
+                                </div>
+                                <button type="button" onclick="endGiveaway(<%= gw.id %>)" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors">Terminer</button>
+                            </div>
+                            <% }) %>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Anniversaires -->
+            <div id="section-birthdays" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Anniversaires</h1>
+                </div>
+
+                <div class="shard-card">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Paramètres</h2>
+
+                    <div class="field">
+                        <label>Salon d'annonce</label>
+                        <div class="custom-select-wrapper">
+                            <% const bdChan = channels.find(c => c.id === settings.birthdayChannelId); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span><%= bdChan ? '#' + bdChan.name : '— Désactivé —' %></span></div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.birthdayChannelId ? 'selected' : '' %>" data-value="" onclick="selectOption(this,'birthdayChannelId')">— Désactivé —</div>
+                                <% channels.forEach(c => { %><div class="custom-option <%= settings.birthdayChannelId === c.id ? 'selected' : '' %>" data-value="<%= c.id %>" onclick="selectOption(this,'birthdayChannelId')">#<%= c.name %></div><% }) %>
+                            </div>
+                            <select name="birthdayChannelId" class="hidden-select"><option value=""></option><% channels.forEach(c => { %><option value="<%= c.id %>" <%= settings.birthdayChannelId === c.id ? 'selected' : '' %>><%= c.name %></option><% }) %></select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Message d'anniversaire</label>
+                        <input type="text" name="birthdayMessage" value="<%= settings.birthdayMessage || '🎂 Joyeux anniversaire {user} ! Nous vous souhaitons une excellente journée !' %>">
+                        <p class="field-hint">Variables : <span class="tag" onclick="insertVar('birthdayMessage','{user}')">{user}</span> <span class="tag" onclick="insertVar('birthdayMessage','{username}')">{username}</span></p>
+                    </div>
+
+                    <div class="field mb-0">
+                        <label>Rôle anniversaire (optionnel)</label>
+                        <div class="custom-select-wrapper">
+                            <% const bdRole = roles.find(r => r.id === settings.birthdayRoleId); %>
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span><%= bdRole ? '@' + bdRole.name : '— Aucun —' %></span></div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.birthdayRoleId ? 'selected' : '' %>" data-value="" onclick="selectOption(this,'birthdayRoleId')">— Aucun —</div>
+                                <% roles.forEach(r => { %><div class="custom-option <%= settings.birthdayRoleId === r.id ? 'selected' : '' %>" data-value="<%= r.id %>" onclick="selectOption(this,'birthdayRoleId')" style="display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:<%= r.color ? '#' + r.color.toString(16).padStart(6,'0') : '#888' %>;flex-shrink:0;"></span>@<%= r.name %></div><% }) %>
+                            </div>
+                            <select name="birthdayRoleId" class="hidden-select"><option value=""></option><% roles.forEach(r => { %><option value="<%= r.id %>" <%= settings.birthdayRoleId === r.id ? 'selected' : '' %>><%= r.name %></option><% }) %></select>
+                        </div>
+                        <p class="field-hint">Ce rôle est attribué le jour de l'anniversaire et retiré le lendemain. Les membres définissent leur date avec <strong>/birthday set</strong>.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Annonces Planifiées -->
+            <div id="section-scheduled" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Annonces Planifiées</h1>
+                </div>
+
+                <div class="shard-card mb-6">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Planifier une annonce</h2>
+
+                    <div class="field">
+                        <label>Salon</label>
+                        <div class="custom-select-wrapper">
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span>— Choisir un salon —</span></div>
+                            <div class="custom-options">
+                                <% channels.forEach(c => { %><div class="custom-option" data-value="<%= c.id %>" onclick="selectOption(this,'schedChannelId')">#<%= c.name %></div><% }) %>
+                            </div>
+                            <select name="schedChannelId" id="schedChannelId" class="hidden-select"><option value=""></option><% channels.forEach(c => { %><option value="<%= c.id %>"><%= c.name %></option><% }) %></select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Message</label>
+                        <textarea id="schedMessage" placeholder="Contenu de l'annonce..."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="field mb-0">
+                            <label>Répéter toutes les</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="schedInterval" value="24" min="1" style="flex:1">
+                                <select id="schedUnit" style="background:rgba(255,255,255,0.03);border:1px solid #1a1a1a;color:white;border-radius:14px;padding:0 14px;font-family:inherit;font-size:0.85rem;outline:none;">
+                                    <option value="hours">Heures</option>
+                                    <option value="days">Jours</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="field mb-0">
+                            <label>Première exécution</label>
+                            <input type="datetime-local" id="schedNextRun" style="background:rgba(255,255,255,0.03);border:1px solid #1a1a1a;color:white;border-radius:14px;padding:14px 18px;font-family:inherit;font-size:0.9rem;outline:none;width:100%;box-sizing:border-box;color-scheme:dark;">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end mt-6">
+                        <button type="button" onclick="addScheduled()" class="btn-white" style="border-radius:14px;padding:10px 24px;">Planifier</button>
+                    </div>
+                </div>
+
+                <div class="shard-card">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Annonces actives</h2>
+                    <div id="scheduled-list" class="flex flex-col gap-3">
+                        <% if (!scheduledAnnouncements || scheduledAnnouncements.length === 0) { %>
+                            <p class="text-white/20 text-sm" id="scheduled-empty">Aucune annonce planifiée.</p>
+                        <% } else { %>
+                            <% scheduledAnnouncements.forEach(s => { const sc = channels.find(c => c.id === s.channelId); %>
+                            <div class="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4" id="sched-<%= s.id %>">
+                                <div class="flex-1 min-w-0 mr-4">
+                                    <div class="text-xs font-bold text-blue-400 mb-1">#<%= sc ? sc.name : s.channelId %> · toutes les <%= s.intervalHours %>h</div>
+                                    <div class="text-sm text-white/60 truncate"><%= s.message %></div>
+                                    <div class="text-xs text-white/20 mt-1">Prochaine : <%= new Date(s.nextRun).toLocaleString('fr-FR') %></div>
+                                </div>
+                                <button type="button" onclick="removeScheduled(<%= s.id %>)" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors shrink-0">Supprimer</button>
+                            </div>
+                            <% }) %>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Économie -->
+            <div id="section-economy" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Économie</h1>
+                </div>
+
+                <div class="shard-card mb-6">
+                    <div class="field flex items-center justify-between mb-6">
+                        <div>
+                            <div class="font-bold text-sm">Système d'économie</div>
+                            <div class="text-white/30 text-xs mt-1">Les membres gagnent de la monnaie via /daily et peuvent l'utiliser dans le shop.</div>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="economyEnabled" class="sr-only peer" <%= settings.economyEnabled ? 'checked' : '' %>>
+                            <div class="w-11 h-6 bg-white/10 peer-checked:bg-blue-600 rounded-full peer transition-all after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                        </label>
+                    </div>
+
+                    <div class="field">
+                        <label>Nom de la monnaie</label>
+                        <input type="text" name="economyCurrencyName" value="<%= settings.economyCurrencyName || 'coins' %>" placeholder="coins">
+                        <p class="field-hint">Ex : coins, gems, shards…</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="field mb-0">
+                            <label>Daily min</label>
+                            <input type="number" name="economyDailyMin" value="<%= settings.economyDailyMin || 50 %>" min="1">
+                        </div>
+                        <div class="field mb-0">
+                            <label>Daily max</label>
+                            <input type="number" name="economyDailyMax" value="<%= settings.economyDailyMax || 200 %>" min="1">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shard-card">
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-6">Shop — Rôles à acheter</p>
+                    <div id="shop-list" class="flex flex-col gap-3 mb-6">
+                        <% if (!shopItems || shopItems.length === 0) { %>
+                            <p class="text-white/20 text-sm" id="shop-empty">Aucun article dans le shop.</p>
+                        <% } else { %>
+                            <% shopItems.forEach(item => { const sr = roles.find(r => r.id === item.roleId); %>
+                            <div class="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4" id="shop-<%= item.id %>">
+                                <div class="flex items-center gap-4">
+                                    <% if (sr) { %><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:<%= sr.color ? '#' + sr.color.toString(16).padStart(6,'0') : '#888' %>"></span><% } %>
+                                    <span class="text-sm font-bold text-white/80">@<%= sr ? sr.name : item.roleId %></span>
+                                    <span class="text-xs font-black text-yellow-400"><%= item.price %> <%= settings.economyCurrencyName || 'coins' %></span>
+                                </div>
+                                <button type="button" onclick="removeShopItem(<%= item.id %>)" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors">Supprimer</button>
+                            </div>
+                            <% }) %>
+                        <% } %>
+                    </div>
+
+                    <div class="border-t border-white/5 pt-6">
+                        <p class="text-[10px] font-bold uppercase tracking-widest text-white/30 mb-4">Ajouter un article</p>
+                        <div class="flex gap-3 items-end">
+                            <div class="flex-1 field mb-0">
+                                <label>Rôle</label>
+                                <div class="custom-select-wrapper">
+                                    <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span>— Choisir —</span></div>
+                                    <div class="custom-options">
+                                        <% roles.forEach(r => { %><div class="custom-option" data-value="<%= r.id %>" onclick="selectOption(this,'newShopRole')" style="display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:<%= r.color ? '#' + r.color.toString(16).padStart(6,'0') : '#888' %>;flex-shrink:0;"></span>@<%= r.name %></div><% }) %>
+                                    </div>
+                                    <select name="newShopRole" class="hidden-select"><option value=""></option><% roles.forEach(r => { %><option value="<%= r.id %>"><%= r.name %></option><% }) %></select>
+                                </div>
+                            </div>
+                            <div class="field mb-0" style="width:140px">
+                                <label>Prix</label>
+                                <input type="number" id="newShopPrice" placeholder="500" min="1">
+                            </div>
+                            <button type="button" onclick="addShopItem()" class="btn-white" style="height:51px;padding:0 20px;border-radius:14px;">Ajouter</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Sondages -->
+            <div id="section-polls" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Configuration</p>
+                    <h1 class="text-3xl font-bold uppercase">Sondages</h1>
+                </div>
+
+                <div class="shard-card mb-6">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Créer un sondage</h2>
+
+                    <div class="field">
+                        <label>Salon</label>
+                        <div class="custom-select-wrapper">
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span>— Choisir un salon —</span></div>
+                            <div class="custom-options">
+                                <% channels.forEach(c => { %><div class="custom-option" data-value="<%= c.id %>" onclick="selectOption(this,'pollChannelId')">#<%= c.name %></div><% }) %>
+                            </div>
+                            <select name="pollChannelId" id="pollChannelId" class="hidden-select"><option value=""></option><% channels.forEach(c => { %><option value="<%= c.id %>"><%= c.name %></option><% }) %></select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label>Question</label>
+                        <input type="text" id="pollQuestion" placeholder="Quelle est votre couleur préférée ?">
+                    </div>
+
+                    <div class="field">
+                        <label>Choix <span class="text-white/20 normal-case font-normal">(2 minimum, 5 maximum)</span></label>
+                        <div id="poll-choices" class="flex flex-col gap-2 mb-3">
+                            <div class="flex items-center gap-2 poll-choice-row">
+                                <span class="text-xs font-black text-white/30 w-6 shrink-0 text-center">1</span>
+                                <input type="text" class="poll-choice flex-1" placeholder="Choix 1">
+                                <button type="button" onclick="removePollChoice(this)" class="text-white/20 hover:text-red-400 transition-colors shrink-0" style="visibility:hidden">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-2 poll-choice-row">
+                                <span class="text-xs font-black text-white/30 w-6 shrink-0 text-center">2</span>
+                                <input type="text" class="poll-choice flex-1" placeholder="Choix 2">
+                                <button type="button" onclick="removePollChoice(this)" class="text-white/20 hover:text-red-400 transition-colors shrink-0" style="visibility:hidden">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="button" onclick="addPollChoice()" id="add-choice-btn" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-widest border border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-all">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            Ajouter un choix
+                        </button>
+                    </div>
+
+                    <div class="field mb-0">
+                        <label>Durée (optionnel)</label>
+                        <div class="flex gap-3 items-center">
+                            <input type="number" id="pollDuration" placeholder="Laisser vide = sans limite" min="1" style="flex:1">
+                            <select id="pollDurUnit" style="background:rgba(255,255,255,0.03);border:1px solid #1a1a1a;color:white;border-radius:14px;padding:14px 18px;font-family:inherit;font-size:0.9rem;outline:none;width:140px;">
+                                <option value="hours">Heures</option>
+                                <option value="days">Jours</option>
+                                <option value="minutes">Minutes</option>
+                            </select>
+                        </div>
+                        <p class="field-hint">Le sondage se clôture automatiquement et affiche les résultats.</p>
+                    </div>
+
+                    <div class="flex justify-end mt-6">
+                        <button type="button" onclick="createPoll()" class="btn-white" style="border-radius:14px;padding:10px 24px;">📊 Lancer le sondage</button>
+                    </div>
+                </div>
+
+                <div class="shard-card">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Sondages actifs</h2>
+                    <div id="polls-list" class="flex flex-col gap-3">
+                        <% if (!polls || polls.length === 0) { %>
+                            <p class="text-white/20 text-sm">Aucun sondage actif.</p>
+                        <% } else { %>
+                            <% polls.forEach(p => { const pChoices = typeof p.choices === 'string' ? JSON.parse(p.choices) : p.choices; %>
+                            <div class="flex items-start justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4">
+                                <div class="flex-1 min-w-0 mr-4">
+                                    <div class="font-bold text-sm mb-2">📊 <%= p.question %></div>
+                                    <div class="flex flex-wrap gap-1 mb-2">
+                                        <% pChoices.forEach((c, i) => { %><span class="text-[10px] font-bold uppercase tracking-widest bg-white/5 border border-white/5 px-2 py-1 rounded-lg text-white/40"><%= i+1 %>. <%= c %></span><% }) %>
+                                    </div>
+                                    <% if (p.endsAt) { %><div class="text-xs text-white/20">Se termine le <%= new Date(p.endsAt).toLocaleString('fr-FR') %></div><% } %>
+                                </div>
+                                <button type="button" onclick="endPoll(<%= p.id %>)" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors shrink-0 mt-1">Clôturer</button>
+                            </div>
+                            <% }) %>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </main>
+
+    <!-- Save bar -->
+    <div id="save-bar" class="footer-bar">
+        <p class="text-xs font-bold uppercase tracking-widest text-white/50">Modifications non enregistrées</p>
+        <button type="submit" form="configForm" class="btn-white" onclick="saveConfig()">Enregistrer</button>
+    </div>
+
+    <!-- Notifications -->
+    <div id="notification-container" class="fixed top-6 right-6 z-[3000] flex flex-col gap-4 w-80 items-end"></div>
+
+    <!-- Modal alerte -->
+    <div id="alert-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-xl z-[2000] hidden items-center justify-center p-6">
+        <div class="bg-[#0a0a0a]/80 border border-white/10 rounded-[32px] p-10 max-w-sm w-full text-center shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)]">
+            <h3 id="alert-title" class="text-xl font-bold uppercase mb-4 tracking-widest text-white">Alerte</h3>
+            <p id="alert-msg" class="text-white/40 mb-10 text-base leading-relaxed font-medium"></p>
+            <button onclick="hideAlert()" class="btn-white w-full py-4 text-xs uppercase tracking-[0.2em]">Compris</button>
+        </div>
+    </div>
+
+    <script>
+        const initialData = new FormData(document.getElementById('configForm'));
+        const saveBar = document.getElementById('save-bar');
+
+        function checkChanges() {
+            const currentData = new FormData(document.getElementById('configForm'));
+            const allKeys = new Set([...initialData.keys(), ...currentData.keys()]);
+            let changed = false;
+            for (const key of allKeys) {
+                if (initialData.get(key) !== currentData.get(key)) { changed = true; break; }
+            }
+            if (changed) saveBar.classList.add('visible');
+            else saveBar.classList.remove('visible');
+        }
+
+        document.getElementById('configForm').addEventListener('input', checkChanges);
+        document.getElementById('configForm').addEventListener('change', checkChanges);
+
+        function toggleDropdown(trigger) { trigger.parentElement.classList.toggle('open'); }
+
+        function selectOption(option, name) {
+            const wrapper = option.closest('.custom-select-wrapper');
+            const select = wrapper.querySelector('select');
+            const trigger = wrapper.querySelector('.custom-select-trigger span');
+            select.value = option.dataset.value;
+            trigger.textContent = option.textContent;
+            wrapper.querySelectorAll('.custom-option').forEach(o => o.classList.remove('selected'));
+            option.classList.add('selected');
+            wrapper.classList.remove('open');
+            checkChanges();
+        }
+
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('.custom-select-wrapper')) {
+                document.querySelectorAll('.custom-select-wrapper').forEach(w => w.classList.remove('open'));
+            }
+        });
+
+        function insertVar(fieldName, value) {
+            const el = document.querySelector(`[name="${fieldName}"]`);
+            const start = el.selectionStart, end = el.selectionEnd;
+            el.value = el.value.slice(0, start) + value + el.value.slice(end);
+            el.selectionStart = el.selectionEnd = start + value.length;
+            el.focus();
+            checkChanges();
+        }
+
+        function showSection(sectionId, element) {
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.getElementById('section-' + sectionId).classList.add('active');
+            element.classList.add('active');
+        }
+
+        function showAlert(title, msg) {
+            document.getElementById('alert-title').textContent = title;
+            document.getElementById('alert-msg').textContent = msg;
+            const o = document.getElementById('alert-overlay');
+            o.classList.remove('hidden'); o.classList.add('flex');
+        }
+        function hideAlert() {
+            const o = document.getElementById('alert-overlay');
+            o.classList.add('hidden'); o.classList.remove('flex');
+        }
+
+        function showNotification(title, msg, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const toast = document.createElement('div');
+            toast.className = "relative bg-[#0a0a0a]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl overflow-hidden translate-x-full transition-all duration-500 opacity-0";
+            toast.innerHTML = `
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-xl ${type === 'success' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'} flex items-center justify-center shrink-0">
+                        ${type === 'success'
+                            ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+                            : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>'}
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-xs font-black uppercase tracking-widest text-white mb-1">${title}</div>
+                        <div class="text-xs text-white/40 leading-relaxed font-medium">${msg}</div>
+                    </div>
+                </div>
+                <div class="absolute bottom-0 left-0 h-[3px] bg-white/20 w-full">
+                    <div class="h-full bg-white/40 transition-all duration-[4000ms] ease-linear w-full" id="pb"></div>
+                </div>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.remove('translate-x-full', 'opacity-0'); toast.querySelector('#pb').style.width = '0%'; }, 100);
+            setTimeout(() => { toast.classList.add('translate-x-full', 'opacity-0'); setTimeout(() => toast.remove(), 500); }, 4500);
+        }
+
+        function updateColorPreview(inputName, previewId, hexId, value) {
+            document.getElementById(previewId).style.background = value;
+            document.getElementById(hexId).textContent = value;
+            checkChanges();
+        }
+
+        async function sendTest(type) {
+            const btnId = type === 'welcome' ? 'test-welcome-btn' : 'test-leave-btn';
+            const btn = document.getElementById(btnId);
+            const p = type === 'welcome' ? 'welcome' : 'leave';
+            const channelId = document.querySelector(`[name="${p}ChannelId"]`).value;
+            const message = document.querySelector(`[name="${p}Message"]`).value;
+            const title = document.querySelector(`[name="${p}Title"]`).value;
+            const footer = document.querySelector(`[name="${p}Footer"]`).value;
+            const color = document.querySelector(`[name="${p}Color"]`).value;
+
+            if (!channelId) {
+                showNotification("Erreur", "Aucun salon sélectionné.", "error");
+                return;
+            }
+
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg> Envoi...`;
+
+            try {
+                const res = await fetch('/shard/guild/<%= guild.id %>/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, channelId, message, title, footer, color })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showNotification("Test envoyé", `Message de ${type === 'welcome' ? 'bienvenue' : 'départ'} envoyé dans le salon.`);
+                } else {
+                    showNotification("Erreur", result.error || "Impossible d'envoyer le message.", "error");
+                }
+            } catch (err) {
+                showNotification("Erreur", err.message, "error");
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+
+        function selectEmbedChannel(option) {
+            const wrapper = option.closest('.custom-select-wrapper');
+            wrapper.querySelector('.custom-select-trigger span').textContent = option.textContent;
+            wrapper.querySelectorAll('.custom-option').forEach(o => o.classList.remove('selected'));
+            option.classList.add('selected');
+            wrapper.classList.remove('open');
+            document.getElementById('embedChannelId').value = option.dataset.value;
+        }
+
+        async function sendEmbed() {
+            const channelId = document.getElementById('embedChannelId').value;
+            if (!channelId) return showNotification('Erreur', 'Aucun salon sélectionné.', 'error');
+            const btn = document.getElementById('send-embed-btn');
+            const orig = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = 'Envoi...';
+            try {
+                const res = await fetch('/shard/guild/<%= guild.id %>/send-embed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        channelId,
+                        title: document.getElementById('embedTitle').value,
+                        description: document.getElementById('embedDescription').value,
+                        footer: document.getElementById('embedFooter').value,
+                        color: document.getElementById('embedColor').value,
+                        image: document.getElementById('embedImage').value
+                    })
+                });
+                const result = await res.json();
+                if (result.success) showNotification('Embed envoyé', 'L\'embed a été posté avec succès.');
+                else showNotification('Erreur', result.error || 'Impossible d\'envoyer l\'embed.', 'error');
+            } catch (err) { showNotification('Erreur', err.message, 'error'); }
+            finally { btn.innerHTML = orig; btn.disabled = false; }
+        }
+
+        let _pendingReactions = <%- safeJson(Array.isArray(settings.autoReactions) ? settings.autoReactions : JSON.parse(settings.autoReactions || '[]')) %>;
+
+        function emojiPreview(emoji) {
+            const m = emoji.match(/^<a?:(\w+):(\d+)>$/);
+            if (m) {
+                const animated = emoji.startsWith('<a:');
+                return `<img src="https://cdn.discordapp.com/emojis/${m[2]}.${animated ? 'gif' : 'webp'}?size=32" style="width:22px;height:22px;vertical-align:middle;border-radius:4px;">`;
+            }
+            return `<span style="font-size:1.3rem;line-height:1;">${emoji}</span>`;
+        }
+
+        function addReaction() {
+            const text = document.getElementById('newReactionText').value.trim();
+            const emoji = document.getElementById('newReactionEmoji').value.trim();
+            if (!text) return showNotification('Erreur', 'Entrez un texte.', 'error');
+            if (!emoji) return showNotification('Erreur', 'Entrez un emoji.', 'error');
+            if (_pendingReactions.find(r => r.text === text && r.emoji === emoji))
+                return showNotification('Erreur', 'Cette réaction existe déjà.', 'error');
+            _pendingReactions.push({ text, emoji });
+            const empty = document.getElementById('reactions-empty');
+            if (empty) empty.remove();
+            const id = `reaction-${encodeURIComponent(text)}-${encodeURIComponent(emoji)}`;
+            document.getElementById('reactions-list').insertAdjacentHTML('beforeend', `
+                <div class="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4" id="${id}">
+                    <div class="flex items-center gap-4">
+                        <span class="text-white/60 text-sm font-bold">"${text}"</span>
+                        ${emojiPreview(emoji)}
+                    </div>
+                    <button type="button" onclick="removeReaction('${encodeURIComponent(text)}','${encodeURIComponent(emoji)}')" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors">Supprimer</button>
+                </div>`);
+            document.getElementById('newReactionText').value = '';
+            document.getElementById('newReactionEmoji').value = '';
+            saveReactions();
+        }
+
+        function removeReaction(encodedText, encodedEmoji) {
+            const text = decodeURIComponent(encodedText);
+            const emoji = decodeURIComponent(encodedEmoji);
+            _pendingReactions = _pendingReactions.filter(r => !(r.text === text && r.emoji === emoji));
+            const el = document.getElementById(`reaction-${encodedText}-${encodedEmoji}`);
+            if (el) el.remove();
+            if (_pendingReactions.length === 0 && !document.getElementById('reactions-empty')) {
+                document.getElementById('reactions-list').insertAdjacentHTML('beforeend', '<p class="text-white/20 text-sm" id="reactions-empty">Aucune réaction configurée.</p>');
+            }
+            saveReactions();
+        }
+
+        async function saveReactions() {
+            await fetch('/shard/guild/<%= guild.id %>/reactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ autoReactions: _pendingReactions })
+            });
+            showNotification('Réactions', 'Réactions mises à jour.');
+        }
+
+        let _pendingRewards = <%- safeJson(Array.isArray(settings.levelRewards) ? settings.levelRewards : JSON.parse(settings.levelRewards || '[]')) %>;
+
+        function addReward() {
+            const level = parseInt(document.getElementById('newRewardLevel').value);
+            const roleId = document.querySelector('[name="newRewardRole"]').value;
+            if (!level || !roleId) return showNotification('Erreur', 'Sélectionnez un niveau et un rôle.', 'error');
+            if (_pendingRewards.find(r => r.level === level)) return showNotification('Erreur', 'Ce niveau a déjà une récompense.', 'error');
+            _pendingRewards.push({ level, roleId });
+            _pendingRewards.sort((a,b) => a.level - b.level);
+            const roleName = document.querySelector(`[name="newRewardRole"] option[value="${roleId}"]`)?.textContent || roleId;
+            const empty = document.getElementById('rewards-empty');
+            if (empty) empty.remove();
+            const id = `reward-${level}-${roleId}`;
+            document.getElementById('rewards-list').insertAdjacentHTML('beforeend', `
+                <div class="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4" id="${id}">
+                    <div class="flex items-center gap-4">
+                        <span class="text-xs font-black uppercase tracking-widest text-blue-400">Niveau ${level}</span>
+                        <span class="text-white/60 text-sm font-bold">@${roleName}</span>
+                    </div>
+                    <button type="button" onclick="removeReward(${level},'${roleId}')" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors">Supprimer</button>
+                </div>`);
+            document.getElementById('newRewardLevel').value = '';
+            saveRewards();
+        }
+
+        function removeReward(level, roleId) {
+            _pendingRewards = _pendingRewards.filter(r => !(r.level === level && r.roleId === roleId));
+            const el = document.getElementById(`reward-${level}-${roleId}`);
+            if (el) el.remove();
+            if (_pendingRewards.length === 0 && !document.getElementById('rewards-empty')) {
+                document.getElementById('rewards-list').insertAdjacentHTML('beforeend', '<p class="text-white/20 text-sm" id="rewards-empty">Aucune récompense configurée.</p>');
+            }
+            saveRewards();
+        }
+
+        async function saveRewards() {
+            await fetch('/shard/guild/<%= guild.id %>/rewards', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ levelRewards: _pendingRewards })
+            });
+            showNotification('Récompenses', 'Récompenses mises à jour.');
+        }
+
+        let _thresholds = <%- safeJson(settings.levelThresholds) %>;
+
+        function syncThresholdsInput() {
+            document.getElementById('levelThresholdsData').value = JSON.stringify(_thresholds);
+            checkChanges();
+        }
+
+        function updateThreshold(index, value) {
+            _thresholds[index] = parseInt(value) || 1;
+            syncThresholdsInput();
+        }
+
+        function removeThreshold(index) {
+            _thresholds.splice(index, 1);
+            rebuildThresholdsList();
+            syncThresholdsInput();
+        }
+
+        function addThreshold() {
+            const last = _thresholds[_thresholds.length - 1] || 100;
+            _thresholds.push(Math.round(last * 1.5));
+            rebuildThresholdsList();
+            syncThresholdsInput();
+        }
+
+        function rebuildThresholdsList() {
+            const list = document.getElementById('thresholds-list');
+            list.innerHTML = _thresholds.map((xp, i) => `
+                <div class="flex items-center gap-4 bg-white/[0.02] border border-white/5 rounded-2xl px-5 py-3" id="threshold-row-${i}">
+                    <span class="text-xs font-black uppercase tracking-widest text-white/30 w-28 shrink-0">Niveau ${i} → ${i+1}</span>
+                    <input type="number" class="threshold-input flex-1" data-index="${i}" value="${xp}" min="1" oninput="updateThreshold(${i}, this.value)" style="padding:10px 14px;font-size:0.85rem;width:100%;background:rgba(255,255,255,0.03);border:1px solid #1a1a1a;color:white;border-radius:14px;font-family:inherit;outline:none;box-sizing:border-box;">
+                    <span class="text-xs text-white/20">XP</span>
+                    <button type="button" onclick="removeThreshold(${i})" class="text-xs font-bold uppercase tracking-widest text-white/20 hover:text-red-400 transition-colors ml-2">Retirer</button>
+                </div>`).join('');
+        }
+
+        const POLL_EMOJIS = ['🔵', '🟢', '🟡', '🟠', '🔴'];
+
+        function updatePollChoiceNumbers() {
+            const rows = document.querySelectorAll('.poll-choice-row');
+            rows.forEach((row, i) => {
+                row.querySelector('span').textContent = i + 1;
+                row.querySelector('input').placeholder = `Choix ${i + 1}`;
+                const btn = row.querySelector('button');
+                btn.style.visibility = rows.length > 2 ? 'visible' : 'hidden';
+            });
+            document.getElementById('add-choice-btn').style.display = rows.length >= 5 ? 'none' : 'flex';
+        }
+
+        function addPollChoice() {
+            const rows = document.querySelectorAll('.poll-choice-row');
+            if (rows.length >= 5) return;
+            const n = rows.length + 1;
+            document.getElementById('poll-choices').insertAdjacentHTML('beforeend', `
+                <div class="flex items-center gap-2 poll-choice-row">
+                    <span class="text-xs font-black text-white/30 w-6 shrink-0 text-center">${n}</span>
+                    <input type="text" class="poll-choice flex-1" placeholder="Choix ${n}">
+                    <button type="button" onclick="removePollChoice(this)" class="text-white/20 hover:text-red-400 transition-colors shrink-0">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>`);
+            updatePollChoiceNumbers();
+        }
+
+        function removePollChoice(btn) {
+            const rows = document.querySelectorAll('.poll-choice-row');
+            if (rows.length <= 2) return;
+            btn.closest('.poll-choice-row').remove();
+            updatePollChoiceNumbers();
+        }
+
+        async function createPoll() {
+            const channelId = document.querySelector('[name="pollChannelId"]').value;
+            const question = document.getElementById('pollQuestion').value.trim();
+            const choices = [...document.querySelectorAll('.poll-choice')].map(i => i.value.trim()).filter(Boolean);
+            const duration = parseInt(document.getElementById('pollDuration').value);
+            const unit = document.getElementById('pollDurUnit').value;
+            if (!channelId) return showNotification('Erreur', 'Sélectionnez un salon.', 'error');
+            if (!question) return showNotification('Erreur', 'Entrez une question.', 'error');
+            if (choices.length < 2) return showNotification('Erreur', 'Entrez au moins 2 choix.', 'error');
+            let endsAt = null;
+            if (duration && !isNaN(duration)) {
+                let ms = duration * 3600000;
+                if (unit === 'days') ms = duration * 86400000;
+                if (unit === 'minutes') ms = duration * 60000;
+                endsAt = new Date(Date.now() + ms).toISOString();
+            }
+            const res = await fetch('/shard/guild/<%= guild.id %>/poll', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channelId, question, choices, endsAt })
+            });
+            const result = await res.json();
+            if (result.success) {
+                showNotification('Sondage lancé', `📊 "${question}"`);
+                document.getElementById('pollQuestion').value = '';
+                document.getElementById('pollDuration').value = '';
+                document.querySelectorAll('.poll-choice').forEach((el, i) => { el.value = ''; });
+                const list = document.getElementById('polls-list');
+                const empty = list.querySelector('p');
+                if (empty) empty.remove();
+                list.insertAdjacentHTML('afterbegin', `
+                    <div class="flex items-start justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4" id="poll-${result.id}">
+                        <div class="flex-1 min-w-0 mr-4">
+                            <div class="font-bold text-sm mb-2">📊 ${question}</div>
+                            <div class="flex flex-wrap gap-1 mb-2">${choices.map((c,i) => `<span class="text-[10px] font-bold uppercase tracking-widest bg-white/5 border border-white/5 px-2 py-1 rounded-lg text-white/40">${i+1}. ${c}</span>`).join('')}</div>
+                            ${endsAt ? `<div class="text-xs text-white/20">Se termine le ${new Date(endsAt).toLocaleString('fr-FR')}</div>` : ''}
+                        </div>
+                        <button type="button" onclick="endPoll(${result.id})" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors shrink-0 mt-1">Clôturer</button>
+                    </div>`);
+            } else {
+                showNotification('Erreur', result.error || 'Impossible de créer le sondage.', 'error');
+            }
+        }
+
+        async function endPoll(id) {
+            const res = await fetch(`/shard/guild/<%= guild.id %>/poll/${id}/end`, { method: 'POST' });
+            const result = await res.json();
+            if (result.success) {
+                document.getElementById(`poll-${id}`)?.remove();
+                const votes = result.results;
+                const summary = votes.map(v => `${v.choice}: ${v.count} vote(s)`).join(' · ');
+                showNotification('Sondage clôturé', summary || 'Aucun vote.');
+                if (!document.querySelector('#polls-list [id^="poll-"]')) {
+                    document.getElementById('polls-list').innerHTML = '<p class="text-white/20 text-sm">Aucun sondage actif.</p>';
+                }
+            } else {
+                showNotification('Erreur', result.error || 'Erreur lors de la clôture.', 'error');
+            }
+        }
+
+        async function createGiveaway() {
+            const channelId = document.querySelector('[name="gwChannelId"]').value;
+            const prize = document.getElementById('gwPrize').value.trim();
+            const winners = parseInt(document.getElementById('gwWinners').value) || 1;
+            const duration = parseInt(document.getElementById('gwDuration').value) || 24;
+            const unit = document.getElementById('gwUnit').value;
+            if (!channelId) return showNotification('Erreur', 'Sélectionnez un salon.', 'error');
+            if (!prize) return showNotification('Erreur', 'Entrez un lot à gagner.', 'error');
+            let ms = duration * 3600000;
+            if (unit === 'days') ms = duration * 86400000;
+            if (unit === 'minutes') ms = duration * 60000;
+            const endsAt = new Date(Date.now() + ms).toISOString();
+            const res = await fetch('/shard/guild/<%= guild.id %>/giveaway', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channelId, prize, winnersCount: winners, endsAt })
+            });
+            const result = await res.json();
+            if (result.success) {
+                showNotification('Giveaway lancé', `🎉 "${prize}" dans <#${channelId}>`);
+                document.getElementById('gwPrize').value = '';
+                document.getElementById('gwWinners').value = 1;
+                document.getElementById('gwDuration').value = 24;
+                const list = document.getElementById('giveaways-list');
+                const empty = list.querySelector('p');
+                if (empty) empty.remove();
+                list.insertAdjacentHTML('afterbegin', `
+                    <div class="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4">
+                        <div>
+                            <div class="font-bold text-sm mb-1">🎉 ${prize}</div>
+                            <div class="text-xs text-white/30">${winners} gagnant(s) · se termine le ${new Date(endsAt).toLocaleString('fr-FR')}</div>
+                        </div>
+                        <button type="button" onclick="endGiveaway(${result.id})" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors">Terminer</button>
+                    </div>`);
+            } else {
+                showNotification('Erreur', result.error || 'Impossible de créer le giveaway.', 'error');
+            }
+        }
+
+        async function endGiveaway(id) {
+            const res = await fetch(`/shard/guild/<%= guild.id %>/giveaway/${id}/end`, { method: 'POST' });
+            const result = await res.json();
+            if (result.success) {
+                showNotification('Giveaway terminé', result.winners?.length ? `Gagnant(s) : ${result.winners.join(', ')}` : 'Aucun participant.');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showNotification('Erreur', result.error || 'Erreur lors de la clôture.', 'error');
+            }
+        }
+
+        async function addScheduled() {
+            const channelId = document.querySelector('[name="schedChannelId"]').value;
+            const message = document.getElementById('schedMessage').value.trim();
+            const interval = parseInt(document.getElementById('schedInterval').value) || 24;
+            const unit = document.getElementById('schedUnit').value;
+            const nextRunVal = document.getElementById('schedNextRun').value;
+            if (!channelId) return showNotification('Erreur', 'Sélectionnez un salon.', 'error');
+            if (!message) return showNotification('Erreur', 'Entrez un message.', 'error');
+            if (!nextRunVal) return showNotification('Erreur', 'Définissez la première exécution.', 'error');
+            const intervalHours = unit === 'days' ? interval * 24 : interval;
+            const res = await fetch('/shard/guild/<%= guild.id %>/scheduled', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channelId, message, intervalHours, nextRun: new Date(nextRunVal).toISOString() })
+            });
+            const result = await res.json();
+            if (result.success) {
+                showNotification('Annonce planifiée', 'L\'annonce a été planifiée.');
+                document.getElementById('schedMessage').value = '';
+                document.getElementById('schedInterval').value = 24;
+                document.getElementById('schedNextRun').value = '';
+                const list = document.getElementById('scheduled-list');
+                const empty = document.getElementById('scheduled-empty');
+                if (empty) empty.remove();
+                list.insertAdjacentHTML('beforeend', `
+                    <div class="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4" id="sched-${result.id}">
+                        <div class="flex-1 min-w-0 mr-4">
+                            <div class="text-xs font-bold text-blue-400 mb-1">Salon sélectionné · toutes les ${intervalHours}h</div>
+                            <div class="text-sm text-white/60 truncate">${message}</div>
+                            <div class="text-xs text-white/20 mt-1">Prochaine : ${new Date(nextRunVal).toLocaleString('fr-FR')}</div>
+                        </div>
+                        <button type="button" onclick="removeScheduled(${result.id})" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors shrink-0">Supprimer</button>
+                    </div>`);
+            } else {
+                showNotification('Erreur', result.error || 'Impossible de planifier.', 'error');
+            }
+        }
+
+        async function removeScheduled(id) {
+            const res = await fetch(`/shard/guild/<%= guild.id %>/scheduled/${id}`, { method: 'DELETE' });
+            const result = await res.json();
+            if (result.success) {
+                document.getElementById(`sched-${id}`)?.remove();
+                showNotification('Annonce supprimée', 'L\'annonce planifiée a été supprimée.');
+                if (!document.querySelector('#scheduled-list [id^="sched-"]')) {
+                    document.getElementById('scheduled-list').insertAdjacentHTML('beforeend', '<p class="text-white/20 text-sm" id="scheduled-empty">Aucune annonce planifiée.</p>');
+                }
+            } else {
+                showNotification('Erreur', result.error || 'Erreur lors de la suppression.', 'error');
+            }
+        }
+
+        async function addShopItem() {
+            const roleId = document.querySelector('[name="newShopRole"]').value;
+            const price = parseInt(document.getElementById('newShopPrice').value);
+            if (!roleId) return showNotification('Erreur', 'Sélectionnez un rôle.', 'error');
+            if (!price || price < 1) return showNotification('Erreur', 'Entrez un prix valide.', 'error');
+            const res = await fetch('/shard/guild/<%= guild.id %>/shop', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ roleId, price })
+            });
+            const result = await res.json();
+            if (result.success) {
+                showNotification('Article ajouté', 'L\'article a été ajouté au shop.');
+                document.getElementById('newShopPrice').value = '';
+                const list = document.getElementById('shop-list');
+                const empty = document.getElementById('shop-empty');
+                if (empty) empty.remove();
+                const currency = document.querySelector('[name="economyCurrencyName"]')?.value || 'coins';
+                const roleName = document.querySelector(`[name="newShopRole"] option[value="${roleId}"]`)?.textContent || roleId;
+                list.insertAdjacentHTML('beforeend', `
+                    <div class="flex items-center justify-between bg-white/[0.03] border border-white/5 rounded-2xl px-5 py-4" id="shop-${result.id}">
+                        <div class="flex items-center gap-4">
+                            <span class="text-sm font-bold text-white/80">@${roleName}</span>
+                            <span class="text-xs font-black text-yellow-400">${price} ${currency}</span>
+                        </div>
+                        <button type="button" onclick="removeShopItem(${result.id})" class="text-xs font-bold uppercase tracking-widest text-white/30 hover:text-red-400 transition-colors">Supprimer</button>
+                    </div>`);
+            } else {
+                showNotification('Erreur', result.error || 'Impossible d\'ajouter l\'article.', 'error');
+            }
+        }
+
+        async function removeShopItem(id) {
+            const res = await fetch(`/shard/guild/<%= guild.id %>/shop/${id}`, { method: 'DELETE' });
+            const result = await res.json();
+            if (result.success) {
+                document.getElementById(`shop-${id}`)?.remove();
+                showNotification('Article supprimé', 'L\'article a été retiré du shop.');
+                if (!document.querySelector('#shop-list [id^="shop-"]')) {
+                    document.getElementById('shop-list').insertAdjacentHTML('beforeend', '<p class="text-white/20 text-sm" id="shop-empty">Aucun article dans le shop.</p>');
+                }
+            } else {
+                showNotification('Erreur', result.error || 'Erreur lors de la suppression.', 'error');
+            }
+        }
+
+        async function sendTicketPanel() {
+            const btn = document.getElementById('send-ticket-panel-btn');
+            const channelId = document.querySelector('[name="ticketPanelChannelId"]').value;
+            const title = document.querySelector('[name="ticketPanelTitle"]').value;
+            const description = document.querySelector('[name="ticketPanelDescription"]').value;
+            const color = document.querySelector('[name="ticketPanelColor"]').value;
+
+            if (!channelId) return showNotification('Erreur', 'Sélectionnez un salon pour le panel.', 'error');
+
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg> Envoi...`;
+
+            try {
+                const res = await fetch('/shard/guild/<%= guild.id %>/ticket-panel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelId, title, description, color })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    showNotification('Panel envoyé', 'Le panel de tickets a été envoyé dans le salon.');
+                } else {
+                    showNotification('Erreur', result.error || "Impossible d'envoyer le panel.", 'error');
+                }
+            } catch (err) {
+                showNotification('Erreur', err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        async function saveConfig() {
+            const btn = document.querySelector('#save-bar .btn-white');
+            const originalContent = btn.innerHTML;
+            const originalClasses = btn.className;
+            const formData = new FormData(document.getElementById('configForm'));
+            const data = Object.fromEntries(formData.entries());
+
+            btn.disabled = true;
+            btn.style.width = btn.offsetWidth + 'px';
+            btn.style.height = btn.offsetHeight + 'px';
+            btn.className = "rounded-full text-xs font-bold uppercase transition-all flex items-center justify-center bg-orange-500/10 border border-orange-500/20 text-orange-500";
+            btn.innerHTML = `<svg class="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>`;
+
+            try {
+                const response = await fetch('/shard/guild/<%= guild.id %>/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    btn.className = "rounded-full text-xs font-bold uppercase transition-all flex items-center justify-center bg-green-500/10 border border-green-500/20 text-green-500";
+                    btn.innerHTML = `<div class="success-checkmark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="16 9 10.5 14.5 8 12"></polyline></svg></div>`;
+                    showNotification("Configuration", "Vos modifications ont été enregistrées.");
+                    const updatedData = new FormData(document.getElementById('configForm'));
+                    for (let [key, value] of updatedData.entries()) initialData.set(key, value);
+                    setTimeout(() => {
+                        saveBar.classList.remove('visible');
+                        setTimeout(() => { btn.className = originalClasses; btn.innerHTML = originalContent; btn.style.width = ''; btn.style.height = ''; btn.disabled = false; }, 400);
+                    }, 2000);
+                } else {
+                    throw new Error(result.error || "Erreur inconnue");
+                }
+            } catch (err) {
+                btn.className = "rounded-full text-xs font-bold uppercase transition-all flex items-center justify-center bg-red-500/10 border border-red-500/20 text-red-500";
+                btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+                showNotification("Erreur", err.message, "error");
+                setTimeout(() => { btn.className = originalClasses; btn.innerHTML = originalContent; btn.style.width = ''; btn.style.height = ''; btn.disabled = false; }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>

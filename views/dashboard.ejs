@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shardtown | Choisir un Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #000;
+            background-image:
+                radial-gradient(at 50% 0%, rgba(37, 99, 235, 0.2) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .bg-glow {
+            position: fixed;
+            top: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 100%; height: 100vh;
+            background: radial-gradient(circle at 50% -20%, rgba(37, 99, 235, 0.1) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container-wide {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .bot-card {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 24px;
+            padding: 40px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bot-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(37, 99, 235, 0.04) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .bot-card:hover {
+            border-color: #333;
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .bot-card:hover::before { opacity: 1; }
+
+        .bot-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 22px;
+            object-fit: cover;
+            border: 1px solid rgba(255,255,255,0.08);
+            flex-shrink: 0;
+        }
+
+        .arrow-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+        .bot-card:hover .arrow-btn {
+            background: #fff;
+            border-color: #fff;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+
+    <div class="fixed top-6 left-0 right-0 z-50 px-6">
+        <header id="main-header" class="container-wide flex justify-between items-center bg-transparent rounded-full transition-all duration-300 py-4 px-8 border border-white/10">
+            <a href="/" class="flex items-center gap-2">
+                <img src="/image/shardtown.jpeg" alt="Shardtown Logo" class="w-10 h-10 rounded-full object-cover">
+                <span class="font-bold tracking-tight text-xl uppercase">Shardtown</span>
+            </a>
+            <% if (user) { %>
+                <div class="flex items-center gap-4">
+                    <div class="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/5">
+                        <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="w-7 h-7 rounded-full border border-white/10" alt="">
+                        <span class="font-bold text-sm"><%= user.username %></span>
+                    </div>
+                    <a href="/logout" class="text-xs font-bold uppercase tracking-widest text-red-500/60 hover:text-red-500 transition-colors">Déconnexion</a>
+                </div>
+            <% } else { %>
+                <a href="/login" class="bg-white text-black px-6 py-2.5 rounded-full font-bold text-sm hover:opacity-90 transition-opacity">Connexion Discord</a>
+            <% } %>
+        </header>
+    </div>
+
+    <script>
+        window.addEventListener('scroll', () => {
+            const h = document.getElementById('main-header');
+            if (window.scrollY > 50) {
+                h.classList.remove('bg-transparent', 'border-white/10');
+                h.classList.add('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+            } else {
+                h.classList.add('bg-transparent', 'border-white/10');
+                h.classList.remove('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+            }
+        });
+    </script>
+
+    <main class="pt-32 pb-24 px-6">
+        <div class="container-wide">
+
+            <!-- Bot Selection -->
+            <div class="flex flex-col items-center mb-20">
+                <div class="w-full max-w-xl">
+                    <div class="text-center mb-14">
+                        <p class="text-xs font-bold tracking-[0.3em] text-white/30 uppercase mb-4">Tableau de Bord</p>
+                        <h1 class="text-4xl md:text-5xl font-bold uppercase tracking-tight mb-4">Quel dashboard ?</h1>
+                        <p class="text-white/40 text-sm">Sélectionne le bot que tu veux gérer.</p>
+                    </div>
+
+                    <div class="flex flex-col gap-5">
+                        <!-- ShardGuard -->
+                        <a href="/shardguard/server" class="bot-card group">
+                            <img src="/image/shardguard.png" alt="ShardGuard" class="bot-icon">
+                            <div class="flex-1 min-w-0">
+                                <h2 class="text-2xl font-bold mb-1">ShardGuard</h2>
+                                <p class="text-white/40 text-sm leading-relaxed">Vérification, sécurité & protection anti-raid</p>
+                            </div>
+                            <div class="arrow-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                                </svg>
+                            </div>
+                        </a>
+
+                        <!-- Shard -->
+                        <a href="/shard/server" class="bot-card group">
+                            <img src="/image/shard.png" alt="Shard" class="bot-icon">
+                            <div class="flex-1 min-w-0">
+                                <h2 class="text-2xl font-bold mb-1">Shard</h2>
+                                <p class="text-white/40 text-sm leading-relaxed">Bot utilitaire pour votre serveur Discord</p>
+                            </div>
+                            <div class="arrow-btn">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                                </svg>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+
+
+        </div>
+    </main>
+
+    <script>
+        window.addEventListener('scroll', () => {
+            const h = document.getElementById('main-header');
+            if (window.scrollY > 50) {
+                h.classList.remove('bg-transparent', 'border-white/10');
+                h.classList.add('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+            } else {
+                h.classList.add('bg-transparent', 'border-white/10');
+                h.classList.remove('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+            }
+        });
+    </script>
+
+    <footer class="py-10 border-t border-white/5">
+        <div class="container-wide">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <img src="/image/shardtown.jpeg" alt="Shardtown Logo" class="w-6 h-6 rounded-full object-cover">
+                    <span class="font-bold tracking-tight text-sm uppercase">Shardtown</span>
+                </div>
+                <div class="flex gap-8">
+                    <a href="/#status" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Statut</a>
+                    <a href="/terms" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Conditions Générales</a>
+                    <a href="/privacy" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Politique de Confidentialité</a>
+                    <a href="/admin" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Administrateur</a>
+                </div>
+                <p class="text-xs font-bold text-white/30">Copyright © 2026 Shardtown. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

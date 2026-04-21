@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shardtown | Statut</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #000; background-image: radial-gradient(at 50% 0%, rgba(37,99,235,0.18) 0px, transparent 50%), radial-gradient(at 0% 100%, rgba(139,92,246,0.08) 0px, transparent 50%), radial-gradient(at 100% 100%, rgba(236,72,153,0.08) 0px, transparent 50%); background-attachment: fixed; color: #fff; margin: 0; padding: 0; }
+        .bg-glow { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; height: 100vh; background: radial-gradient(circle at 50% -20%, rgba(37,99,235,0.08) 0%, transparent 70%); pointer-events: none; z-index: -1; }
+        .container-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+        .nav-link { color: #888; transition: color 0.2s; font-size: 0.875rem; font-weight: 500; }
+        .nav-link:hover { color: #fff; }
+        .btn-white { background: #fff; color: #000; padding: 10px 24px; border-radius: 100px; font-weight: 700; font-size: 0.875rem; transition: opacity 0.2s; }
+        .btn-white:hover { opacity: 0.9; }
+        .shard-guilds { display: none; }
+        .custom-select-wrapper { position: relative; }
+        .custom-select-trigger { padding: 8px 14px; background: rgba(255,255,255,0.03); border: 1px solid #1a1a1a; color: white; border-radius: 12px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px; transition: all 0.2s; white-space: nowrap; }
+        .custom-select-trigger:after { content: ""; width: 6px; height: 6px; border-right: 2px solid #555; border-bottom: 2px solid #555; transform: rotate(45deg); margin-bottom: 3px; flex-shrink: 0; }
+        .custom-select-wrapper.open .custom-select-trigger { border-color: rgba(255,255,255,0.3); }
+        .custom-options { position: absolute; top: calc(100% + 6px); right: 0; min-width: 100%; background: #0f0f0f; border: 1px solid #1a1a1a; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: none; z-index: 1000; overflow: hidden; }
+        .custom-select-wrapper.open .custom-options { display: block; }
+        .custom-option { padding: 8px 14px; cursor: pointer; transition: all 0.15s; font-size: 0.75rem; font-weight: 700; color: rgba(255,255,255,0.4); white-space: nowrap; }
+        .custom-option:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .custom-option.selected { background: rgba(255,255,255,0.08); color: #fff; }
+        .hidden-select { display: none; }
+        .shard-guilds.open { display: block; }
+        .progress-bar { height: 3px; background: rgba(255,255,255,0.05); border-radius: 999px; overflow: hidden; margin-top: 12px; }
+        .progress-fill { height: 100%; border-radius: 999px; transition: width 0.6s ease; }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+
+    <div class="fixed top-6 left-0 right-0 z-50 px-6">
+        <header id="main-header" class="container-wide flex justify-between items-center bg-transparent rounded-full transition-all duration-300 py-4 px-8 border border-white/10">
+            <a href="/" class="flex items-center gap-2">
+                <img src="/image/shardtown.jpeg" alt="Shardtown Logo" class="w-10 h-10 rounded-full object-cover">
+                <span class="font-bold tracking-tight text-xl uppercase">Shardtown</span>
+            </a>
+            <nav class="hidden md:flex items-center gap-8">
+                <a href="/#products" class="nav-link">Produits</a>
+                <a href="/#services" class="nav-link">Services</a>
+                <a href="/#about" class="nav-link">À propos</a>
+                <a href="/wiki" class="nav-link">Wiki</a>
+                <a href="/status" class="nav-link" style="color:#fff">Statut</a>
+            </nav>
+            <% if (typeof user !== 'undefined' && user) { %>
+                <div class="flex items-center gap-4">
+                    <div class="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/5">
+                        <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="w-7 h-7 rounded-full border border-white/10" alt="">
+                        <span class="font-bold text-sm"><%= user.username %></span>
+                    </div>
+                    <a href="/dashboard" class="btn-white">Dashboard</a>
+                </div>
+            <% } else { %>
+                <a href="/dashboard" class="btn-white">Dashboard</a>
+            <% } %>
+        </header>
+    </div>
+
+    <main class="pt-36 pb-24">
+        <div class="container-wide">
+
+            <div class="mb-8">
+                <h1 class="text-4xl font-bold mb-1">Statut</h1>
+                <p class="text-white/30 text-sm">Surveillance en temps réel de tous nos systèmes.</p>
+            </div>
+
+            <!-- Banner -->
+            <div id="status-banner" class="mb-5 rounded-2xl border px-6 py-5 flex items-center gap-4 bg-[#0a0a0a] border-white/5 transition-all duration-500">
+                <div id="banner-dot" class="w-3 h-3 rounded-full bg-white/10 flex-shrink-0 transition-all duration-500"></div>
+                <div class="flex-1">
+                    <p id="banner-title" class="font-bold text-base">Vérification du statut…</p>
+                    <p id="banner-sub" class="text-sm text-white/30 mt-0.5">Connexion à l'API en cours</p>
+                </div>
+                <div class="flex-shrink-0 text-right">
+                    <div class="flex items-center justify-end gap-1.5 mb-0.5">
+                        <span id="refresh-dot" class="w-1.5 h-1.5 rounded-full bg-white/20 transition-colors duration-300 flex-shrink-0"></span>
+                        <span class="text-[10px] font-bold text-white/20 uppercase tracking-widest">Dernière mise à jour</span>
+                    </div>
+                    <p id="last-update" class="text-xs font-bold text-white/40">--</p>
+                </div>
+            </div>
+
+            <span id="total-guilds" class="hidden"></span>
+            <span id="total-members" class="hidden"></span>
+            <span id="total-bots" class="hidden"></span>
+            <span id="total-shards" class="hidden"></span>
+
+            <!-- Vue d'ensemble -->
+            <h2 class="text-lg font-bold mb-1">Vue d'ensemble</h2>
+            <p class="text-sm text-white/30 mb-6">Le statut est mis à jour toutes les 30 secondes.</p>
+
+            <p class="text-[11px] font-bold text-white/20 uppercase tracking-widest mb-3">Systèmes</p>
+            <div class="grid md:grid-cols-3 gap-3 mb-14" id="systems-cards">
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 animate-pulse h-32"></div>
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 animate-pulse h-32"></div>
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 animate-pulse h-32"></div>
+            </div>
+
+            <!-- Mises à jour récentes -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <h2 class="text-lg font-bold">Mises à jour récentes</h2>
+                <div class="flex items-center gap-2">
+                    <div class="custom-select-wrapper">
+                        <div class="custom-select-trigger" onclick="toggleStatusDropdown(this)"><span>Tous les statuts</span></div>
+                        <div class="custom-options">
+                            <div class="custom-option selected" data-value="all" onclick="selectStatusOption(this, 'status')">Tous les statuts</div>
+                            <div class="custom-option" data-value="online" onclick="selectStatusOption(this, 'status')">En ligne</div>
+                            <div class="custom-option" data-value="offline" onclick="selectStatusOption(this, 'status')">Hors ligne</div>
+                        </div>
+                        <select id="global-filter-status" class="hidden-select"><option value="all" selected>all</option><option value="online">online</option><option value="offline">offline</option></select>
+                    </div>
+                    <div class="custom-select-wrapper">
+                        <div class="custom-select-trigger" onclick="toggleStatusDropdown(this)"><span>Dernière mise à jour</span></div>
+                        <div class="custom-options">
+                            <div class="custom-option selected" data-value="last_update" onclick="selectStatusOption(this, 'sort')">Dernière mise à jour</div>
+                            <div class="custom-option" data-value="shard_id" onclick="selectStatusOption(this, 'sort')">Shard ID</div>
+                            <div class="custom-option" data-value="ping" onclick="selectStatusOption(this, 'sort')">Ping</div>
+                            <div class="custom-option" data-value="guilds" onclick="selectStatusOption(this, 'sort')">Serveurs</div>
+                        </div>
+                        <select id="global-filter-sort" class="hidden-select"><option value="last_update" selected>last_update</option><option value="shard_id">shard_id</option><option value="ping">ping</option><option value="guilds">guilds</option></select>
+                    </div>
+                    <div class="custom-select-wrapper">
+                        <div class="custom-select-trigger" onclick="toggleStatusDropdown(this)"><span>Desc</span></div>
+                        <div class="custom-options">
+                            <div class="custom-option selected" data-value="desc" onclick="selectStatusOption(this, 'order')">Desc</div>
+                            <div class="custom-option" data-value="asc" onclick="selectStatusOption(this, 'order')">Asc</div>
+                        </div>
+                        <select id="global-filter-order" class="hidden-select"><option value="desc" selected>desc</option><option value="asc">asc</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="bot-sections" class="flex flex-col gap-4">
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 animate-pulse h-24"></div>
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 animate-pulse h-24"></div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="py-16 border-t border-white/5">
+        <div class="container-wide">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <img src="/image/shardtown.jpeg" alt="Shardtown Logo" class="w-6 h-6 rounded-full object-cover">
+                    <span class="font-bold tracking-tight text-sm uppercase">Shardtown</span>
+                </div>
+                <div class="flex gap-8">
+                    <a href="/status" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Statut</a>
+                    <a href="/terms" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Conditions Générales</a>
+                    <a href="/privacy" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Politique de Confidentialité</a>
+                    <a href="/wiki" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Wiki</a>
+                    <a href="/admin" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Administrateur</a>
+                </div>
+                <p class="text-xs font-bold text-white/30">Copyright © 2026 Shardtown. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const BOT_IMAGES = { ShardGuard: '/image/shardguard.png', Shard: '/image/shard.png' };
+        let cachedBots = [];
+        let lastFetch = null;
+
+        function timeSince(ms) {
+            const s = Math.floor((Date.now() - ms) / 1000);
+            if (s < 10) return 'il y a quelques secondes';
+            if (s < 60) return `il y a ${s}s`;
+            const m = Math.floor(s / 60);
+            if (m < 60) return `il y a ${m}min`;
+            return `il y a ${Math.floor(m / 60)}h`;
+        }
+
+        function parseLastUpdate(dt) {
+            if (!dt) return null;
+            return new Date(dt).getTime();
+        }
+
+        function getPingColor(ping) {
+            if (!ping || ping <= 0) return 'text-white/20';
+            if (ping < 100) return 'text-emerald-400';
+            if (ping < 250) return 'text-yellow-400';
+            return 'text-red-400';
+        }
+
+        function getPingBg(ping) {
+            if (!ping || ping <= 0) return 'bg-white/5';
+            if (ping < 100) return 'bg-emerald-500/10';
+            if (ping < 250) return 'bg-yellow-500/10';
+            return 'bg-red-500/10';
+        }
+
+        function renderSystemCard(label, icon, unavailable, total, color) {
+            const available = total - unavailable;
+            const pct = total > 0 ? Math.round((available / total) * 100) : 100;
+            const isOk = unavailable === 0;
+            const fillColor = isOk ? 'bg-emerald-500' : (unavailable / total > 0.5 ? 'bg-red-500' : 'bg-yellow-500');
+            return `<div class="bg-[#0a0a0a] border ${isOk ? 'border-white/5' : 'border-red-500/15'} rounded-2xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white/40">${icon}</div>
+                        <span class="font-bold text-sm">${label}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full ${isOk ? 'bg-emerald-500/10 border border-emerald-500/15' : 'bg-red-500/10 border border-red-500/15'}">
+                        <div class="w-1.5 h-1.5 rounded-full ${isOk ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}"></div>
+                        <span class="text-[10px] font-bold ${isOk ? 'text-emerald-400' : 'text-red-400'}">${isOk ? 'Opérationnel' : 'Incident'}</span>
+                    </div>
+                </div>
+                <p class="text-2xl font-bold ${isOk ? '' : 'text-red-400'}">${unavailable} indisponible${unavailable !== 1 ? 's' : ''}</p>
+                <div class="progress-bar"><div class="progress-fill ${fillColor}" style="width:${pct}%"></div></div>
+                <p class="text-[11px] font-bold text-white/20 mt-2">${unavailable > 0 ? Math.round((unavailable/total)*100) : 0}% du total · ${total.toLocaleString('fr-FR')} total</p>
+            </div>`;
+        }
+
+        function renderShardRow(shard, botLabel) {
+            const isOnline = shard.status === 'Online';
+            const pingClass = getPingColor(shard.ping);
+            const pingBg = getPingBg(shard.ping);
+            const guilds = shard.guild_count || (shard.guilds_list || []).length;
+            const lastUpdateMs = parseLastUpdate(shard.last_update);
+            const timeAgo = lastUpdateMs ? timeSince(lastUpdateMs) : 'il y a quelques secondes';
+            const guildsListHtml = (shard.guilds_list || []).length > 0
+                ? `<div class="shard-guilds" id="guilds-${botLabel}-${shard.shard_id}">
+                    <div class="mt-2 pt-2 border-t border-white/5 flex flex-wrap gap-1 max-h-28 overflow-y-auto">
+                        ${(shard.guilds_list || []).map(g => `
+                            <span class="text-[10px] font-bold text-white/40 bg-white/5 px-2 py-0.5 rounded-full truncate max-w-[160px]">${g.guild_name || 'Serveur inconnu'}</span>
+                        `).join('')}
+                    </div>
+                   </div>`
+                : '';
+            const hasGuilds = (shard.guilds_list || []).length > 0;
+
+            return `<div class="shard-entry border-b border-white/[0.04] last:border-0 py-3 px-1"
+                data-status="${isOnline ? 'online' : 'offline'}"
+                data-shard="${shard.shard_id}"
+                data-ping="${shard.ping || 0}"
+                data-guilds="${guilds}"
+                data-update="${lastUpdateMs || 0}">
+                <div class="flex items-center gap-3 ${hasGuilds ? 'cursor-pointer group' : ''}" ${hasGuilds ? `onclick="toggleGuilds('${botLabel}', ${shard.shard_id}, this)"` : ''}>
+                    <div class="w-2 h-2 rounded-full flex-shrink-0 ${isOnline
+                        ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]'
+                        : 'bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)] animate-pulse'}"></div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-sm font-bold">Shard <span class="text-white/40">#${shard.shard_id}</span></span>
+                            ${!isOnline ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/15 text-red-400 uppercase tracking-wider">Hors ligne</span>' : ''}
+                        </div>
+                        <p class="text-[11px] text-white/25 font-medium mt-0.5">
+                            Mis à jour ${timeAgo}
+                            <span class="mx-1 text-white/10">·</span>
+                            Serveurs : <span class="text-white/40">${guilds.toLocaleString('fr-FR')}</span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <span class="text-[11px] font-bold ${pingBg} px-2 py-1 rounded-lg ${pingClass}">${shard.ping ? shard.ping + 'ms' : '--'}</span>
+                        ${hasGuilds ? `<svg class="chevron w-4 h-4 text-white/20 group-hover:text-white/40 transition-all duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>` : ''}
+                    </div>
+                </div>
+                ${guildsListHtml}
+            </div>`;
+        }
+
+        function toggleGuilds(botLabel, shardId, el) {
+            const list = document.getElementById(`guilds-${botLabel}-${shardId}`);
+            const chevron = el.querySelector('.chevron');
+            if (list) {
+                list.classList.toggle('open');
+                if (chevron) chevron.style.transform = list.classList.contains('open') ? 'rotate(180deg)' : '';
+            }
+        }
+
+        function getSortedShards(shards, sortBy, order) {
+            const sorted = [...shards].sort((a, b) => {
+                let va, vb;
+                if (sortBy === 'shard_id') { va = a.shard_id; vb = b.shard_id; }
+                else if (sortBy === 'ping') { va = a.ping || 0; vb = b.ping || 0; }
+                else if (sortBy === 'guilds') { va = a.guild_count || 0; vb = b.guild_count || 0; }
+                else { va = parseLastUpdate(a.last_update) || 0; vb = parseLastUpdate(b.last_update) || 0; }
+                return order === 'asc' ? va - vb : vb - va;
+            });
+            return sorted;
+        }
+
+        function renderBotSection(bot, filterStatus, sortBy, order) {
+            const shards = bot.shards || [];
+            const totalShards = shards.length;
+            const onlineShards = shards.filter(s => s.status === 'Online').length;
+            const filtered = shards.filter(s => {
+                if (filterStatus === 'online') return s.status === 'Online';
+                if (filterStatus === 'offline') return s.status !== 'Online';
+                return true;
+            });
+            const sorted = getSortedShards(filtered, sortBy, order);
+            const allOk = onlineShards === totalShards && totalShards > 0;
+            const someOk = onlineShards > 0 && onlineShards < totalShards;
+
+            const badgeClass = !bot.online || onlineShards === 0
+                ? 'bg-red-500/10 border-red-500/15 text-red-400'
+                : someOk
+                ? 'bg-yellow-500/10 border-yellow-500/15 text-yellow-400'
+                : 'bg-emerald-500/10 border-emerald-500/15 text-emerald-400';
+            const badgeDot = !bot.online || onlineShards === 0 ? 'bg-red-500 animate-pulse' : someOk ? 'bg-yellow-500' : 'bg-emerald-500';
+            const badgeText = !bot.online || onlineShards === 0 ? 'Hors ligne' : someOk ? 'Dégradé' : 'Opérationnel';
+
+            const shardsHtml = sorted.length > 0
+                ? sorted.map(s => renderShardRow(s, bot.label)).join('')
+                : `<div class="py-8 text-center text-white/20 text-xs font-bold uppercase tracking-widest">Aucun shard correspondant</div>`;
+
+            return `<div class="bg-[#0a0a0a] border border-white/5 rounded-2xl overflow-hidden hover:border-white/8 transition-colors">
+                <div class="px-5 py-4 border-b border-white/5 flex flex-col md:flex-row md:items-center gap-3">
+                    <div class="flex items-center gap-3 flex-1">
+                        <img src="${BOT_IMAGES[bot.label] || ''}" class="w-9 h-9 rounded-xl border border-white/5" alt="">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold">${bot.label}</span>
+                                <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${badgeClass}">
+                                    <div class="w-1.5 h-1.5 rounded-full ${badgeDot}"></div>
+                                    <span class="text-[9px] font-bold uppercase tracking-wider">${badgeText}</span>
+                                </div>
+                            </div>
+                            <p class="text-[11px] text-white/25 font-medium mt-0.5">
+                                ${onlineShards} / ${totalShards} shard${totalShards !== 1 ? 's' : ''} en ligne
+                                <span class="mx-1 text-white/10">·</span>
+                                ${(bot.guilds || 0).toLocaleString('fr-FR')} serveurs
+                                <span class="mx-1 text-white/10">·</span>
+                                ${(bot.members || 0).toLocaleString('fr-FR')} utilisateurs
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-5 divide-y divide-white/[0.04]">
+                    ${shardsHtml}
+                </div>
+            </div>`;
+        }
+
+        function renderAll() {
+            const filterStatus = document.getElementById('global-filter-status').value;
+            const sortBy = document.getElementById('global-filter-sort').value;
+            const order = document.getElementById('global-filter-order').value;
+            document.getElementById('bot-sections').innerHTML = cachedBots.length > 0
+                ? cachedBots.map(bot => renderBotSection(bot, filterStatus, sortBy, order)).join('')
+                : `<div class="text-center py-12 text-white/20 text-xs font-bold uppercase tracking-widest">Aucune donnée disponible</div>`;
+        }
+
+        async function fetchStatus() {
+            const dot = document.getElementById('refresh-dot');
+            dot.className = 'w-1.5 h-1.5 rounded-full bg-blue-500 transition-colors duration-300';
+
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                lastFetch = Date.now();
+                cachedBots = data.current || [];
+
+                const totalGuilds = cachedBots.reduce((s, b) => s + (b.guilds || 0), 0);
+                const totalMembers = cachedBots.reduce((s, b) => s + (b.members || 0), 0);
+                const allShards = cachedBots.flatMap(b => b.shards || []);
+                const offlineShards = allShards.filter(s => s.status !== 'Online').length;
+                const offlineBots = cachedBots.filter(b => !b.online).length;
+                const allOnline = offlineShards === 0 && offlineBots === 0;
+
+                document.getElementById('total-guilds').textContent = totalGuilds.toLocaleString('fr-FR');
+                document.getElementById('total-members').textContent = totalMembers.toLocaleString('fr-FR');
+                document.getElementById('total-bots').textContent = cachedBots.length;
+                document.getElementById('total-shards').textContent = allShards.length;
+                document.getElementById('last-update').textContent = 'il y a quelques secondes';
+
+                const banner = document.getElementById('status-banner');
+                const bannerDot = document.getElementById('banner-dot');
+                const bannerTitle = document.getElementById('banner-title');
+                const bannerSub = document.getElementById('banner-sub');
+                if (allOnline) {
+                    banner.className = 'mb-5 rounded-2xl border px-6 py-5 flex items-center gap-4 bg-emerald-500/5 border-emerald-500/15 transition-all duration-500';
+                    bannerDot.className = 'w-3 h-3 rounded-full bg-emerald-500 flex-shrink-0 shadow-[0_0_12px_rgba(16,185,129,0.6)] transition-all duration-500';
+                    bannerTitle.textContent = 'Tous les systèmes opérationnels';
+                    bannerSub.textContent = 'Aucun incident détecté · Tous les shards sont actifs';
+                    bannerSub.className = 'text-sm text-emerald-400/50 mt-0.5';
+                } else {
+                    banner.className = 'mb-5 rounded-2xl border px-6 py-5 flex items-center gap-4 bg-red-500/5 border-red-500/15 transition-all duration-500';
+                    bannerDot.className = 'w-3 h-3 rounded-full bg-red-500 flex-shrink-0 shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse transition-all duration-500';
+                    bannerTitle.textContent = 'Incident en cours';
+                    bannerSub.textContent = `${offlineShards} shard${offlineShards > 1 ? 's' : ''} hors ligne · Nos équipes sont informées`;
+                    bannerSub.className = 'text-sm text-red-400/50 mt-0.5';
+                }
+
+                const iconShard = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
+                const iconCluster = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 8v3M8.5 17l-1.5-3M15.5 17l1.5-3"/></svg>`;
+                const iconServer = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>`;
+
+                document.getElementById('systems-cards').innerHTML =
+                    renderSystemCard('Clusters', iconCluster, offlineBots, cachedBots.length) +
+                    renderSystemCard('Shards', iconShard, offlineShards, allShards.length) +
+                    renderSystemCard('Serveurs', iconServer, 0, totalGuilds);
+
+                renderAll();
+                dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-colors duration-300';
+            } catch {
+                dot.className = 'w-1.5 h-1.5 rounded-full bg-white/20 transition-colors duration-300';
+            }
+        }
+
+        function tickTimestamps() {
+            if (!lastFetch) return;
+            const el = document.getElementById('last-update');
+            if (el) el.textContent = timeSince(lastFetch);
+        }
+
+        function toggleStatusDropdown(trigger) {
+            const wrapper = trigger.parentElement;
+            const isOpen = wrapper.classList.contains('open');
+            document.querySelectorAll('.custom-select-wrapper').forEach(w => w.classList.remove('open'));
+            if (!isOpen) wrapper.classList.add('open');
+        }
+
+        function selectStatusOption(option, field) {
+            const wrapper = option.closest('.custom-select-wrapper');
+            const selectId = field === 'status' ? 'global-filter-status' : field === 'sort' ? 'global-filter-sort' : 'global-filter-order';
+            document.getElementById(selectId).value = option.dataset.value;
+            wrapper.querySelector('.custom-select-trigger span').textContent = option.textContent;
+            wrapper.querySelectorAll('.custom-option').forEach(o => o.classList.remove('selected'));
+            option.classList.add('selected');
+            wrapper.classList.remove('open');
+            renderAll();
+        }
+
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('.custom-select-wrapper')) {
+                document.querySelectorAll('.custom-select-wrapper').forEach(w => w.classList.remove('open'));
+            }
+        });
+
+        fetchStatus();
+        setInterval(fetchStatus, 30000);
+        setInterval(tickTimestamps, 5000);
+
+        window.addEventListener('scroll', () => {
+            const h = document.getElementById('main-header');
+            if (window.scrollY > 50) {
+                h.classList.remove('bg-transparent', 'border-white/10');
+                h.classList.add('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+            } else {
+                h.classList.add('bg-transparent', 'border-white/10');
+                h.classList.remove('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+            }
+        });
+    </script>
+</body>
+</html>
