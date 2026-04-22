@@ -258,6 +258,10 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                 Sondages
             </div>
+            <div class="nav-item" onclick="showSection('premium', this)" style="color:#fbbf24;border-color:rgba(251,191,36,0.15);">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#fbbf24" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Premium
+            </div>
         </nav>
 
         <div class="mt-auto p-4 bg-white/5 rounded-2xl border border-white/5">
@@ -934,6 +938,28 @@
                         </div>
                     </div>
 
+                    <% if (settings.isPremium) { %>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="field mb-0">
+                            <label>Rôle requis <span class="text-white/20 normal-case font-normal">(Premium)</span></label>
+                            <div class="custom-select-wrapper">
+                                <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span>— Aucun —</span></div>
+                                <div class="custom-options">
+                                    <div class="custom-option selected" data-value="" onclick="selectOption(this,'gwMinRole')">— Aucun —</div>
+                                    <% roles.forEach(r => { %><div class="custom-option" data-value="<%= r.id %>" onclick="selectOption(this,'gwMinRole')">@<%= r.name %></div><% }) %>
+                                </div>
+                                <select name="gwMinRole" id="gwMinRole" class="hidden-select"><option value=""></option><% roles.forEach(r => { %><option value="<%= r.id %>"><%= r.name %></option><% }) %></select>
+                            </div>
+                            <p class="field-hint">Seuls les membres avec ce rôle peuvent participer</p>
+                        </div>
+                        <div class="field mb-0">
+                            <label>Niveau minimum <span class="text-white/20 normal-case font-normal">(Premium)</span></label>
+                            <input type="number" id="gwMinLevel" value="0" min="0" max="9999" placeholder="0 = désactivé">
+                            <p class="field-hint">Niveau XP minimum requis pour participer</p>
+                        </div>
+                    </div>
+                    <% } %>
+
                     <div class="flex justify-end mt-6">
                         <button type="button" onclick="createGiveaway()" class="btn-white" style="border-radius:14px;padding:10px 24px;">🎉 Lancer le giveaway</button>
                     </div>
@@ -1215,6 +1241,24 @@
                         <p class="field-hint">Le sondage se clôture automatiquement et affiche les résultats.</p>
                     </div>
 
+                    <% if (settings.isPremium) { %>
+                    <div class="field mt-4 mb-0">
+                        <label>Sondage anonyme <span class="text-white/20 normal-case font-normal">(Premium)</span></label>
+                        <div class="custom-select-wrapper" style="width:200px">
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span>Non</span></div>
+                            <div class="custom-options">
+                                <div class="custom-option selected" data-value="0" onclick="selectOption(this,'pollAnonymous')">Non</div>
+                                <div class="custom-option" data-value="1" onclick="selectOption(this,'pollAnonymous')">Oui — résultats masqués</div>
+                            </div>
+                            <select name="pollAnonymous" id="pollAnonymous" class="hidden-select">
+                                <option value="0" selected>0</option>
+                                <option value="1">1</option>
+                            </select>
+                        </div>
+                        <p class="field-hint">Les votes sont comptabilisés mais les choix individuels restent cachés</p>
+                    </div>
+                    <% } %>
+
                     <div class="flex justify-end mt-6">
                         <button type="button" onclick="createPoll()" class="btn-white" style="border-radius:14px;padding:10px 24px;">📊 Lancer le sondage</button>
                     </div>
@@ -1239,6 +1283,148 @@
                             </div>
                             <% }) %>
                         <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Premium -->
+            <div id="section-premium" class="content-section">
+                <div class="mb-12">
+                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">Shard</p>
+                    <h1 class="text-3xl font-bold uppercase" style="color:#fbbf24;">⭐ Premium</h1>
+                </div>
+
+                <!-- Statut Premium -->
+                <div class="shard-card mb-6" style="border-color:rgba(251,191,36,0.1);">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Statut Premium</h2>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-bold text-sm mb-1">Premium activé</p>
+                            <p class="text-xs text-white/30">Active toutes les fonctionnalités premium ci-dessous.</p>
+                        </div>
+                        <div class="custom-select-wrapper" style="width:160px">
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= settings.isPremium ? 'Activé' : 'Désactivé' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.isPremium ? 'selected' : '' %>" data-value="0" onclick="selectOption(this,'isPremiumS')">Désactivé</div>
+                                <div class="custom-option <%= settings.isPremium ? 'selected' : '' %>" data-value="1" onclick="selectOption(this,'isPremiumS')">Activé</div>
+                            </div>
+                            <select name="isPremiumS" class="hidden-select">
+                                <option value="0" <%= !settings.isPremium ? 'selected' : '' %>>0</option>
+                                <option value="1" <%= settings.isPremium ? 'selected' : '' %>>1</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parrainage -->
+                <div class="shard-card mb-6">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm uppercase tracking-widest">Parrainage</h3>
+                            <p class="text-xs text-white/30 mt-0.5">Récompense en coins quand un membre invite quelqu'un</p>
+                        </div>
+                        <div class="custom-select-wrapper ml-auto" style="width:160px">
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= settings.referralEnabled ? 'Activé' : 'Désactivé' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.referralEnabled ? 'selected' : '' %>" data-value="0" onclick="selectOption(this,'referralEnabled')">Désactivé</div>
+                                <div class="custom-option <%= settings.referralEnabled ? 'selected' : '' %>" data-value="1" onclick="selectOption(this,'referralEnabled')">Activé</div>
+                            </div>
+                            <select name="referralEnabled" class="hidden-select">
+                                <option value="0" <%= !settings.referralEnabled ? 'selected' : '' %>>0</option>
+                                <option value="1" <%= settings.referralEnabled ? 'selected' : '' %>>1</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="field mb-0">
+                        <label>Récompense (coins par parrainage)</label>
+                        <input type="number" name="referralReward" value="<%= settings.referralReward || 100 %>" min="1" max="100000" placeholder="100">
+                        <p class="field-hint">Coins crédités à l'inviteur quand son invité rejoint le serveur</p>
+                    </div>
+                </div>
+
+                <!-- Multiplicateur XP par rôle -->
+                <div class="shard-card mb-6">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-400">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm uppercase tracking-widest">Multiplicateur XP par rôle</h3>
+                            <p class="text-xs text-white/30 mt-0.5">Attribuez un bonus XP à certains rôles</p>
+                        </div>
+                    </div>
+                    <div id="xp-multipliers-list" class="flex flex-col gap-3 mb-4">
+                        <% const xpMults = settings.xpRoleMultipliers ? (typeof settings.xpRoleMultipliers === 'string' ? JSON.parse(settings.xpRoleMultipliers) : settings.xpRoleMultipliers) : []; %>
+                        <% if (!xpMults || xpMults.length === 0) { %>
+                            <p class="text-white/20 text-sm" id="xp-mult-empty">Aucun multiplicateur configuré.</p>
+                        <% } else { %>
+                            <% xpMults.forEach((m, idx) => { %>
+                            <div class="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3" data-xp-mult>
+                                <span class="font-bold text-sm flex-1">@<%= roles.find(r => r.id === m.roleId)?.name || m.roleId %></span>
+                                <span class="text-xs font-black text-yellow-400">×<%= m.multiplier %></span>
+                                <button type="button" onclick="removeXpMult(this)" class="text-white/20 hover:text-red-400 transition-colors">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                                <input type="hidden" name="xpMultRoleId[]" value="<%= m.roleId %>">
+                                <input type="hidden" name="xpMultValue[]" value="<%= m.multiplier %>">
+                            </div>
+                            <% }) %>
+                        <% } %>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="custom-select-wrapper">
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)"><span id="xp-mult-role-label">— Rôle —</span></div>
+                            <div class="custom-options">
+                                <% roles.forEach(r => { %><div class="custom-option" data-value="<%= r.id %>" onclick="selectXpMultRole(this)">@<%= r.name %></div><% }) %>
+                            </div>
+                        </div>
+                        <input type="number" id="xp-mult-value" placeholder="Multiplicateur ex: 2" min="1" max="10" step="0.1">
+                    </div>
+                    <button type="button" onclick="addXpMult()" class="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-widest border border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-all">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        Ajouter un multiplicateur
+                    </button>
+                </div>
+
+                <!-- Liste noire globale -->
+                <div class="shard-card mb-6">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-400">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm uppercase tracking-widest">Liste noire globale</h3>
+                            <p class="text-xs text-white/30 mt-0.5">Partagée entre tous les serveurs premium — gérée par ShardGuard</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-white/30">La liste noire globale est gérée depuis le dashboard <strong>ShardGuard</strong>. Les membres présents dessus sont automatiquement bloqués sur tous les serveurs premium.</p>
+                </div>
+
+                <!-- Backup & Restauration -->
+                <div class="shard-card mb-6">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-green-400">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-sm uppercase tracking-widest">Backup & Restauration</h3>
+                            <p class="text-xs text-white/30 mt-0.5">Sauvegardez et restaurez toute la configuration Shard en un clic</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button type="button" onclick="doBackupShard()" class="btn-white" style="border-radius:14px;padding:10px 24px;font-size:0.8rem;">
+                            💾 Créer un backup
+                        </button>
+                        <button type="button" onclick="doRestoreShard()" class="flex items-center gap-2 px-6 py-3 rounded-[14px] text-sm font-bold border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-all">
+                            🔄 Restaurer le dernier backup
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1620,9 +1806,11 @@
                 if (unit === 'minutes') ms = duration * 60000;
                 endsAt = new Date(Date.now() + ms).toISOString();
             }
+            const pollAnonEl = document.getElementById('pollAnonymous');
+            const pollAnonymous = pollAnonEl ? pollAnonEl.value : '0';
             const res = await fetch('/shard/guild/<%= guild.id %>/poll', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channelId, question, choices, endsAt })
+                body: JSON.stringify({ channelId, question, choices, endsAt, pollAnonymous })
             });
             const result = await res.json();
             if (result.success) {
@@ -1675,9 +1863,13 @@
             if (unit === 'days') ms = duration * 86400000;
             if (unit === 'minutes') ms = duration * 60000;
             const endsAt = new Date(Date.now() + ms).toISOString();
+            const gwMinRoleEl = document.getElementById('gwMinRole');
+            const gwMinLevelEl = document.getElementById('gwMinLevel');
+            const gwMinRole = gwMinRoleEl ? gwMinRoleEl.value : '';
+            const gwMinLevel = gwMinLevelEl ? parseInt(gwMinLevelEl.value) || 0 : 0;
             const res = await fetch('/shard/guild/<%= guild.id %>/giveaway', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channelId, prize, winnersCount: winners, endsAt })
+                body: JSON.stringify({ channelId, prize, winnersCount: winners, endsAt, gwMinRole, gwMinLevel })
             });
             const result = await res.json();
             if (result.success) {
@@ -1882,6 +2074,62 @@
                 setTimeout(() => { btn.className = originalClasses; btn.innerHTML = originalContent; btn.style.width = ''; btn.style.height = ''; btn.disabled = false; }, 3000);
             }
         }
+
+        let _xpMultRoleId = null;
+        function selectXpMultRole(el) {
+            _xpMultRoleId = el.dataset.value;
+            document.getElementById('xp-mult-role-label').textContent = el.textContent;
+            el.closest('.custom-select-wrapper').classList.remove('open');
+        }
+
+        function addXpMult() {
+            const roleId = _xpMultRoleId;
+            const mult = parseFloat(document.getElementById('xp-mult-value').value);
+            if (!roleId) return showNotification('Erreur', 'Sélectionnez un rôle.', 'error');
+            if (!mult || mult <= 0) return showNotification('Erreur', 'Entrez un multiplicateur valide.', 'error');
+            const label = document.getElementById('xp-mult-role-label').textContent;
+            const list = document.getElementById('xp-multipliers-list');
+            const empty = document.getElementById('xp-mult-empty');
+            if (empty) empty.remove();
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3';
+            div.setAttribute('data-xp-mult', '');
+            div.innerHTML = `<span class="font-bold text-sm flex-1">${label}</span><span class="text-xs font-black text-yellow-400">×${mult}</span><button type="button" onclick="removeXpMult(this)" class="text-white/20 hover:text-red-400 transition-colors"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button><input type="hidden" name="xpMultRoleId[]" value="${roleId}"><input type="hidden" name="xpMultValue[]" value="${mult}">`;
+            list.appendChild(div);
+            _xpMultRoleId = null;
+            document.getElementById('xp-mult-role-label').textContent = '— Rôle —';
+            document.getElementById('xp-mult-value').value = '';
+        }
+
+        function removeXpMult(btn) {
+            btn.closest('[data-xp-mult]').remove();
+            if (!document.querySelector('[data-xp-mult]')) {
+                const list = document.getElementById('xp-multipliers-list');
+                if (!document.getElementById('xp-mult-empty')) {
+                    list.insertAdjacentHTML('afterbegin', '<p class="text-white/20 text-sm" id="xp-mult-empty">Aucun multiplicateur configuré.</p>');
+                }
+            }
+        }
+
+        async function doBackupShard() {
+            try {
+                const r = await fetch('/shard/guild/<%= guild.id %>/backup', { method: 'POST' });
+                const data = await r.json();
+                if (data.success) showNotification('Backup', 'Backup créé avec succès !', 'success');
+                else showNotification('Erreur', data.error || 'Erreur lors du backup', 'error');
+            } catch { showNotification('Erreur', 'Erreur réseau', 'error'); }
+        }
+
+        async function doRestoreShard() {
+            if (!confirm('⚠️ Restaurer le dernier backup ? La configuration actuelle sera écrasée.')) return;
+            try {
+                const r = await fetch('/shard/guild/<%= guild.id %>/restore', { method: 'POST' });
+                const data = await r.json();
+                if (data.success) { showNotification('Restauration', 'Configuration restaurée !', 'success'); setTimeout(() => location.reload(), 1500); }
+                else showNotification('Erreur', data.error || 'Erreur lors de la restauration', 'error');
+            } catch { showNotification('Erreur', 'Erreur réseau', 'error'); }
+        }
+
     </script>
 </body>
 </html>

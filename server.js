@@ -709,11 +709,22 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
         ticketEnabled, ticketCategoryId = '', ticketSupportRoleId = '', ticketLogChannelId = '', ticketMaxPerUser = 1,
         ticketPanelChannelId = '', ticketPanelTitle = '', ticketPanelDescription = '', ticketPanelColor = '#3b82f6',
         birthdayChannelId = '', birthdayMessage = '', birthdayRoleId = '',
-        economyEnabled, economyCurrencyName = 'coins', economyDailyMin = 50, economyDailyMax = 200
+        economyEnabled, economyCurrencyName = 'coins', economyDailyMin = 50, economyDailyMax = 200,
+        isPremiumS = '0',
+        referralEnabled = '0',
+        referralReward = 100,
+        xpMultRoleId = [],
+        xpMultValue = [],
     } = req.body;
     const levelsEnabledVal = levelsEnabled ? 1 : 0;
     const ticketEnabledVal = ticketEnabled ? 1 : 0;
     const economyEnabledVal = economyEnabled ? 1 : 0;
+    const isPremiumSVal = parseInt(isPremiumS) || 0;
+    const referralEnabledVal = parseInt(referralEnabled) || 0;
+    const roleIds = Array.isArray(xpMultRoleId) ? xpMultRoleId : [xpMultRoleId].filter(Boolean);
+    const multVals = Array.isArray(xpMultValue) ? xpMultValue : [xpMultValue].filter(Boolean);
+    const xpMults = roleIds.map((id, i) => ({ roleId: id, multiplier: parseFloat(multVals[i]) || 1 })).filter(m => m.roleId);
+    const xpRoleMultipliersJson = JSON.stringify(xpMults);
     let thresholdsJson = '[]';
     try {
         const parsed = typeof levelThresholds === 'string' ? JSON.parse(levelThresholds || '[]') : levelThresholds;
@@ -721,8 +732,8 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
     } catch { thresholdsJson = '[]'; }
     try {
         await db.execute(`
-            INSERT INTO shard_settings (guildId, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabled, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, levelThresholds, ticketEnabled, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabled, economyCurrencyName, economyDailyMin, economyDailyMax)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO shard_settings (guildId, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabled, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, levelThresholds, ticketEnabled, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabled, economyCurrencyName, economyDailyMin, economyDailyMax, isPremium, referralEnabled, referralReward, xpRoleMultipliers)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 welcomeChannelId = VALUES(welcomeChannelId), welcomeTitle = VALUES(welcomeTitle),
                 welcomeMessage = VALUES(welcomeMessage), welcomeFooter = VALUES(welcomeFooter),
@@ -742,8 +753,10 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
                 ticketPanelColor = VALUES(ticketPanelColor), birthdayChannelId = VALUES(birthdayChannelId),
                 birthdayMessage = VALUES(birthdayMessage), birthdayRoleId = VALUES(birthdayRoleId),
                 economyEnabled = VALUES(economyEnabled), economyCurrencyName = VALUES(economyCurrencyName),
-                economyDailyMin = VALUES(economyDailyMin), economyDailyMax = VALUES(economyDailyMax)
-        `, [guildID, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabledVal, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, thresholdsJson, ticketEnabledVal, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabledVal, economyCurrencyName, economyDailyMin, economyDailyMax]);
+                economyDailyMin = VALUES(economyDailyMin), economyDailyMax = VALUES(economyDailyMax),
+                isPremium = VALUES(isPremium), referralEnabled = VALUES(referralEnabled),
+                referralReward = VALUES(referralReward), xpRoleMultipliers = VALUES(xpRoleMultipliers)
+        `, [guildID, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabledVal, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, thresholdsJson, ticketEnabledVal, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabledVal, economyCurrencyName, economyDailyMin, economyDailyMax, isPremiumSVal, referralEnabledVal, parseInt(referralReward) || 100, xpRoleMultipliersJson]);
         res.json({ success: true });
     } catch (err) {
         console.error('Erreur save shard config:', err.message);
@@ -790,8 +803,9 @@ app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
     if (!userGuild) return res.status(403).json({ success: false });
-    const { channelId, question, choices, endsAt } = req.body;
+    const { channelId, question, choices, endsAt, pollAnonymous = '0' } = req.body;
     if (!channelId || !question || !Array.isArray(choices) || choices.length < 2) return res.status(400).json({ success: false, error: 'Données manquantes' });
+    const anonymousVal = parseInt(pollAnonymous) || 0;
     const EMOJIS = ['🔵', '🟢', '🟡', '🟠', '🔴'];
     const buttons = choices.slice(0, 5).map((c, i) => ({ type: 2, style: 2, label: c.slice(0, 80), emoji: { name: EMOJIS[i] }, custom_id: `poll_vote_${i}` }));
     const rows = [];
@@ -807,7 +821,7 @@ app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
     try {
         const msgRes = await axios.post(`https://discord.com/api/v10/channels/${channelId}/messages`, { embeds: [embed], components: rows }, { headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' } });
         const messageId = msgRes.data.id;
-        const [result] = await db.execute(`INSERT INTO shard_polls (guildId, channelId, messageId, question, choices, endsAt) VALUES (?, ?, ?, ?, ?, ?)`, [guildID, channelId, messageId, question, JSON.stringify(choices), endsAtDate || null]);
+        const [result] = await db.execute(`INSERT INTO shard_polls (guildId, channelId, messageId, question, choices, endsAt, anonymous) VALUES (?, ?, ?, ?, ?, ?, ?)`, [guildID, channelId, messageId, question, JSON.stringify(choices), endsAtDate || null, anonymousVal]);
         res.json({ success: true, id: result.insertId });
     } catch (err) { res.status(500).json({ success: false, error: err.response?.data?.message || err.message }); }
 });
@@ -845,7 +859,7 @@ app.post('/shard/guild/:guildID/giveaway', checkAuthShard, async (req, res) => {
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
     if (!userGuild) return res.status(403).json({ success: false });
-    const { channelId, prize, winnersCount = 1, endsAt } = req.body;
+    const { channelId, prize, winnersCount = 1, endsAt, gwMinRole = '', gwMinLevel = 0 } = req.body;
     if (!channelId || !prize || !endsAt) return res.status(400).json({ success: false, error: 'Données manquantes' });
     const colorInt = 0xf59e0b;
     const endsAtDate = new Date(endsAt);
@@ -863,8 +877,8 @@ app.post('/shard/guild/:guildID/giveaway', checkAuthShard, async (req, res) => {
         }, { headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' } });
         const messageId = msgRes.data.id;
         const [result] = await db.execute(
-            `INSERT INTO shard_giveaways (guildId, channelId, messageId, prize, winnersCount, endsAt, createdBy) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [guildID, channelId, messageId, prize, winnersCount, endsAtDate, shardUser.id]
+            `INSERT INTO shard_giveaways (guildId, channelId, messageId, prize, winnersCount, endsAt, createdBy, minRole, minLevel) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [guildID, channelId, messageId, prize, winnersCount, endsAtDate, shardUser.id, gwMinRole || '', parseInt(gwMinLevel) || 0]
         );
         res.json({ success: true, id: result.insertId });
     } catch (err) { res.status(500).json({ success: false, error: err.response?.data?.message || err.message }); }
@@ -1318,6 +1332,14 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
         warnThresholdKick = 0,
         warnThresholdBan  = 0,
         warnMuteDuration  = 60,
+        isPremiumSG = '0',
+        antiRaidEnabled = '0',
+        antiRaidThreshold = 10,
+        antiRaidWindow = 10,
+        quarantineEnabled = '0',
+        quarantineRoleId = '',
+        quarantineDuration = 10,
+        modAlertUserId = '',
     } = req.body;
 
     // Convertir les règles en JSON pour la DB si ce sont des tableaux
@@ -1336,8 +1358,8 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
         const oldSettings = oldSettingsRows[0] || {};
 
         await db.execute(`
-            INSERT INTO settings (guildId, language, verifiedRole, rules_fr, rules_en, serverLocked, accessCode, verificationChannelId, accessCodeChannelId, captchaDigits, captchaNoise, captchaAttempts, verificationTimeout, autoKickUnverified, modRoles, bannedWords, bannedWordsEnabled, bannedWordsAction, automodAntiSpam, automodSpamThreshold, automodSpamInterval, automodSpamAction, automodAntiLinks, automodLinksAction, automodAntiRaid, automodRaidThreshold, automodRaidAction, warnMessage, muteMessage, kickMessage, banMessage, notifAutoDelete, notifDeleteDelay, automodAntiCaps, automodCapsThreshold, automodCapsAction, automodSlowmodeEnabled, automodSlowmodeDuration, automodSlowmodeExpiry, warnThresholdMute, warnThresholdKick, warnThresholdBan, warnMuteDuration)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO settings (guildId, language, verifiedRole, rules_fr, rules_en, serverLocked, accessCode, verificationChannelId, accessCodeChannelId, captchaDigits, captchaNoise, captchaAttempts, verificationTimeout, autoKickUnverified, modRoles, bannedWords, bannedWordsEnabled, bannedWordsAction, automodAntiSpam, automodSpamThreshold, automodSpamInterval, automodSpamAction, automodAntiLinks, automodLinksAction, automodAntiRaid, automodRaidThreshold, automodRaidAction, warnMessage, muteMessage, kickMessage, banMessage, notifAutoDelete, notifDeleteDelay, automodAntiCaps, automodCapsThreshold, automodCapsAction, automodSlowmodeEnabled, automodSlowmodeDuration, automodSlowmodeExpiry, warnThresholdMute, warnThresholdKick, warnThresholdBan, warnMuteDuration, isPremium, antiRaidEnabled, antiRaidThreshold, antiRaidWindow, quarantineEnabled, quarantineRoleId, quarantineDuration, modAlertUserId)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
             language = VALUES(language),
             verifiedRole = VALUES(verifiedRole),
@@ -1380,7 +1402,15 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
             warnThresholdMute = VALUES(warnThresholdMute),
             warnThresholdKick = VALUES(warnThresholdKick),
             warnThresholdBan = VALUES(warnThresholdBan),
-            warnMuteDuration = VALUES(warnMuteDuration)
+            warnMuteDuration = VALUES(warnMuteDuration),
+            isPremium = VALUES(isPremium),
+            antiRaidEnabled = VALUES(antiRaidEnabled),
+            antiRaidThreshold = VALUES(antiRaidThreshold),
+            antiRaidWindow = VALUES(antiRaidWindow),
+            quarantineEnabled = VALUES(quarantineEnabled),
+            quarantineRoleId = VALUES(quarantineRoleId),
+            quarantineDuration = VALUES(quarantineDuration),
+            modAlertUserId = VALUES(modAlertUserId)
         `, [
             guildID, 
             language, 
@@ -1425,6 +1455,14 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
             parseInt(warnThresholdKick) || 0,
             parseInt(warnThresholdBan)  || 0,
             parseInt(warnMuteDuration)  || 60,
+            parseInt(isPremiumSG) || 0,
+            parseInt(antiRaidEnabled) || 0,
+            parseInt(antiRaidThreshold) || 10,
+            parseInt(antiRaidWindow) || 10,
+            parseInt(quarantineEnabled) || 0,
+            quarantineRoleId || '',
+            parseInt(quarantineDuration) || 10,
+            modAlertUserId || '',
         ]);
         
         // Déterminer ce qui a changé pour le log
