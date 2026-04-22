@@ -55,14 +55,22 @@
     <div class="fixed top-6 left-0 right-0 z-50 px-6">
         <header id="main-header" class="container-wide flex justify-between items-center bg-transparent rounded-full transition-all duration-300 py-4 px-8 border border-white/10">
             <a href="/" class="flex items-center gap-2">
-                <img src="/image/shard.png" alt="Shard Logo" class="w-10 h-10 rounded-full object-cover">
-                <span class="font-bold tracking-tight text-xl uppercase">Shard</span>
+                <img src="/image/shardtown.jpeg" alt="Shardtown Logo" class="w-10 h-10 rounded-full object-cover">
+                <span class="font-bold tracking-tight text-xl uppercase">Shardtown</span>
             </a>
-            <div class="flex items-center gap-6">
-                <div class="hidden md:flex items-center gap-4 px-4 py-2 bg-white/5 rounded-full border border-white/5">
-                    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="w-8 h-8 rounded-full border border-white/10" alt="">
+            <nav class="hidden md:flex items-center gap-8">
+                <a href="/#products" style="color:#888;font-size:0.875rem;font-weight:500;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">Produits</a>
+                <a href="/#services" style="color:#888;font-size:0.875rem;font-weight:500;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">Services</a>
+                <a href="/#about" style="color:#888;font-size:0.875rem;font-weight:500;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">À propos</a>
+                <a href="/wiki" style="color:#888;font-size:0.875rem;font-weight:500;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">Wiki</a>
+                <a href="/status" style="color:#888;font-size:0.875rem;font-weight:500;transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#888'">Statut</a>
+            </nav>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/5">
+                    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="w-7 h-7 rounded-full border border-white/10" alt="">
                     <span class="font-bold text-sm"><%= user.username %></span>
                 </div>
+                <a href="/dashboard" class="bg-white text-black px-5 py-2 rounded-full font-bold text-sm hover:opacity-90 transition-opacity">Dashboard</a>
                 <a href="/shard/logout" class="text-xs font-bold uppercase tracking-widest text-red-500/70 hover:text-red-500 transition-colors">Déconnexion</a>
             </div>
         </header>
@@ -94,6 +102,10 @@
 
     <main class="pt-48 pb-24">
         <div class="container-wide">
+            <div class="flex items-center gap-3 mb-10">
+                <img src="/image/shard.png" alt="Shard" class="w-8 h-8 rounded-xl object-cover border border-white/5">
+                <span class="text-xs font-bold uppercase tracking-widest text-white/40">Shard</span>
+            </div>
             <div class="grid md:grid-cols-3 gap-8 mb-20">
                 <div class="stat-card">
                     <div class="stat-number"><%= guilds.length %></div>
