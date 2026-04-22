@@ -174,7 +174,6 @@
             <nav class="hidden md:flex items-center gap-8">
                 <a href="/#products" class="nav-link">Produits</a>
                 <a href="/#services" class="nav-link">Services</a>
-                <a href="/#about" class="nav-link">À propos</a>
                 <a href="/wiki" class="nav-link" style="color:#fff">Wiki</a>
                 <a href="/#status" class="nav-link">Statut</a>
             </nav>
@@ -257,6 +256,10 @@
                         <a href="#s-welcome" class="wiki-sidebar-link">Bienvenue / Départ</a>
                         <a href="#s-autorole" class="wiki-sidebar-link">Rôle Automatique</a>
                         <a href="#s-levels" class="wiki-sidebar-link">Niveaux & XP</a>
+                        <a href="#s-economy" class="wiki-sidebar-link">Économie</a>
+                        <a href="#s-giveaways" class="wiki-sidebar-link">Giveaways</a>
+                        <a href="#s-polls" class="wiki-sidebar-link">Sondages</a>
+                        <a href="#s-birthdays" class="wiki-sidebar-link">Anniversaires</a>
                         <a href="#s-tempvoice" class="wiki-sidebar-link">Salons Vocaux Temp.</a>
                         <a href="#s-reactions" class="wiki-sidebar-link">Auto-Réactions</a>
                         <a href="#s-commands" class="wiki-sidebar-link">Commandes</a>
@@ -288,7 +291,7 @@
                                     <img src="/image/shard.png" class="w-8 h-8 rounded-xl" alt="">
                                     <span class="font-bold">Shard</span>
                                 </div>
-                                <p class="text-white/40 text-sm leading-relaxed">Bienvenue, niveaux XP, salons vocaux temporaires et personnalisation du serveur.</p>
+                                <p class="text-white/40 text-sm leading-relaxed">Bienvenue, niveaux XP, économie, giveaways, sondages, anniversaires, salons vocaux temporaires et plus.</p>
                             </div>
                         </div>
                     </div>
@@ -719,6 +722,158 @@
                         </div>
                         <div class="p-4 bg-white/3 rounded-xl border border-white/5 text-sm">
                             <p class="text-white/40">Le classement des membres est visible depuis le dashboard. L'XP est propre à chaque serveur.</p>
+                        </div>
+                    </div>
+
+                    <!-- S - ECONOMY -->
+                    <div id="s-economy" class="wiki-card">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="step-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+                                <h3 class="text-xl font-extrabold">Économie</h3>
+                            </div>
+                            <span class="feature-chip chip-shard">Shard</span>
+                        </div>
+                        <p class="text-white/50 leading-relaxed mb-6">
+                            Shard intègre un système de monnaie virtuelle entièrement personnalisable. Les membres gagnent des coins, consultent leur solde et dépensent dans un shop de rôles.
+                        </p>
+                        <div class="grid md:grid-cols-3 gap-3 mb-5">
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5 text-center">
+                                <p class="font-bold text-sm mb-1">Daily</p>
+                                <p class="text-white/30 text-xs">Récompense quotidienne configurable</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5 text-center">
+                                <p class="font-bold text-sm mb-1">Balance</p>
+                                <p class="text-white/30 text-xs">Consulter le solde d'un membre</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5 text-center">
+                                <p class="font-bold text-sm mb-1">Shop</p>
+                                <p class="text-white/30 text-xs">Achat de rôles avec les coins</p>
+                            </div>
+                        </div>
+                        <div class="space-y-2 mb-5">
+                            <div class="command-block">/daily</div>
+                            <div class="command-block">/balance [user?]</div>
+                            <div class="command-block">/shop</div>
+                        </div>
+                        <div class="p-4 bg-white/3 rounded-xl border border-white/5 text-sm">
+                            <p class="text-xs font-bold text-white/30 uppercase tracking-widest mb-2">Configuration dashboard</p>
+                            <ul class="space-y-1 text-white/40">
+                                <li>Nom de la monnaie personnalisable</li>
+                                <li>Montant min/max du daily configurable</li>
+                                <li>Ajout de rôles achetables dans le shop</li>
+                                <li>Activation / désactivation globale</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- S - GIVEAWAYS -->
+                    <div id="s-giveaways" class="wiki-card">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="step-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></div>
+                                <h3 class="text-xl font-extrabold">Giveaways</h3>
+                            </div>
+                            <span class="feature-chip chip-shard">Shard</span>
+                        </div>
+                        <p class="text-white/50 leading-relaxed mb-6">
+                            Organisez des concours automatisés sur votre serveur. Les membres participent en cliquant sur un bouton, et le bot tire les gagnants au sort à la fin du giveaway.
+                        </p>
+                        <div class="command-block mb-5">
+                            /giveaway create <span class="text-white/70">prize:</span>Nitro <span class="text-white/70">duration:</span>24h <span class="text-white/70">winners:</span>1
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-3 mb-5">
+                            <div class="p-3 bg-white/3 rounded-xl border border-white/5 text-sm">
+                                <p class="font-bold mb-1">Paramètres</p>
+                                <ul class="space-y-1 text-white/40">
+                                    <li>Lot à gagner (nom libre)</li>
+                                    <li>Durée configurable</li>
+                                    <li>Nombre de gagnants</li>
+                                    <li>Salon cible</li>
+                                </ul>
+                            </div>
+                            <div class="p-3 bg-white/3 rounded-xl border border-white/5 text-sm">
+                                <p class="font-bold mb-1">Déroulement</p>
+                                <ul class="space-y-1 text-white/40">
+                                    <li>Embed interactif avec bouton</li>
+                                    <li>Compteur de participants en direct</li>
+                                    <li>Tirage automatique à expiration</li>
+                                    <li>Annonce des gagnants</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- S - POLLS -->
+                    <div id="s-polls" class="wiki-card">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="step-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                                <h3 class="text-xl font-extrabold">Sondages</h3>
+                            </div>
+                            <span class="feature-chip chip-shard">Shard</span>
+                        </div>
+                        <p class="text-white/50 leading-relaxed mb-6">
+                            Créez des votes communautaires avec plusieurs choix. Les membres votent via des boutons et les résultats sont affichés automatiquement à la fin.
+                        </p>
+                        <div class="command-block mb-5">
+                            /poll create <span class="text-white/70">question:</span>"Votre thème préféré ?" <span class="text-white/70">choices:</span>"Bleu,Rouge,Vert" <span class="text-white/70">duration:</span>1h
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-3">
+                            <div class="p-3 bg-white/3 rounded-xl border border-white/5 text-sm">
+                                <p class="font-bold mb-1">Fonctionnalités</p>
+                                <ul class="space-y-1 text-white/40">
+                                    <li>Jusqu'à plusieurs choix</li>
+                                    <li>Durée optionnelle</li>
+                                    <li>Vote unique par membre</li>
+                                </ul>
+                            </div>
+                            <div class="p-3 bg-white/3 rounded-xl border border-white/5 text-sm">
+                                <p class="font-bold mb-1">Résultats</p>
+                                <ul class="space-y-1 text-white/40">
+                                    <li>Pourcentages en temps réel</li>
+                                    <li>Clôture automatique</li>
+                                    <li>Résultat final affiché</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- S - BIRTHDAYS -->
+                    <div id="s-birthdays" class="wiki-card">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="step-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+                                <h3 class="text-xl font-extrabold">Anniversaires</h3>
+                            </div>
+                            <span class="feature-chip chip-shard">Shard</span>
+                        </div>
+                        <p class="text-white/50 leading-relaxed mb-6">
+                            Les membres enregistrent leur date d'anniversaire. Le jour J, Shard envoie automatiquement un message de félicitations et attribue un rôle temporaire pendant 24h.
+                        </p>
+                        <div class="space-y-2 mb-5">
+                            <div class="command-block">/birthday set <span class="text-white/70">date:</span>25/12</div>
+                            <div class="command-block">/birthday remove</div>
+                        </div>
+                        <div class="grid md:grid-cols-2 gap-3 mb-5">
+                            <div class="p-3 bg-white/3 rounded-xl border border-white/5 text-sm">
+                                <p class="font-bold mb-1">Pour les membres</p>
+                                <ul class="space-y-1 text-white/40">
+                                    <li>Enregistrer sa date (jour/mois)</li>
+                                    <li>Supprimer sa date</li>
+                                </ul>
+                            </div>
+                            <div class="p-3 bg-white/3 rounded-xl border border-white/5 text-sm">
+                                <p class="font-bold mb-1">Configuration (dashboard)</p>
+                                <ul class="space-y-1 text-white/40">
+                                    <li>Salon d'annonce dédié</li>
+                                    <li>Message personnalisable</li>
+                                    <li>Rôle temporaire 24h</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-pink-500/5 border border-pink-500/10 rounded-xl">
+                            <p class="text-xs text-pink-400/70">Shard vérifie les anniversaires toutes les heures. Le rôle est retiré automatiquement après 24 heures.</p>
                         </div>
                     </div>
 

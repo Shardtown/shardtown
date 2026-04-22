@@ -87,7 +87,61 @@
             overflow: hidden;
         }
 
+        .product-card { cursor: pointer; }
         .product-card:hover { border-color: #333; transform: translateY(-4px); }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .modal-box {
+            background: #0a0a0a;
+            border: 1px solid #222;
+            border-radius: 28px;
+            padding: 48px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: translateY(24px) scale(0.97);
+            transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+        }
+        .modal-overlay.open .modal-box {
+            transform: translateY(0) scale(1);
+        }
+        .modal-feature {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .modal-feature:last-child { border-bottom: none; padding-bottom: 0; }
+        .modal-feature:first-child { padding-top: 0; }
+        .modal-feature-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
 
         .service-card {
             background: #0a0a0a;
@@ -149,7 +203,6 @@
             <nav class="hidden md:flex items-center gap-8">
                 <a href="#products" class="nav-link">Produits</a>
                 <a href="#services" class="nav-link">Services</a>
-                <a href="#about" class="nav-link">À propos</a>
                 <a href="/wiki" class="nav-link">Wiki</a>
                 <a href="/status" class="nav-link">Statut</a>
             </nav>
@@ -215,20 +268,22 @@
                 </div>
 
                 <div class="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                    <div class="product-card text-left">
+                    <div class="product-card text-left" onclick="openModal('shardguard')">
                         <div class="flex items-center gap-5 mb-6">
                             <img src="/image/shardguard.png" alt="ShardGuard Logo" class="w-14 h-14 rounded-2xl object-cover border border-white/5">
                             <h3 class="text-2xl font-bold">ShardGuard</h3>
                         </div>
-                        <p class="text-white/50 leading-relaxed">Système de vérification avancé pour protéger votre communauté contre les raids de bots et autres interactions indésirables.</p>
+                        <p class="text-white/50 leading-relaxed mb-4">Système de vérification avancé pour protéger votre communauté contre les raids de bots et autres interactions indésirables.</p>
+                        <span class="text-xs font-bold text-white/30 uppercase tracking-widest">Découvrir →</span>
                     </div>
 
-                    <div class="product-card text-left">
+                    <div class="product-card text-left" onclick="openModal('shard')">
                         <div class="flex items-center gap-5 mb-6">
                             <img src="/image/shard.png" alt="Shard Logo" class="w-14 h-14 rounded-2xl object-cover border border-white/5">
                             <h3 class="text-2xl font-bold">Shard</h3>
                         </div>
-                        <p class="text-white/50 leading-relaxed">Bot multifonction pour animer votre serveur : économie, giveaways, sondages, anniversaires et bien plus.</p>
+                        <p class="text-white/50 leading-relaxed mb-4">Bot multifonction pour animer votre serveur : économie, giveaways, sondages, anniversaires et bien plus.</p>
+                        <span class="text-xs font-bold text-white/30 uppercase tracking-widest">Découvrir →</span>
                     </div>
                 </div>
             </div>
@@ -260,6 +315,173 @@
         </section>
     </main>
 
+    <!-- Modal ShardGuard -->
+    <div id="modal-shardguard" class="modal-overlay" onclick="closeModal('shardguard')">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center gap-4">
+                    <img src="/image/shardguard.png" alt="ShardGuard" class="w-12 h-12 rounded-2xl object-cover border border-white/5">
+                    <div>
+                        <h2 class="text-2xl font-extrabold">ShardGuard</h2>
+                        <p class="text-white/30 text-sm">Sécurité & Modération</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('shardguard')" class="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <p class="text-white/50 leading-relaxed mb-8">Système de vérification avancé pour protéger votre communauté contre les raids de bots et autres interactions indésirables.</p>
+            <div class="space-y-0 mb-8">
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-blue-500/10 border border-blue-500/20">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Vérification Captcha</p>
+                        <p class="text-white/40 text-sm">Accueillez les nouveaux membres avec un captcha personnalisable. Code d'accès optionnel pour les serveurs privés.</p>
+                    </div>
+                </div>
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-red-500/10 border border-red-500/20">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Auto-Modération</p>
+                        <p class="text-white/40 text-sm">Anti-spam, anti-liens, anti-caps et liste de mots interdits. Actions configurables : supprimer, avertir, mute, kick ou ban.</p>
+                    </div>
+                </div>
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-yellow-500/10 border border-yellow-500/20">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#facc15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Système d'Avertissements</p>
+                        <p class="text-white/40 text-sm">Émettez des avertissements manuels contre des membres. Historique complet consultable depuis le dashboard.</p>
+                    </div>
+                </div>
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-white/5 border border-white/10">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Canaux de Statistiques</p>
+                        <p class="text-white/40 text-sm">Salons vocaux mis à jour automatiquement affichant membres totaux, membres en ligne et bots du serveur.</p>
+                    </div>
+                </div>
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-white/5 border border-white/10">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Logs de Modération</p>
+                        <p class="text-white/40 text-sm">Toutes les actions du bot sont journalisées : vérifications, avertissements, actions auto-mod.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <a href="/wiki#sg-verification" class="flex-1 py-3 bg-white text-black rounded-full font-bold text-sm text-center hover:opacity-90 transition-opacity">Documentation</a>
+                <a href="/dashboard" class="flex-1 py-3 border border-white/10 rounded-full font-bold text-sm text-center hover:border-white/20 transition-colors">Ajouter le bot</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Shard -->
+    <div id="modal-shard" class="modal-overlay" onclick="closeModal('shard')">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center gap-4">
+                    <img src="/image/shard.png" alt="Shard" class="w-12 h-12 rounded-2xl object-cover border border-white/5">
+                    <div>
+                        <h2 class="text-2xl font-extrabold">Shard</h2>
+                        <p class="text-white/30 text-sm">Engagement & Automatisation</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('shard')" class="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+            </div>
+            <p class="text-white/50 leading-relaxed mb-8">Bot multifonction pour animer votre serveur : économie, giveaways, sondages, anniversaires et bien plus.</p>
+            <div class="space-y-0 mb-8">
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-purple-500/10 border border-purple-500/20">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Messages de Bienvenue / Départ</p>
+                        <p class="text-white/40 text-sm">Embeds personnalisés pour accueillir et accompagner les membres. Variables dynamiques disponibles.</p>
+                    </div>
+                </div>
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-purple-500/10 border border-purple-500/20">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Niveaux & XP</p>
+                        <p class="text-white/40 text-sm">Système d'expérience complet avec paliers, rôles de récompense et classement des membres.</p>
+                    </div>
+                </div>
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-yellow-500/10 border border-yellow-500/20">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Économie</p>
+                        <p class="text-white/40 text-sm">Système de monnaie virtuelle personnalisable avec daily, balance et shop de rôles.</p>
+                    </div>
+                </div>
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-green-500/10 border border-green-500/20">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Giveaways</p>
+                        <p class="text-white/40 text-sm">Créez des concours automatisés avec gestion des participants, tirage au sort et annonce des gagnants.</p>
+                    </div>
+                </div>
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-blue-500/10 border border-blue-500/20">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Sondages</p>
+                        <p class="text-white/40 text-sm">Lancez des votes communautaires avec plusieurs choix, durée configurable et résultats automatiques.</p>
+                    </div>
+                </div>
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-pink-500/10 border border-pink-500/20">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f472b6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Anniversaires</p>
+                        <p class="text-white/40 text-sm">Félicitations automatiques avec message personnalisé et rôle temporaire le jour J.</p>
+                    </div>
+                </div>
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-white/5 border border-white/10">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Salons Vocaux Temporaires</p>
+                        <p class="text-white/40 text-sm">Créez des salons privés à la demande, supprimés automatiquement quand ils se vident.</p>
+                    </div>
+                </div>
+                <div class="modal-feature">
+                    <div class="modal-feature-icon bg-white/5 border border-white/10">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm mb-1">Auto-Réactions & Rôle Auto</p>
+                        <p class="text-white/40 text-sm">Réactions automatiques aux messages et attribution de rôle dès l'arrivée d'un membre.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <a href="/wiki#s-welcome" class="flex-1 py-3 bg-white text-black rounded-full font-bold text-sm text-center hover:opacity-90 transition-opacity">Documentation</a>
+                <a href="/dashboard" class="flex-1 py-3 border border-white/10 rounded-full font-bold text-sm text-center hover:border-white/20 transition-colors">Ajouter le bot</a>
+            </div>
+        </div>
+    </div>
+
     <footer class="py-20">
         <div class="container-wide">
             <div class="flex flex-col md:flex-row justify-between items-center gap-8">
@@ -277,5 +499,25 @@
             </div>
         </div>
     </footer>
+    <script>
+        function openModal(name) {
+            const overlay = document.getElementById('modal-' + name);
+            overlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeModal(name) {
+            const overlay = document.getElementById('modal-' + name);
+            overlay.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.modal-overlay.open').forEach(m => {
+                    m.classList.remove('open');
+                    document.body.style.overflow = '';
+                });
+            }
+        });
+    </script>
 </body>
 </html>
