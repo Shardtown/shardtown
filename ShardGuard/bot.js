@@ -31,6 +31,7 @@ const client = new Client({ intents: [
 ] });
 const captchaStore = new Map();
 const CAPTCHA_TTL_MS = 10 * 60 * 1000;
+const raidJoins = new Map();
 setInterval(() => {
     const now = Date.now();
     for (const [k, v] of captchaStore.entries()) {
@@ -383,9 +384,63 @@ client.once('ready', async (c) => {
     }, 5 * 60 * 1000); // Vérification toutes les 5 minutes
 });
 
-// Logs d'arrivée et départ
+async function sendModAlert(settings, guild, message) {
+    if (!settings.isPremium || !settings.modAlertUserId) return;
+    try {
+        const modUser = await guild.client.users.fetch(settings.modAlertUserId);
+        await modUser.send(`🚨 **[${guild.name}]** ${message}`);
+    } catch {}
+}
+
 client.on('guildMemberAdd', async member => {
+    const settings = await getGuildSettings(member.guild.id);
     await addLog(member.guild.id, member.id, member.user.username, 'Arrivée', 'Join');
+
+    if (settings.isPremium) {
+        const [blRows] = await db.execute('SELECT userId FROM global_blacklist WHERE userId = ?', [member.id]).catch(() => [[]]);
+        if (blRows.length > 0) {
+            try {
+                if (member.bannable) {
+                    await member.ban({ reason: 'Liste noire globale Shardtown' });
+                    await sendModAlert(settings, member.guild, `<@${member.id}> (\`${member.user.username}\`) banni automatiquement — présent dans la liste noire globale.`);
+                }
+            } catch {}
+            return;
+        }
+
+        if (settings.antiRaidEnabled) {
+            const gid = member.guild.id;
+            const threshold = parseInt(settings.antiRaidThreshold) || 10;
+            const window = (parseInt(settings.antiRaidWindow) || 10) * 1000;
+            const now = Date.now();
+            if (!raidJoins.has(gid)) raidJoins.set(gid, []);
+            const joins = raidJoins.get(gid).filter(t => now - t < window);
+            joins.push(now);
+            raidJoins.set(gid, joins);
+            if (joins.length >= threshold) {
+                raidJoins.delete(gid);
+                try {
+                    await member.guild.setVerificationLevel(4);
+                    await sendModAlert(settings, member.guild, `⚠️ Raid détecté ! ${threshold} membres ont rejoint en ${settings.antiRaidWindow}s. Niveau de vérification mis au maximum.`);
+                } catch {}
+            }
+        }
+
+        if (settings.quarantineEnabled && settings.quarantineRoleId) {
+            const duration = (parseInt(settings.quarantineDuration) || 10) * 60 * 1000;
+            try {
+                await member.roles.add(settings.quarantineRoleId, 'Quarantaine automatique');
+                setTimeout(async () => {
+                    try {
+                        const m = await member.guild.members.fetch(member.id);
+                        if (m.roles.cache.has(settings.quarantineRoleId)) {
+                            await m.roles.remove(settings.quarantineRoleId, 'Fin de quarantaine');
+                        }
+                    } catch {}
+                }, duration);
+            } catch {}
+        }
+    }
 });
 
 client.on('guildMemberRemove', async member => {
@@ -1088,6 +1143,7 @@ async function applyModAction(message, action, reason, settings = {}) {
     }
 
     await addLog(message.guild.id, message.author.id, message.author.username, reason, action);
+    await sendModAlert(settings, message.guild, `Auto-mod déclenché sur <@${message.author.id}> (\`${message.author.username}\`) — action: **${action}**, raison: **${reason}**`);
 }
 
 client.on('messageCreate', async message => {

@@ -89,6 +89,14 @@ async function connectDB() {
                 ['warnThresholdKick', 'INT DEFAULT 0'],
                 ['warnThresholdBan',  'INT DEFAULT 0'],
                 ['warnMuteDuration',  'INT DEFAULT 60'],
+                ['isPremium',          'TINYINT(1) DEFAULT 0'],
+                ['quarantineEnabled',  'TINYINT(1) DEFAULT 0'],
+                ['quarantineRoleId',   'VARCHAR(255) DEFAULT ""'],
+                ['quarantineDuration', 'INT DEFAULT 10'],
+                ['modAlertUserId',     'VARCHAR(255) DEFAULT ""'],
+                ['antiRaidEnabled',    'TINYINT(1) DEFAULT 0'],
+                ['antiRaidThreshold',  'INT DEFAULT 10'],
+                ['antiRaidWindow',     'INT DEFAULT 10'],
             ];
             for (const [col, def] of modColDefs) {
                 if (!colNames.includes(col)) {
@@ -601,6 +609,60 @@ app.get('/shard/guild/:guildID', checkAuthShard, async (req, res) => {
                 PRIMARY KEY (guildId, userId)
             )
         `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS global_blacklist (
+                userId VARCHAR(255) NOT NULL PRIMARY KEY,
+                reason TEXT,
+                addedBy VARCHAR(255),
+                addedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS config_backups (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guildId VARCHAR(255) NOT NULL,
+                botLabel VARCHAR(50) NOT NULL,
+                configJson LONGTEXT NOT NULL,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_reminders (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guildId VARCHAR(255) NOT NULL,
+                userId VARCHAR(255) NOT NULL,
+                channelId VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                remindAt DATETIME NOT NULL,
+                done TINYINT(1) DEFAULT 0
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_referrals (
+                guildId VARCHAR(255) NOT NULL,
+                inviterId VARCHAR(255) NOT NULL,
+                inviteeId VARCHAR(255) NOT NULL,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (guildId, inviteeId)
+            )
+        `).catch(() => {});
+        await db.execute(`ALTER TABLE shard_settings ADD COLUMN isPremium TINYINT(1) DEFAULT 0`).catch(() => {});
+        await db.execute(`ALTER TABLE shard_settings ADD COLUMN xpRoleMultipliers JSON`).catch(() => {});
+        await db.execute(`ALTER TABLE shard_settings ADD COLUMN referralEnabled TINYINT(1) DEFAULT 0`).catch(() => {});
+        await db.execute(`ALTER TABLE shard_settings ADD COLUMN referralReward INT DEFAULT 100`).catch(() => {});
+        await db.execute(`ALTER TABLE shard_settings ADD COLUMN twitchAlerts JSON`).catch(() => {});
+        await db.execute(`ALTER TABLE shard_settings ADD COLUMN youtubeAlerts JSON`).catch(() => {});
+        await db.execute(`ALTER TABLE shard_giveaways ADD COLUMN minRole VARCHAR(255) DEFAULT ''`).catch(() => {});
+        await db.execute(`ALTER TABLE shard_giveaways ADD COLUMN minLevel INT DEFAULT 0`).catch(() => {});
+        await db.execute(`ALTER TABLE shard_polls ADD COLUMN anonymous TINYINT(1) DEFAULT 0`).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_invite_cache (
+                guildId VARCHAR(255) NOT NULL,
+                inviteCode VARCHAR(50) NOT NULL,
+                uses INT DEFAULT 0,
+                PRIMARY KEY (guildId, inviteCode)
+            )
+        `).catch(() => {});
         const [rows] = await db.execute('SELECT * FROM shard_settings WHERE guildId = ?', [guildID]);
         const settings = rows[0] || {
             welcomeChannelId: '', welcomeTitle: '', welcomeMessage: 'Bienvenue {user} sur **{server}** !', welcomeFooter: '', welcomeColor: '#3b82f6',
@@ -858,6 +920,72 @@ app.delete('/shard/guild/:guildID/scheduled/:id', checkAuthShard, async (req, re
     if (!userGuild) return res.status(403).json({ success: false });
     try {
         await db.execute(`DELETE FROM shard_scheduled WHERE id = ? AND guildId = ?`, [id, guildID]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
+
+app.post('/guild/:guildID/backup', checkAuth, async (req, res) => {
+    const guildID = req.params.guildID;
+    const user = req.user;
+    const userGuild = user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    if (!userGuild) return res.status(403).json({ success: false });
+    try {
+        const [rows] = await db.execute('SELECT * FROM settings WHERE guildId = ?', [guildID]);
+        if (!rows[0]?.isPremium) return res.status(403).json({ success: false, error: 'Premium requis' });
+        const configJson = JSON.stringify(rows[0]);
+        await db.execute(`INSERT INTO config_backups (guildId, botLabel, configJson) VALUES (?, ?, ?)`, [guildID, 'ShardGuard', configJson]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
+
+app.post('/guild/:guildID/restore', checkAuth, async (req, res) => {
+    const guildID = req.params.guildID;
+    const user = req.user;
+    const userGuild = user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    if (!userGuild) return res.status(403).json({ success: false });
+    try {
+        const [rows] = await db.execute('SELECT * FROM settings WHERE guildId = ?', [guildID]);
+        if (!rows[0]?.isPremium) return res.status(403).json({ success: false, error: 'Premium requis' });
+        const [backups] = await db.execute(`SELECT * FROM config_backups WHERE guildId = ? AND botLabel = 'ShardGuard' ORDER BY createdAt DESC LIMIT 1`, [guildID]);
+        if (!backups[0]) return res.status(404).json({ success: false, error: 'Aucun backup trouvé' });
+        const config = JSON.parse(backups[0].configJson);
+        delete config.id; delete config.guildId;
+        const cols = Object.keys(config).map(k => `${k} = ?`).join(', ');
+        const vals = Object.values(config);
+        await db.execute(`UPDATE settings SET ${cols} WHERE guildId = ?`, [...vals, guildID]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
+
+app.post('/shard/guild/:guildID/backup', checkAuthShard, async (req, res) => {
+    const guildID = req.params.guildID;
+    const shardUser = req.session.shardUser;
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    if (!userGuild) return res.status(403).json({ success: false });
+    try {
+        const [rows] = await db.execute('SELECT * FROM shard_settings WHERE guildId = ?', [guildID]);
+        if (!rows[0]?.isPremium) return res.status(403).json({ success: false, error: 'Premium requis' });
+        const configJson = JSON.stringify(rows[0]);
+        await db.execute(`INSERT INTO config_backups (guildId, botLabel, configJson) VALUES (?, ?, ?)`, [guildID, 'Shard', configJson]);
+        res.json({ success: true });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+});
+
+app.post('/shard/guild/:guildID/restore', checkAuthShard, async (req, res) => {
+    const guildID = req.params.guildID;
+    const shardUser = req.session.shardUser;
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    if (!userGuild) return res.status(403).json({ success: false });
+    try {
+        const [rows] = await db.execute('SELECT * FROM shard_settings WHERE guildId = ?', [guildID]);
+        if (!rows[0]?.isPremium) return res.status(403).json({ success: false, error: 'Premium requis' });
+        const [backups] = await db.execute(`SELECT * FROM config_backups WHERE guildId = ? AND botLabel = 'Shard' ORDER BY createdAt DESC LIMIT 1`, [guildID]);
+        if (!backups[0]) return res.status(404).json({ success: false, error: 'Aucun backup trouvé' });
+        const config = JSON.parse(backups[0].configJson);
+        delete config.guildId;
+        const cols = Object.keys(config).map(k => `${k} = ?`).join(', ');
+        const vals = Object.values(config);
+        await db.execute(`UPDATE shard_settings SET ${cols} WHERE guildId = ?`, [...vals, guildID]);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });

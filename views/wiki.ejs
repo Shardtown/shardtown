@@ -247,6 +247,7 @@
                         <a href="#sg-stats" class="wiki-sidebar-link">Canaux de Stats</a>
                         <a href="#sg-logs" class="wiki-sidebar-link">Logs</a>
                         <a href="#sg-commands" class="wiki-sidebar-link">Commandes</a>
+                        <a href="#sg-premium" class="wiki-sidebar-link" style="color:#fbbf24;">⭐ Premium</a>
                     </div>
 
                     <div>
@@ -263,6 +264,7 @@
                         <a href="#s-tempvoice" class="wiki-sidebar-link">Salons Vocaux Temp.</a>
                         <a href="#s-reactions" class="wiki-sidebar-link">Auto-Réactions</a>
                         <a href="#s-commands" class="wiki-sidebar-link">Commandes</a>
+                        <a href="#s-premium" class="wiki-sidebar-link" style="color:#fbbf24;">⭐ Premium</a>
                     </div>
                 </aside>
 
@@ -582,6 +584,42 @@
                                     </div>
                                     <span class="text-xs font-bold text-white/20 whitespace-nowrap mt-1">Gérer membres</span>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SG - PREMIUM -->
+                    <div id="sg-premium" class="wiki-card" style="border-color: rgba(251,191,36,0.15);">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="step-badge" style="background:rgba(251,191,36,0.1); border-color:rgba(251,191,36,0.2);">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#fbbf24" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </div>
+                                <h3 class="text-xl font-extrabold">Fonctionnalités Premium ShardGuard</h3>
+                            </div>
+                            <span class="feature-chip" style="background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid rgba(251,191,36,0.2);">Premium</span>
+                        </div>
+                        <p class="text-white/50 leading-relaxed mb-6">Ces fonctionnalités sont exclusives au plan Premium Shardtown et s'activent automatiquement.</p>
+                        <div class="space-y-3">
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="font-bold text-sm mb-1">⭐ Anti-Raid automatique</p>
+                                <p class="text-white/40 text-sm">Si trop de membres rejoignent en peu de temps (seuil configurable), ShardGuard passe automatiquement le serveur au niveau de vérification maximum.</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="font-bold text-sm mb-1">⭐ Quarantaine automatique</p>
+                                <p class="text-white/40 text-sm">Les nouveaux membres reçoivent un rôle de quarantaine à l'arrivée avec des permissions limitées, retiré automatiquement après X minutes.</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="font-bold text-sm mb-1">⭐ Alertes modérateur par DM</p>
+                                <p class="text-white/40 text-sm">Configurez un modérateur à notifier par message privé à chaque déclenchement d'auto-mod ou détection de raid.</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="font-bold text-sm mb-1">⭐ Liste noire globale inter-serveurs</p>
+                                <p class="text-white/40 text-sm">Les utilisateurs présents dans la base de données globale Shardtown sont automatiquement bannis dès qu'ils rejoignent un serveur premium.</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="font-bold text-sm mb-1">⭐ Backup & restauration de configuration</p>
+                                <p class="text-white/40 text-sm">Sauvegardez et restaurez toute la configuration de ShardGuard en un clic depuis le dashboard.</p>
                             </div>
                         </div>
                     </div>
@@ -957,6 +995,54 @@
                             <div class="p-4 bg-white/3 rounded-xl border border-white/5">
                                 <p class="command-block mb-2">/embed [description] [titre?] [footer?] [couleur?] [image?] [salon?]</p>
                                 <p class="text-white/40 text-sm">Crée et envoie un embed richement formaté dans le salon spécifié (ou actuel). Seuls les membres avec la permission <strong class="text-white">Gérer les messages</strong> peuvent l'utiliser.</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="command-block mb-2">/pay [membre] [montant]</p>
+                                <p class="text-white/40 text-sm">⭐ Premium — Transférer des coins à un autre membre du serveur.</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="command-block mb-2">/remind [message] [delai]</p>
+                                <p class="text-white/40 text-sm">⭐ Premium — Créer un rappel automatique. Délai au format : <span class="var-tag">30m</span>, <span class="var-tag">2h</span>, <span class="var-tag">1d</span>.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- S - PREMIUM -->
+                    <div id="s-premium" class="wiki-card" style="border-color: rgba(251,191,36,0.15);">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="step-badge" style="background:rgba(251,191,36,0.1); border-color:rgba(251,191,36,0.2);">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#fbbf24" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </div>
+                                <h3 class="text-xl font-extrabold">Fonctionnalités Premium Shard</h3>
+                            </div>
+                            <span class="feature-chip" style="background:rgba(251,191,36,0.1);color:#fbbf24;border:1px solid rgba(251,191,36,0.2);">Premium</span>
+                        </div>
+                        <p class="text-white/50 leading-relaxed mb-6">Les fonctionnalités suivantes sont exclusives au plan Premium Shardtown.</p>
+                        <div class="space-y-3">
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="font-bold text-sm mb-1">⭐ /pay — Transfert de coins</p>
+                                <p class="text-white/40 text-sm">Les membres peuvent s'échanger des coins directement via <code>/pay</code>.</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="font-bold text-sm mb-1">⭐ /remind — Rappels automatiques</p>
+                                <p class="text-white/40 text-sm">Créez des rappels qui seront envoyés dans le salon après un délai défini (minutes, heures, jours).</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="font-bold text-sm mb-1">⭐ Parrainage</p>
+                                <p class="text-white/40 text-sm">Quand un membre invite quelqu'un, il reçoit automatiquement des coins en récompense. Montant configurable depuis le dashboard.</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="font-bold text-sm mb-1">⭐ Sondages anonymes</p>
+                                <p class="text-white/40 text-sm">Activez le mode anonyme lors de la création d'un sondage : les votes restent cachés jusqu'à la clôture automatique.</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="font-bold text-sm mb-1">⭐ Multiplicateur XP par rôle</p>
+                                <p class="text-white/40 text-sm">Attribuez un multiplicateur d'XP à des rôles spécifiques (ex: ×2 pour les membres boosters). Configurable depuis le dashboard.</p>
+                            </div>
+                            <div class="p-4 bg-white/3 rounded-xl border border-white/5">
+                                <p class="font-bold text-sm mb-1">⭐ Conditions de participation aux giveaways</p>
+                                <p class="text-white/40 text-sm">Limitez les giveaways aux membres ayant un rôle ou un niveau minimum requis.</p>
                             </div>
                         </div>
                     </div>

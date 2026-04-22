@@ -15,7 +15,8 @@ const client = new Client({
         GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMessageReactions
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.GuildInvites
     ]
 });
 
@@ -185,6 +186,18 @@ client.once('ready', async () => {
                 .addIntegerOption(o => o.setName('jour').setDescription('Jour (1-31)').setRequired(true).setMinValue(1).setMaxValue(31))
                 .addIntegerOption(o => o.setName('mois').setDescription('Mois (1-12)').setRequired(true).setMinValue(1).setMaxValue(12)))
             .addSubcommand(s => s.setName('remove').setDescription('Supprimer votre date d\'anniversaire'))
+            .toJSON(),
+        new SlashCommandBuilder()
+            .setName('pay')
+            .setDescription('[Premium] Transférer des coins à un autre membre')
+            .addUserOption(o => o.setName('membre').setDescription('Membre destinataire').setRequired(true))
+            .addIntegerOption(o => o.setName('montant').setDescription('Montant à transférer').setRequired(true).setMinValue(1))
+            .toJSON(),
+        new SlashCommandBuilder()
+            .setName('remind')
+            .setDescription('[Premium] Créer un rappel automatique')
+            .addStringOption(o => o.setName('message').setDescription('Message du rappel').setRequired(true))
+            .addStringOption(o => o.setName('delai').setDescription('Délai (ex: 30m, 2h, 1d)').setRequired(true))
             .toJSON()
     ];
 
@@ -315,6 +328,24 @@ client.once('ready', async () => {
     }
     setInterval(checkPolls, 60000);
     checkPolls();
+
+    async function checkReminders() {
+        try {
+            const now = new Date();
+            const [rows] = await db.execute(`SELECT * FROM shard_reminders WHERE done = 0 AND remindAt <= ?`, [now]);
+            for (const r of rows) {
+                try {
+                    const guild = client.guilds.cache.get(r.guildId);
+                    if (!guild) continue;
+                    const channel = guild.channels.cache.get(r.channelId);
+                    if (channel) await channel.send(`⏰ <@${r.userId}> **Rappel :** ${r.message}`).catch(() => {});
+                    await db.execute(`UPDATE shard_reminders SET done = 1 WHERE id = ?`, [r.id]);
+                } catch {}
+            }
+        } catch {}
+    }
+    setInterval(checkReminders, 30000);
+    checkReminders();
 });
 
 client.on('guildMemberAdd', async (member) => {
@@ -327,6 +358,36 @@ client.on('guildMemberAdd', async (member) => {
         } catch (err) {
             console.error('Erreur auto role:', err.message);
         }
+    }
+
+    if (settings.isPremium && settings.referralEnabled) {
+        try {
+            const invites = await member.guild.fetchInvites();
+            const [prevRows] = await db.execute(`SELECT inviteCode, uses FROM shard_invite_cache WHERE guildId = ?`, [member.guild.id]).catch(() => [[]]);
+            const prevMap = {};
+            for (const r of prevRows) prevMap[r.inviteCode] = r.uses;
+            let inviterId = null;
+            for (const [code, inv] of invites) {
+                const prev = prevMap[code] ?? inv.uses;
+                if (inv.uses > prev && inv.inviter) { inviterId = inv.inviter.id; break; }
+            }
+            for (const [code, inv] of invites) {
+                await db.execute(`INSERT INTO shard_invite_cache (guildId, inviteCode, uses) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE uses = VALUES(uses)`, [member.guild.id, code, inv.uses]).catch(() => {});
+            }
+            if (inviterId && inviterId !== member.id) {
+                const [existing] = await db.execute(`SELECT inviteeId FROM shard_referrals WHERE guildId = ? AND inviteeId = ?`, [member.guild.id, member.id]).catch(() => [[]]);
+                if (existing.length === 0) {
+                    await db.execute(`INSERT IGNORE INTO shard_referrals (guildId, inviterId, inviteeId) VALUES (?, ?, ?)`, [member.guild.id, inviterId, member.id]).catch(() => {});
+                    const reward = parseInt(settings.referralReward) || 100;
+                    const currency = settings.economyCurrencyName || 'coins';
+                    await db.execute(`INSERT INTO shard_economy (guildId, userId, balance) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE balance = balance + ?`, [member.guild.id, inviterId, reward, reward]).catch(() => {});
+                    try {
+                        const inviter = await member.guild.members.fetch(inviterId);
+                        await inviter.send(`🎉 **[${member.guild.name}]** Vous avez invité **${member.user.username}** et reçu **+${reward} ${currency}** en récompense !`).catch(() => {});
+                    } catch {}
+                }
+            }
+        } catch {}
     }
 
     if (settings.welcomeChannelId) {
@@ -473,7 +534,20 @@ client.on('messageCreate', async (message) => {
 
         const xpMin = parseInt(settings.xpMin) || 15;
         const xpMax = parseInt(settings.xpMax) || 25;
-        const gained = Math.floor(Math.random() * (xpMax - xpMin + 1)) + xpMin;
+        let gained = Math.floor(Math.random() * (xpMax - xpMin + 1)) + xpMin;
+        if (settings.isPremium && settings.xpRoleMultipliers) {
+            try {
+                const multipliers = typeof settings.xpRoleMultipliers === 'string' ? JSON.parse(settings.xpRoleMultipliers) : settings.xpRoleMultipliers;
+                if (Array.isArray(multipliers)) {
+                    for (const { roleId, multiplier } of multipliers) {
+                        if (message.member.roles.cache.has(roleId)) {
+                            gained = Math.round(gained * (parseFloat(multiplier) || 1));
+                            break;
+                        }
+                    }
+                }
+            } catch {}
+        }
 
         const defaultThresholds = [100, 250, 500, 1000, 2000, 3500, 5500, 8000, 11500, 15000];
         let thresholds = settings.levelThresholds;
@@ -635,6 +709,41 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
+    if (interaction.isChatInputCommand() && interaction.commandName === 'pay') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const settings = await getSettings(interaction.guildId);
+        if (!settings?.isPremium) return interaction.editReply({ content: '⭐ Cette commande nécessite le **Premium**.' });
+        if (!settings?.economyEnabled) return interaction.editReply({ content: 'Le système d\'économie est désactivé.' });
+        const target = interaction.options.getUser('membre');
+        const amount = interaction.options.getInteger('montant');
+        const currency = settings.economyCurrencyName || 'coins';
+        if (target.id === interaction.user.id) return interaction.editReply({ content: '❌ Vous ne pouvez pas vous transférer des coins à vous-même.' });
+        if (target.bot) return interaction.editReply({ content: '❌ Impossible de transférer à un bot.' });
+        const [senderRows] = await db.execute(`SELECT balance FROM shard_economy WHERE guildId = ? AND userId = ?`, [interaction.guildId, interaction.user.id]);
+        const senderBalance = senderRows[0]?.balance || 0;
+        if (senderBalance < amount) return interaction.editReply({ content: `❌ Solde insuffisant. Vous avez **${senderBalance} ${currency}**.` });
+        await db.execute(`UPDATE shard_economy SET balance = balance - ? WHERE guildId = ? AND userId = ?`, [amount, interaction.guildId, interaction.user.id]);
+        await db.execute(`INSERT INTO shard_economy (guildId, userId, balance) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE balance = balance + ?`, [interaction.guildId, target.id, amount, amount]);
+        return interaction.editReply({ content: `💸 Vous avez transféré **${amount} ${currency}** à ${target}.` });
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === 'remind') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const settings = await getSettings(interaction.guildId);
+        if (!settings?.isPremium) return interaction.editReply({ content: '⭐ Cette commande nécessite le **Premium**.' });
+        const message = interaction.options.getString('message');
+        const delai = interaction.options.getString('delai');
+        const match = delai.match(/^(\d+)([mhd])$/i);
+        if (!match) return interaction.editReply({ content: '❌ Format invalide. Exemples : `30m`, `2h`, `1d`' });
+        const value = parseInt(match[1]);
+        const unit = match[2].toLowerCase();
+        const ms = unit === 'm' ? value * 60000 : unit === 'h' ? value * 3600000 : value * 86400000;
+        const remindAt = new Date(Date.now() + ms);
+        await db.execute(`INSERT INTO shard_reminders (guildId, userId, channelId, message, remindAt) VALUES (?, ?, ?, ?, ?)`, [interaction.guildId, interaction.user.id, interaction.channelId, message, remindAt]);
+        const label = unit === 'm' ? `${value} minute(s)` : unit === 'h' ? `${value} heure(s)` : `${value} jour(s)`;
+        return interaction.editReply({ content: `⏰ Rappel enregistré dans **${label}** : *${message}*` });
+    }
+
     if (interaction.isChatInputCommand() && interaction.commandName === 'birthday') {
         const sub = interaction.options.getSubcommand();
         if (sub === 'set') {
@@ -663,13 +772,18 @@ client.on('interactionCreate', async (interaction) => {
         } catch { return interaction.editReply({ content: 'Erreur lors du vote.' }); }
         const [votes] = await db.execute(`SELECT choiceIndex, COUNT(*) as count FROM shard_poll_votes WHERE pollId = ? GROUP BY choiceIndex`, [poll.id]);
         const total = votes.reduce((s, v) => s + Number(v.count), 0);
-        const updatedDesc = choices.map((c, i) => {
-            const v = votes.find(v => v.choiceIndex === i);
-            const count = v ? Number(v.count) : 0;
-            const pct = total ? Math.round(count / total * 100) : 0;
-            const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
-            return `${EMOJIS[i]} **${c}**\n\`${bar}\` ${pct}% (${count} vote${count !== 1 ? 's' : ''})`;
-        }).join('\n\n');
+        let updatedDesc;
+        if (poll.anonymous) {
+            updatedDesc = choices.map((c, i) => `${EMOJIS[i]} **${c}**`).join('\n') + `\n\n*Résultats masqués jusqu'à la clôture — ${total} vote(s) enregistré(s)*`;
+        } else {
+            updatedDesc = choices.map((c, i) => {
+                const v = votes.find(v => v.choiceIndex === i);
+                const count = v ? Number(v.count) : 0;
+                const pct = total ? Math.round(count / total * 100) : 0;
+                const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
+                return `${EMOJIS[i]} **${c}**\n\`${bar}\` ${pct}% (${count} vote${count !== 1 ? 's' : ''})`;
+            }).join('\n\n');
+        }
         try {
             await interaction.message.edit({ embeds: [{ color: 0x3b82f6, title: `📊 ${poll.question}`, description: updatedDesc, footer: { text: `${total} vote(s) au total` }, timestamp: new Date().toISOString() }] });
         } catch {}
@@ -682,6 +796,22 @@ client.on('interactionCreate', async (interaction) => {
         const [rows] = await db.execute(`SELECT * FROM shard_giveaways WHERE messageId = ? AND ended = 0`, [msgId]);
         if (!rows[0]) return interaction.editReply({ content: 'Ce giveaway est terminé.' });
         const gw = rows[0];
+        const settings = await getSettings(interaction.guildId);
+        if (settings?.isPremium) {
+            if (gw.minRole) {
+                if (!interaction.member.roles.cache.has(gw.minRole)) {
+                    const role = interaction.guild.roles.cache.get(gw.minRole);
+                    return interaction.editReply({ content: `❌ Vous devez avoir le rôle **${role?.name || gw.minRole}** pour participer.` });
+                }
+            }
+            if (gw.minLevel > 0) {
+                const [lvRows] = await db.execute(`SELECT level FROM shard_levels WHERE guildId = ? AND userId = ?`, [interaction.guildId, interaction.user.id]);
+                const userLevel = lvRows[0]?.level || 0;
+                if (userLevel < gw.minLevel) {
+                    return interaction.editReply({ content: `❌ Vous devez être au moins niveau **${gw.minLevel}** pour participer. (Votre niveau : ${userLevel})` });
+                }
+            }
+        }
         try {
             await db.execute(`INSERT INTO shard_giveaway_entries (giveawayId, userId) VALUES (?, ?)`, [gw.id, interaction.user.id]);
             return interaction.editReply({ content: '🎉 Vous participez au giveaway !' });
