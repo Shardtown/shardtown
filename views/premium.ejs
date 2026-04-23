@@ -154,27 +154,53 @@
             color: #fbbf24;
         }
 
-        .comparison-row {
-            display: grid;
-            grid-template-columns: 1fr 120px 120px;
-            gap: 16px;
-            padding: 14px 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+        .feat-row {
+            display: flex;
             align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 13px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
         }
-        .comparison-row:last-child { border-bottom: none; }
-        .comparison-header {
-            background: #0a0a0a;
-            border-radius: 12px 12px 0 0;
-            padding: 16px 20px;
-            border: 1px solid #1a1a1a;
-            border-bottom: none;
+        .feat-row:last-child { border-bottom: none; }
+        .feat-label { font-size: 0.875rem; color: rgba(255,255,255,0.65); flex: 1; min-width: 0; }
+        .feat-pills { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 100px;
+            white-space: nowrap;
         }
-        .comparison-body {
-            background: #0a0a0a;
-            border-radius: 0 0 12px 12px;
-            border: 1px solid #1a1a1a;
-            overflow: hidden;
+        .pill-free {
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.35);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        .pill-premium {
+            background: rgba(251,191,36,0.12);
+            color: #fbbf24;
+            border: 1px solid rgba(251,191,36,0.25);
+        }
+        .pill-none {
+            background: transparent;
+            color: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .feat-table-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px 10px;
+            border-bottom: 1px solid #1a1a1a;
+        }
+        .feat-table-header-labels {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
         }
 
         .alert-success {
@@ -227,7 +253,7 @@
                 <span class="text-sm font-semibold"><%= user.username %></span>
             </div>
         <% } else { %>
-            <a href="/login" class="px-5 py-2.5 rounded-full font-bold text-sm" style="background:#fff;color:#000;">Se connecter</a>
+            <a href="/login?returnTo=/premium" class="px-5 py-2.5 rounded-full font-bold text-sm" style="background:#fff;color:#000;">Se connecter</a>
         <% } %>
     </header>
 </div>
@@ -257,65 +283,119 @@
                 <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight">Gratuit vs Premium</h2>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            <div class="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
 
                 <!-- ShardGuard -->
-                <div>
-                    <div class="flex items-center gap-3 mb-4">
-                        <img src="/image/shardguard.png" class="w-9 h-9 rounded-xl object-cover border border-white/5" alt="">
-                        <div>
-                            <p class="font-extrabold text-sm">ShardGuard</p>
-                            <p class="text-white/30 text-xs">Sécurité & Modération</p>
+                <div class="feature-card" style="padding:0;overflow:hidden;">
+                    <div class="feat-table-header">
+                        <div class="flex items-center gap-3">
+                            <img src="/image/shardguard.png" class="w-8 h-8 rounded-xl object-cover border border-white/5" alt="">
+                            <div>
+                                <p class="font-extrabold text-sm">ShardGuard</p>
+                                <p class="text-white/30 text-xs">Sécurité & Modération</p>
+                            </div>
+                        </div>
+                        <div class="feat-table-header-labels">
+                            <span class="pill pill-free">Gratuit</span>
+                            <span class="pill pill-premium">★ Premium</span>
                         </div>
                     </div>
-                    <div class="feature-card" style="padding:0; overflow:hidden;">
-                        <div style="display:grid;grid-template-columns:1fr 80px 80px;gap:12px;padding:12px 20px;border-bottom:1px solid #1a1a1a;">
-                            <span class="text-xs font-bold text-white/30 uppercase tracking-wider">Fonctionnalité</span>
-                            <span class="text-xs font-bold text-white/30 uppercase tracking-wider text-center">Gratuit</span>
-                            <span class="text-xs font-bold uppercase tracking-wider text-center" style="color:#fbbf24;">Premium</span>
-                        </div>
-                        <div style="padding:0 0 8px 0;">
-                            <div class="comparison-row"><span class="text-sm text-white/70">Vérification Captcha</span><span class="text-center text-white/40">✓</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Mots interdits</span><span class="text-center text-xs text-white/40">3 max</span><span class="text-center text-xs" style="color:#fbbf24;">Illimités</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Règles auto-mod</span><span class="text-center text-xs text-white/40">3 max</span><span class="text-center text-xs" style="color:#fbbf24;">20 max</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Sanctions progressives</span><span class="text-center text-white/40">✓</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Anti-raid automatique</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Quarantaine auto</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Alerte modérateur DM</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Liste noire globale</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row" style="border-bottom:none;"><span class="text-sm text-white/70">Backup & restauration</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                        </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Vérification Captcha</span>
+                        <div class="feat-pills"><span class="pill pill-free">✓</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Mots interdits</span>
+                        <div class="feat-pills"><span class="pill pill-free">3 max</span><span class="pill pill-premium">Illimités</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Règles auto-mod</span>
+                        <div class="feat-pills"><span class="pill pill-free">3 max</span><span class="pill pill-premium">20 max</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Sanctions progressives</span>
+                        <div class="feat-pills"><span class="pill pill-free">✓</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Anti-raid automatique</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Quarantaine automatique</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Alerte modérateur DM</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Liste noire globale</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row" style="border-bottom:none;">
+                        <span class="feat-label">Backup & restauration</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
                     </div>
                 </div>
 
                 <!-- Shard -->
-                <div>
-                    <div class="flex items-center gap-3 mb-4">
-                        <img src="/image/shard.png" class="w-9 h-9 rounded-xl object-cover border border-white/5" alt="">
-                        <div>
-                            <p class="font-extrabold text-sm">Shard</p>
-                            <p class="text-white/30 text-xs">Engagement & Automatisation</p>
+                <div class="feature-card" style="padding:0;overflow:hidden;">
+                    <div class="feat-table-header">
+                        <div class="flex items-center gap-3">
+                            <img src="/image/shard.png" class="w-8 h-8 rounded-xl object-cover border border-white/5" alt="">
+                            <div>
+                                <p class="font-extrabold text-sm">Shard</p>
+                                <p class="text-white/30 text-xs">Engagement & Automatisation</p>
+                            </div>
+                        </div>
+                        <div class="feat-table-header-labels">
+                            <span class="pill pill-free">Gratuit</span>
+                            <span class="pill pill-premium">★ Premium</span>
                         </div>
                     </div>
-                    <div class="feature-card" style="padding:0; overflow:hidden;">
-                        <div style="display:grid;grid-template-columns:1fr 80px 80px;gap:12px;padding:12px 20px;border-bottom:1px solid #1a1a1a;">
-                            <span class="text-xs font-bold text-white/30 uppercase tracking-wider">Fonctionnalité</span>
-                            <span class="text-xs font-bold text-white/30 uppercase tracking-wider text-center">Gratuit</span>
-                            <span class="text-xs font-bold uppercase tracking-wider text-center" style="color:#fbbf24;">Premium</span>
-                        </div>
-                        <div style="padding:0 0 8px 0;">
-                            <div class="comparison-row"><span class="text-sm text-white/70">Paliers XP</span><span class="text-center text-xs text-white/40">3 max</span><span class="text-center text-xs" style="color:#fbbf24;">20 max</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Multiplicateur XP par rôle</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Giveaways simultanés</span><span class="text-center text-xs text-white/40">1 max</span><span class="text-center text-xs" style="color:#fbbf24;">5 max</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Sondages anonymes</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Hubs vocaux temp.</span><span class="text-center text-xs text-white/40">1 max</span><span class="text-center text-xs" style="color:#fbbf24;">5 max</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Rappels automatiques</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Messages programmés</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Panel de tickets</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Parrainage</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row"><span class="text-sm text-white/70">Alertes Twitch / YouTube</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                            <div class="comparison-row" style="border-bottom:none;"><span class="text-sm text-white/70">Stats d'activité</span><span class="text-center text-white/20">—</span><span class="text-center" style="color:#fbbf24;">✓</span></div>
-                        </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Paliers XP</span>
+                        <div class="feat-pills"><span class="pill pill-free">3 max</span><span class="pill pill-premium">20 max</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Multiplicateur XP par rôle</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Giveaways simultanés</span>
+                        <div class="feat-pills"><span class="pill pill-free">1 max</span><span class="pill pill-premium">5 max</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Sondages anonymes</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Hubs vocaux temporaires</span>
+                        <div class="feat-pills"><span class="pill pill-free">1 max</span><span class="pill pill-premium">5 max</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Rappels automatiques</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Messages programmés</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Panel de tickets</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Parrainage</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row">
+                        <span class="feat-label">Alertes Twitch / YouTube</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
+                    </div>
+                    <div class="feat-row" style="border-bottom:none;">
+                        <span class="feat-label">Stats d'activité</span>
+                        <div class="feat-pills"><span class="pill pill-none">—</span><span class="pill pill-premium">✓</span></div>
                     </div>
                 </div>
             </div>
@@ -328,20 +408,44 @@
             <div class="max-w-lg mx-auto">
                 <div class="text-center mb-10">
                     <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-6" style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></rect></svg>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                     </div>
-                    <h2 class="text-3xl font-extrabold tracking-tight mb-3">Activer Premium</h2>
-                    <p class="text-white/40">Entrez votre code d'activation et sélectionnez le serveur à upgrader.</p>
+                    <h2 class="text-3xl font-extrabold tracking-tight mb-3">Obtenir Premium</h2>
+                    <p class="text-white/40">Payez par carte ou entrez un code pour activer Premium sur votre serveur.</p>
                 </div>
 
                 <% if (!user) { %>
                     <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:20px;padding:40px;text-align:center;">
                         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" class="mx-auto mb-4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         <p class="text-white/50 mb-6">Connectez-vous avec Discord pour activer Premium sur votre serveur.</p>
-                        <a href="/login" class="inline-block px-8 py-3.5 rounded-full font-bold text-sm" style="background:#fff;color:#000;">Se connecter avec Discord</a>
+                        <a href="/login?returnTo=/premium" class="inline-block px-8 py-3.5 rounded-full font-bold text-sm" style="background:#fff;color:#000;">Se connecter avec Discord</a>
                     </div>
                 <% } else { %>
                     <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:20px;padding:40px;">
+
+                        <% const paymentStatus = typeof paymentResult !== 'undefined' ? paymentResult : null; %>
+
+                        <% if (paymentStatus === 'success') { %>
+                        <div class="alert-success mb-6" style="display:block;">
+                            <div class="flex items-start gap-3">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
+                                <div>
+                                    <p class="font-bold mb-1">Paiement confirmé !</p>
+                                    <p class="text-sm opacity-80">Premium sera activé sur votre serveur dès réception de la confirmation Stripe (quelques secondes).</p>
+                                </div>
+                            </div>
+                        </div>
+                        <% } %>
+
+                        <% if (paymentStatus === 'cancelled') { %>
+                        <div class="alert-error mb-6" style="display:block;">
+                            <div class="flex items-start gap-3">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                                <p class="font-semibold">Paiement annulé.</p>
+                            </div>
+                        </div>
+                        <% } %>
+
                         <div id="alert-success" class="alert-success mb-6">
                             <div class="flex items-start gap-3">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
@@ -360,10 +464,6 @@
 
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Code d'activation</label>
-                                <input type="text" id="code-input" class="code-input" placeholder="Entrez votre code..." maxlength="32" autocomplete="off" autocorrect="off" spellcheck="false">
-                            </div>
-                            <div>
                                 <label class="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Serveur cible</label>
                                 <div style="position:relative;">
                                     <select id="guild-select" class="guild-select">
@@ -375,9 +475,29 @@
                                     <svg style="position:absolute;right:16px;top:50%;transform:translateY(-50%);pointer-events:none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
                                 </div>
                             </div>
-                            <button id="redeem-btn" class="btn-premium mt-2" onclick="redeemCode()">
-                                <span id="redeem-btn-text">Activer Premium</span>
+
+                            <button id="buy-btn" class="btn-premium" onclick="startCheckout()">
+                                <span id="buy-btn-text">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                                    Payer avec Stripe — 9,99 €
+                                </span>
                             </button>
+
+                            <div style="display:flex;align-items:center;gap:12px;margin:8px 0;">
+                                <div style="flex:1;height:1px;background:rgba(255,255,255,0.07);"></div>
+                                <span style="font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.2);text-transform:uppercase;letter-spacing:0.08em;">Ou</span>
+                                <div style="flex:1;height:1px;background:rgba(255,255,255,0.07);"></div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Code d'activation</label>
+                                <div class="flex gap-3">
+                                    <input type="text" id="code-input" class="code-input" placeholder="Entrez votre code..." maxlength="32" autocomplete="off" autocorrect="off" spellcheck="false" style="flex:1;">
+                                    <button id="redeem-btn" onclick="redeemCode()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:0 20px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.85rem;color:rgba(255,255,255,0.7);cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'">
+                                        <span id="redeem-btn-text">Valider</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 <% } %>
@@ -403,30 +523,69 @@
 </footer>
 
 <script>
+function getGuildId() {
+    const sel = document.getElementById('guild-select');
+    return sel ? sel.value : '';
+}
+
+function showError(msg) {
+    const el = document.getElementById('alert-error');
+    document.getElementById('alert-error-msg').textContent = msg;
+    el.style.display = 'block';
+}
+
+function showSuccess(msg) {
+    const el = document.getElementById('alert-success');
+    document.getElementById('alert-success-msg').textContent = msg;
+    el.style.display = 'block';
+}
+
+function hideAlerts() {
+    document.getElementById('alert-success').style.display = 'none';
+    document.getElementById('alert-error').style.display = 'none';
+}
+
+async function startCheckout() {
+    hideAlerts();
+    const guildId = getGuildId();
+    if (!guildId) { showError('Veuillez sélectionner un serveur.'); return; }
+    const btn = document.getElementById('buy-btn');
+    const btnText = document.getElementById('buy-btn-text');
+    btn.disabled = true;
+    btnText.innerHTML = 'Redirection vers Stripe...';
+    try {
+        const res = await fetch('/api/create-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ guildId })
+        });
+        const data = await res.json();
+        if (data.success && data.url) {
+            window.location.href = data.url;
+        } else {
+            showError(data.error || 'Impossible de créer la session de paiement.');
+            btn.disabled = false;
+            btnText.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payer avec Stripe — 9,99 €';
+        }
+    } catch {
+        showError('Erreur réseau. Veuillez réessayer.');
+        btn.disabled = false;
+        btnText.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payer avec Stripe — 9,99 €';
+    }
+}
+
 async function redeemCode() {
+    hideAlerts();
     const code = document.getElementById('code-input').value.trim();
-    const guildId = document.getElementById('guild-select').value;
+    const guildId = getGuildId();
     const btn = document.getElementById('redeem-btn');
     const btnText = document.getElementById('redeem-btn-text');
-    const alertSuccess = document.getElementById('alert-success');
-    const alertError = document.getElementById('alert-error');
 
-    alertSuccess.style.display = 'none';
-    alertError.style.display = 'none';
-
-    if (!code) {
-        document.getElementById('alert-error-msg').textContent = 'Veuillez entrer un code d\'activation.';
-        alertError.style.display = 'block';
-        return;
-    }
-    if (!guildId) {
-        document.getElementById('alert-error-msg').textContent = 'Veuillez sélectionner un serveur.';
-        alertError.style.display = 'block';
-        return;
-    }
+    if (!guildId) { showError('Veuillez sélectionner un serveur.'); return; }
+    if (!code) { showError('Veuillez entrer un code d\'activation.'); return; }
 
     btn.disabled = true;
-    btnText.textContent = 'Activation en cours...';
+    btnText.textContent = '...';
 
     try {
         const res = await fetch('/api/redeem-code', {
@@ -436,21 +595,16 @@ async function redeemCode() {
         });
         const data = await res.json();
         if (data.success) {
-            document.getElementById('alert-success-msg').textContent = data.message || 'Premium activé sur votre serveur.';
-            alertSuccess.style.display = 'block';
+            showSuccess(data.message || 'Premium activé sur votre serveur.');
             document.getElementById('code-input').value = '';
-            btnText.textContent = 'Activer Premium';
         } else {
-            document.getElementById('alert-error-msg').textContent = data.error || 'Une erreur est survenue.';
-            alertError.style.display = 'block';
-            btnText.textContent = 'Activer Premium';
+            showError(data.error || 'Une erreur est survenue.');
         }
     } catch {
-        document.getElementById('alert-error-msg').textContent = 'Erreur réseau. Veuillez réessayer.';
-        alertError.style.display = 'block';
-        btnText.textContent = 'Activer Premium';
+        showError('Erreur réseau. Veuillez réessayer.');
     } finally {
         btn.disabled = false;
+        btnText.textContent = 'Valider';
     }
 }
 

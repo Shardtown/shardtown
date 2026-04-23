@@ -10,6 +10,9 @@ const bodyParser = require('body-parser');
 const mysql = require('mysql2/promise');
 const crypto = require('crypto');
 const { rateLimit } = require('express-rate-limit');
+const Stripe = require('stripe');
+
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -275,6 +278,31 @@ app.use(session({
     }
 }));
 
+app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+    try {
+        event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+        console.error('Stripe webhook signature invalide:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        const guildId = session.metadata?.guildId;
+        if (guildId) {
+            try {
+                await db.execute(`UPDATE settings SET isPremium = 1 WHERE guildId = ?`, [guildId]);
+                await db.execute(`UPDATE shard_settings SET isPremium = 1 WHERE guildId = ?`, [guildId]);
+                console.log(`✅ Premium activé via Stripe pour le serveur ${guildId}`);
+            } catch (err) {
+                console.error('Erreur activation premium Stripe:', err.message);
+            }
+        }
+    }
+    res.json({ received: true });
+});
+
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/image', express.static(path.join(__dirname, 'image')));
@@ -320,7 +348,8 @@ app.get('/privacy', (req, res) => {
 });
 
 app.get('/premium', async (req, res) => {
-    if (!req.user) return res.render('premium', { user: null, adminGuilds: [] });
+    const paymentResult = req.query.payment || null;
+    if (!req.user) return res.render('premium', { user: null, adminGuilds: [], paymentResult });
     try {
         const botGuildsResponse = await axios.get('https://discord.com/api/v10/users/@me/guilds', {
             headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` }
@@ -335,10 +364,40 @@ app.get('/premium', async (req, res) => {
                 if (!aIn && bIn) return 1;
                 return 0;
             });
-        res.render('premium', { user: req.user, adminGuilds });
+        res.render('premium', { user: req.user, adminGuilds, paymentResult });
     } catch {
         const adminGuilds = req.user.guilds.filter(g => (g.permissions & 0x8) === 0x8 || g.owner);
-        res.render('premium', { user: req.user, adminGuilds });
+        res.render('premium', { user: req.user, adminGuilds, paymentResult });
+    }
+});
+
+app.post('/api/create-checkout', async (req, res) => {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Non connecté.' });
+    const { guildId } = req.body;
+    if (!guildId) return res.status(400).json({ success: false, error: 'Serveur requis.' });
+    const userGuild = req.user.guilds.find(g => g.id === guildId && ((g.permissions & 0x8) === 0x8 || g.owner));
+    if (!userGuild) return res.status(403).json({ success: false, error: 'Vous n\'êtes pas administrateur de ce serveur.' });
+    try {
+        const appUrl = process.env.APP_URL || 'http://localhost:3000';
+        const session = await stripe.checkout.sessions.create({
+            mode: 'payment',
+            line_items: [{
+                price_data: {
+                    currency: process.env.STRIPE_CURRENCY || 'eur',
+                    product: process.env.STRIPE_PRODUCT_ID,
+                    unit_amount: parseInt(process.env.STRIPE_PREMIUM_AMOUNT || '999'),
+                },
+                quantity: 1,
+            }],
+            metadata: { guildId, guildName: userGuild.name },
+            customer_email: req.user.email || undefined,
+            success_url: `${appUrl}/premium?payment=success`,
+            cancel_url: `${appUrl}/premium?payment=cancelled`,
+        });
+        res.json({ success: true, url: session.url });
+    } catch (err) {
+        console.error('Erreur création session Stripe:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur lors de la création du paiement.' });
     }
 });
 
@@ -369,7 +428,12 @@ const loginRateLimiter = rateLimit({
     message: 'Trop de tentatives de connexion. Réessayez plus tard.'
 });
 
-app.get('/login', loginRateLimiter, passport.authenticate('discord'));
+app.get('/login', loginRateLimiter, (req, res, next) => {
+    if (req.query.returnTo && isSafeRedirect(req.query.returnTo)) {
+        req.session.returnTo = req.query.returnTo;
+    }
+    next();
+}, passport.authenticate('discord'));
 app.get('/callback', loginRateLimiter, passport.authenticate('discord', {
     failureRedirect: '/'
 }), (req, res) => {

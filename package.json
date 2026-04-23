@@ -25,6 +25,7 @@
     "express-session": "^1.19.0",
     "mysql2": "^3.22.0",
     "passport": "^0.7.0",
-    "passport-discord": "^0.1.4"
+    "passport-discord": "^0.1.4",
+    "stripe": "^22.0.2"
   }
 }
