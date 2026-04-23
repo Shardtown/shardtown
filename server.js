@@ -319,6 +319,48 @@ app.get('/privacy', (req, res) => {
     res.render('privacy', { user: req.user });
 });
 
+app.get('/premium', async (req, res) => {
+    if (!req.user) return res.render('premium', { user: null, adminGuilds: [] });
+    try {
+        const botGuildsResponse = await axios.get('https://discord.com/api/v10/users/@me/guilds', {
+            headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` }
+        });
+        const botGuildIds = botGuildsResponse.data.map(g => g.id);
+        const adminGuilds = req.user.guilds
+            .filter(g => (g.permissions & 0x8) === 0x8 || g.owner)
+            .sort((a, b) => {
+                const aIn = botGuildIds.includes(a.id);
+                const bIn = botGuildIds.includes(b.id);
+                if (aIn && !bIn) return -1;
+                if (!aIn && bIn) return 1;
+                return 0;
+            });
+        res.render('premium', { user: req.user, adminGuilds });
+    } catch {
+        const adminGuilds = req.user.guilds.filter(g => (g.permissions & 0x8) === 0x8 || g.owner);
+        res.render('premium', { user: req.user, adminGuilds });
+    }
+});
+
+app.post('/api/redeem-code', async (req, res) => {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Non connecté.' });
+    const { code, guildId } = req.body;
+    if (!code || !guildId) return res.status(400).json({ success: false, error: 'Code et serveur requis.' });
+    if (code.trim().toUpperCase() !== 'SHARDTOWN') {
+        return res.status(400).json({ success: false, error: 'Code invalide.' });
+    }
+    const userGuild = req.user.guilds.find(g => g.id === guildId && ((g.permissions & 0x8) === 0x8 || g.owner));
+    if (!userGuild) return res.status(403).json({ success: false, error: 'Vous n\'êtes pas administrateur de ce serveur.' });
+    try {
+        await db.execute(`UPDATE settings SET isPremium = 1 WHERE guildId = ?`, [guildId]);
+        await db.execute(`UPDATE shard_settings SET isPremium = 1 WHERE guildId = ?`, [guildId]);
+        res.json({ success: true, message: `Premium activé sur "${userGuild.name}" ! Profitez de toutes les fonctionnalités avancées.` });
+    } catch (err) {
+        console.error('Erreur redeem-code:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur. Réessayez.' });
+    }
+});
+
 const loginRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 30,
