@@ -398,10 +398,6 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                 Auto-Modération
             </div>
-            <div class="nav-item" onclick="showSection('premium', this)" style="color:#fbbf24;border-color:rgba(251,191,36,0.15);">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#fbbf24" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                Premium
-            </div>
 
         </nav>
 
@@ -540,6 +536,27 @@
                     <div class="field">
                         <label>Code d'Accès</label>
                         <input type="text" name="accessCode" value="<%= settings.accessCode || '' %>" placeholder="SHARDTOWN">
+                    </div>
+                </div>
+
+                <div class="shard-card mb-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-bold text-sm mb-1">Premium activé</p>
+                        </div>
+                        <div class="custom-select-wrapper" style="width:160px">
+                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
+                                <span><%= settings.isPremium ? 'Activé' : 'Désactivé' %></span>
+                            </div>
+                            <div class="custom-options">
+                                <div class="custom-option <%= !settings.isPremium ? 'selected' : '' %>" data-value="0" onclick="selectOption(this,'isPremiumSG')">Désactivé</div>
+                                <div class="custom-option <%= settings.isPremium ? 'selected' : '' %>" data-value="1" onclick="selectOption(this,'isPremiumSG')">Activé</div>
+                            </div>
+                            <select name="isPremiumSG" class="hidden-select">
+                                <option value="0" <%= !settings.isPremium ? 'selected' : '' %>>0</option>
+                                <option value="1" <%= settings.isPremium ? 'selected' : '' %>>1</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -1228,37 +1245,6 @@
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Section Premium -->
-            <div id="section-premium" class="content-section">
-                <div class="mb-12">
-                    <p class="text-xs font-bold tracking-widest text-white/30 uppercase mb-2">ShardGuard</p>
-                    <h1 class="text-3xl font-bold uppercase" style="color:#fbbf24;">⭐ Premium</h1>
-                </div>
-
-                <div class="shard-card mb-6" style="border-color:rgba(251,191,36,0.1);">
-                    <h2 class="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Statut Premium</h2>
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="font-bold text-sm mb-1">Premium activé</p>
-                            <p class="text-xs text-white/30">Active toutes les fonctionnalités premium ci-dessous.</p>
-                        </div>
-                        <div class="custom-select-wrapper" style="width:160px">
-                            <div class="custom-select-trigger" onclick="toggleDropdown(this)">
-                                <span><%= settings.isPremium ? 'Activé' : 'Désactivé' %></span>
-                            </div>
-                            <div class="custom-options">
-                                <div class="custom-option <%= !settings.isPremium ? 'selected' : '' %>" data-value="0" onclick="selectOption(this,'isPremiumSG')">Désactivé</div>
-                                <div class="custom-option <%= settings.isPremium ? 'selected' : '' %>" data-value="1" onclick="selectOption(this,'isPremiumSG')">Activé</div>
-                            </div>
-                            <select name="isPremiumSG" class="hidden-select">
-                                <option value="0" <%= !settings.isPremium ? 'selected' : '' %>>0</option>
-                                <option value="1" <%= settings.isPremium ? 'selected' : '' %>>1</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
 
                 <!-- Anti-Raid -->
                 <div class="shard-card mb-6">
@@ -1288,12 +1274,10 @@
                         <div class="field mb-0">
                             <label>Seuil (membres)</label>
                             <input type="number" name="antiRaidThreshold" value="<%= settings.antiRaidThreshold || 10 %>" min="2" max="100" placeholder="10">
-                            <p class="field-hint">Nombre de jointures déclenchant le raid</p>
                         </div>
                         <div class="field mb-0">
                             <label>Fenêtre (secondes)</label>
                             <input type="number" name="antiRaidWindow" value="<%= settings.antiRaidWindow || 10 %>" min="1" max="120" placeholder="10">
-                            <p class="field-hint">Intervalle de temps analysé</p>
                         </div>
                     </div>
                 </div>
@@ -1340,17 +1324,15 @@
                                     <% roles.forEach(r => { %><option value="<%= r.id %>" <%= settings.quarantineRoleId === r.id ? 'selected' : '' %>><%= r.name %></option><% }) %>
                                 </select>
                             </div>
-                            <p class="field-hint">Rôle attribué aux nouveaux membres pendant la quarantaine</p>
                         </div>
                         <div class="field mb-0">
                             <label>Durée (minutes)</label>
                             <input type="number" name="quarantineDuration" value="<%= settings.quarantineDuration || 10 %>" min="1" max="1440" placeholder="10">
-                            <p class="field-hint">Après ce délai, le rôle est retiré automatiquement</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Alerte Modérateur -->
+                <!-- Alertes Modérateur -->
                 <div class="shard-card mb-6">
                     <div class="flex items-center gap-4 mb-6">
                         <div class="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
@@ -1364,7 +1346,6 @@
                     <div class="field mb-0">
                         <label>ID Discord du modérateur</label>
                         <input type="text" name="modAlertUserId" value="<%= settings.modAlertUserId || '' %>" placeholder="Ex: 123456789012345678">
-                        <p class="field-hint">Laisser vide pour désactiver les alertes DM</p>
                     </div>
                 </div>
 
@@ -1381,10 +1362,10 @@
                     </div>
                     <div class="flex gap-4">
                         <button type="button" onclick="doBackupSG()" class="btn-white" style="border-radius:14px;padding:10px 24px;font-size:0.8rem;">
-                            💾 Créer un backup
+                            Créer un backup
                         </button>
                         <button type="button" onclick="doRestoreSG()" class="flex items-center gap-2 px-6 py-3 rounded-[14px] text-sm font-bold border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-all">
-                            🔄 Restaurer le dernier backup
+                            Restaurer le dernier backup
                         </button>
                     </div>
                 </div>
