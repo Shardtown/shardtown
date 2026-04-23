@@ -1401,7 +1401,7 @@
                         <label>Salon d'alerte</label>
                         <div class="custom-select-wrapper">
                             <div class="custom-select-trigger" onclick="toggleDropdown(this)">
-                                <span><%= channels.find(c => c.id === settings.webhookAlertChannelId) ? '#' + channels.find(c => c.id === settings.webhookAlertChannelId).name : '— Choisir un salon —' %></span>
+                                <span><%= channels.find(c => c.id === settings.webhookAlertChannelId) ? '#' + channels.find(c => c.id === settings.webhookAlertChannelId).name : 'Choisir un salon' %></span>
                             </div>
                             <div class="custom-options">
                                 <div class="custom-option" data-value="" onclick="selectOption(this,'webhookAlertChannelId')">— Aucun —</div>
