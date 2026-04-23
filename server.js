@@ -94,9 +94,12 @@ async function connectDB() {
                 ['quarantineRoleId',   'VARCHAR(255) DEFAULT ""'],
                 ['quarantineDuration', 'INT DEFAULT 10'],
                 ['modAlertUserId',     'VARCHAR(255) DEFAULT ""'],
-                ['antiRaidEnabled',    'TINYINT(1) DEFAULT 0'],
-                ['antiRaidThreshold',  'INT DEFAULT 10'],
-                ['antiRaidWindow',     'INT DEFAULT 10'],
+                ['antiRaidEnabled',       'TINYINT(1) DEFAULT 0'],
+                ['antiRaidThreshold',     'INT DEFAULT 10'],
+                ['antiRaidWindow',        'INT DEFAULT 10'],
+                ['panicModeActive',       'TINYINT(1) DEFAULT 0'],
+                ['webhookAlertEnabled',   'TINYINT(1) DEFAULT 0'],
+                ['webhookAlertChannelId', 'VARCHAR(255) DEFAULT ""'],
             ];
             for (const [col, def] of modColDefs) {
                 if (!colNames.includes(col)) {
@@ -1340,6 +1343,8 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
         quarantineRoleId = '',
         quarantineDuration = 10,
         modAlertUserId = '',
+        webhookAlertEnabled = '0',
+        webhookAlertChannelId = '',
     } = req.body;
 
     // Convertir les règles en JSON pour la DB si ce sont des tableaux
@@ -1358,8 +1363,8 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
         const oldSettings = oldSettingsRows[0] || {};
 
         await db.execute(`
-            INSERT INTO settings (guildId, language, verifiedRole, rules_fr, rules_en, serverLocked, accessCode, verificationChannelId, accessCodeChannelId, captchaDigits, captchaNoise, captchaAttempts, verificationTimeout, autoKickUnverified, modRoles, bannedWords, bannedWordsEnabled, bannedWordsAction, automodAntiSpam, automodSpamThreshold, automodSpamInterval, automodSpamAction, automodAntiLinks, automodLinksAction, automodAntiRaid, automodRaidThreshold, automodRaidAction, warnMessage, muteMessage, kickMessage, banMessage, notifAutoDelete, notifDeleteDelay, automodAntiCaps, automodCapsThreshold, automodCapsAction, automodSlowmodeEnabled, automodSlowmodeDuration, automodSlowmodeExpiry, warnThresholdMute, warnThresholdKick, warnThresholdBan, warnMuteDuration, isPremium, antiRaidEnabled, antiRaidThreshold, antiRaidWindow, quarantineEnabled, quarantineRoleId, quarantineDuration, modAlertUserId)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO settings (guildId, language, verifiedRole, rules_fr, rules_en, serverLocked, accessCode, verificationChannelId, accessCodeChannelId, captchaDigits, captchaNoise, captchaAttempts, verificationTimeout, autoKickUnverified, modRoles, bannedWords, bannedWordsEnabled, bannedWordsAction, automodAntiSpam, automodSpamThreshold, automodSpamInterval, automodSpamAction, automodAntiLinks, automodLinksAction, automodAntiRaid, automodRaidThreshold, automodRaidAction, warnMessage, muteMessage, kickMessage, banMessage, notifAutoDelete, notifDeleteDelay, automodAntiCaps, automodCapsThreshold, automodCapsAction, automodSlowmodeEnabled, automodSlowmodeDuration, automodSlowmodeExpiry, warnThresholdMute, warnThresholdKick, warnThresholdBan, warnMuteDuration, isPremium, antiRaidEnabled, antiRaidThreshold, antiRaidWindow, quarantineEnabled, quarantineRoleId, quarantineDuration, modAlertUserId, webhookAlertEnabled, webhookAlertChannelId)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
             language = VALUES(language),
             verifiedRole = VALUES(verifiedRole),
@@ -1410,7 +1415,9 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
             quarantineEnabled = VALUES(quarantineEnabled),
             quarantineRoleId = VALUES(quarantineRoleId),
             quarantineDuration = VALUES(quarantineDuration),
-            modAlertUserId = VALUES(modAlertUserId)
+            modAlertUserId = VALUES(modAlertUserId),
+            webhookAlertEnabled = VALUES(webhookAlertEnabled),
+            webhookAlertChannelId = VALUES(webhookAlertChannelId)
         `, [
             guildID, 
             language, 
@@ -1463,6 +1470,8 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
             quarantineRoleId || '',
             parseInt(quarantineDuration) || 10,
             modAlertUserId || '',
+            parseInt(webhookAlertEnabled) || 0,
+            webhookAlertChannelId || '',
         ]);
         
         // Déterminer ce qui a changé pour le log
@@ -1753,6 +1762,53 @@ app.get('/shardguard/api/guild/:guildID/audit', checkAuth, async (req, res) => {
         const [audit] = await db.execute('SELECT * FROM audit_logs WHERE guildId = ? ORDER BY timestamp DESC LIMIT 20', [guildID]);
         res.json({ success: true, audit });
     } catch (e) { res.status(500).json({ success: false }); }
+});
+
+app.post('/shardguard/api/guild/:guildID/panic', checkAuth, async (req, res) => {
+    const guildID = req.params.guildID;
+    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
+
+    const { activate } = req.body;
+    const headers = { Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' };
+
+    try {
+        const channelsRes = await axios.get(`https://discord.com/api/v10/guilds/${guildID}/channels`, { headers });
+        const textChannels = channelsRes.data.filter(c => c.type === 0 || c.type === 5);
+
+        let count = 0;
+        for (const channel of textChannels) {
+            try {
+                const overwrites = channel.permission_overwrites || [];
+                const everyoneOverwrite = overwrites.find(o => o.id === guildID) || { id: guildID, type: 0, allow: '0', deny: '0' };
+                const SEND_MESSAGES = BigInt(0x800);
+                let deny = BigInt(everyoneOverwrite.deny || '0');
+                let allow = BigInt(everyoneOverwrite.allow || '0');
+
+                if (activate) {
+                    deny |= SEND_MESSAGES;
+                    allow &= ~SEND_MESSAGES;
+                } else {
+                    deny &= ~SEND_MESSAGES;
+                }
+
+                const newOverwrites = overwrites.filter(o => o.id !== guildID);
+                newOverwrites.push({ id: guildID, type: 0, allow: allow.toString(), deny: deny.toString() });
+
+                await axios.put(`https://discord.com/api/v10/channels/${channel.id}/permissions/${guildID}`, {
+                    type: 0,
+                    allow: allow.toString(),
+                    deny: deny.toString()
+                }, { headers });
+                count++;
+                await new Promise(r => setTimeout(r, 100));
+            } catch {}
+        }
+
+        await db.execute('UPDATE settings SET panicModeActive = ? WHERE guildId = ?', [activate ? 1 : 0, guildID]);
+
+        res.json({ success: true, count, active: !!activate });
+    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
 });
 
 app.post('/shardguard/api/guild/:guildID/deploy', checkAuth, async (req, res) => {

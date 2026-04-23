@@ -28,6 +28,7 @@ const client = new Client({ intents: [
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildWebhooks,
 ] });
 const captchaStore = new Map();
 const CAPTCHA_TTL_MS = 10 * 60 * 1000;
@@ -1240,6 +1241,26 @@ client.on('messageCreate', async message => {
             return;
         }
     }
+});
+
+client.on('webhooksUpdate', async (channel) => {
+    try {
+        const settings = await getGuildSettings(channel.guild.id);
+        if (!settings.webhookAlertEnabled || !settings.webhookAlertChannelId) return;
+
+        const alertChannel = await channel.guild.channels.fetch(settings.webhookAlertChannelId).catch(() => null);
+        if (!alertChannel) return;
+
+        await alertChannel.send({
+            embeds: [{
+                color: 0xf59e0b,
+                title: '⚠️ Webhook modifié',
+                description: `Un webhook a été créé ou modifié dans <#${channel.id}>.\nVérifiez qu'il n'est pas malveillant.`,
+                timestamp: new Date().toISOString(),
+                footer: { text: 'ShardGuard — Détection Webhook' }
+            }]
+        });
+    } catch {}
 });
 
 client.on('guildCreate', async (guild) => {
