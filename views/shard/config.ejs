@@ -86,6 +86,7 @@
             letter-spacing: 0.01em;
         }
         textarea:focus, input[type="text"]:focus, input[type="number"]:focus { border-color: #fff; background: rgba(255,255,255,0.05); }
+        ::placeholder { color: rgba(255,255,255,0.25); }
         input[type="number"]::-webkit-inner-spin-button { opacity: 0.3; }
         textarea {
             resize: vertical; min-height: 100px;
@@ -663,7 +664,7 @@
                             </div>
                             <div class="field mb-0" style="width:90px;flex-shrink:0;">
                                 <label>Emoji</label>
-                                <input type="text" id="newReactionEmoji" placeholder="👍" style="text-align:center;font-size:0.92rem;padding:16px 10px;">
+                                <input type="text" id="newReactionEmoji" placeholder="👍" style="text-align:center;">
                             </div>
                             <button type="button" onclick="addReaction()" class="btn-white mb-0" style="padding:16px 20px;border-radius:14px;flex-shrink:0;align-self:flex-end;">Ajouter</button>
                         </div>
@@ -739,7 +740,7 @@
                         <% settings.levelThresholds.forEach((xp, i) => { %>
                         <div class="flex items-center gap-4 bg-white/[0.02] border border-white/5 rounded-2xl px-5 py-3" id="threshold-row-<%= i %>">
                             <span class="text-xs font-black uppercase tracking-widest text-white/30 w-28 shrink-0">Niveau <%= i %> → <%= i+1 %></span>
-                            <input type="number" class="threshold-input flex-1" data-index="<%= i %>" value="<%= xp %>" min="1" oninput="updateThreshold(<%= i %>, this.value)" style="padding:10px 14px;font-size:0.85rem;">
+                            <input type="number" class="threshold-input flex-1" data-index="<%= i %>" value="<%= xp %>" min="1" oninput="updateThreshold(<%= i %>, this.value)">
                             <span class="text-xs text-white/20">XP</span>
                             <button type="button" onclick="removeThreshold(<%= i %>)" class="text-xs font-bold uppercase tracking-widest text-white/20 hover:text-red-400 transition-colors ml-2">Retirer</button>
                         </div>
@@ -1865,7 +1866,7 @@
             list.innerHTML = _thresholds.map((xp, i) => `
                 <div class="flex items-center gap-4 bg-white/[0.02] border border-white/5 rounded-2xl px-5 py-3" id="threshold-row-${i}">
                     <span class="text-xs font-black uppercase tracking-widest text-white/30 w-28 shrink-0">Niveau ${i} → ${i+1}</span>
-                    <input type="number" class="threshold-input flex-1" data-index="${i}" value="${xp}" min="1" oninput="updateThreshold(${i}, this.value)" style="padding:10px 14px;font-size:0.85rem;width:100%;background:rgba(255,255,255,0.03);border:1px solid #1a1a1a;color:white;border-radius:14px;font-family:inherit;outline:none;box-sizing:border-box;">
+                    <input type="number" class="threshold-input flex-1" data-index="${i}" value="${xp}" min="1" oninput="updateThreshold(${i}, this.value)" style="width:100%;">
                     <span class="text-xs text-white/20">XP</span>
                     <button type="button" onclick="removeThreshold(${i})" class="text-xs font-bold uppercase tracking-widest text-white/20 hover:text-red-400 transition-colors ml-2">Retirer</button>
                 </div>`).join('');
