@@ -77,7 +77,7 @@
             font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px;
         }
 
-        textarea, input[type="text"], input[type="number"] {
+        input[type="text"], input[type="number"] {
             width: 100%; padding: 14px 18px;
             background: rgba(255,255,255,0.03); border: 1px solid #1a1a1a;
             color: white; border-radius: 14px; font-size: 0.9rem;
@@ -85,13 +85,9 @@
             outline: none; transition: all 0.2s; box-sizing: border-box;
             letter-spacing: 0.01em;
         }
-        textarea:focus, input[type="text"]:focus, input[type="number"]:focus { border-color: #fff; background: rgba(255,255,255,0.05); }
+        input[type="text"]:focus, input[type="number"]:focus { border-color: #fff; background: rgba(255,255,255,0.05); }
         ::placeholder { color: rgba(255,255,255,0.25); }
         input[type="number"]::-webkit-inner-spin-button { opacity: 0.3; }
-        textarea {
-            resize: vertical;
-            line-height: 1.6; padding: 14px 18px;
-        }
 
         .custom-select-wrapper { position: relative; width: 100%; }
         .custom-select-trigger {
@@ -970,7 +966,7 @@
 
                     <div class="field">
                         <label>Description du panel</label>
-                        <textarea name="ticketPanelDescription" rows="1" placeholder="Cliquez sur le bouton ci-dessous pour ouvrir un ticket."><%= settings.ticketPanelDescription || 'Cliquez sur le bouton ci-dessous pour ouvrir un ticket.' %></textarea>
+                        <input type="text" name="ticketPanelDescription" value="<%= settings.ticketPanelDescription || 'Cliquez sur le bouton ci-dessous pour ouvrir un ticket.' %>" placeholder="Cliquez sur le bouton ci-dessous pour ouvrir un ticket.">
                     </div>
 
                     <div class="field">
@@ -1152,7 +1148,7 @@
 
                     <div class="field">
                         <label>Message</label>
-                        <textarea id="schedMessage" rows="1" placeholder="Contenu de l'annonce..."></textarea>
+                        <input type="text" id="schedMessage" placeholder="Contenu de l'annonce...">
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">

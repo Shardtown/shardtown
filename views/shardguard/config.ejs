@@ -160,7 +160,7 @@
             letter-spacing: 1.5px; 
         }
 
-        textarea, input[type="text"], input[type="number"] { 
+        input[type="text"], input[type="number"] { 
             width: 100%; 
             padding: 14px 18px; 
             background: rgba(255, 255, 255, 0.03); 
@@ -168,14 +168,18 @@
             color: white; 
             border-radius: 14px; 
             font-size: 0.9rem;
+            font-family: inherit;
             outline: none;
             transition: all 0.2s;
+            box-sizing: border-box;
         }
 
-        textarea:focus, input[type="text"]:focus, input[type="number"]:focus { 
+        input[type="text"]:focus, input[type="number"]:focus { 
             border-color: #fff; 
             background: rgba(255, 255, 255, 0.05);
         }
+
+        ::placeholder { color: rgba(255,255,255,0.25); }
 
         /* Custom Dropdown Styling */
         .custom-select-wrapper { position: relative; width: 100%; }
@@ -946,7 +950,7 @@
                     </div>
                     <div id="quick-add-panel" class="hidden mb-4">
                         <div class="flex gap-2 items-center">
-                            <input id="quick-add-input" type="text" placeholder="mot1, mot2, bad*word, ..." class="rule-input flex-1 font-mono text-white/70" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:8px 12px;">
+                            <input id="quick-add-input" type="text" placeholder="mot1, mot2, bad*word, ..." class="flex-1 font-mono text-white/70">
                             <button type="button" onclick="confirmQuickAdd()" class="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-white/5 rounded-full border border-white/10 hover:bg-white/10 transition-colors shrink-0">Ajouter</button>
                         </div>
                     </div>
