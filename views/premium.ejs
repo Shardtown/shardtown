@@ -411,7 +411,7 @@
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                     </div>
                     <h2 class="text-3xl font-extrabold tracking-tight mb-3">Obtenir Premium</h2>
-                    <p class="text-white/40">Payez par carte ou entrez un code pour activer Premium sur votre serveur.</p>
+                    <p class="text-white/40">Sélectionnez votre serveur et payez par carte pour activer Premium.</p>
                 </div>
 
                 <% if (!user) { %>
@@ -446,15 +446,6 @@
                         </div>
                         <% } %>
 
-                        <div id="alert-success" class="alert-success mb-6">
-                            <div class="flex items-start gap-3">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 shrink-0"><polyline points="20 6 9 17 4 12"/></svg>
-                                <div>
-                                    <p class="font-bold mb-1">Premium activé avec succès !</p>
-                                    <p id="alert-success-msg" class="text-sm opacity-80"></p>
-                                </div>
-                            </div>
-                        </div>
                         <div id="alert-error" class="alert-error mb-6">
                             <div class="flex items-start gap-3">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -482,22 +473,6 @@
                                     Payer avec Stripe — 9,99 €
                                 </span>
                             </button>
-
-                            <div style="display:flex;align-items:center;gap:12px;margin:8px 0;">
-                                <div style="flex:1;height:1px;background:rgba(255,255,255,0.07);"></div>
-                                <span style="font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.2);text-transform:uppercase;letter-spacing:0.08em;">Ou</span>
-                                <div style="flex:1;height:1px;background:rgba(255,255,255,0.07);"></div>
-                            </div>
-
-                            <div>
-                                <label class="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Code d'activation</label>
-                                <div class="flex gap-3">
-                                    <input type="text" id="code-input" class="code-input" placeholder="Entrez votre code..." maxlength="32" autocomplete="off" autocorrect="off" spellcheck="false" style="flex:1;">
-                                    <button id="redeem-btn" onclick="redeemCode()" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:0 20px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:0.85rem;color:rgba(255,255,255,0.7);cursor:pointer;white-space:nowrap;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'">
-                                        <span id="redeem-btn-text">Valider</span>
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 <% } %>
@@ -523,36 +498,22 @@
 </footer>
 
 <script>
-function getGuildId() {
-    const sel = document.getElementById('guild-select');
-    return sel ? sel.value : '';
-}
-
-function showError(msg) {
-    const el = document.getElementById('alert-error');
-    document.getElementById('alert-error-msg').textContent = msg;
-    el.style.display = 'block';
-}
-
-function showSuccess(msg) {
-    const el = document.getElementById('alert-success');
-    document.getElementById('alert-success-msg').textContent = msg;
-    el.style.display = 'block';
-}
-
-function hideAlerts() {
-    document.getElementById('alert-success').style.display = 'none';
-    document.getElementById('alert-error').style.display = 'none';
-}
-
 async function startCheckout() {
-    hideAlerts();
-    const guildId = getGuildId();
-    if (!guildId) { showError('Veuillez sélectionner un serveur.'); return; }
+    const guildId = document.getElementById('guild-select')?.value;
+    const alertError = document.getElementById('alert-error');
+    alertError.style.display = 'none';
+
+    if (!guildId) {
+        document.getElementById('alert-error-msg').textContent = 'Veuillez sélectionner un serveur.';
+        alertError.style.display = 'block';
+        return;
+    }
+
     const btn = document.getElementById('buy-btn');
     const btnText = document.getElementById('buy-btn-text');
     btn.disabled = true;
     btnText.innerHTML = 'Redirection vers Stripe...';
+
     try {
         const res = await fetch('/api/create-checkout', {
             method: 'POST',
@@ -563,54 +524,18 @@ async function startCheckout() {
         if (data.success && data.url) {
             window.location.href = data.url;
         } else {
-            showError(data.error || 'Impossible de créer la session de paiement.');
+            document.getElementById('alert-error-msg').textContent = data.error || 'Impossible de créer la session de paiement.';
+            alertError.style.display = 'block';
             btn.disabled = false;
             btnText.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payer avec Stripe — 9,99 €';
         }
     } catch {
-        showError('Erreur réseau. Veuillez réessayer.');
+        document.getElementById('alert-error-msg').textContent = 'Erreur réseau. Veuillez réessayer.';
+        alertError.style.display = 'block';
         btn.disabled = false;
         btnText.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payer avec Stripe — 9,99 €';
     }
 }
-
-async function redeemCode() {
-    hideAlerts();
-    const code = document.getElementById('code-input').value.trim();
-    const guildId = getGuildId();
-    const btn = document.getElementById('redeem-btn');
-    const btnText = document.getElementById('redeem-btn-text');
-
-    if (!guildId) { showError('Veuillez sélectionner un serveur.'); return; }
-    if (!code) { showError('Veuillez entrer un code d\'activation.'); return; }
-
-    btn.disabled = true;
-    btnText.textContent = '...';
-
-    try {
-        const res = await fetch('/api/redeem-code', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code, guildId })
-        });
-        const data = await res.json();
-        if (data.success) {
-            showSuccess(data.message || 'Premium activé sur votre serveur.');
-            document.getElementById('code-input').value = '';
-        } else {
-            showError(data.error || 'Une erreur est survenue.');
-        }
-    } catch {
-        showError('Erreur réseau. Veuillez réessayer.');
-    } finally {
-        btn.disabled = false;
-        btnText.textContent = 'Valider';
-    }
-}
-
-document.getElementById('code-input')?.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') redeemCode();
-});
 </script>
 </body>
 </html>
