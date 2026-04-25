@@ -95,22 +95,73 @@
         .code-input::placeholder { letter-spacing: 0.06em; text-transform: none; font-weight: 400; color: #444; }
         .code-input:focus { border-color: rgba(251,191,36,0.5); box-shadow: 0 0 0 3px rgba(251,191,36,0.08); }
 
-        .guild-select {
-            background: #0a0a0a;
+        .custom-select-wrapper { position: relative; width: 100%; }
+        .custom-select-trigger {
+            width: 100%;
+            padding: 14px 18px;
+            background: rgba(255,255,255,0.03);
             border: 1px solid #2a2a2a;
-            border-radius: 12px;
             color: #fff;
+            border-radius: 12px;
             font-family: 'Plus Jakarta Sans', sans-serif;
             font-size: 0.9rem;
-            outline: none;
-            transition: border-color 0.2s;
-            padding: 14px 20px;
-            width: 100%;
-            appearance: none;
             cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .guild-select:focus { border-color: rgba(251,191,36,0.5); }
-        .guild-select option { background: #111; }
+        .custom-select-trigger span { color: #fff; }
+        .custom-select-trigger.placeholder span { color: rgba(255,255,255,0.3); }
+        .custom-select-trigger:after {
+            content: "";
+            width: 8px; height: 8px;
+            border-right: 2px solid rgba(255,255,255,0.4);
+            border-bottom: 2px solid rgba(255,255,255,0.4);
+            transform: rotate(45deg);
+            margin-bottom: 4px;
+            transition: transform 0.2s;
+        }
+        .custom-select-wrapper.open .custom-select-trigger {
+            border-color: rgba(251,191,36,0.5);
+            box-shadow: 0 0 0 3px rgba(251,191,36,0.08);
+        }
+        .custom-select-wrapper.open .custom-select-trigger:after {
+            transform: rotate(-135deg);
+            border-color: #fbbf24;
+        }
+        .custom-options {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0; right: 0;
+            background: #0f0f0f;
+            border: 1px solid #1a1a1a;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 1000;
+            max-height: 250px;
+            overflow-y: auto;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 6px;
+        }
+        .custom-select-wrapper.open .custom-options { display: block; }
+        .custom-option {
+            padding: 10px 14px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.65);
+            border-radius: 9px;
+        }
+        .custom-option:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .custom-option.selected {
+            background: rgba(251,191,36,0.1);
+            color: #fbbf24;
+            font-weight: 700;
+        }
+        .hidden-select { display: none; }
 
         .btn-premium {
             background: linear-gradient(135deg, #fbbf24, #f59e0b);
@@ -1012,14 +1063,24 @@
 
                             <div>
                                 <label class="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Serveur cible</label>
-                                <div style="position:relative;">
-                                    <select id="guild-select" class="guild-select">
+                                <div class="custom-select-wrapper" id="guild-select-wrapper">
+                                    <div class="custom-select-trigger placeholder" onclick="toggleGuildDropdown(this)">
+                                        <span>— Sélectionnez un serveur —</span>
+                                    </div>
+                                    <div class="custom-options">
+                                        <% if (adminGuilds.length === 0) { %>
+                                            <div class="custom-option" style="color:rgba(255,255,255,0.3);cursor:default;" onclick="event.stopPropagation()">Aucun serveur disponible</div>
+                                        <% } %>
+                                        <% adminGuilds.forEach(function(guild) { %>
+                                            <div class="custom-option" data-value="<%= guild.id %>" data-label="<%= guild.name %>" onclick="selectGuildOption(this)"><%= guild.name %></div>
+                                        <% }); %>
+                                    </div>
+                                    <select id="guild-select" class="hidden-select">
                                         <option value="">— Sélectionnez un serveur —</option>
                                         <% adminGuilds.forEach(function(guild) { %>
                                             <option value="<%= guild.id %>"><%= guild.name %></option>
                                         <% }); %>
                                     </select>
-                                    <svg style="position:absolute;right:16px;top:50%;transform:translateY(-50%);pointer-events:none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
                                 </div>
                             </div>
 
@@ -1088,6 +1149,29 @@ function selectPlanAndScroll(plan) {
     const target = document.getElementById('activate');
     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+function toggleGuildDropdown(trigger) {
+    trigger.parentElement.classList.toggle('open');
+}
+
+function selectGuildOption(option) {
+    const wrapper = option.closest('.custom-select-wrapper');
+    const select = wrapper.querySelector('select');
+    const trigger = wrapper.querySelector('.custom-select-trigger');
+    const triggerLabel = trigger.querySelector('span');
+    select.value = option.dataset.value;
+    triggerLabel.textContent = option.dataset.label;
+    trigger.classList.remove('placeholder');
+    wrapper.querySelectorAll('.custom-option').forEach(o => o.classList.remove('selected'));
+    option.classList.add('selected');
+    wrapper.classList.remove('open');
+}
+
+window.addEventListener('click', (e) => {
+    if (!e.target.closest('.custom-select-wrapper')) {
+        document.querySelectorAll('.custom-select-wrapper').forEach(w => w.classList.remove('open'));
+    }
+});
 
 async function startCheckout() {
     const guildId = document.getElementById('guild-select')?.value;
