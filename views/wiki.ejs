@@ -65,9 +65,28 @@
             font-weight: 700;
             font-size: 0.875rem;
             transition: opacity 0.2s;
+            text-decoration: none;
+            display: inline-block;
         }
 
         .btn-white:hover { opacity: 0.9; }
+
+        .hero-title {
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 800;
+            line-height: 0.9;
+            letter-spacing: -0.02em;
+            margin-bottom: 2rem;
+        }
+
+        .section-label {
+            font-size: 0.875rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 1rem;
+        }
 
         .wiki-sidebar-link {
             display: block;
@@ -86,13 +105,14 @@
         .wiki-card {
             background: #0a0a0a;
             border: 1px solid #1a1a1a;
-            border-radius: 20px;
-            padding: 36px;
+            border-radius: 24px;
+            padding: 40px;
             margin-bottom: 24px;
             scroll-margin-top: 120px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .wiki-card:hover { border-color: #2a2a2a; }
+        .wiki-card:hover { border-color: #333; transform: translateY(-4px); }
 
         .feature-chip {
             display: inline-flex;
@@ -219,14 +239,21 @@
     </script>
 
     <main class="pt-40 pb-24">
-        <div class="container-wide">
-
-            <!-- Hero -->
-            <div class="mb-16 text-center">
-                <p class="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Documentation</p>
-                <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight mb-5">WIKI</h1>
-                <p class="text-white/40 text-lg max-w-xl mx-auto">Tout ce que vous devez savoir pour configurer et utiliser les bots Shardtown.</p>
+        <section class="container-wide text-center py-20">
+            <div class="mb-12">
+                <p class="section-label">Documentation</p>
+                <h1 class="hero-title">WIKI</h1>
             </div>
+            <div class="max-w-3xl mx-auto">
+                <h2 class="text-2xl md:text-3xl font-bold mb-6 tracking-tight">
+                    TOUT POUR MAÎTRISER VOS BOTS.<br>
+                    <span class="text-white/40 uppercase text-lg">CONFIGURATION, COMMANDES ET BONNES PRATIQUES POUR SHARDGUARD ET SHARD.</span>
+                </h2>
+                <a href="#intro" class="text-sm font-bold tracking-widest hover:opacity-70 transition-opacity">EXPLORER LA DOCUMENTATION ></a>
+            </div>
+        </section>
+
+        <div class="container-wide">
 
             <div class="flex gap-12 items-start">
 
@@ -1055,7 +1082,7 @@
         </div>
     </main>
 
-    <footer class="py-20 border-t border-white/5">
+    <footer class="py-20">
         <div class="container-wide">
             <div class="flex flex-col md:flex-row justify-between items-center gap-8">
                 <div class="flex items-center gap-2">
@@ -1063,10 +1090,9 @@
                     <span class="font-bold tracking-tight text-sm uppercase">Shardtown</span>
                 </div>
                 <div class="flex gap-8">
-                    <a href="/#status" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Statut</a>
+                    <a href="/status" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Statut</a>
                     <a href="/terms" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Conditions Générales</a>
                     <a href="/privacy" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Politique de Confidentialité</a>
-                    <a href="/wiki" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Wiki</a>
                     <a href="/admin" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Administrateur</a>
                 </div>
                 <p class="text-xs font-bold text-white/30">Copyright © 2026 Shardtown. Tous droits réservés.</p>
