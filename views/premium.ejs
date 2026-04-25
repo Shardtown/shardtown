@@ -222,83 +222,205 @@
             display: none;
         }
 
+        .pricing-grid-bg {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+            background-size: 56px 56px;
+            -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+                    mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+            pointer-events: none;
+        }
+
+        .access-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 26px;
+            border-radius: 100px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.85);
+        }
+        .access-pill-tail {
+            color: rgba(255,255,255,0.4);
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            text-transform: none;
+        }
+
         .price-card {
+            position: relative;
             background: #0a0a0a;
-            border: 1px solid #1a1a1a;
-            border-radius: 24px;
-            padding: 36px 32px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid #181818;
+            border-radius: 22px;
+            padding: 32px 28px;
             display: flex;
             flex-direction: column;
-            position: relative;
+            transition: transform 0.25s ease, border-color 0.25s ease;
         }
-        .price-card:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+        .price-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.15); }
         .price-card.featured {
             border-color: rgba(251,191,36,0.4);
-            background: linear-gradient(180deg, rgba(251,191,36,0.04), #0a0a0a 60%);
+            background:
+                linear-gradient(180deg, rgba(251,191,36,0.05), transparent 35%),
+                #0a0a0a;
+            box-shadow: 0 0 80px -30px rgba(251,191,36,0.35);
         }
-        .price-card.featured:hover { border-color: rgba(251,191,36,0.6); }
+        .price-card.featured:hover { border-color: rgba(251,191,36,0.65); }
         .price-card .ribbon {
             position: absolute;
-            top: -12px;
+            top: -14px;
             left: 50%;
             transform: translateX(-50%);
             background: linear-gradient(135deg, #fbbf24, #f59e0b);
             color: #000;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            padding: 7px 18px;
+            border-radius: 100px;
+            white-space: nowrap;
+            box-shadow: 0 4px 20px -4px rgba(251,191,36,0.5);
+        }
+
+        .price-card-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            margin-bottom: 6px;
+        }
+        .price-card-tag {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.85rem;
+            margin-bottom: 22px;
+        }
+
+        .price-mode-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 14px;
+            border-radius: 100px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
             font-size: 0.68rem;
             font-weight: 800;
             letter-spacing: 0.1em;
             text-transform: uppercase;
-            padding: 5px 14px;
-            border-radius: 100px;
-            white-space: nowrap;
+            color: rgba(255,255,255,0.55);
+            align-self: flex-start;
+            margin-bottom: 22px;
         }
-        .price-amount {
-            font-size: 3.25rem;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            line-height: 1;
+
+        .price-compare {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.82rem;
+            margin-bottom: 8px;
+            min-height: 22px;
         }
-        .price-period {
-            color: rgba(255,255,255,0.4);
-            font-size: 0.95rem;
-            font-weight: 500;
+        .price-compare-old {
+            color: rgba(255,255,255,0.28);
+            text-decoration: line-through;
+            text-decoration-color: rgba(255,255,255,0.2);
         }
-        .price-feat {
+        .price-compare-save {
+            color: #4ade80;
+            font-weight: 700;
+        }
+
+        .price-amount-block {
             display: flex;
             align-items: flex-start;
             gap: 10px;
-            font-size: 0.875rem;
-            color: rgba(255,255,255,0.7);
-            padding: 8px 0;
+            margin-bottom: 8px;
         }
-        .price-feat svg { flex-shrink: 0; margin-top: 3px; }
+        .price-currency {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: rgba(255,255,255,0.4);
+            letter-spacing: 0.04em;
+            margin-top: 18px;
+        }
+        .price-amount {
+            font-size: 4.5rem;
+            font-weight: 800;
+            line-height: 0.95;
+            letter-spacing: -0.045em;
+            color: #fff;
+        }
+
+        .price-amount-desc {
+            color: rgba(255,255,255,0.55);
+            font-size: 0.85rem;
+            margin-bottom: 28px;
+        }
+        .price-amount-desc .struck {
+            text-decoration: line-through;
+            text-decoration-color: rgba(251,191,36,0.6);
+            color: rgba(255,255,255,0.35);
+        }
+
+        .price-features {
+            flex: 1;
+            margin-bottom: 26px;
+        }
+        .price-feat {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 7px 0;
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.85);
+            font-weight: 600;
+        }
+        .price-feat.muted {
+            color: rgba(255,255,255,0.55);
+            font-weight: 500;
+        }
+        .price-feat svg {
+            flex-shrink: 0;
+            color: #4ade80;
+        }
 
         .btn-plan {
             display: block;
             width: 100%;
-            padding: 14px 24px;
-            border-radius: 12px;
+            padding: 16px 24px;
+            border-radius: 14px;
             font-weight: 800;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             text-align: center;
             cursor: pointer;
-            transition: opacity 0.2s, transform 0.15s;
+            transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
             border: none;
             font-family: 'Plus Jakarta Sans', sans-serif;
             text-decoration: none;
-            letter-spacing: 0.01em;
+            letter-spacing: 0.005em;
         }
         .btn-plan-primary {
             background: linear-gradient(135deg, #fbbf24, #f59e0b);
             color: #000;
+            box-shadow: 0 8px 24px -8px rgba(251,191,36,0.6);
         }
         .btn-plan-secondary {
-            background: rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.05);
             color: #fff;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.12);
         }
-        .btn-plan:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-plan:hover { opacity: 0.92; transform: translateY(-1px); }
 
         .plan-toggle {
             display: grid;
@@ -495,6 +617,7 @@
             <a href="/#services" class="nav-link">Services</a>
             <a href="/wiki" class="nav-link">Wiki</a>
             <a href="/status" class="nav-link">Statut</a>
+            <a href="/premium" class="nav-link" style="color:#fff">Premium</a>
         </nav>
         <% if (user) { %>
             <div class="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/5">
@@ -529,81 +652,127 @@
     </section>
 
     <!-- Pricing -->
-    <section id="pricing" class="py-16">
-        <div class="container-wide">
-            <div class="text-center mb-12">
-                <p class="text-sm font-bold tracking-widest text-white/40 uppercase mb-3">Tarifs</p>
-                <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Choisissez votre formule</h2>
-                <p class="text-white/40">Une seule offre, deux façons de payer. Annulez à tout moment.</p>
+    <section id="pricing" class="py-20" style="position:relative;overflow:hidden;">
+        <div class="pricing-grid-bg"></div>
+        <div class="container-wide" style="position:relative;">
+
+            <div class="text-center mb-3">
+                <span class="access-pill">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.739-8z"/></svg>
+                    PREMIUM SHARDTOWN
+                    <span class="access-pill-tail">— payez une fois ou chaque mois</span>
+                </span>
             </div>
+            <p class="text-center text-sm mb-12 mt-3">
+                <span class="text-white/30 line-through mr-2">Concurrents : 9,99 €/mois</span>
+                <span class="text-white/70">Shardtown : à partir de 4,97 €/mois ou 49,97 € à vie</span>
+            </p>
 
             <div class="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
 
                 <!-- Monthly plan -->
                 <div class="price-card">
-                    <div class="mb-2">
-                        <span class="text-xs font-bold tracking-widest text-white/40 uppercase">Mensuel</span>
+                    <div class="price-card-name">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><polyline points="21 3 21 8 16 8"/></svg>
+                        Mensuel
                     </div>
-                    <div class="flex items-baseline gap-2 mb-1">
-                        <span class="price-amount">4,97 €</span>
-                        <span class="price-period">/ mois</span>
-                    </div>
-                    <p class="text-white/40 text-sm mb-6">Facturé chaque mois. Sans engagement.</p>
+                    <p class="price-card-tag">Pour tester sans engagement</p>
 
-                    <div class="flex-1 mb-8">
-                        <div class="price-feat">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            <span>Toutes les fonctionnalités Premium</span>
-                        </div>
-                        <div class="price-feat">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            <span>ShardGuard + Shard inclus</span>
-                        </div>
-                        <div class="price-feat">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            <span>Mises à jour permanentes</span>
-                        </div>
-                        <div class="price-feat">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            <span>Annulation en 1 clic</span>
-                        </div>
+                    <span class="price-mode-pill">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                        Abonnement
+                    </span>
+
+                    <div class="price-compare">
+                        <span class="price-compare-old">9,99 €/mois ailleurs</span>
+                        <span class="price-compare-save">Économisez 50%</span>
                     </div>
 
-                    <button class="btn-plan btn-plan-secondary" onclick="selectPlanAndScroll('monthly')">Choisir le mensuel</button>
+                    <div class="price-amount-block">
+                        <span class="price-currency">EUR</span>
+                        <span class="price-amount">4,97</span>
+                    </div>
+                    <p class="price-amount-desc">Par mois — résiliable à tout moment</p>
+
+                    <div class="price-features">
+                        <div class="price-feat">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Toutes les fonctionnalités Premium
+                        </div>
+                        <div class="price-feat">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            ShardGuard + Shard inclus
+                        </div>
+                        <div class="price-feat muted">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Mises à jour permanentes
+                        </div>
+                        <div class="price-feat muted">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Sans engagement
+                        </div>
+                        <div class="price-feat muted">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Annulation en 1 clic
+                        </div>
+                    </div>
+
+                    <button class="btn-plan btn-plan-secondary" onclick="selectPlanAndScroll('monthly')">Choisir Mensuel</button>
                 </div>
 
                 <!-- Lifetime plan -->
                 <div class="price-card featured">
-                    <div class="ribbon">★ Meilleure offre — économisez 40%</div>
-                    <div class="mb-2">
-                        <span class="text-xs font-bold tracking-widest uppercase" style="color:#fbbf24;">À vie</span>
+                    <div class="ribbon">★ Meilleure offre</div>
+                    <div class="price-card-name">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 6-10 13L2 9z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></svg>
+                        À vie
                     </div>
-                    <div class="flex items-baseline gap-2 mb-1">
-                        <span class="price-amount">49,97 €</span>
-                        <span class="price-period">une fois</span>
-                    </div>
-                    <p class="text-white/40 text-sm mb-6">Paiement unique. Premium à vie sur le serveur.</p>
+                    <p class="price-card-tag">La meilleure valeur à long terme</p>
 
-                    <div class="flex-1 mb-8">
-                        <div class="price-feat">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            <span>Toutes les fonctionnalités Premium</span>
-                        </div>
-                        <div class="price-feat">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            <span>Aucun renouvellement, jamais</span>
-                        </div>
-                        <div class="price-feat">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            <span>Équivaut à ~10 mois d'abonnement</span>
-                        </div>
-                        <div class="price-feat">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            <span>Toutes les futures fonctionnalités</span>
-                        </div>
+                    <span class="price-mode-pill" style="background:rgba(251,191,36,0.08);border-color:rgba(251,191,36,0.25);color:#fbbf24;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.739-8z"/></svg>
+                        Paiement unique
+                    </span>
+
+                    <div class="price-compare">
+                        <span class="price-compare-old">59,64 €/an en mensuel</span>
+                        <span class="price-compare-save">Économisez 16%</span>
                     </div>
 
-                    <button class="btn-plan btn-plan-primary" onclick="selectPlanAndScroll('lifetime')">Choisir à vie</button>
+                    <div class="price-amount-block">
+                        <span class="price-currency">EUR</span>
+                        <span class="price-amount">49,97</span>
+                    </div>
+                    <p class="price-amount-desc">À vie — sans <span class="struck">renouvellement</span></p>
+
+                    <div class="price-features">
+                        <div class="price-feat">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Toutes les fonctionnalités Premium
+                        </div>
+                        <div class="price-feat">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Aucun renouvellement, jamais
+                        </div>
+                        <div class="price-feat">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Toutes les futures mises à jour
+                        </div>
+                        <div class="price-feat muted">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Équivaut à ~10 mois d'abonnement
+                        </div>
+                        <div class="price-feat muted">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Support prioritaire
+                        </div>
+                        <div class="price-feat muted">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Accès anticipé aux nouveautés
+                        </div>
+                    </div>
+
+                    <button class="btn-plan btn-plan-primary" onclick="selectPlanAndScroll('lifetime')">Choisir À vie</button>
                 </div>
             </div>
         </div>

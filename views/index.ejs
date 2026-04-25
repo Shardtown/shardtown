@@ -205,13 +205,10 @@
                 <a href="#services" class="nav-link">Services</a>
                 <a href="/wiki" class="nav-link">Wiki</a>
                 <a href="/status" class="nav-link">Statut</a>
+                <a href="/premium" class="nav-link">Premium</a>
             </nav>
             <% if (user) { %>
                 <div class="flex items-center gap-3">
-                    <button onclick="openPremiumModal()" class="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:opacity-80" style="background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.04)); border: 1px solid rgba(251,191,36,0.3); color: #fbbf24;">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="#fbbf24" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                        Premium
-                    </button>
                     <div class="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/5">
                         <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="w-7 h-7 rounded-full border border-white/10" alt="">
                         <span class="font-bold text-sm"><%= user.username %></span>
@@ -220,10 +217,6 @@
                 </div>
             <% } else { %>
                 <div class="flex items-center gap-3">
-                    <button onclick="openPremiumModal()" class="hidden md:flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all hover:opacity-80" style="background: linear-gradient(135deg, rgba(251,191,36,0.12), rgba(251,191,36,0.04)); border: 1px solid rgba(251,191,36,0.3); color: #fbbf24;">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="#fbbf24" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                        Premium
-                    </button>
                     <a href="/dashboard" class="btn-white">Dashboard</a>
                 </div>
             <% } %>
