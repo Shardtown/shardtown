@@ -8,15 +8,24 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg: #000000;
+            --text: #ffffff;
+            --accent: #ffffff;
+            --muted: #888888;
+            --border: #1a1a1a;
+        }
+
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background: #000;
             background-image:
-                radial-gradient(at 50% 0%, rgba(251, 191, 36, 0.12) 0px, transparent 50%),
-                radial-gradient(at 0% 100%, rgba(139, 92, 246, 0.08) 0px, transparent 50%),
-                radial-gradient(at 100% 100%, rgba(251, 191, 36, 0.06) 0px, transparent 50%);
+                radial-gradient(at 50% 0%, rgba(37, 99, 235, 0.2) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(37, 99, 235, 0.05) 0px, transparent 50%);
             background-attachment: fixed;
-            color: #fff;
+            color: var(--text);
             margin: 0;
             padding: 0;
         }
@@ -26,7 +35,7 @@
             top: 0; left: 50%;
             transform: translateX(-50%);
             width: 100%; height: 100vh;
-            background: radial-gradient(circle at 50% -20%, rgba(251, 191, 36, 0.08) 0%, transparent 70%);
+            background: radial-gradient(circle at 50% -20%, rgba(37, 99, 235, 0.1) 0%, transparent 70%);
             pointer-events: none;
             z-index: -1;
         }
@@ -38,22 +47,52 @@
         }
 
         .nav-link {
-            color: #888;
+            color: var(--muted);
             transition: color 0.2s;
             font-size: 0.875rem;
             font-weight: 500;
             text-decoration: none;
         }
-        .nav-link:hover { color: #fff; }
+        .nav-link:hover { color: var(--text); }
+
+        .btn-white {
+            background: #fff;
+            color: #000;
+            padding: 10px 24px;
+            border-radius: 100px;
+            font-weight: 700;
+            font-size: 0.875rem;
+            transition: opacity 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-white:hover { opacity: 0.9; }
+
+        .hero-title {
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 800;
+            line-height: 0.9;
+            letter-spacing: -0.02em;
+            margin-bottom: 2rem;
+        }
+
+        .section-label {
+            font-size: 0.875rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 1rem;
+        }
 
         .feature-card {
             background: #0a0a0a;
             border: 1px solid #1a1a1a;
-            border-radius: 20px;
-            padding: 32px;
+            border-radius: 24px;
+            padding: 40px;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .feature-card:hover { border-color: rgba(251,191,36,0.2); }
+        .feature-card:hover { border-color: #333; transform: translateY(-4px); }
 
         .feature-row {
             display: flex;
@@ -309,14 +348,14 @@
         .price-card {
             position: relative;
             background: #0a0a0a;
-            border: 1px solid #181818;
-            border-radius: 22px;
-            padding: 32px 28px;
+            border: 1px solid #1a1a1a;
+            border-radius: 24px;
+            padding: 36px 32px;
             display: flex;
             flex-direction: column;
-            transition: transform 0.25s ease, border-color 0.25s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .price-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.15); }
+        .price-card:hover { transform: translateY(-4px); border-color: #333; }
         .price-card.featured {
             border-color: rgba(251,191,36,0.4);
             background:
@@ -520,8 +559,8 @@
 
         .compare-table {
             background: #0a0a0a;
-            border: 1px solid #181818;
-            border-radius: 20px;
+            border: 1px solid #1a1a1a;
+            border-radius: 24px;
             overflow: hidden;
             margin-bottom: 32px;
             position: relative;
@@ -658,7 +697,7 @@
 
 <!-- Header -->
 <div class="fixed top-6 left-0 right-0 z-50 px-6">
-    <header class="container-wide flex justify-between items-center bg-transparent rounded-full py-4 px-8 border border-white/10" style="background: rgba(0,0,0,0.6); backdrop-filter: blur(20px);">
+    <header id="main-header" class="container-wide flex justify-between items-center bg-transparent rounded-full transition-all duration-300 py-4 px-8 border border-white/10">
         <a href="/" class="flex items-center gap-2">
             <img src="/image/shardtown.jpeg" alt="Shardtown Logo" class="w-10 h-10 rounded-full object-cover">
             <span class="font-bold tracking-tight text-xl uppercase">Shardtown</span>
@@ -671,53 +710,64 @@
             <a href="/premium" class="nav-link" style="color:#fff">Premium</a>
         </nav>
         <% if (user) { %>
-            <div class="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/5">
-                <% if (user.avatar) { %>
-                    <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="w-7 h-7 rounded-full" alt="">
-                <% } else { %>
-                    <div class="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold"><%= user.username.charAt(0).toUpperCase() %></div>
-                <% } %>
-                <span class="text-sm font-semibold"><%= user.username %></span>
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex items-center gap-3 px-4 py-2 bg-white/5 rounded-full border border-white/5">
+                    <% if (user.avatar) { %>
+                        <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" class="w-7 h-7 rounded-full border border-white/10" alt="">
+                    <% } else { %>
+                        <div class="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold"><%= user.username.charAt(0).toUpperCase() %></div>
+                    <% } %>
+                    <span class="font-bold text-sm"><%= user.username %></span>
+                </div>
+                <a href="/dashboard" class="btn-white">Dashboard</a>
             </div>
         <% } else { %>
-            <a href="/login?returnTo=/premium" class="px-5 py-2.5 rounded-full font-bold text-sm" style="background:#fff;color:#000;">Se connecter</a>
+            <div class="flex items-center gap-3">
+                <a href="/login?returnTo=/premium" class="btn-white">Se connecter</a>
+            </div>
         <% } %>
     </header>
 </div>
 
-<main style="padding-top: 120px;">
+<script>
+    window.addEventListener('scroll', () => {
+        const header = document.getElementById('main-header');
+        if (window.scrollY > 50) {
+            header.classList.remove('bg-transparent', 'border-white/10');
+            header.classList.add('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+        } else {
+            header.classList.add('bg-transparent', 'border-white/10');
+            header.classList.remove('bg-white/5', 'backdrop-blur-lg', 'border-white/5');
+        }
+    });
+</script>
+
+<main class="pt-40">
     <!-- Hero -->
-    <section class="py-20 text-center">
-        <div class="container-wide">
-            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-8" style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="#fbbf24" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <span class="text-xs font-bold tracking-widest uppercase" style="color:#fbbf24;">Shardtown Premium</span>
-            </div>
-            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6" style="line-height:0.92;">Tous les bots.<br><span style="color:#fbbf24;">Une seule offre.</span></h1>
-            <p class="text-white/40 text-xl max-w-xl mx-auto mb-10">Débloquez l'ensemble des fonctionnalités avancées de ShardGuard et Shard sur votre serveur Discord.</p>
-            <div class="flex justify-center gap-4 flex-wrap">
-                <a href="#pricing" class="px-8 py-4 rounded-full font-bold text-sm" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;">Voir les tarifs</a>
-                <a href="#features" class="px-8 py-4 rounded-full font-bold text-sm border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition-colors">Voir les fonctionnalités</a>
-            </div>
+    <section class="container-wide text-center py-20">
+        <div class="mb-12">
+            <p class="section-label">Shardtown Premium</p>
+            <h1 class="hero-title">PREMIUM</h1>
+        </div>
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-2xl md:text-3xl font-bold mb-6 tracking-tight">
+                TOUS LES BOTS, UNE SEULE OFFRE.<br>
+                <span class="text-white/40 uppercase text-lg">DÉBLOQUEZ L'ENSEMBLE DES FONCTIONNALITÉS AVANCÉES DE SHARDGUARD ET SHARD SUR VOTRE SERVEUR DISCORD.</span>
+            </h2>
+            <a href="#pricing" class="text-sm font-bold tracking-widest hover:opacity-70 transition-opacity">VOIR LES TARIFS ></a>
         </div>
     </section>
 
     <!-- Pricing -->
-    <section id="pricing" class="py-20" style="position:relative;overflow:hidden;">
+    <section id="pricing" class="py-24" style="position:relative;overflow:hidden;">
         <div class="pricing-grid-bg"></div>
         <div class="container-wide" style="position:relative;">
 
-            <div class="text-center mb-3">
-                <span class="access-pill">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.739-8z"/></svg>
-                    PREMIUM SHARDTOWN
-                    <span class="access-pill-tail">— payez une fois ou chaque mois</span>
-                </span>
+            <div class="text-center mb-12">
+                <p class="section-label">Nos Tarifs</p>
+                <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Choisissez votre formule</h2>
+                <p class="text-white/40">Une seule offre, deux façons de payer. Annulez à tout moment.</p>
             </div>
-            <p class="text-center text-sm mb-12 mt-3">
-                <span class="text-white/30 line-through mr-2">Concurrents : 9,99 €/mois</span>
-                <span class="text-white/70">Shardtown : à partir de 4,97 €/mois ou 49,97 € à vie</span>
-            </p>
 
             <div class="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
 
@@ -830,11 +880,11 @@
     </section>
 
     <!-- Premium features -->
-    <section id="features" class="py-16">
+    <section id="features" class="py-24">
         <div class="container-wide">
             <div class="text-center mb-14">
-                <p class="text-sm font-bold tracking-widest text-white/40 uppercase mb-3">Fonctionnalités</p>
-                <h2 class="text-3xl md:text-5xl font-extrabold tracking-tight mb-4">Comparatif détaillé</h2>
+                <p class="section-label">Fonctionnalités</p>
+                <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Comparatif détaillé</h2>
                 <p class="text-white/40 max-w-xl mx-auto">Tout ce qui est inclus dans la formule gratuite et tout ce que Premium débloque.</p>
             </div>
 
@@ -994,25 +1044,23 @@
 
 
     <!-- Activate section -->
-    <section id="activate" class="py-20">
+    <section id="activate" class="py-24">
         <div class="container-wide">
             <div class="max-w-lg mx-auto">
                 <div class="text-center mb-10">
-                    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-6" style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    </div>
-                    <h2 class="text-3xl font-extrabold tracking-tight mb-3">Obtenir Premium</h2>
+                    <p class="section-label">Activation</p>
+                    <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Obtenir Premium</h2>
                     <p class="text-white/40">Sélectionnez votre serveur et payez par carte pour activer Premium.</p>
                 </div>
 
                 <% if (!user) { %>
-                    <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:20px;padding:40px;text-align:center;">
+                    <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:24px;padding:40px;text-align:center;">
                         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" class="mx-auto mb-4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         <p class="text-white/50 mb-6">Connectez-vous avec Discord pour activer Premium sur votre serveur.</p>
-                        <a href="/login?returnTo=/premium" class="inline-block px-8 py-3.5 rounded-full font-bold text-sm" style="background:#fff;color:#000;">Se connecter avec Discord</a>
+                        <a href="/login?returnTo=/premium" class="btn-white">Se connecter avec Discord</a>
                     </div>
                 <% } else { %>
-                    <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:20px;padding:40px;">
+                    <div style="background:#0a0a0a;border:1px solid #1a1a1a;border-radius:24px;padding:40px;">
 
                         <% const paymentStatus = typeof paymentResult !== 'undefined' ? paymentResult : null; %>
 
@@ -1099,19 +1147,21 @@
     </section>
 </main>
 
-<!-- Footer -->
-<footer class="py-12 border-t border-white/5">
-    <div class="container-wide flex flex-col md:flex-row justify-between items-center gap-4">
-        <div class="flex items-center gap-2">
-            <img src="/image/shardtown.jpeg" alt="" class="w-7 h-7 rounded-full object-cover">
-            <span class="font-bold text-sm uppercase tracking-tight">Shardtown</span>
+<footer class="py-20">
+    <div class="container-wide">
+        <div class="flex flex-col md:flex-row justify-between items-center gap-8">
+            <div class="flex items-center gap-2">
+                <img src="/image/shardtown.jpeg" alt="Shardtown Logo" class="w-6 h-6 rounded-full object-cover">
+                <span class="font-bold tracking-tight text-sm uppercase">Shardtown</span>
+            </div>
+            <div class="flex gap-8">
+                <a href="/status" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Statut</a>
+                <a href="/terms" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Conditions Générales</a>
+                <a href="/privacy" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Politique de Confidentialité</a>
+                <a href="/admin" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Administrateur</a>
+            </div>
+            <p class="text-xs font-bold text-white/30">Copyright © 2026 Shardtown. Tous droits réservés.</p>
         </div>
-        <div class="flex items-center gap-6">
-            <a href="/terms" class="text-xs text-white/30 hover:text-white/60 transition-colors">Conditions</a>
-            <a href="/privacy" class="text-xs text-white/30 hover:text-white/60 transition-colors">Confidentialité</a>
-            <a href="/status" class="text-xs text-white/30 hover:text-white/60 transition-colors">Statut</a>
-        </div>
-        <p class="text-xs text-white/20">© 2025 Shardtown. Tous droits réservés.</p>
     </div>
 </footer>
 
