@@ -75,6 +75,123 @@ async function connectDB() {
                 PRIMARY KEY (bot_label, shard_id)
             )
         `);
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_guilds (
+                bot_label VARCHAR(50),
+                shard_id INT,
+                guild_id VARCHAR(255),
+                guild_name VARCHAR(255),
+                PRIMARY KEY (bot_label, guild_id)
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_scheduled (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guildId VARCHAR(255) NOT NULL,
+                channelId VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                intervalHours INT NOT NULL DEFAULT 24,
+                nextRun DATETIME NOT NULL
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_giveaways (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guildId VARCHAR(255) NOT NULL,
+                channelId VARCHAR(255) NOT NULL,
+                messageId VARCHAR(255) DEFAULT '',
+                prize TEXT NOT NULL,
+                winnersCount INT DEFAULT 1,
+                endsAt DATETIME NOT NULL,
+                ended TINYINT(1) DEFAULT 0,
+                createdBy VARCHAR(255) DEFAULT '',
+                minRole VARCHAR(255) DEFAULT '',
+                minLevel INT DEFAULT 0
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_giveaway_entries (
+                giveawayId INT NOT NULL,
+                userId VARCHAR(255) NOT NULL,
+                PRIMARY KEY (giveawayId, userId)
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_birthdays (
+                userId VARCHAR(255) NOT NULL,
+                guildId VARCHAR(255) NOT NULL,
+                day INT NOT NULL,
+                month INT NOT NULL,
+                PRIMARY KEY (guildId, userId)
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_polls (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guildId VARCHAR(255) NOT NULL,
+                channelId VARCHAR(255) NOT NULL,
+                messageId VARCHAR(255) DEFAULT '',
+                question TEXT NOT NULL,
+                choices JSON NOT NULL,
+                endsAt DATETIME DEFAULT NULL,
+                ended TINYINT(1) DEFAULT 0,
+                anonymous TINYINT(1) DEFAULT 0
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_poll_votes (
+                pollId INT NOT NULL,
+                userId VARCHAR(255) NOT NULL,
+                choiceIndex INT NOT NULL,
+                PRIMARY KEY (pollId, userId)
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_reminders (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guildId VARCHAR(255) NOT NULL,
+                userId VARCHAR(255) NOT NULL,
+                channelId VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                remindAt DATETIME NOT NULL,
+                done TINYINT(1) DEFAULT 0
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_invite_cache (
+                guildId VARCHAR(255) NOT NULL,
+                inviteCode VARCHAR(50) NOT NULL,
+                uses INT DEFAULT 0,
+                PRIMARY KEY (guildId, inviteCode)
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_referrals (
+                guildId VARCHAR(255) NOT NULL,
+                inviterId VARCHAR(255) NOT NULL,
+                inviteeId VARCHAR(255) NOT NULL,
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (guildId, inviteeId)
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_economy (
+                guildId VARCHAR(255) NOT NULL,
+                userId VARCHAR(255) NOT NULL,
+                balance BIGINT DEFAULT 0,
+                lastDaily DATETIME DEFAULT NULL,
+                PRIMARY KEY (guildId, userId)
+            )
+        `).catch(() => {});
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS shard_shop (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                guildId VARCHAR(255) NOT NULL,
+                roleId VARCHAR(255) NOT NULL,
+                price INT NOT NULL,
+                name VARCHAR(255) DEFAULT ''
+            )
+        `).catch(() => {});
     } catch (err) {
         console.error('❌ Erreur MySQL Shard:', err.message);
         process.exit(1);
@@ -101,6 +218,12 @@ function fmt(template, member) {
 
 function hexToInt(hex) {
     return parseInt(String(hex || '#3b82f6').replace('#', ''), 16) || 0x3b82f6;
+}
+
+function safeJsonParse(value, fallback) {
+    if (value == null) return fallback;
+    if (typeof value !== 'string') return value;
+    try { return JSON.parse(value); } catch { return fallback; }
 }
 
 client.once('ready', async () => {
@@ -299,7 +422,8 @@ client.once('ready', async () => {
             const EMOJIS = ['🔵', '🟢', '🟡', '🟠', '🔴'];
             for (const poll of rows) {
                 try {
-                    const choices = typeof poll.choices === 'string' ? JSON.parse(poll.choices) : poll.choices;
+                    const choices = safeJsonParse(poll.choices, []);
+                    if (!Array.isArray(choices) || !choices.length) continue;
                     const [votes] = await db.execute(`SELECT choiceIndex, COUNT(*) as count FROM shard_poll_votes WHERE pollId = ? GROUP BY choiceIndex ORDER BY choiceIndex`, [poll.id]);
                     const total = votes.reduce((s, v) => s + Number(v.count), 0);
                     await db.execute(`UPDATE shard_polls SET ended = 1 WHERE id = ?`, [poll.id]);
@@ -513,16 +637,15 @@ client.on('messageCreate', async (message) => {
     if (!settings) return;
 
     if (settings.autoReactions) {
-        try {
-            const reactions = typeof settings.autoReactions === 'string'
-                ? JSON.parse(settings.autoReactions) : settings.autoReactions;
+        const reactions = safeJsonParse(settings.autoReactions, []);
+        if (Array.isArray(reactions)) {
             const content = message.content.toLowerCase();
             for (const r of reactions) {
-                if (r.text && content.includes(r.text.toLowerCase())) {
+                if (r && r.text && content.includes(String(r.text).toLowerCase())) {
                     await message.react(r.emoji).catch(() => {});
                 }
             }
-        } catch {}
+        }
     }
 
     if (settings.levelsEnabled) {
@@ -536,17 +659,15 @@ client.on('messageCreate', async (message) => {
         const xpMax = parseInt(settings.xpMax) || 25;
         let gained = Math.floor(Math.random() * (xpMax - xpMin + 1)) + xpMin;
         if (settings.isPremium && settings.xpRoleMultipliers) {
-            try {
-                const multipliers = typeof settings.xpRoleMultipliers === 'string' ? JSON.parse(settings.xpRoleMultipliers) : settings.xpRoleMultipliers;
-                if (Array.isArray(multipliers)) {
-                    for (const { roleId, multiplier } of multipliers) {
-                        if (message.member.roles.cache.has(roleId)) {
-                            gained = Math.round(gained * (parseFloat(multiplier) || 1));
-                            break;
-                        }
+            const multipliers = safeJsonParse(settings.xpRoleMultipliers, []);
+            if (Array.isArray(multipliers)) {
+                for (const { roleId, multiplier } of multipliers) {
+                    if (message.member.roles.cache.has(roleId)) {
+                        gained = Math.round(gained * (parseFloat(multiplier) || 1));
+                        break;
                     }
                 }
-            } catch {}
+            }
         }
 
         const defaultThresholds = [100, 250, 500, 1000, 2000, 3500, 5500, 8000, 11500, 15000];
@@ -570,9 +691,11 @@ client.on('messageCreate', async (message) => {
                 ON DUPLICATE KEY UPDATE xp = xp + ?
             `, [message.guild.id, message.author.id, gained, gained]);
 
-            const [[row]] = await db.execute('SELECT xp, level FROM shard_levels WHERE guildId = ? AND userId = ?', [message.guild.id, message.author.id]);
-            const currentLevel = row.level;
-            const newLevel = getLevelFromXP(row.xp);
+            const [rows] = await db.execute('SELECT xp, level FROM shard_levels WHERE guildId = ? AND userId = ?', [message.guild.id, message.author.id]);
+            const row = rows[0];
+            if (!row) return;
+            const currentLevel = row.level || 0;
+            const newLevel = getLevelFromXP(row.xp || 0);
 
             if (newLevel > currentLevel) {
                 await db.execute('UPDATE shard_levels SET level = ? WHERE guildId = ? AND userId = ?', [newLevel, message.guild.id, message.author.id]);
@@ -598,9 +721,8 @@ client.on('messageCreate', async (message) => {
                     } catch {}
                 }
 
-                const rewards = typeof settings.levelRewards === 'string'
-                    ? JSON.parse(settings.levelRewards || '[]') : (settings.levelRewards || []);
-                const reward = rewards.find(r => r.level === newLevel);
+                const rewards = safeJsonParse(settings.levelRewards, []) || [];
+                const reward = Array.isArray(rewards) ? rewards.find(r => r && r.level === newLevel) : null;
                 if (reward) {
                     try {
                         const member = await message.guild.members.fetch(message.author.id);
@@ -765,7 +887,8 @@ client.on('interactionCreate', async (interaction) => {
         const [rows] = await db.execute(`SELECT * FROM shard_polls WHERE messageId = ? AND ended = 0`, [msgId]);
         if (!rows[0]) return interaction.editReply({ content: 'Ce sondage est terminé.' });
         const poll = rows[0];
-        const choices = typeof poll.choices === 'string' ? JSON.parse(poll.choices) : poll.choices;
+        const choices = safeJsonParse(poll.choices, []);
+        if (!Array.isArray(choices) || !choices.length) return interaction.editReply({ content: 'Sondage corrompu.' });
         const EMOJIS = ['🔵', '🟢', '🟡', '🟠', '🔴'];
         try {
             await db.execute(`INSERT INTO shard_poll_votes (pollId, userId, choiceIndex) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE choiceIndex = VALUES(choiceIndex)`, [poll.id, interaction.user.id, choiceIndex]);
@@ -840,7 +963,8 @@ client.on('interactionCreate', async (interaction) => {
             return interaction.editReply({ content: `Vous avez déjà ${openTickets.length} ticket(s) ouvert(s). Fermez-les avant d'en ouvrir un nouveau.` });
         }
 
-        const ticketNumber = (await db.execute(`SELECT COUNT(*) as cnt FROM shard_tickets WHERE guildId = ?`, [guild.id]))[0][0].cnt + 1;
+        const [ticketCountRows] = await db.execute(`SELECT COUNT(*) as cnt FROM shard_tickets WHERE guildId = ?`, [guild.id]);
+        const ticketNumber = (ticketCountRows[0]?.cnt || 0) + 1;
         const channelName = `ticket-${String(ticketNumber).padStart(4, '0')}`;
 
         const permissionOverwrites = [
@@ -1037,4 +1161,19 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
+client.on('error', (err) => console.error('[Shard] client error:', err.message));
+client.on('shardError', (err, shardId) => console.error(`[Shard] shard ${shardId} error:`, err.message));
+client.on('shardDisconnect', (event, shardId) => console.warn(`[Shard] shard ${shardId} disconnected (code ${event?.code})`));
+client.on('shardReconnecting', (shardId) => console.log(`[Shard] shard ${shardId} reconnecting...`));
+client.on('invalidated', () => {
+    console.error('[Shard] session invalidée — arrêt du process pour redémarrage');
+    process.exit(1);
+});
+process.on('unhandledRejection', (reason) => console.error('[Shard] unhandledRejection:', reason));
+process.on('uncaughtException', (err) => console.error('[Shard] uncaughtException:', err.message));
+
+if (!process.env.SHARD_TOKEN) {
+    console.error('❌ SHARD_TOKEN manquant dans .env');
+    process.exit(1);
+}
 client.login(process.env.SHARD_TOKEN);

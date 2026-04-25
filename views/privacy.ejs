@@ -153,11 +153,13 @@
             <div class="content-card">
                 <div class="legal-section">
                     <h2>1. Collecte des Données</h2>
-                    <p>Dans le cadre de l'utilisation des produits et services Shardtown, nous pouvons être amenés à collecter :</p>
+                    <p>Dans le cadre de l'utilisation des produits et services Shardtown, nous collectons :</p>
                     <ul class="list-disc list-inside text-[#888] space-y-2 ml-4">
-                        <li><strong>Données d'Identification :</strong> Identifiants de plateformes tierces (ex: Discord User ID) nécessaires à l'authentification et au fonctionnement des outils.</li>
-                        <li><strong>Données de Configuration :</strong> Les réglages, préférences et contenus que vous définissez au sein de nos interfaces.</li>
-                        <li><strong>Données Techniques :</strong> Logs d'activité, adresses IP (pour la sécurité et la prévention des abus) et statistiques d'utilisation.</li>
+                        <li><strong>Données Discord (OAuth2) :</strong> votre identifiant Discord, nom d'utilisateur, avatar, et la liste de vos serveurs avec vos permissions sur ceux-ci. Ces données sont obtenues via les scopes <code>identify</code> et <code>guilds</code> avec votre consentement explicite.</li>
+                        <li><strong>Données de Configuration :</strong> les réglages des bots, messages personnalisés, listes de rôles, codes d'accès, sondages, giveaways et autres paramètres que vous définissez sur nos interfaces.</li>
+                        <li><strong>Données de Modération :</strong> avertissements, sanctions, journaux d'événements de votre serveur (jointures, départs, vérifications) liés à un identifiant Discord.</li>
+                        <li><strong>Données de Paiement :</strong> traitées intégralement par Stripe (voir section 4). Nous ne stockons jamais de numéro de carte ni de CVV. Nous conservons uniquement l'identifiant Stripe de la session/abonnement et le statut Premium associé au serveur.</li>
+                        <li><strong>Données Techniques :</strong> adresses IP (sécurité et limitation de débit), cookies de session, logs d'erreurs.</li>
                     </ul>
                 </div>
 
@@ -165,36 +167,66 @@
                     <h2>2. Finalité du Traitement</h2>
                     <p>Vos données sont traitées exclusivement pour :</p>
                     <ul class="list-disc list-inside text-[#888] space-y-2 ml-4">
-                        <li>Fournir les services demandés (vérification, automatisation, etc.).</li>
-                        <li>Assurer la sécurité de l'infrastructure et prévenir les comportements malveillants.</li>
+                        <li>Fournir les services demandés (authentification Discord, configuration des bots, modération, vérification, économie, niveaux, tickets, etc.).</li>
+                        <li>Traiter les paiements Premium et facturer les abonnements via Stripe.</li>
+                        <li>Assurer la sécurité de l'infrastructure et prévenir les comportements malveillants (anti-raid, listes noires, rate-limiting).</li>
                         <li>Gérer les relations commerciales et le support technique.</li>
                         <li>Améliorer nos produits via des analyses d'utilisation anonymisées.</li>
                     </ul>
                 </div>
 
                 <div class="legal-section">
-                    <h2>3. Conservation des Données</h2>
-                    <p>Les données sont conservées pour la durée strictement nécessaire à la réalisation des finalités précitées. Les logs temporaires liés à la sécurité sont régulièrement purgés conformément à nos politiques de rétention interne.</p>
+                    <h2>3. Cookies et Stockage Local</h2>
+                    <p>Nous utilisons exclusivement des cookies <strong>strictement nécessaires</strong> au fonctionnement du site :</p>
+                    <ul class="list-disc list-inside text-[#888] space-y-2 ml-4">
+                        <li><code>sgid</code> : cookie de session HTTP-only, SameSite=Lax, Secure en production. Durée : 24h. Permet de maintenir votre connexion Discord OAuth.</li>
+                        <li>Jeton CSRF de session : protège contre les soumissions de formulaire frauduleuses.</li>
+                    </ul>
+                    <p class="mt-3">Aucun cookie de tracking publicitaire, analytics tiers, ou de profilage n'est déposé.</p>
                 </div>
 
                 <div class="legal-section">
-                    <h2>4. Partage des Données</h2>
-                    <p>Shardtown ne procède à aucune vente ou location de vos données personnelles. Le partage de données se limite à nos prestataires techniques essentiels et aux obligations légales impératives.</p>
+                    <h2>4. Sous-traitants et Partage des Données</h2>
+                    <p>Vos données peuvent être transférées à nos sous-traitants techniques, strictement nécessaires à la fourniture du service :</p>
+                    <ul class="list-disc list-inside text-[#888] space-y-2 ml-4">
+                        <li><strong>Discord Inc.</strong> (États-Unis) — authentification OAuth2, exécution des bots Discord. Voir la <a href="https://discord.com/privacy" target="_blank" rel="noopener" class="underline">politique de confidentialité de Discord</a>.</li>
+                        <li><strong>Stripe Payments Europe</strong> (Irlande) — traitement des paiements. Stripe est certifié PCI-DSS. Voir la <a href="https://stripe.com/fr/privacy" target="_blank" rel="noopener" class="underline">politique Stripe</a>.</li>
+                        <li><strong>Hébergeur</strong> — stockage des données applicatives sur serveur dédié situé en Europe (Allemagne).</li>
+                    </ul>
+                    <p class="mt-3">Shardtown ne vend, ne loue et ne partage jamais vos données à des fins publicitaires ou commerciales tierces.</p>
                 </div>
 
                 <div class="legal-section">
-                    <h2>5. Sécurité et Confidentialité</h2>
-                    <p>Nous mettons en œuvre des mesures techniques et organisationnelles rigoureuses (chiffrement, accès restreints) pour protéger vos informations contre tout accès non autorisé ou perte accidentelle.</p>
+                    <h2>5. Conservation des Données</h2>
+                    <ul class="list-disc list-inside text-[#888] space-y-2 ml-4">
+                        <li><strong>Données de compte / OAuth :</strong> conservées tant que vous utilisez le service. Supprimées dans les 30 jours suivant votre demande.</li>
+                        <li><strong>Données de configuration / modération :</strong> conservées tant que le bot est présent sur le serveur. Supprimées dans les 30 jours après son retrait.</li>
+                        <li><strong>Logs techniques et IP :</strong> 30 jours maximum.</li>
+                        <li><strong>Données de paiement (Stripe IDs, factures) :</strong> 10 ans, conformément aux obligations comptables et fiscales françaises.</li>
+                    </ul>
                 </div>
 
                 <div class="legal-section">
-                    <h2>6. Vos Droits</h2>
-                    <p>Conformément à la réglementation sur la protection des données (RGPD), vous disposez de droits d'accès, de rectification, d'opposition et de suppression. Vous pouvez exercer ces droits en nous contactant via nos plateformes officielles.</p>
+                    <h2>6. Sécurité</h2>
+                    <p>Nous mettons en œuvre des mesures techniques et organisationnelles : connexions chiffrées TLS, mots de passe administrateurs hachés (scrypt), jetons CSRF, limitation de débit, en-têtes de sécurité (CSP, X-Frame-Options, HSTS), accès base de données restreints. En cas de violation de données concernant des données personnelles, nous notifierons les utilisateurs concernés et la CNIL conformément à l'article 33 du RGPD.</p>
                 </div>
 
                 <div class="legal-section">
-                    <h2>7. Évolution de la Politique</h2>
-                    <p>Cette politique peut être mise à jour pour refléter les évolutions de nos services ou de la législation. Nous vous invitons à la consulter régulièrement.</p>
+                    <h2>7. Vos Droits (RGPD)</h2>
+                    <p>Conformément aux articles 15 à 22 du Règlement Général sur la Protection des Données (RGPD), vous disposez des droits suivants :</p>
+                    <ul class="list-disc list-inside text-[#888] space-y-2 ml-4">
+                        <li>Droit d'accès, de rectification et d'effacement (« droit à l'oubli »).</li>
+                        <li>Droit à la limitation et à l'opposition au traitement.</li>
+                        <li>Droit à la portabilité de vos données.</li>
+                        <li>Droit de retirer votre consentement à tout moment (révocation OAuth Discord).</li>
+                        <li>Droit d'introduire une réclamation auprès de la <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener" class="underline">CNIL</a>.</li>
+                    </ul>
+                    <p class="mt-3">Pour exercer ces droits : contactez-nous via Discord ou par email à l'adresse de contact indiquée en page d'accueil.</p>
+                </div>
+
+                <div class="legal-section">
+                    <h2>8. Évolution de la Politique</h2>
+                    <p>Cette politique peut être mise à jour pour refléter les évolutions de nos services ou de la législation. Dernière mise à jour : avril 2026. Nous vous invitons à la consulter régulièrement.</p>
                 </div>
             </div>
         </section>
@@ -207,8 +239,9 @@
                     <img src="/image/shardtown.jpeg" alt="Shardtown Logo" class="w-6 h-6 rounded-full object-cover">
                     <span class="font-bold tracking-tight text-sm uppercase">Shardtown</span>
                 </div>
-                <div class="flex gap-8">
-                    <a href="/#status" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Statut</a>
+                <div class="flex flex-wrap gap-6 md:gap-8 justify-center">
+                    <a href="/wiki" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Wiki</a>
+                    <a href="/status" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Statut</a>
                     <a href="/terms" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Conditions Générales</a>
                     <a href="/privacy" class="text-xs font-bold text-white hover:text-white transition-colors">Politique de Confidentialité</a>
                     <a href="/admin" class="text-xs font-bold text-white/30 hover:text-white transition-colors">Administrateur</a>

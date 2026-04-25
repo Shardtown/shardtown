@@ -193,6 +193,29 @@ async function connectDB() {
                 `UPDATE settings SET rules_en = ? WHERE rules_en IS NULL OR rules_en = '' OR rules_en = '[]'`,
                 [defaultRulesEn]
             );
+
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS redeem_codes (
+                    code VARCHAR(64) PRIMARY KEY,
+                    max_uses INT DEFAULT 1,
+                    used_count INT DEFAULT 0,
+                    expires_at DATETIME DEFAULT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS redeem_code_uses (
+                    code VARCHAR(64) NOT NULL,
+                    guildId VARCHAR(255) NOT NULL,
+                    userId VARCHAR(255) NOT NULL,
+                    used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (code, guildId)
+                )
+            `);
+            await db.execute(
+                `INSERT IGNORE INTO redeem_codes (code, max_uses) VALUES (?, ?)`,
+                ['SHARDTOWN', 0]
+            );
         } catch (e) { console.error('Erreur migration:', e.message); }
     } catch (err) {
         console.error('❌ Erreur MySQL Dashboard:', err.message);
@@ -288,12 +311,30 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
         console.error('Stripe webhook signature invalide:', err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
+
+    try {
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS stripe_events_processed (
+                event_id VARCHAR(255) PRIMARY KEY,
+                event_type VARCHAR(100),
+                processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        const [existing] = await db.execute('SELECT event_id FROM stripe_events_processed WHERE event_id = ?', [event.id]);
+        if (existing.length > 0) {
+            return res.json({ received: true, duplicate: true });
+        }
+        await db.execute('INSERT IGNORE INTO stripe_events_processed (event_id, event_type) VALUES (?, ?)', [event.id, event.type]);
+    } catch (err) {
+        console.error('Erreur idempotence Stripe:', err.message);
+    }
+
     if (event.type === 'checkout.session.completed' || event.type === 'invoice.paid') {
         const obj = event.data.object;
         const guildId = obj.metadata?.guildId
             || obj.subscription_details?.metadata?.guildId
             || obj.lines?.data?.[0]?.metadata?.guildId;
-        if (guildId) {
+        if (guildId && isValidSnowflake(String(guildId))) {
             try {
                 await db.execute(`UPDATE settings SET isPremium = 1 WHERE guildId = ?`, [guildId]);
                 await db.execute(`UPDATE shard_settings SET isPremium = 1 WHERE guildId = ?`, [guildId]);
@@ -305,7 +346,7 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
     } else if (event.type === 'customer.subscription.deleted') {
         const sub = event.data.object;
         const guildId = sub.metadata?.guildId;
-        if (guildId) {
+        if (guildId && isValidSnowflake(String(guildId))) {
             try {
                 await db.execute(`UPDATE settings SET isPremium = 0 WHERE guildId = ?`, [guildId]);
                 await db.execute(`UPDATE shard_settings SET isPremium = 0 WHERE guildId = ?`, [guildId]);
@@ -318,8 +359,27 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
     res.json({ received: true });
 });
 
-app.use(express.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json({ limit: '64kb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '64kb' }));
+
+const MAX_STRING_LEN = 4000;
+function clampStrings(value, depth = 0) {
+    if (depth > 10) return value;
+    if (typeof value === 'string') return value.length > MAX_STRING_LEN ? value.slice(0, MAX_STRING_LEN) : value;
+    if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++) value[i] = clampStrings(value[i], depth + 1);
+        return value;
+    }
+    if (value && typeof value === 'object') {
+        for (const k of Object.keys(value)) value[k] = clampStrings(value[k], depth + 1);
+        return value;
+    }
+    return value;
+}
+app.use((req, res, next) => {
+    if (req.body && typeof req.body === 'object') clampStrings(req.body);
+    next();
+});
 app.use('/image', express.static(path.join(__dirname, 'image')));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -386,10 +446,26 @@ app.get('/premium', async (req, res) => {
     }
 });
 
-app.post('/api/create-checkout', async (req, res) => {
+const checkoutRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Trop de tentatives, réessayez dans une minute.' }
+});
+
+const redeemRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: 'Trop de tentatives, réessayez dans 15 minutes.' }
+});
+
+app.post('/api/create-checkout', checkoutRateLimiter, async (req, res) => {
     if (!req.user) return res.status(401).json({ success: false, error: 'Non connecté.' });
     const { guildId, plan } = req.body;
-    if (!guildId) return res.status(400).json({ success: false, error: 'Serveur requis.' });
+    if (!guildId || !isValidSnowflake(String(guildId))) return res.status(400).json({ success: false, error: 'Serveur requis.' });
     const planChoice = plan === 'monthly' ? 'monthly' : 'lifetime';
     const userGuild = req.user.guilds.find(g => g.id === guildId && ((g.permissions & 0x8) === 0x8 || g.owner));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Vous n\'êtes pas administrateur de ce serveur.' });
@@ -426,16 +502,49 @@ app.post('/api/create-checkout', async (req, res) => {
     }
 });
 
-app.post('/api/redeem-code', async (req, res) => {
+app.post('/api/redeem-code', redeemRateLimiter, async (req, res) => {
     if (!req.user) return res.status(401).json({ success: false, error: 'Non connecté.' });
     const { code, guildId } = req.body;
     if (!code || !guildId) return res.status(400).json({ success: false, error: 'Code et serveur requis.' });
-    if (code.trim().toUpperCase() !== 'SHARDTOWN') {
-        return res.status(400).json({ success: false, error: 'Code invalide.' });
-    }
+    if (typeof code !== 'string' || code.length > 64) return res.status(400).json({ success: false, error: 'Code invalide.' });
+    if (!isValidSnowflake(String(guildId))) return res.status(400).json({ success: false, error: 'Serveur invalide.' });
     const userGuild = req.user.guilds.find(g => g.id === guildId && ((g.permissions & 0x8) === 0x8 || g.owner));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Vous n\'êtes pas administrateur de ce serveur.' });
+    const normalized = code.trim().toUpperCase();
     try {
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS redeem_codes (
+                code VARCHAR(64) PRIMARY KEY,
+                max_uses INT DEFAULT 1,
+                used_count INT DEFAULT 0,
+                expires_at DATETIME DEFAULT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS redeem_code_uses (
+                code VARCHAR(64) NOT NULL,
+                guildId VARCHAR(255) NOT NULL,
+                userId VARCHAR(255) NOT NULL,
+                used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (code, guildId)
+            )
+        `);
+        const [codeRows] = await db.execute('SELECT * FROM redeem_codes WHERE code = ?', [normalized]);
+        if (!codeRows[0]) return res.status(400).json({ success: false, error: 'Code invalide.' });
+        const c = codeRows[0];
+        if (c.expires_at && new Date(c.expires_at) < new Date()) {
+            return res.status(400).json({ success: false, error: 'Code expiré.' });
+        }
+        if (c.max_uses > 0 && c.used_count >= c.max_uses) {
+            return res.status(400).json({ success: false, error: 'Code épuisé.' });
+        }
+        const [alreadyUsed] = await db.execute('SELECT 1 FROM redeem_code_uses WHERE code = ? AND guildId = ?', [normalized, guildId]);
+        if (alreadyUsed.length > 0) {
+            return res.status(400).json({ success: false, error: 'Ce code a déjà été utilisé sur ce serveur.' });
+        }
+        await db.execute('INSERT INTO redeem_code_uses (code, guildId, userId) VALUES (?, ?, ?)', [normalized, guildId, req.user.id]);
+        await db.execute('UPDATE redeem_codes SET used_count = used_count + 1 WHERE code = ?', [normalized]);
         await db.execute(`UPDATE settings SET isPremium = 1 WHERE guildId = ?`, [guildId]);
         await db.execute(`UPDATE shard_settings SET isPremium = 1 WHERE guildId = ?`, [guildId]);
         res.json({ success: true, message: `Premium activé sur "${userGuild.name}" ! Profitez de toutes les fonctionnalités avancées.` });
@@ -536,7 +645,12 @@ app.get('/shard/callback', loginRateLimiter, async (req, res) => {
 
 app.get('/shard/logout', (req, res) => {
     delete req.session.shardUser;
-    res.redirect('/dashboard');
+    delete req.session.shardReturnTo;
+    delete req.session.shardOAuthState;
+    req.session.regenerate((err) => {
+        if (err) console.error('Erreur régénération session shard logout:', err.message);
+        res.redirect('/dashboard');
+    });
 });
 
 function checkAuthShard(req, res, next) {
@@ -809,14 +923,19 @@ app.get('/shard/guild/:guildID', checkAuthShard, async (req, res) => {
             birthdayChannelId: '', birthdayMessage: '', birthdayRoleId: '',
             economyEnabled: 0, economyCurrencyName: 'coins', economyDailyMin: 50, economyDailyMax: 200
         };
-        if (!settings.autoReactions) settings.autoReactions = [];
-        else if (typeof settings.autoReactions === 'string') settings.autoReactions = JSON.parse(settings.autoReactions);
-        settings.autoReactions = settings.autoReactions.filter(r => r.text);
-        if (!settings.levelRewards) settings.levelRewards = [];
-        else if (typeof settings.levelRewards === 'string') settings.levelRewards = JSON.parse(settings.levelRewards);
+        const safeParse = (v, fb) => {
+            if (v == null) return fb;
+            if (typeof v !== 'string') return v;
+            try { return JSON.parse(v); } catch { return fb; }
+        };
+        settings.autoReactions = safeParse(settings.autoReactions, []) || [];
+        if (!Array.isArray(settings.autoReactions)) settings.autoReactions = [];
+        settings.autoReactions = settings.autoReactions.filter(r => r && r.text);
+        settings.levelRewards = safeParse(settings.levelRewards, []) || [];
+        if (!Array.isArray(settings.levelRewards)) settings.levelRewards = [];
         const defaultThresholds = [100, 250, 500, 1000, 2000, 3500, 5500, 8000, 11500, 15000];
-        if (!settings.levelThresholds) settings.levelThresholds = defaultThresholds;
-        else if (typeof settings.levelThresholds === 'string') settings.levelThresholds = JSON.parse(settings.levelThresholds);
+        settings.levelThresholds = safeParse(settings.levelThresholds, defaultThresholds);
+        if (!Array.isArray(settings.levelThresholds) || !settings.levelThresholds.length) settings.levelThresholds = defaultThresholds;
 
         const [giveaways] = await db.execute(`SELECT * FROM shard_giveaways WHERE guildId = ? AND ended = 0 ORDER BY endsAt ASC`, [guildID]).catch(() => [[]]);
         const [scheduledAnnouncements] = await db.execute(`SELECT * FROM shard_scheduled WHERE guildId = ? ORDER BY nextRun ASC`, [guildID]).catch(() => [[]]);
@@ -1994,16 +2113,22 @@ app.post('/shardguard/api/guild/:guildID/deploy', checkAuth, async (req, res) =>
                     form.append('payload_json', JSON.stringify({ embeds: [embedPayload], components: componentsPayload }));
                     const bannerBlob = new Blob([fs.readFileSync(bannerPath)], { type: 'image/png' });
                     form.append('files[0]', bannerBlob, 'banner.png');
-                    await axios.post(`https://discord.com/api/v10/channels/${vChannelId}/messages`, form, {
-                        headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` }
+                    const response = await fetch(`https://discord.com/api/v10/channels/${vChannelId}/messages`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
+                        body: form
                     });
+                    if (!response.ok) {
+                        const errBody = await response.text();
+                        throw new Error(`Discord API ${response.status}: ${errBody}`);
+                    }
                 } else {
                     await axios.post(`https://discord.com/api/v10/channels/${vChannelId}/messages`, {
                         embeds: [embedPayload], components: componentsPayload
                     }, { headers });
                 }
                 sent = true;
-            } catch (e) { 
+            } catch (e) {
                 console.error('Erreur Discord (Vérif):', e.response?.data || e.message);
                 lastError = e.response?.data?.message || e.message;
             }
@@ -2134,6 +2259,23 @@ function timingSafeEqual(a, b) {
     return equal && String(a).length === String(b).length;
 }
 
+function verifyAdminPassword(input) {
+    const stored = process.env.ADMIN_PASSWORD_HASH;
+    if (stored && stored.includes(':')) {
+        const [salt, hash] = stored.split(':');
+        if (!salt || !hash) return false;
+        try {
+            const expected = Buffer.from(hash, 'hex');
+            const test = crypto.scryptSync(String(input || ''), salt, expected.length);
+            return test.length === expected.length && crypto.timingSafeEqual(test, expected);
+        } catch { return false; }
+    }
+    const fallback = process.env.ADMIN_PASSWORD;
+    if (!fallback) return false;
+    console.warn('⚠️  ADMIN_PASSWORD utilisé en clair. Définis ADMIN_PASSWORD_HASH (scrypt salt:hash) et supprime ADMIN_PASSWORD.');
+    return timingSafeEqual(String(input || ''), fallback);
+}
+
 function generateCsrfToken(req) {
     if (!req.session.csrfSecret) {
         req.session.csrfSecret = crypto.randomBytes(32).toString('hex');
@@ -2180,7 +2322,7 @@ app.get('/admin/login', (req, res) => {
 app.post('/admin/login', adminLoginLimiter, verifyCsrf, (req, res) => {
     const { username, password } = req.body;
     const validUser = timingSafeEqual(username || '', process.env.ADMIN_USERNAME || '');
-    const validPass = timingSafeEqual(password || '', process.env.ADMIN_PASSWORD || '');
+    const validPass = verifyAdminPassword(password);
     if (validUser && validPass) {
         req.session.regenerate((err) => {
             if (err) return res.status(500).send('Erreur serveur');
@@ -2275,21 +2417,35 @@ app.post('/admin/guild/:guildId/unblock', checkAdmin, verifyCsrf, async (req, re
     }
 });
 
-app.get('/api/stats', async (req, res) => {
+const statsRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+app.get('/api/stats', statsRateLimiter, async (req, res) => {
     try {
+        const isAdminViewer = !!(req.session && req.session.isAdmin
+            && Date.now() - (req.session.adminLoginAt || 0) < ADMIN_SESSION_TTL);
+
         const botsInfo = await Promise.all(BOTS.map(async b => {
             const info = await fetchBotInfo(b.token);
 
-            // Récupérer tous les shards connus pour ce bot
             const [shards] = await db.execute(
                 `SELECT *, IF(last_update < DATE_SUB(NOW(), INTERVAL 1 MINUTE), 'Offline', status) AS status FROM shard_status WHERE bot_label = ?`,
                 [b.label]
             );
 
-            // Récupérer les serveurs pour ces shards
-            for (let shard of shards) {
-                const [guilds] = await db.execute('SELECT guild_id, guild_name FROM shard_guilds WHERE bot_label = ? AND shard_id = ?', [b.label, shard.shard_id]);
-                shard.guilds_list = guilds;
+            if (isAdminViewer) {
+                for (let shard of shards) {
+                    const [guilds] = await db.execute('SELECT guild_id, guild_name FROM shard_guilds WHERE bot_label = ? AND shard_id = ?', [b.label, shard.shard_id]);
+                    shard.guilds_list = guilds;
+                }
+            } else {
+                for (let shard of shards) {
+                    delete shard.guilds_list;
+                }
             }
 
             const anyOnline = shards.some(s => s.status === 'Online');
@@ -2304,10 +2460,11 @@ app.get('/api/stats', async (req, res) => {
         }));
 
         const [history] = await db.execute('SELECT * FROM bot_stats WHERE timestamp > DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY timestamp ASC');
-        
+
         res.json({ current: botsInfo, history });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('Erreur /api/stats:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

@@ -355,19 +355,26 @@ client.once('ready', async (c) => {
     }
 
     // Système d'expulsion des non-vérifiés
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     setInterval(async () => {
         const now = Date.now();
-        
-        for (const guild of client.guilds.cache.values()) {
-            await updateStatsChannels(guild);
-            const settings = await getGuildSettings(guild.id);
-            if (!settings.verifiedRole || settings.autoKickUnverified !== 'true') continue;
 
-            const timeoutMinutes = settings.verificationTimeout || 15;
-            const timeoutMs = timeoutMinutes * 60 * 1000;
-
+        const guildList = [...client.guilds.cache.values()];
+        for (let i = 0; i < guildList.length; i++) {
+            const guild = guildList[i];
             try {
-                const members = await guild.members.fetch();
+                const settings = await getGuildSettings(guild.id);
+                if (!settings.verifiedRole) continue;
+                updateStatsChannels(guild);
+                if (settings.autoKickUnverified !== 'true') continue;
+
+                const timeoutMinutes = settings.verificationTimeout || 15;
+                const timeoutMs = timeoutMinutes * 60 * 1000;
+
+                let members;
+                try {
+                    members = await guild.members.fetch({ time: 30000 });
+                } catch { continue; }
                 const unverified = members.filter(m => !m.user.bot && !m.roles.cache.has(settings.verifiedRole));
 
                 for (const member of unverified.values()) {
@@ -376,14 +383,32 @@ client.once('ready', async (c) => {
                             if (member.kickable) {
                                 await member.kick(`Temps de vérification dépassé (${timeoutMinutes} minutes)`);
                                 await addLog(guild.id, member.id, member.user.username, "Timeout", "Kicked");
+                                await sleep(1500);
                             }
-                        } catch (e) { /* Console error suppressed for bulk operations */ }
+                        } catch (e) { /* ignore individual kick errors */ }
                     }
                 }
-            } catch (e) { console.error(`Erreur timeout guild ${guild.id}:`, e.message); }
+            } catch (e) {
+                if (!['EADDRNOTAVAIL', 'ECONNRESET'].includes(e.code)) {
+                    console.error(`Erreur timeout guild ${guild.id}:`, e.message);
+                }
+            }
+            await sleep(2000);
         }
-    }, 5 * 60 * 1000); // Vérification toutes les 5 minutes
+    }, 5 * 60 * 1000);
 });
+
+// Handlers de robustesse Discord
+client.on('error', (err) => console.error('[ShardGuard] client error:', err.message));
+client.on('shardError', (err, shardId) => console.error(`[ShardGuard] shard ${shardId} error:`, err.message));
+client.on('shardDisconnect', (event, shardId) => console.warn(`[ShardGuard] shard ${shardId} disconnected (code ${event?.code})`));
+client.on('shardReconnecting', (shardId) => console.log(`[ShardGuard] shard ${shardId} reconnecting...`));
+client.on('invalidated', () => {
+    console.error('[ShardGuard] session invalidée — arrêt du process pour redémarrage par le supervisor');
+    process.exit(1);
+});
+process.on('unhandledRejection', (reason) => console.error('[ShardGuard] unhandledRejection:', reason));
+process.on('uncaughtException', (err) => console.error('[ShardGuard] uncaughtException:', err.message));
 
 async function sendModAlert(settings, guild, message) {
     if (!settings.isPremium || !settings.modAlertUserId) return;
@@ -1277,4 +1302,8 @@ client.on('guildCreate', async (guild) => {
 });
 client.on('guildDelete', () => settingsCache.clear());
 
+if (!process.env.DISCORD_TOKEN) {
+    console.error('❌ DISCORD_TOKEN manquant dans .env');
+    process.exit(1);
+}
 client.login(process.env.DISCORD_TOKEN);
