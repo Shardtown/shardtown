@@ -235,10 +235,6 @@
         </a>
         <nav class="hidden md:flex items-center gap-8">
             <a href="/#products" class="nav-link">Produits</a>
-            <a href="/premium" class="nav-link flex items-center gap-1.5" style="color:#fbbf24;">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="#fbbf24" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                Premium
-            </a>
             <a href="/#services" class="nav-link">Services</a>
             <a href="/wiki" class="nav-link">Wiki</a>
             <a href="/status" class="nav-link">Statut</a>
@@ -470,7 +466,7 @@
                             <button id="buy-btn" class="btn-premium" onclick="startCheckout()">
                                 <span id="buy-btn-text">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                                    Payer avec Stripe — 9,99 €
+                                    Payer avec Stripe — 4.97 €
                                 </span>
                             </button>
                         </div>
@@ -527,13 +523,13 @@ async function startCheckout() {
             document.getElementById('alert-error-msg').textContent = data.error || 'Impossible de créer la session de paiement.';
             alertError.style.display = 'block';
             btn.disabled = false;
-            btnText.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payer avec Stripe — 9,99 €';
+            btnText.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payer avec Stripe — 4,97 €';
         }
     } catch {
         document.getElementById('alert-error-msg').textContent = 'Erreur réseau. Veuillez réessayer.';
         alertError.style.display = 'block';
         btn.disabled = false;
-        btnText.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payer avec Stripe — 9,99 €';
+        btnText.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payer avec Stripe — 4,97 €';
     }
 }
 </script>
