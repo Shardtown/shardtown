@@ -1444,15 +1444,24 @@
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                         </div>
                         <div>
-                            <h3 class="font-bold text-sm uppercase tracking-widest">Backup & Restauration</h3>
+                            <h3 class="font-bold text-sm uppercase tracking-widest">Backup & Restauration <span class="ml-2 inline-block text-[10px] font-bold px-2 py-0.5 rounded" style="background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25);vertical-align:middle;text-transform:uppercase;letter-spacing:0.05em;">Premium</span></h3>
                             <p class="text-xs text-white/30 mt-0.5">Sauvegardez et restaurez toute la configuration Shard en un clic</p>
                         </div>
                     </div>
+
+                    <% if (!settings.isPremium) { %>
+                    <div class="flex items-center gap-3 p-4 rounded-xl mb-4" style="background:rgba(251,191,36,0.04);border:1px solid rgba(251,191,36,0.2);">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="#fbbf24" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        <p class="text-xs flex-1" style="color:#fbbf24;">Premium requis pour créer ou restaurer un backup.</p>
+                        <a href="/premium" class="text-xs font-bold whitespace-nowrap" style="color:#fbbf24;text-decoration:underline;">Activer Premium →</a>
+                    </div>
+                    <% } %>
+
                     <div class="flex gap-4">
-                        <button type="button" onclick="doBackupShard()" class="btn-white" style="border-radius:14px;padding:10px 24px;font-size:0.8rem;">
+                        <button type="button" onclick="doBackupShard()" class="btn-white" style="border-radius:14px;padding:10px 24px;font-size:0.8rem;<% if (!settings.isPremium) { %>opacity:0.4;cursor:not-allowed;pointer-events:none;<% } %>" <%= !settings.isPremium ? 'disabled' : '' %>>
                             Créer un backup
                         </button>
-                        <button type="button" onclick="doRestoreShard()" class="flex items-center gap-2 px-6 py-3 rounded-[14px] text-sm font-bold border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-all">
+                        <button type="button" onclick="doRestoreShard()" class="flex items-center gap-2 px-6 py-3 rounded-[14px] text-sm font-bold border border-white/10 text-white/50 hover:text-white hover:border-white/30 transition-all" style="<% if (!settings.isPremium) { %>opacity:0.4;cursor:not-allowed;pointer-events:none;<% } %>" <%= !settings.isPremium ? 'disabled' : '' %>>
                             Restaurer le dernier backup
                         </button>
                     </div>
