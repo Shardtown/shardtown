@@ -221,6 +221,129 @@
             font-size: 0.9rem;
             display: none;
         }
+
+        .price-card {
+            background: #0a0a0a;
+            border: 1px solid #1a1a1a;
+            border-radius: 24px;
+            padding: 36px 32px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .price-card:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+        .price-card.featured {
+            border-color: rgba(251,191,36,0.4);
+            background: linear-gradient(180deg, rgba(251,191,36,0.04), #0a0a0a 60%);
+        }
+        .price-card.featured:hover { border-color: rgba(251,191,36,0.6); }
+        .price-card .ribbon {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #000;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 100px;
+            white-space: nowrap;
+        }
+        .price-amount {
+            font-size: 3.25rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            line-height: 1;
+        }
+        .price-period {
+            color: rgba(255,255,255,0.4);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        .price-feat {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.7);
+            padding: 8px 0;
+        }
+        .price-feat svg { flex-shrink: 0; margin-top: 3px; }
+
+        .btn-plan {
+            display: block;
+            width: 100%;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            text-align: center;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.15s;
+            border: none;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            text-decoration: none;
+            letter-spacing: 0.01em;
+        }
+        .btn-plan-primary {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #000;
+        }
+        .btn-plan-secondary {
+            background: rgba(255,255,255,0.06);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-plan:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .plan-toggle {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            background: #060606;
+            border: 1px solid #1a1a1a;
+            border-radius: 14px;
+            padding: 6px;
+        }
+        .plan-toggle-option {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: 1px solid transparent;
+        }
+        .plan-toggle-option:hover { background: rgba(255,255,255,0.03); }
+        .plan-toggle-option.active {
+            background: rgba(251,191,36,0.08);
+            border-color: rgba(251,191,36,0.3);
+        }
+        .plan-toggle-option input { display: none; }
+        .plan-toggle-name {
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: rgba(255,255,255,0.5);
+        }
+        .plan-toggle-option.active .plan-toggle-name { color: #fbbf24; }
+        .plan-toggle-price {
+            font-size: 1rem;
+            font-weight: 800;
+            color: #fff;
+        }
+        .plan-toggle-sub {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.35);
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -265,8 +388,89 @@
             <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6" style="line-height:0.92;">Tous les bots.<br><span style="color:#fbbf24;">Une seule offre.</span></h1>
             <p class="text-white/40 text-xl max-w-xl mx-auto mb-10">Débloquez l'ensemble des fonctionnalités avancées de ShardGuard et Shard sur votre serveur Discord.</p>
             <div class="flex justify-center gap-4 flex-wrap">
-                <a href="#activate" class="px-8 py-4 rounded-full font-bold text-sm" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;">Activer Premium</a>
+                <a href="#pricing" class="px-8 py-4 rounded-full font-bold text-sm" style="background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;">Voir les tarifs</a>
                 <a href="#features" class="px-8 py-4 rounded-full font-bold text-sm border border-white/10 text-white/70 hover:text-white hover:border-white/20 transition-colors">Voir les fonctionnalités</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="py-16">
+        <div class="container-wide">
+            <div class="text-center mb-12">
+                <p class="text-sm font-bold tracking-widest text-white/40 uppercase mb-3">Tarifs</p>
+                <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">Choisissez votre formule</h2>
+                <p class="text-white/40">Une seule offre, deux façons de payer. Annulez à tout moment.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+
+                <!-- Monthly plan -->
+                <div class="price-card">
+                    <div class="mb-2">
+                        <span class="text-xs font-bold tracking-widest text-white/40 uppercase">Mensuel</span>
+                    </div>
+                    <div class="flex items-baseline gap-2 mb-1">
+                        <span class="price-amount">4,97 €</span>
+                        <span class="price-period">/ mois</span>
+                    </div>
+                    <p class="text-white/40 text-sm mb-6">Facturé chaque mois. Sans engagement.</p>
+
+                    <div class="flex-1 mb-8">
+                        <div class="price-feat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>Toutes les fonctionnalités Premium</span>
+                        </div>
+                        <div class="price-feat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>ShardGuard + Shard inclus</span>
+                        </div>
+                        <div class="price-feat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>Mises à jour permanentes</span>
+                        </div>
+                        <div class="price-feat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>Annulation en 1 clic</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-plan btn-plan-secondary" onclick="selectPlanAndScroll('monthly')">Choisir le mensuel</button>
+                </div>
+
+                <!-- Lifetime plan -->
+                <div class="price-card featured">
+                    <div class="ribbon">★ Meilleure offre — économisez 40%</div>
+                    <div class="mb-2">
+                        <span class="text-xs font-bold tracking-widest uppercase" style="color:#fbbf24;">À vie</span>
+                    </div>
+                    <div class="flex items-baseline gap-2 mb-1">
+                        <span class="price-amount">49,97 €</span>
+                        <span class="price-period">une fois</span>
+                    </div>
+                    <p class="text-white/40 text-sm mb-6">Paiement unique. Premium à vie sur le serveur.</p>
+
+                    <div class="flex-1 mb-8">
+                        <div class="price-feat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>Toutes les fonctionnalités Premium</span>
+                        </div>
+                        <div class="price-feat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>Aucun renouvellement, jamais</span>
+                        </div>
+                        <div class="price-feat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>Équivaut à ~10 mois d'abonnement</span>
+                        </div>
+                        <div class="price-feat">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span>Toutes les futures fonctionnalités</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-plan btn-plan-primary" onclick="selectPlanAndScroll('lifetime')">Choisir à vie</button>
+                </div>
             </div>
         </div>
     </section>
@@ -449,7 +653,23 @@
                             </div>
                         </div>
 
-                        <div class="space-y-4">
+                        <div class="space-y-5">
+                            <div>
+                                <label class="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Formule</label>
+                                <div class="plan-toggle">
+                                    <label class="plan-toggle-option" data-plan="monthly">
+                                        <input type="radio" name="plan" value="monthly">
+                                        <span class="plan-toggle-name">Mensuel</span>
+                                        <span class="plan-toggle-price">4,97 €<span class="plan-toggle-sub"> / mois</span></span>
+                                    </label>
+                                    <label class="plan-toggle-option active" data-plan="lifetime">
+                                        <input type="radio" name="plan" value="lifetime" checked>
+                                        <span class="plan-toggle-name">À vie</span>
+                                        <span class="plan-toggle-price">49,97 €<span class="plan-toggle-sub"> une fois</span></span>
+                                    </label>
+                                </div>
+                            </div>
+
                             <div>
                                 <label class="block text-xs font-bold text-white/40 uppercase tracking-widest mb-2">Serveur cible</label>
                                 <div style="position:relative;">
@@ -466,9 +686,10 @@
                             <button id="buy-btn" class="btn-premium" onclick="startCheckout()">
                                 <span id="buy-btn-text">
                                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                                    Payer avec Stripe — 4.97 €
+                                    Payer avec Stripe — 49,97 €
                                 </span>
                             </button>
+                            <p class="text-center text-xs text-white/30">Paiement sécurisé via Stripe. Vous pouvez annuler l'abonnement mensuel à tout moment.</p>
                         </div>
                     </div>
                 <% } %>
@@ -494,8 +715,43 @@
 </footer>
 
 <script>
+const PLAN_LABEL = {
+    monthly: 'Payer avec Stripe — 4,97 € / mois',
+    lifetime: 'Payer avec Stripe — 49,97 €'
+};
+const CARD_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
+
+function getSelectedPlan() {
+    const checked = document.querySelector('input[name="plan"]:checked');
+    return checked ? checked.value : 'lifetime';
+}
+
+function refreshButtonLabel() {
+    const btnText = document.getElementById('buy-btn-text');
+    if (!btnText) return;
+    btnText.innerHTML = CARD_SVG + PLAN_LABEL[getSelectedPlan()];
+}
+
+document.querySelectorAll('.plan-toggle-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+        document.querySelectorAll('.plan-toggle-option').forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+        const input = opt.querySelector('input');
+        if (input) input.checked = true;
+        refreshButtonLabel();
+    });
+});
+
+function selectPlanAndScroll(plan) {
+    const opt = document.querySelector(`.plan-toggle-option[data-plan="${plan}"]`);
+    if (opt) opt.click();
+    const target = document.getElementById('activate');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 async function startCheckout() {
     const guildId = document.getElementById('guild-select')?.value;
+    const plan = getSelectedPlan();
     const alertError = document.getElementById('alert-error');
     alertError.style.display = 'none';
 
@@ -514,7 +770,7 @@ async function startCheckout() {
         const res = await fetch('/api/create-checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ guildId })
+            body: JSON.stringify({ guildId, plan })
         });
         const data = await res.json();
         if (data.success && data.url) {
@@ -523,13 +779,13 @@ async function startCheckout() {
             document.getElementById('alert-error-msg').textContent = data.error || 'Impossible de créer la session de paiement.';
             alertError.style.display = 'block';
             btn.disabled = false;
-            btnText.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payer avec Stripe — 4,97 €';
+            refreshButtonLabel();
         }
     } catch {
         document.getElementById('alert-error-msg').textContent = 'Erreur réseau. Veuillez réessayer.';
         alertError.style.display = 'block';
         btn.disabled = false;
-        btnText.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:-2px;margin-right:6px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Payer avec Stripe — 4,97 €';
+        refreshButtonLabel();
     }
 }
 </script>

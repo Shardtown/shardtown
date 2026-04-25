@@ -288,16 +288,30 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
         console.error('Stripe webhook signature invalide:', err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
-    if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-        const guildId = session.metadata?.guildId;
+    if (event.type === 'checkout.session.completed' || event.type === 'invoice.paid') {
+        const obj = event.data.object;
+        const guildId = obj.metadata?.guildId
+            || obj.subscription_details?.metadata?.guildId
+            || obj.lines?.data?.[0]?.metadata?.guildId;
         if (guildId) {
             try {
                 await db.execute(`UPDATE settings SET isPremium = 1 WHERE guildId = ?`, [guildId]);
                 await db.execute(`UPDATE shard_settings SET isPremium = 1 WHERE guildId = ?`, [guildId]);
-                console.log(`✅ Premium activé via Stripe pour le serveur ${guildId}`);
+                console.log(`✅ Premium activé via Stripe (${event.type}) pour le serveur ${guildId}`);
             } catch (err) {
                 console.error('Erreur activation premium Stripe:', err.message);
+            }
+        }
+    } else if (event.type === 'customer.subscription.deleted') {
+        const sub = event.data.object;
+        const guildId = sub.metadata?.guildId;
+        if (guildId) {
+            try {
+                await db.execute(`UPDATE settings SET isPremium = 0 WHERE guildId = ?`, [guildId]);
+                await db.execute(`UPDATE shard_settings SET isPremium = 0 WHERE guildId = ?`, [guildId]);
+                console.log(`⛔ Premium révoqué (abonnement annulé) pour le serveur ${guildId}`);
+            } catch (err) {
+                console.error('Erreur révocation premium Stripe:', err.message);
             }
         }
     }
@@ -374,23 +388,33 @@ app.get('/premium', async (req, res) => {
 
 app.post('/api/create-checkout', async (req, res) => {
     if (!req.user) return res.status(401).json({ success: false, error: 'Non connecté.' });
-    const { guildId } = req.body;
+    const { guildId, plan } = req.body;
     if (!guildId) return res.status(400).json({ success: false, error: 'Serveur requis.' });
+    const planChoice = plan === 'monthly' ? 'monthly' : 'lifetime';
     const userGuild = req.user.guilds.find(g => g.id === guildId && ((g.permissions & 0x8) === 0x8 || g.owner));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Vous n\'êtes pas administrateur de ce serveur.' });
     try {
         const appUrl = process.env.APP_URL || 'http://localhost:3000';
+        const currency = process.env.STRIPE_CURRENCY || 'eur';
+        const productId = process.env.STRIPE_PRODUCT_ID;
+
+        const isMonthly = planChoice === 'monthly';
+        const amount = isMonthly
+            ? parseInt(process.env.STRIPE_MONTHLY_AMOUNT || '497')
+            : parseInt(process.env.STRIPE_LIFETIME_AMOUNT || '4997');
+
+        const priceData = {
+            currency,
+            product: productId,
+            unit_amount: amount,
+        };
+        if (isMonthly) priceData.recurring = { interval: 'month' };
+
         const session = await stripe.checkout.sessions.create({
-            mode: 'payment',
-            line_items: [{
-                price_data: {
-                    currency: process.env.STRIPE_CURRENCY || 'eur',
-                    product: process.env.STRIPE_PRODUCT_ID,
-                    unit_amount: parseInt(process.env.STRIPE_PREMIUM_AMOUNT || '999'),
-                },
-                quantity: 1,
-            }],
-            metadata: { guildId, guildName: userGuild.name },
+            mode: isMonthly ? 'subscription' : 'payment',
+            line_items: [{ price_data: priceData, quantity: 1 }],
+            metadata: { guildId, guildName: userGuild.name, plan: planChoice },
+            ...(isMonthly ? { subscription_data: { metadata: { guildId, guildName: userGuild.name, plan: planChoice } } } : {}),
             customer_email: req.user.email || undefined,
             success_url: `${appUrl}/premium?payment=success`,
             cancel_url: `${appUrl}/premium?payment=cancelled`,
