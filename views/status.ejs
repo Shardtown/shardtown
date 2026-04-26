@@ -70,6 +70,16 @@
         .shard-guilds.open { display: block; }
         .progress-bar { height: 3px; background: rgba(255,255,255,0.05); border-radius: 999px; overflow: hidden; margin-top: 12px; }
         .progress-fill { height: 100%; border-radius: 999px; transition: width 0.6s ease; }
+        .font-mono-num { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-variant-numeric: tabular-nums; }
+        .spark-path { stroke-dasharray: 1000; stroke-dashoffset: 0; animation: spark-draw 0.8s ease-out; }
+        @keyframes spark-draw { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
+        .spike-badge { animation: spike-pulse 1.4s ease-in-out infinite; }
+        @keyframes spike-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.06); opacity: 0.85; } }
+        .spark-shard { width: 56px; height: 18px; }
+        .kpi-icon { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+        @media (prefers-reduced-motion: reduce) {
+            .spark-path, .spike-badge { animation: none; }
+        }
     </style>
 </head>
 <body>
@@ -149,10 +159,12 @@
                 <p class="text-white/40 text-sm">Le statut est mis à jour toutes les 30 secondes.</p>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-3 mb-14" id="systems-cards">
-                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 animate-pulse h-32"></div>
-                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 animate-pulse h-32"></div>
-                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-5 animate-pulse h-32"></div>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-14" id="systems-cards">
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 animate-pulse h-28"></div>
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 animate-pulse h-28"></div>
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 animate-pulse h-28"></div>
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 animate-pulse h-28"></div>
+                <div class="bg-[#0a0a0a] border border-white/5 rounded-2xl p-4 animate-pulse h-28"></div>
             </div>
 
             <!-- Mises à jour récentes -->
@@ -220,8 +232,75 @@
 
     <script>
         const BOT_IMAGES = { ShardGuard: '/image/shardguard.png', Shard: '/image/shard.png' };
+        const METRIC = {
+            clusters: { color: '#3b82f6', bg: 'rgba(59,130,246,0.10)', label: 'Clusters' },
+            shards:   { color: '#10b981', bg: 'rgba(16,185,129,0.10)', label: 'Shards' },
+            guilds:   { color: '#f59e0b', bg: 'rgba(245,158,11,0.10)', label: 'Serveurs' },
+            members:  { color: '#8b5cf6', bg: 'rgba(139,92,246,0.10)', label: 'Membres' },
+            latency:  { color: '#ef4444', bg: 'rgba(239,68,68,0.10)', label: 'Latence moy.' },
+        };
+        const SPARK_MAX = 24;
         let cachedBots = [];
         let lastFetch = null;
+        const liveHistory = { shards: [], guilds: [], members: [], latency: [], clusters: [] };
+        const pingHistory = new Map();
+
+        function pushHistory(key, value) {
+            const arr = liveHistory[key];
+            arr.push(Number.isFinite(value) ? value : 0);
+            if (arr.length > SPARK_MAX) arr.shift();
+        }
+
+        function pushPing(key, value) {
+            let arr = pingHistory.get(key);
+            if (!arr) { arr = []; pingHistory.set(key, arr); }
+            arr.push(Number.isFinite(value) ? value : 0);
+            if (arr.length > SPARK_MAX) arr.shift();
+            return arr;
+        }
+
+        function buildSparkline(values, color, opts = {}) {
+            const w = opts.width || 120;
+            const h = opts.height || 32;
+            const pad = 2;
+            const data = values && values.length > 0 ? values : [0];
+            if (data.length === 1) data.unshift(data[0]);
+            const min = Math.min(...data);
+            const max = Math.max(...data);
+            const range = max - min || 1;
+            const stepX = (w - pad * 2) / (data.length - 1);
+            const points = data.map((v, i) => {
+                const x = pad + i * stepX;
+                const y = pad + (h - pad * 2) * (1 - (v - min) / range);
+                return [x, y];
+            });
+            const linePath = points.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(' ');
+            const areaPath = `${linePath} L${points[points.length - 1][0]},${h} L${points[0][0]},${h} Z`;
+            const gid = 'g' + Math.random().toString(36).slice(2, 8);
+            const last = points[points.length - 1];
+            const showDot = opts.showDot !== false;
+            return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="width:100%;height:${h}px;display:block;overflow:visible">
+                <defs>
+                    <linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1">
+                        <stop offset="0%" stop-color="${color}" stop-opacity="0.35"/>
+                        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+                    </linearGradient>
+                </defs>
+                <path d="${areaPath}" fill="url(#${gid})"/>
+                <path class="spark-path" d="${linePath}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+                ${showDot ? `<circle cx="${last[0]}" cy="${last[1]}" r="2" fill="${color}"/>` : ''}
+            </svg>`;
+        }
+
+        function trendInfo(values) {
+            if (!values || values.length < 2) return { text: '0%', positive: true };
+            const first = values.find(v => v > 0) || values[0];
+            const last = values[values.length - 1];
+            if (!first) return { text: '0%', positive: true };
+            const pct = ((last - first) / Math.abs(first)) * 100;
+            const sign = pct >= 0 ? '+' : '';
+            return { text: `${sign}${pct.toFixed(1)}%`, positive: pct >= 0, value: pct };
+        }
 
         function timeSince(ms) {
             const s = Math.floor((Date.now() - ms) / 1000);
@@ -251,25 +330,32 @@
             return 'bg-red-500/10';
         }
 
-        function renderSystemCard(label, icon, unavailable, total, color) {
-            const available = total - unavailable;
-            const pct = total > 0 ? Math.round((available / total) * 100) : 100;
-            const isOk = unavailable === 0;
-            const fillColor = isOk ? 'bg-emerald-500' : (unavailable / total > 0.5 ? 'bg-red-500' : 'bg-yellow-500');
-            return `<div class="bg-[#0a0a0a] border ${isOk ? 'border-white/5' : 'border-red-500/15'} rounded-2xl p-5">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center text-white/40">${icon}</div>
-                        <span class="font-bold text-sm">${label}</span>
+        function renderKpiCard({ metric, icon, value, unit, subtitle, history, spike }) {
+            const cfg = METRIC[metric];
+            const trend = trendInfo(history);
+            const trendColor = trend.positive ? 'text-emerald-400' : 'text-red-400';
+            const trendBg = trend.positive ? 'bg-emerald-500/10' : 'bg-red-500/10';
+            const borderClass = spike ? 'border-red-500/25' : 'border-white/5';
+            return `<div class="bg-[#0a0a0a] border ${borderClass} rounded-2xl p-4 transition-colors">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="kpi-icon" style="background:${cfg.bg};color:${cfg.color}">${icon}</div>
+                        <span class="text-[11px] font-bold uppercase tracking-widest text-white/40 truncate">${cfg.label}</span>
                     </div>
-                    <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full ${isOk ? 'bg-emerald-500/10 border border-emerald-500/15' : 'bg-red-500/10 border border-red-500/15'}">
-                        <div class="w-1.5 h-1.5 rounded-full ${isOk ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}"></div>
-                        <span class="text-[10px] font-bold ${isOk ? 'text-emerald-400' : 'text-red-400'}">${isOk ? 'Opérationnel' : 'Incident'}</span>
-                    </div>
+                    ${spike
+                        ? `<span class="spike-badge inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-500/15 border border-red-500/25 text-[9px] font-bold text-red-400 uppercase tracking-wider" aria-label="Pic détecté">
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                Pic
+                            </span>`
+                        : `<span class="text-[10px] font-bold ${trendColor} ${trendBg} px-1.5 py-0.5 rounded-full font-mono-num" aria-label="Tendance">${trend.text}</span>`
+                    }
                 </div>
-                <p class="text-2xl font-bold ${isOk ? '' : 'text-red-400'}">${unavailable} indisponible${unavailable !== 1 ? 's' : ''}</p>
-                <div class="progress-bar"><div class="progress-fill ${fillColor}" style="width:${pct}%"></div></div>
-                <p class="text-[11px] font-bold text-white/20 mt-2">${unavailable > 0 ? Math.round((unavailable/total)*100) : 0}% du total · ${total.toLocaleString('fr-FR')} total</p>
+                <div class="flex items-baseline gap-1.5 mb-1">
+                    <span class="font-mono-num text-[22px] leading-none font-bold tracking-tight" style="color:${spike ? '#f87171' : '#ffffff'}">${value}</span>
+                    ${unit ? `<span class="text-[11px] font-bold text-white/30">${unit}</span>` : ''}
+                </div>
+                <div class="mt-2">${buildSparkline(history, cfg.color, { height: 28 })}</div>
+                <p class="text-[10px] font-bold text-white/25 mt-1.5 truncate font-mono-num">${subtitle}</p>
             </div>`;
         }
 
@@ -280,6 +366,9 @@
             const guilds = shard.guild_count || (shard.guilds_list || []).length;
             const lastUpdateMs = parseLastUpdate(shard.last_update);
             const timeAgo = lastUpdateMs ? timeSince(lastUpdateMs) : 'il y a quelques secondes';
+            const pingArr = pingHistory.get(`${botLabel}-${shard.shard_id}`) || [];
+            const sparkColor = !isOnline ? '#ef4444' : (shard.ping < 100 ? '#10b981' : shard.ping < 250 ? '#f59e0b' : '#ef4444');
+            const sparkSvg = pingArr.length > 1 ? buildSparkline(pingArr, sparkColor, { width: 56, height: 18, showDot: false }) : '';
             const guildsListHtml = (shard.guilds_list || []).length > 0
                 ? `<div class="shard-guilds" id="guilds-${botLabel}-${shard.shard_id}">
                     <div class="mt-2 pt-2 border-t border-white/5 flex flex-wrap gap-1 max-h-28 overflow-y-auto">
@@ -313,7 +402,8 @@
                         </p>
                     </div>
                     <div class="flex items-center gap-2 flex-shrink-0">
-                        <span class="text-[11px] font-bold ${pingBg} px-2 py-1 rounded-lg ${pingClass}">${shard.ping ? shard.ping + 'ms' : '--'}</span>
+                        ${sparkSvg ? `<div class="spark-shard hidden sm:block" aria-hidden="true">${sparkSvg}</div>` : ''}
+                        <span class="text-[11px] font-bold font-mono-num ${pingBg} px-2 py-1 rounded-lg ${pingClass}">${shard.ping ? shard.ping + 'ms' : '--'}</span>
                         ${hasGuilds ? `<svg class="chevron w-4 h-4 text-white/20 group-hover:text-white/40 transition-all duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>` : ''}
                     </div>
                 </div>
@@ -404,6 +494,22 @@
                 : `<div class="text-center py-12 text-white/20 text-xs font-bold uppercase tracking-widest">Aucune donnée disponible</div>`;
         }
 
+        function seedHistoryFromBackend(history) {
+            if (!Array.isArray(history) || history.length === 0) return;
+            const buckets = new Map();
+            for (const row of history) {
+                const ts = new Date(row.timestamp).getTime();
+                const slot = Math.floor(ts / (60 * 60 * 1000));
+                const b = buckets.get(slot) || { guilds: 0, members: 0 };
+                b.guilds += row.guild_count || 0;
+                b.members += row.member_count || 0;
+                buckets.set(slot, b);
+            }
+            const ordered = [...buckets.entries()].sort((a, b) => a[0] - b[0]).slice(-SPARK_MAX);
+            if (liveHistory.guilds.length === 0)  liveHistory.guilds  = ordered.map(([, v]) => v.guilds);
+            if (liveHistory.members.length === 0) liveHistory.members = ordered.map(([, v]) => v.members);
+        }
+
         async function fetchStatus() {
             const dot = document.getElementById('refresh-dot');
             dot.className = 'w-1.5 h-1.5 rounded-full bg-blue-500 transition-colors duration-300';
@@ -414,12 +520,29 @@
                 lastFetch = Date.now();
                 cachedBots = data.current || [];
 
+                seedHistoryFromBackend(data.history);
+
                 const totalGuilds = cachedBots.reduce((s, b) => s + (b.guilds || 0), 0);
                 const totalMembers = cachedBots.reduce((s, b) => s + (b.members || 0), 0);
-                const allShards = cachedBots.flatMap(b => b.shards || []);
-                const offlineShards = allShards.filter(s => s.status !== 'Online').length;
-                const offlineBots = cachedBots.filter(b => !b.online).length;
+                const allShards = cachedBots.flatMap(b => (b.shards || []).map(s => ({ ...s, _bot: b.label })));
+                const onlineShards = allShards.filter(s => s.status === 'Online');
+                const offlineShards = allShards.length - onlineShards.length;
+                const onlineBots = cachedBots.filter(b => b.online).length;
+                const offlineBots = cachedBots.length - onlineBots;
+                const avgPing = onlineShards.length > 0
+                    ? Math.round(onlineShards.reduce((s, x) => s + (x.ping || 0), 0) / onlineShards.length)
+                    : 0;
                 const allOnline = offlineShards === 0 && offlineBots === 0;
+
+                pushHistory('clusters', onlineBots);
+                pushHistory('shards', onlineShards.length);
+                pushHistory('guilds', totalGuilds);
+                pushHistory('members', totalMembers);
+                pushHistory('latency', avgPing);
+
+                for (const s of allShards) {
+                    pushPing(`${s._bot}-${s.shard_id}`, s.status === 'Online' ? (s.ping || 0) : 0);
+                }
 
                 document.getElementById('total-guilds').textContent = totalGuilds.toLocaleString('fr-FR');
                 document.getElementById('total-members').textContent = totalMembers.toLocaleString('fr-FR');
@@ -435,24 +558,57 @@
                     banner.className = 'mb-5 rounded-2xl border px-6 py-5 flex items-center gap-4 bg-emerald-500/5 border-emerald-500/15 transition-all duration-500';
                     bannerDot.className = 'w-3 h-3 rounded-full bg-emerald-500 flex-shrink-0 shadow-[0_0_12px_rgba(16,185,129,0.6)] transition-all duration-500';
                     bannerTitle.textContent = 'Tous les systèmes opérationnels';
-                    bannerSub.textContent = 'Aucun incident détecté · Tous les shards sont actifs';
-                    bannerSub.className = 'text-sm text-emerald-400/50 mt-0.5';
+                    bannerSub.textContent = `Aucun incident détecté · Latence moyenne ${avgPing}ms`;
+                    bannerSub.className = 'text-sm text-emerald-400/50 mt-0.5 font-mono-num';
                 } else {
                     banner.className = 'mb-5 rounded-2xl border px-6 py-5 flex items-center gap-4 bg-red-500/5 border-red-500/15 transition-all duration-500';
                     bannerDot.className = 'w-3 h-3 rounded-full bg-red-500 flex-shrink-0 shadow-[0_0_12px_rgba(239,68,68,0.6)] animate-pulse transition-all duration-500';
                     bannerTitle.textContent = 'Incident en cours';
                     bannerSub.textContent = `${offlineShards} shard${offlineShards > 1 ? 's' : ''} hors ligne · Nos équipes sont informées`;
-                    bannerSub.className = 'text-sm text-red-400/50 mt-0.5';
+                    bannerSub.className = 'text-sm text-red-400/50 mt-0.5 font-mono-num';
                 }
 
                 const iconShard = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
                 const iconCluster = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><path d="M12 8v3M8.5 17l-1.5-3M15.5 17l1.5-3"/></svg>`;
                 const iconServer = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>`;
+                const iconUsers = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+                const iconActivity = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`;
 
                 document.getElementById('systems-cards').innerHTML =
-                    renderSystemCard('Clusters', iconCluster, offlineBots, cachedBots.length) +
-                    renderSystemCard('Shards', iconShard, offlineShards, allShards.length) +
-                    renderSystemCard('Serveurs', iconServer, 0, totalGuilds);
+                    renderKpiCard({
+                        metric: 'clusters', icon: iconCluster,
+                        value: `${onlineBots}/${cachedBots.length}`,
+                        subtitle: `${offlineBots > 0 ? offlineBots + ' hors ligne' : 'Tous opérationnels'}`,
+                        history: liveHistory.clusters,
+                        spike: offlineBots > 0,
+                    }) +
+                    renderKpiCard({
+                        metric: 'shards', icon: iconShard,
+                        value: `${onlineShards.length}/${allShards.length}`,
+                        subtitle: `${offlineShards > 0 ? offlineShards + ' hors ligne' : 'Tous opérationnels'}`,
+                        history: liveHistory.shards,
+                        spike: offlineShards > 0,
+                    }) +
+                    renderKpiCard({
+                        metric: 'guilds', icon: iconServer,
+                        value: totalGuilds.toLocaleString('fr-FR'),
+                        subtitle: `Sur ${cachedBots.length} cluster${cachedBots.length > 1 ? 's' : ''}`,
+                        history: liveHistory.guilds,
+                    }) +
+                    renderKpiCard({
+                        metric: 'members', icon: iconUsers,
+                        value: totalMembers >= 1000 ? (totalMembers / 1000).toFixed(1) + 'k' : totalMembers.toLocaleString('fr-FR'),
+                        subtitle: `Total cumulés`,
+                        history: liveHistory.members,
+                    }) +
+                    renderKpiCard({
+                        metric: 'latency', icon: iconActivity,
+                        value: avgPing || '--',
+                        unit: 'ms',
+                        subtitle: avgPing > 250 ? 'Latence élevée' : avgPing > 100 ? 'Normal' : (avgPing > 0 ? 'Excellent' : 'Aucune mesure'),
+                        history: liveHistory.latency,
+                        spike: avgPing > 250,
+                    });
 
                 renderAll();
                 dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 transition-colors duration-300';
