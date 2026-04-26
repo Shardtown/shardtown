@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Shield, Zap, Lock, ArrowRight } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth, avatarUrl } from "@/api/auth";
+import { TiltCard } from "@/components/ui/tilt-card";
 
 const BOTS = [
   {
@@ -90,20 +91,23 @@ export function Dashboard() {
           {BOTS.map(b => {
             const Icon = b.icon;
             return (
-              <Link
-                key={b.label}
-                to={b.href}
-                className={`group relative overflow-hidden bg-gradient-to-br ${b.bg} border border-white/[0.08] rounded-3xl p-8 hover:border-white/20 transition-all hover:scale-[1.01]`}
-              >
-                <div className={`w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center ${b.accent} mb-6`}>
-                  <Icon className="w-6 h-6" strokeWidth={2} />
-                </div>
-                <h3 className="text-2xl font-bold mb-2">{b.label}</h3>
-                <p className={`text-sm font-bold uppercase tracking-wider ${b.accent} mb-4`}>{b.tagline}</p>
-                <p className="text-white/60 leading-relaxed mb-8">{b.description}</p>
-                <span className="inline-flex items-center gap-2 text-sm font-bold text-white group-hover:gap-3 transition-all">
-                  Gérer mes serveurs <ArrowRight className="w-4 h-4" />
-                </span>
+              <Link key={b.label} to={b.href} className="group block">
+                <TiltCard
+                  effect="gravitate"
+                  tiltLimit={8}
+                  scale={1.02}
+                  className={`bg-gradient-to-br ${b.bg} border border-white/[0.08] rounded-3xl p-8 hover:border-white/20 transition-colors h-full`}
+                >
+                  <div className={`w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center ${b.accent} mb-6`}>
+                    <Icon className="w-6 h-6" strokeWidth={2} />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">{b.label}</h3>
+                  <p className={`text-sm font-bold uppercase tracking-wider ${b.accent} mb-4`}>{b.tagline}</p>
+                  <p className="text-white/60 leading-relaxed mb-8">{b.description}</p>
+                  <span className="inline-flex items-center gap-2 text-sm font-bold text-white group-hover:gap-3 transition-all">
+                    Gérer mes serveurs <ArrowRight className="w-4 h-4" />
+                  </span>
+                </TiltCard>
               </Link>
             );
           })}

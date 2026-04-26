@@ -25,8 +25,8 @@ export function Header() {
   return (
     <div className="fixed top-6 left-0 right-0 z-50 px-6">
       <header
-        className={`container-wide flex justify-between items-center rounded-full transition-all duration-300 py-4 px-8 border ${
-          scrolled ? "bg-white/5 backdrop-blur-lg border-white/5" : "bg-transparent border-white/10"
+        className={`container-wide flex justify-between items-center rounded-full transition-all duration-300 py-10 px-20 border ${
+          scrolled ? "bg-white/5 backdrop-blur-lg border-white/20" : "bg-transparent border-white/20"
         }`}
       >
         <Link to="/" className="flex items-center gap-2">
