@@ -1,0 +1,279 @@
+import { useEffect, useState } from "react";
+import { Lock, ArrowRight } from "lucide-react";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { apiGet } from "@/api/client";
+
+interface Guild {
+  id: string;
+  name: string;
+  icon: string | null;
+}
+
+interface BotServerData {
+  guilds: Guild[];
+  botGuildIds: string[];
+  clientId: string;
+  user: { id: string; username: string; avatar: string | null } | null;
+}
+
+interface Props {
+  botKey: "shard" | "shardguard";
+  botLabel: string;
+  botImage: string;
+  configRoutePrefix: string;
+  loginPath: string;
+  inviteScopes: string;
+  /** Optional modal-based bot picker (ShardGuard) — for now just opens invite directly */
+  showBotPicker?: boolean;
+}
+
+function initials(name: string) {
+  return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
+export function BotServerPage({
+  botKey,
+  botLabel,
+  botImage,
+  configRoutePrefix,
+  loginPath,
+  inviteScopes,
+  showBotPicker,
+}: Props) {
+  const [data, setData] = useState<BotServerData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [unauthorized, setUnauthorized] = useState(false);
+  const [pickerGuildId, setPickerGuildId] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiGet<BotServerData>(`/api/${botKey}/server`)
+      .then(setData)
+      .catch(err => {
+        if (String(err).includes("401") || String(err).includes("403")) {
+          setUnauthorized(true);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [botKey]);
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <section className="container-wide pt-12">
+          <div className="h-8 w-32 bg-white/5 rounded animate-pulse mb-8" />
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="bg-[#0a0a0a] border border-white/5 rounded-3xl h-32 animate-pulse" />
+            ))}
+          </div>
+        </section>
+      </AppLayout>
+    );
+  }
+
+  if (unauthorized || !data?.user) {
+    return (
+      <AppLayout>
+        <section className="container-wide pt-24 max-w-2xl mx-auto text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 mb-8">
+            <Lock className="w-7 h-7" />
+          </div>
+          <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Connexion requise</p>
+          <h1
+            className="font-extrabold leading-tight tracking-tight uppercase mb-6"
+            style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
+          >
+            {botLabel}
+          </h1>
+          <p className="text-white/50 text-lg mb-10 leading-relaxed">
+            Connectez-vous avec Discord pour gérer vos serveurs.
+          </p>
+          <a
+            href={`${loginPath}?returnTo=/${botKey}/server`}
+            className="bg-[#5865F2] text-white px-8 py-4 rounded-full font-bold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2"
+          >
+            Se connecter avec Discord <ArrowRight className="w-4 h-4" />
+          </a>
+        </section>
+      </AppLayout>
+    );
+  }
+
+  const { guilds, botGuildIds, clientId } = data;
+  const guildsWithBot = guilds.filter(g => botGuildIds.includes(g.id));
+  const guildsWithoutBot = guilds.filter(g => !botGuildIds.includes(g.id));
+
+  function inviteBot(guildId: string) {
+    const url = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=${encodeURIComponent(inviteScopes)}&guild_id=${guildId}`;
+    if (showBotPicker) {
+      window.location.href = url;
+    } else {
+      window.open(url, "_blank");
+    }
+  }
+
+  return (
+    <AppLayout>
+      <section className="container-wide pt-12">
+        <div className="flex items-center gap-3 mb-10">
+          <img src={botImage} alt={botLabel} className="w-8 h-8 rounded-xl object-cover border border-white/5" />
+          <span className="text-xs font-bold uppercase tracking-widest text-white/40">{botLabel}</span>
+        </div>
+
+        {/* Stats */}
+        <div className="grid md:grid-cols-3 gap-6 mb-20">
+          <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-8">
+            <div className="text-5xl font-extrabold font-mono-num mb-1">{guilds.length}</div>
+            <p className="text-sm font-bold text-white/40 uppercase tracking-widest">Communautés</p>
+          </div>
+          <div className="bg-[#0a0a0a] border border-blue-500/20 rounded-3xl p-8">
+            <div className="text-5xl font-extrabold font-mono-num mb-1 text-blue-400">{botGuildIds.length}</div>
+            <p className="text-sm font-bold text-white/40 uppercase tracking-widest">Serveurs Actifs</p>
+          </div>
+          <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-8">
+            <div className="text-5xl font-extrabold mb-1 text-white/30">GRATUIT</div>
+            <p className="text-sm font-bold text-white/40 uppercase tracking-widest">Statut du Compte</p>
+          </div>
+        </div>
+
+        <div className="mb-12">
+          <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Gestion</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight uppercase">Vos Serveurs</h2>
+        </div>
+
+        {/* With bot */}
+        {guildsWithBot.length > 0 ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+            {guildsWithBot.map(g => (
+              <a
+                key={g.id}
+                href={`${configRoutePrefix}/${g.id}`}
+                className="group bg-[#0a0a0a] border border-white/[0.08] rounded-3xl p-6 flex items-center gap-5 hover:border-white/20 hover:-translate-y-1 transition-all"
+              >
+                <div className="relative flex-shrink-0">
+                  {g.icon ? (
+                    <img
+                      src={`https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png`}
+                      alt=""
+                      className="w-16 h-16 rounded-2xl border border-white/5 object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center font-bold text-xl text-white/30 group-hover:scale-110 transition-transform duration-500">
+                      {initials(g.name)}
+                    </div>
+                  )}
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-4 border-black" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-base truncate mb-1">{g.name}</h3>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                    Configurer
+                  </span>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white group-hover:text-black transition-all">
+                  <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-white/5 rounded-3xl border border-white/5 mb-12">
+            <p className="text-white/40 font-bold uppercase tracking-widest text-xs">Aucun serveur actif</p>
+          </div>
+        )}
+
+        {/* Without bot */}
+        {guildsWithoutBot.length > 0 && (
+          <>
+            <div className="relative py-16">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t border-white/[0.04]" />
+              </div>
+              <div className="relative flex justify-center">
+                <div className="bg-black/40 backdrop-blur-xl border border-white/5 px-6 py-2.5 rounded-full">
+                  <span className="text-[10px] font-black tracking-[0.3em] text-white/30 uppercase">
+                    Autres Communautés
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {guildsWithoutBot.map(g => (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => (showBotPicker ? setPickerGuildId(g.id) : inviteBot(g.id))}
+                  className="group bg-[#0a0a0a] border border-white/[0.08] rounded-3xl p-6 flex items-center gap-5 hover:border-white/20 hover:-translate-y-1 hover:opacity-100 opacity-60 transition-all text-left grayscale hover:grayscale-0"
+                >
+                  <div className="flex-shrink-0">
+                    {g.icon ? (
+                      <img
+                        src={`https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png`}
+                        alt=""
+                        className="w-16 h-16 rounded-2xl border border-white/5 object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center font-bold text-xl text-white/30 group-hover:scale-110 transition-transform duration-500">
+                        {initials(g.name)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-base truncate mb-1">{g.name}</h3>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-white/50">
+                      Inviter {botLabel}
+                    </span>
+                  </div>
+                  <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white group-hover:text-black transition-all">
+                    <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* Bot picker modal (ShardGuard) */}
+      {showBotPicker && pickerGuildId && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          onClick={() => setPickerGuildId(null)}
+          onKeyDown={e => e.key === "Escape" && setPickerGuildId(null)}
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div
+            className="relative bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPickerGuildId(null)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
+              aria-label="Fermer"
+            >
+              ✕
+            </button>
+            <p className="text-xs font-black tracking-[0.3em] text-white/30 uppercase mb-2">Ajouter</p>
+            <h3 className="text-2xl font-bold uppercase mb-8">Choisir un Bot</h3>
+            <button
+              type="button"
+              onClick={() => inviteBot(pickerGuildId)}
+              className="flex items-center gap-5 p-5 rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.07] hover:border-white/10 transition-all w-full text-left group"
+            >
+              <img src={botImage} alt={botLabel} className="w-12 h-12 rounded-xl object-cover border border-white/10" />
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-base mb-1">{botLabel}</p>
+                <p className="text-xs text-white/40">Modération, sécurité &amp; protection</p>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
+                <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+    </AppLayout>
+  );
+}

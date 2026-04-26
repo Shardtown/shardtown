@@ -384,7 +384,8 @@ app.use('/image', express.static(path.join(__dirname, 'image')));
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.get('/', async (req, res) => {
+// Migrated to React SPA — kept only as legacy fallback for the EJS template (unused once SPA catch-all is registered)
+app.get('/_legacy/', async (req, res) => {
     if (!req.user) return res.render('index', { user: null, botGuildIds: [], adminGuilds: [] });
     try {
         const botGuildsResponse = await axios.get('https://discord.com/api/v10/users/@me/guilds', {
@@ -406,25 +407,27 @@ app.get('/', async (req, res) => {
     }
 });
 
-app.get('/wiki', (req, res) => {
-    res.render('wiki', { user: req.user });
+// React SPA: assets are served at /assets/* (Vite output base = "/")
+const SPA_DIST = path.join(__dirname, 'status-app', 'dist');
+app.use('/assets', express.static(path.join(SPA_DIST, 'assets'), { maxAge: '1y', immutable: true }));
+
+// Lightweight session info for the React app
+app.get('/api/me', (req, res) => {
+    if (!req.user) return res.json({ user: null });
+    res.json({
+        user: {
+            id: req.user.id,
+            username: req.user.username,
+            global_name: req.user.global_name || null,
+            avatar: req.user.avatar || null,
+            discriminator: req.user.discriminator || null,
+        }
+    });
 });
 
-app.get('/status', (req, res) => {
-    res.render('status', { user: req.user });
-});
-
-app.get('/terms', (req, res) => {
-    res.render('terms', { user: req.user });
-});
-
-app.get('/privacy', (req, res) => {
-    res.render('privacy', { user: req.user });
-});
-
-app.get('/premium', async (req, res) => {
-    const paymentResult = req.query.payment || null;
-    if (!req.user) return res.render('premium', { user: null, adminGuilds: [], paymentResult });
+// Premium data — consumed by React /premium
+app.get('/api/premium', async (req, res) => {
+    if (!req.user) return res.status(401).json({ adminGuilds: [] });
     try {
         const botGuildsResponse = await axios.get('https://discord.com/api/v10/users/@me/guilds', {
             headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` }
@@ -432,6 +435,7 @@ app.get('/premium', async (req, res) => {
         const botGuildIds = botGuildsResponse.data.map(g => g.id);
         const adminGuilds = req.user.guilds
             .filter(g => (g.permissions & 0x8) === 0x8 || g.owner)
+            .map(g => ({ id: g.id, name: g.name }))
             .sort((a, b) => {
                 const aIn = botGuildIds.includes(a.id);
                 const bIn = botGuildIds.includes(b.id);
@@ -439,10 +443,12 @@ app.get('/premium', async (req, res) => {
                 if (!aIn && bIn) return 1;
                 return 0;
             });
-        res.render('premium', { user: req.user, adminGuilds, paymentResult });
+        res.json({ adminGuilds });
     } catch {
-        const adminGuilds = req.user.guilds.filter(g => (g.permissions & 0x8) === 0x8 || g.owner);
-        res.render('premium', { user: req.user, adminGuilds, paymentResult });
+        const adminGuilds = req.user.guilds
+            .filter(g => (g.permissions & 0x8) === 0x8 || g.owner)
+            .map(g => ({ id: g.id, name: g.name }));
+        res.json({ adminGuilds });
     }
 });
 
@@ -587,7 +593,8 @@ app.get('/logout', (req, res) => {
     req.logout(() => res.redirect('/'));
 });
 
-app.get('/dashboard', (req, res) => res.render('dashboard', { user: req.user }));
+// Migrated to React SPA
+app.get('/_legacy/dashboard', (req, res) => res.render('dashboard', { user: req.user }));
 
 app.get('/shard/login', loginRateLimiter, (req, res) => {
     if (req.session.shardUser) return res.redirect(isSafeRedirect(req.session.shardReturnTo) ? req.session.shardReturnTo : '/shard/server');
@@ -659,14 +666,18 @@ function checkAuthShard(req, res, next) {
     res.redirect('/shard/login');
 }
 
-app.get('/shard/server', checkAuthShard, async (req, res) => {
+// Shard dashboard data — consumed by React /shard/server
+app.get('/api/shard/server', checkAuthShard, async (req, res) => {
+    const shardUser = req.session.shardUser;
+    const userPayload = { id: shardUser.id, username: shardUser.username, avatar: shardUser.avatar || null };
+    const adminGuilds = shardUser.guilds
+        .filter(guild => (guild.permissions & 0x8) === 0x8 || guild.owner)
+        .map(g => ({ id: g.id, name: g.name, icon: g.icon || null }));
     try {
         const botGuildsResponse = await axios.get('https://discord.com/api/v10/users/@me/guilds', {
             headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}` }
         });
         const botGuildIds = botGuildsResponse.data.map(g => g.id);
-        const shardUser = req.session.shardUser;
-        const adminGuilds = shardUser.guilds.filter(guild => (guild.permissions & 0x8) === 0x8 || guild.owner);
         adminGuilds.sort((a, b) => {
             const aIn = botGuildIds.includes(a.id);
             const bIn = botGuildIds.includes(b.id);
@@ -674,23 +685,19 @@ app.get('/shard/server', checkAuthShard, async (req, res) => {
             if (!aIn && bIn) return 1;
             return 0;
         });
-        res.render('shard/dashboard', { user: shardUser, guilds: adminGuilds, botGuildIds });
+        res.json({ user: userPayload, guilds: adminGuilds, botGuildIds, clientId: process.env.SHARD_CLIENT_ID || '' });
     } catch (error) {
-        const shardUser = req.session.shardUser;
-        console.error('Erreur shard dashboard:', error.response?.data || error.message);
-        res.render('shard/dashboard', {
-            user: shardUser,
-            guilds: shardUser.guilds.filter(guild => (guild.permissions & 0x8) === 0x8 || guild.owner),
-            botGuildIds: []
-        });
+        console.error('Erreur /api/shard/server:', error.response?.data || error.message);
+        res.json({ user: userPayload, guilds: adminGuilds, botGuildIds: [], clientId: process.env.SHARD_CLIENT_ID || '' });
     }
 });
 
-app.get('/shard/guild/:guildID', checkAuthShard, async (req, res) => {
+// Shard guild config — consumed by React /shard/guild/:id
+app.get('/api/shard/guild/:guildID', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
-    if (!userGuild) return res.redirect('/shard/server');
+    if (!userGuild) return res.status(403).json({ error: 'Accès refusé' });
     try {
         const [channelsRes, rolesRes, emojisRes] = await Promise.all([
             axios.get(`https://discord.com/api/v10/guilds/${guildID}/channels`, { headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}` } }),
@@ -941,10 +948,22 @@ app.get('/shard/guild/:guildID', checkAuthShard, async (req, res) => {
         const [scheduledAnnouncements] = await db.execute(`SELECT * FROM shard_scheduled WHERE guildId = ? ORDER BY nextRun ASC`, [guildID]).catch(() => [[]]);
         const [shopItems] = await db.execute(`SELECT * FROM shard_shop WHERE guildId = ? ORDER BY price ASC`, [guildID]).catch(() => [[]]);
         const [polls] = await db.execute(`SELECT * FROM shard_polls WHERE guildId = ? AND ended = 0 ORDER BY id DESC`, [guildID]).catch(() => [[]]);
-        res.render('shard/config', { guild: userGuild, channels, voiceChannels, categories, roles, guildEmojis, settings, giveaways, scheduledAnnouncements, shopItems, polls });
+        res.json({
+            guild: { id: userGuild.id, name: userGuild.name, icon: userGuild.icon || null },
+            channels: channels.map(c => ({ id: c.id, name: c.name })),
+            voiceChannels: voiceChannels.map(c => ({ id: c.id, name: c.name })),
+            categories: categories.map(c => ({ id: c.id, name: c.name })),
+            roles: roles.map(r => ({ id: r.id, name: r.name, color: r.color })),
+            guildEmojis: guildEmojis.map(e => ({ id: e.id, name: e.name, animated: !!e.animated })),
+            settings,
+            giveaways,
+            scheduledAnnouncements,
+            shopItems,
+            polls,
+        });
     } catch (err) {
-        console.error('Erreur shard config:', err.response?.data || err.message);
-        res.redirect('/shard/server');
+        console.error('Erreur /api/shard/guild/:id:', err.response?.data || err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
@@ -1374,15 +1393,17 @@ app.post('/shard/guild/:guildID/test', checkAuthShard, async (req, res) => {
     }
 });
 
-app.get('/shardguard/server', checkAuth, async (req, res) => {
+// ShardGuard dashboard data — consumed by React /shardguard/server
+app.get('/api/shardguard/server', checkAuth, async (req, res) => {
+    const userPayload = { id: req.user.id, username: req.user.username, avatar: req.user.avatar || null };
+    const adminGuilds = req.user.guilds
+        .filter(guild => (guild.permissions & 0x8) === 0x8 || guild.owner)
+        .map(g => ({ id: g.id, name: g.name, icon: g.icon || null }));
     try {
         const botGuildsResponse = await axios.get('https://discord.com/api/v10/users/@me/guilds', {
             headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` }
         });
         const botGuildIds = botGuildsResponse.data.map(g => g.id);
-        
-        const adminGuilds = req.user.guilds.filter(guild => (guild.permissions & 0x8) === 0x8 || guild.owner);
-        
         adminGuilds.sort((a, b) => {
             const aIn = botGuildIds.includes(a.id);
             const bIn = botGuildIds.includes(b.id);
@@ -1390,30 +1411,20 @@ app.get('/shardguard/server', checkAuth, async (req, res) => {
             if (!aIn && bIn) return 1;
             return 0;
         });
-
-        res.render('shardguard/dashboard', { 
-            user: req.user, 
-            guilds: adminGuilds, 
-            botGuildIds: botGuildIds,
-            clientId: process.env.CLIENT_ID 
-        });
+        res.json({ user: userPayload, guilds: adminGuilds, botGuildIds, clientId: process.env.CLIENT_ID || '' });
     } catch (error) {
-        console.error('Erreur dashboard:', error.response?.data || error.message);
-        res.render('shardguard/dashboard', { 
-            user: req.user, 
-            guilds: req.user.guilds.filter(guild => (guild.permissions & 0x8) === 0x8 || guild.owner), 
-            botGuildIds: [],
-            clientId: process.env.CLIENT_ID
-        });
+        console.error('Erreur /api/shardguard/server:', error.response?.data || error.message);
+        res.json({ user: userPayload, guilds: adminGuilds, botGuildIds: [], clientId: process.env.CLIENT_ID || '' });
     }
 });
 
 app.get('/guild/:guildID', (req, res) => res.redirect(301, `/shardguard/guild/${req.params.guildID}`));
 
-app.get('/shardguard/guild/:guildID', checkAuth, async (req, res) => {
+// ShardGuard guild config — consumed by React /shardguard/guild/:id
+app.get('/api/shardguard/guild/:guildID', checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
-    if (!userGuild) return res.redirect('/shardguard/server');
+    if (!userGuild) return res.status(403).json({ error: 'Accès refusé' });
 
     try {
         const response = await axios.get(`https://discord.com/api/v10/guilds/${guildID}/roles`, {
@@ -1520,21 +1531,22 @@ app.get('/shardguard/guild/:guildID', checkAuth, async (req, res) => {
         // Logs d'audit
         const [auditLogsRows] = await db.execute('SELECT * FROM audit_logs WHERE guildId = ? ORDER BY timestamp DESC LIMIT 20', [guildID]);
 
-        res.render('shardguard/config', { 
-            guild: userGuild, 
-            roles: roles,
-            channels: channels,
-            settings: settings, 
+        res.json({
+            guild: { id: userGuild.id, name: userGuild.name, icon: userGuild.icon || null },
+            roles: roles.map(r => ({ id: r.id, name: r.name, color: r.color })),
+            channels: channels.map(c => ({ id: c.id, name: c.name })),
+            settings,
             logs: logsRows,
             auditLogs: auditLogsRows,
             chartData: statsByDay,
             stats: {
-                totalMembers: guildData.approximate_member_count || 0
-            }
+                totalMembers: guildData.approximate_member_count || 0,
+                verifiedCount,
+            },
         });
     } catch (error) {
-        console.error('Erreur rôles:', error.response?.data || error.message);
-        res.redirect('/shardguard/server');
+        console.error('Erreur /api/shardguard/guild/:id:', error.response?.data || error.message);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
@@ -2313,13 +2325,14 @@ async function fetchBotInfo(token) {
     } catch { return null; }
 }
 
-app.get('/admin/login', (req, res) => {
-    if (req.session && req.session.isAdmin) return res.redirect('/admin');
-    const csrfToken = generateCsrfToken(req);
-    res.render('admin-login', { error: false, csrfToken });
+// CSRF for the React /admin/login form
+app.get('/api/admin/csrf', (req, res) => {
+    if (req.session && req.session.isAdmin) return res.status(204).end();
+    res.json({ csrfToken: generateCsrfToken(req) });
 });
 
 app.post('/admin/login', adminLoginLimiter, verifyCsrf, (req, res) => {
+    if (req.session && req.session.isAdmin) return res.redirect('/admin');
     const { username, password } = req.body;
     const validUser = timingSafeEqual(username || '', process.env.ADMIN_USERNAME || '');
     const validPass = verifyAdminPassword(password);
@@ -2332,15 +2345,15 @@ app.post('/admin/login', adminLoginLimiter, verifyCsrf, (req, res) => {
         });
         return;
     }
-    const csrfToken = generateCsrfToken(req);
-    res.status(401).render('admin-login', { error: true, csrfToken });
+    res.redirect('/admin/login?error=1');
 });
 
 app.get('/admin/logout', (req, res) => {
     req.session.destroy(() => res.redirect('/admin/login'));
 });
 
-app.get('/admin', checkAdmin, async (req, res) => {
+// Admin panel data — consumed by React /admin
+app.get('/api/admin', checkAdmin, async (req, res) => {
     try {
         await db.execute(`
             CREATE TABLE IF NOT EXISTS blocked_guilds (
@@ -2357,11 +2370,22 @@ app.get('/admin', checkAdmin, async (req, res) => {
         const totalGuilds = botsData.reduce((acc, b) => acc + b.guilds.length, 0);
         const totalMembers = botsData.reduce((acc, b) => acc + b.guilds.reduce((s, g) => s + (g.approximate_member_count || 0), 0), 0);
 
-        const csrfToken = generateCsrfToken(req);
-        res.render('admin', { bots: botsData, blockedGuilds: blockedRows, totalGuilds, totalMembers, csrfToken });
+        res.json({
+            bots: botsData.map(b => ({
+                id: b.id,
+                username: b.username,
+                discriminator: b.discriminator || '0',
+                avatar: b.avatar || null,
+                guilds: b.guilds.map(g => ({ id: g.id, name: g.name, icon: g.icon || null })),
+            })),
+            blockedGuilds: blockedRows.map(b => ({ guild_id: b.guild_id, guild_name: b.guild_name })),
+            totalGuilds,
+            totalMembers,
+            csrfToken: generateCsrfToken(req),
+        });
     } catch (err) {
-        console.error('Erreur admin:', err);
-        res.status(500).send('Erreur serveur');
+        console.error('Erreur /api/admin:', err);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
@@ -2490,5 +2514,31 @@ async function collectStats() {
 setInterval(collectStats, 60 * 60 * 1000);
 // Et au démarrage après un court délai pour laisser la DB se connecter
 setTimeout(collectStats, 5000);
+
+// SPA catch-all — must be last. Anything that didn't match an Express route
+// (and isn't an API/webhook/OAuth path) gets the React build.
+app.get(/.*/, (req, res, next) => {
+    const p = req.path;
+    if (
+        p.startsWith('/api/') ||
+        p.startsWith('/webhook/') ||
+        p.startsWith('/login') ||
+        p.startsWith('/callback') ||
+        p.startsWith('/logout') ||
+        p.startsWith('/shard/login') ||
+        p.startsWith('/shard/callback') ||
+        p.startsWith('/shard/logout') ||
+        p.startsWith('/admin/logout') ||
+        p.startsWith('/_legacy/') ||
+        p.startsWith('/image/') ||
+        p === '/favicon.ico'
+    ) return next();
+    res.sendFile(path.join(SPA_DIST, 'index.html'), err => {
+        if (err) {
+            console.warn('[spa] React bundle missing — run: npm --prefix status-app run build');
+            res.status(500).send('SPA build missing');
+        }
+    });
+});
 
 app.listen(PORT, () => console.log(`Tableau de bord démarré sur http://localhost:${PORT}`));
