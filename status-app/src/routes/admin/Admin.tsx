@@ -346,12 +346,21 @@ export function Admin() {
               Toutes les actions sont protégées par CSRF.
             </p>
           </div>
-          <a
-            href="/admin/logout"
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await apiPost("/admin/logout");
+              } catch {
+                /* swallow — we redirect regardless */
+              } finally {
+                nav("/admin/login", { replace: true });
+              }
+            }}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/15 hover:border-red-500/30 transition-colors text-[11px] font-bold uppercase tracking-[0.18em]"
           >
             <LogOut className="w-3.5 h-3.5" /> Déconnexion
-          </a>
+          </button>
         </header>
 
         {/* KPI tiles */}
