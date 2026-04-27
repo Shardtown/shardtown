@@ -7,6 +7,19 @@ const {
     PermissionFlagsBits
 } = require('discord.js');
 const mysql = require('mysql2/promise');
+const crypto = require('crypto');
+
+// Fair Fisher-Yates shuffle backed by crypto.randomInt. Used for
+// giveaway winner draws so paying Premium users actually get a fair
+// random draw instead of the biased `sort(() => Math.random() - 0.5)`.
+function cryptoShuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = crypto.randomInt(0, i + 1);
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
 
 const client = new Client({
     intents: [
@@ -358,7 +371,7 @@ client.once('ready', async () => {
             for (const gw of rows) {
                 try {
                     const [entries] = await db.execute(`SELECT userId FROM shard_giveaway_entries WHERE giveawayId = ?`, [gw.id]);
-                    const shuffled = entries.sort(() => Math.random() - 0.5);
+                    const shuffled = cryptoShuffle(entries);
                     const winnerIds = shuffled.slice(0, gw.winnersCount).map(e => e.userId);
                     const winnersText = winnerIds.length ? winnerIds.map(id => `<@${id}>`).join(', ') : 'Aucun participant';
                     await db.execute(`UPDATE shard_giveaways SET ended = 1 WHERE id = ?`, [gw.id]);
