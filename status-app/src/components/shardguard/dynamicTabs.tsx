@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, Loader2, AlertTriangle, Ban, UserMinus, X, MessageSquare } from "lucide-react";
 import { Field, NumberInput, Select, SectionCard, TextInput } from "./Field";
 import { Sparkline } from "@/components/Sparkline";
+import { Admonition } from "@/components/ui/admonition";
 
 interface ChartData { join: number; leave: number; success: number; failed: number }
 
@@ -298,7 +299,11 @@ function MemberModal({ guildId, member, onClose }: { guildId: string; member: Me
   const [reason, setReason] = useState("");
   const [duration, setDuration] = useState(60);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; title: string; msg: string } | null>(null);
+
+  const ACTION_LABELS: Record<NonNullable<typeof action>, string> = {
+    warn: "Avertissement", mute: "Mute", kick: "Kick", ban: "Ban",
+  };
 
   async function submit() {
     if (!action) return;
@@ -311,10 +316,19 @@ function MemberModal({ guildId, member, onClose }: { guildId: string; member: Me
         body: JSON.stringify({ action, reason, duration, username: member.username }),
       });
       const d = await r.json();
-      setResult(d.success ? `✓ ${action} appliqué` : `Erreur : ${d.error || ""}`);
-      setTimeout(() => { setResult(null); setAction(null); }, 2200);
+      const target = member.displayName || member.username;
+      if (d.success) {
+        setResult({
+          ok: true,
+          title: `${ACTION_LABELS[action]} appliqué`,
+          msg: `${target} a été sanctionné${action === "warn" || action === "kick" || action === "ban" ? "" : ""}.${reason ? ` Raison : ${reason}.` : ""}`,
+        });
+        setTimeout(() => { setResult(null); setAction(null); }, 3200);
+      } else {
+        setResult({ ok: false, title: "Échec de la sanction", msg: d.error || "Une erreur inconnue est survenue." });
+      }
     } catch {
-      setResult("Erreur réseau");
+      setResult({ ok: false, title: "Erreur réseau", msg: "Impossible de joindre le serveur. Réessaie dans quelques secondes." });
     } finally { setBusy(false); }
   }
 
@@ -389,7 +403,11 @@ function MemberModal({ guildId, member, onClose }: { guildId: string; member: Me
               className="w-full bg-white text-black px-5 py-3 rounded-full font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity">
               {busy ? "Application…" : `Confirmer le ${action}`}
             </button>
-            {result && <p className={`text-sm text-center ${result.startsWith("✓") ? "text-emerald-400" : "text-red-400"}`}>{result}</p>}
+            {result && (
+              <Admonition type={result.ok ? "success" : "danger"} title={result.title}>
+                {result.msg}
+              </Admonition>
+            )}
           </div>
         )}
       </div>
