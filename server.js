@@ -2738,14 +2738,17 @@ app.post('/admin/login', adminLoginLimiter, verifyCsrf, async (req, res) => {
     res.redirect('/admin/login?error=1');
 });
 
-app.get('/admin/logout', (req, res) => {
+// Admin logout — POST so cross-site can't trigger it (`<img src="...">`
+// won't fire). The global CSRF guard already requires X-CSRF-Token on
+// any non-GET request, so this is automatically protected.
+app.post('/admin/logout', (req, res) => {
     if (req.session && req.session.isAdmin) {
         const sid = req.sessionID;
         db.execute('DELETE FROM admin_sessions WHERE sid = ?', [sid]).catch(() => {});
         adminSessionCache.delete(sid);
         logAdminAction(req, 'logout').catch(() => {});
     }
-    req.session.destroy(() => res.redirect('/admin/login'));
+    req.session.destroy(() => res.json({ success: true }));
 });
 
 // Forensic audit trail. Best-effort — failures are swallowed so a DB
