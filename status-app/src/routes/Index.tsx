@@ -121,7 +121,7 @@ export function Index() {
       </section>
 
       {/* Services / Métiers — slides in from the LEFT */}
-      <section id="services" className="container-wide pt-48 scroll-mt-32 overflow-x-clip">
+      <section id="services" className="container-wide pt-48 pb-16 scroll-mt-32 overflow-x-clip">
         <Reveal direction="left" distance={80} className="max-w-3xl mb-20">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
             Nos métiers
@@ -166,7 +166,7 @@ export function Index() {
       </section>
 
       {/* Outils maison — slides in from the RIGHT (alternance avec services) */}
-      <section id="products" className="container-wide pt-48 overflow-x-clip">
+      <section id="products" className="container-wide pt-48 pb-16 overflow-x-clip">
         <Reveal direction="right" distance={80} className="max-w-3xl mb-20 ml-auto md:text-right">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
             Nos outils
