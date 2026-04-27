@@ -273,6 +273,38 @@ async function connectDB() {
                     INDEX idx_revoked (revoked)
                 )
             `);
+            // Support tickets — one open ticket per user at a time. The
+            // channel_id is the Discord text channel created in the
+            // SUPPORT_CATEGORY_ID where staff and the user meet.
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS support_tickets (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id VARCHAR(255) NOT NULL,
+                    user_username VARCHAR(255) NOT NULL,
+                    user_avatar VARCHAR(255) DEFAULT NULL,
+                    channel_id VARCHAR(255) NOT NULL UNIQUE,
+                    status ENUM('open', 'closed') NOT NULL DEFAULT 'open',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    closed_at DATETIME DEFAULT NULL,
+                    INDEX idx_user_status (user_id, status),
+                    INDEX idx_channel (channel_id)
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS support_messages (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    ticket_id INT NOT NULL,
+                    side ENUM('user', 'staff') NOT NULL,
+                    author_id VARCHAR(255) NOT NULL,
+                    author_name VARCHAR(255) NOT NULL,
+                    author_avatar VARCHAR(255) DEFAULT NULL,
+                    content TEXT NOT NULL,
+                    discord_message_id VARCHAR(255) DEFAULT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_ticket (ticket_id, id),
+                    INDEX idx_discord_msg (discord_message_id)
+                )
+            `);
         } catch (e) { console.error('Erreur migration:', e.message); }
     } catch (err) {
         console.error('❌ Erreur MySQL Dashboard:', err.message);
@@ -638,6 +670,211 @@ app.get('/api/me', (req, res) => {
             discriminator: req.user.discriminator || null,
         }
     });
+});
+
+// ─── Support tickets ───────────────────────────────────────────────────
+// A logged-in Discord user can open ONE ticket at a time. Server creates
+// a Discord text channel under SUPPORT_CATEGORY_ID, posts an opening
+// embed pinging staff, and relays messages both ways.
+const SUPPORT_CATEGORY_ID = process.env.SUPPORT_CATEGORY_ID || '';
+let supportGuildId = null; // resolved at first use from the category info
+let supportBotUserId = null;
+const supportRateLimit = rateLimit({ windowMs: 60_000, max: 30, message: { error: 'Trop de messages.' }, standardHeaders: true, legacyHeaders: false });
+
+async function ensureSupportContext() {
+    if (!SUPPORT_CATEGORY_ID) throw new Error('SUPPORT_CATEGORY_ID not configured');
+    if (!supportGuildId) {
+        const r = await axios.get(`https://discord.com/api/v10/channels/${SUPPORT_CATEGORY_ID}`, {
+            headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
+        });
+        supportGuildId = r.data.guild_id;
+    }
+    if (!supportBotUserId) {
+        const r = await axios.get('https://discord.com/api/v10/users/@me', {
+            headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
+        });
+        supportBotUserId = r.data.id;
+    }
+}
+
+function userAvatarUrl(u) {
+    if (!u || !u.id) return null;
+    if (u.avatar) {
+        const ext = u.avatar.startsWith('a_') ? 'gif' : 'png';
+        return `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.${ext}?size=128`;
+    }
+    return `https://cdn.discordapp.com/embed/avatars/${(parseInt(u.id) >> 22) % 6}.png`;
+}
+
+async function postSupportEmbed(channelId, user, content) {
+    const headers = { Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' };
+    const avatar = userAvatarUrl(user);
+    const r = await axios.post(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+        embeds: [{
+            author: { name: `${user.global_name || user.username}`, icon_url: avatar || undefined },
+            description: content.slice(0, 4000),
+            color: 0x5865F2,
+            footer: { text: `Web · ${user.username} · ${user.id}` },
+            timestamp: new Date().toISOString(),
+        }],
+    }, { headers });
+    return r.data;
+}
+
+// Get current user's open ticket + recent messages
+app.get('/api/support/ticket', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, channel_id, status, created_at FROM support_tickets
+             WHERE user_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1`,
+            [req.user.id],
+        );
+        if (rows.length === 0) return res.json({ ticket: null, messages: [] });
+        const ticket = rows[0];
+        const [msgs] = await db.execute(
+            `SELECT id, side, author_name, author_avatar, content, created_at
+             FROM support_messages WHERE ticket_id = ? ORDER BY id ASC LIMIT 200`,
+            [ticket.id],
+        );
+        res.json({ ticket: { id: ticket.id, status: ticket.status, created_at: ticket.created_at }, messages: msgs });
+    } catch (err) {
+        console.error('GET /api/support/ticket:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Open a new ticket (rejects if user already has an open one)
+app.post('/api/support/ticket', supportRateLimit, async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
+    if (!SUPPORT_CATEGORY_ID) return res.status(503).json({ error: 'Support indisponible' });
+    try {
+        const [existing] = await db.execute(
+            `SELECT id FROM support_tickets WHERE user_id = ? AND status = 'open' LIMIT 1`,
+            [req.user.id],
+        );
+        if (existing.length > 0) {
+            return res.status(409).json({ error: 'Un ticket est déjà ouvert', ticketId: existing[0].id });
+        }
+
+        await ensureSupportContext();
+
+        const headers = { Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' };
+        const safeName = (req.user.username || 'user').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 16) || 'user';
+        const channelName = `ticket-${safeName}-${req.user.id.slice(-4)}`.slice(0, 90);
+
+        const channelRes = await axios.post(
+            `https://discord.com/api/v10/guilds/${supportGuildId}/channels`,
+            { name: channelName, type: 0, parent_id: SUPPORT_CATEGORY_ID, topic: `Ticket support · ${req.user.username} · ${req.user.id}` },
+            { headers },
+        );
+        const channelId = channelRes.data.id;
+
+        await axios.post(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+            embeds: [{
+                title: 'Nouveau ticket de support',
+                description: `Conversation ouverte par <@${req.user.id}> via le site.`,
+                thumbnail: { url: userAvatarUrl(req.user) || '' },
+                fields: [
+                    { name: 'Utilisateur', value: `${req.user.global_name || req.user.username}`, inline: true },
+                    { name: 'ID', value: `\`${req.user.id}\``, inline: true },
+                ],
+                color: 0x10b981,
+                timestamp: new Date().toISOString(),
+            }],
+            ...(process.env.SUPPORT_STAFF_ROLE_ID ? { content: `<@&${process.env.SUPPORT_STAFF_ROLE_ID}>` } : {}),
+        }, { headers });
+
+        const [insert] = await db.execute(
+            `INSERT INTO support_tickets (user_id, user_username, user_avatar, channel_id) VALUES (?, ?, ?, ?)`,
+            [req.user.id, req.user.username, userAvatarUrl(req.user), channelId],
+        );
+        res.json({ ticket: { id: insert.insertId, status: 'open', created_at: new Date().toISOString() }, messages: [] });
+    } catch (err) {
+        console.error('POST /api/support/ticket:', err.response?.data || err.message);
+        res.status(500).json({ error: err.response?.data?.message || 'Erreur serveur' });
+    }
+});
+
+// Send a message in the current user's open ticket
+app.post('/api/support/ticket/:id/message', supportRateLimit, async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
+    const ticketId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(ticketId)) return res.status(400).json({ error: 'ID invalide' });
+    const content = String(req.body?.content || '').trim().slice(0, 2000);
+    if (!content) return res.status(400).json({ error: 'Message vide' });
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, user_id, channel_id, status FROM support_tickets WHERE id = ?`,
+            [ticketId],
+        );
+        const t = rows[0];
+        if (!t || t.user_id !== req.user.id) return res.status(404).json({ error: 'Ticket introuvable' });
+        if (t.status !== 'open') return res.status(409).json({ error: 'Ticket fermé' });
+
+        const dMsg = await postSupportEmbed(t.channel_id, req.user, content);
+        await db.execute(
+            `INSERT INTO support_messages (ticket_id, side, author_id, author_name, author_avatar, content, discord_message_id)
+             VALUES (?, 'user', ?, ?, ?, ?, ?)`,
+            [ticketId, req.user.id, req.user.username, userAvatarUrl(req.user), content, dMsg.id || null],
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error('POST support message:', err.response?.data || err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Poll for new messages since a given message id
+app.get('/api/support/ticket/:id/messages', async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
+    const ticketId = parseInt(req.params.id, 10);
+    const since = parseInt(req.query.since, 10) || 0;
+    if (!Number.isFinite(ticketId)) return res.status(400).json({ error: 'ID invalide' });
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, user_id, status FROM support_tickets WHERE id = ?`,
+            [ticketId],
+        );
+        const t = rows[0];
+        if (!t || t.user_id !== req.user.id) return res.status(404).json({ error: 'Ticket introuvable' });
+        const [msgs] = await db.execute(
+            `SELECT id, side, author_name, author_avatar, content, created_at
+             FROM support_messages WHERE ticket_id = ? AND id > ? ORDER BY id ASC LIMIT 100`,
+            [ticketId, since],
+        );
+        res.json({ messages: msgs, status: t.status });
+    } catch (err) {
+        console.error('GET support messages:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Close the current user's ticket (also archives the Discord channel)
+app.post('/api/support/ticket/:id/close', supportRateLimit, async (req, res) => {
+    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
+    const ticketId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(ticketId)) return res.status(400).json({ error: 'ID invalide' });
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, user_id, channel_id, status FROM support_tickets WHERE id = ?`,
+            [ticketId],
+        );
+        const t = rows[0];
+        if (!t || t.user_id !== req.user.id) return res.status(404).json({ error: 'Ticket introuvable' });
+        if (t.status === 'closed') return res.json({ success: true });
+
+        await db.execute(`UPDATE support_tickets SET status = 'closed', closed_at = NOW() WHERE id = ?`, [ticketId]);
+        try {
+            await axios.post(`https://discord.com/api/v10/channels/${t.channel_id}/messages`, {
+                embeds: [{ description: 'L\'utilisateur a fermé le ticket depuis le site.', color: 0xef4444 }],
+            }, { headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` } });
+        } catch { /* swallow */ }
+        res.json({ success: true });
+    } catch (err) {
+        console.error('POST close ticket:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
 });
 
 // Premium data — consumed by React /premium

@@ -17,6 +17,7 @@ import { ShardGuardGuild } from "@/routes/shardguard/Guild";
 import { AdminLogin } from "@/routes/admin/Login";
 import { Admin } from "@/routes/admin/Admin";
 import { AdminGuildDetail } from "@/routes/admin/GuildDetail";
+import { SupportBubble } from "@/components/SupportBubble";
 
 export function App() {
   const [user, setUser] = useState<DiscordUser | null>(null);
@@ -55,6 +56,7 @@ export function App() {
           <Route path="/admin/guild/:guildId" element={<AdminGuildDetail />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <SupportBubble />
       </BrowserRouter>
     </AuthContext.Provider>
   );
