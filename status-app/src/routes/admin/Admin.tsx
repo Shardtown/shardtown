@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { apiGet } from "@/api/client";
+import { apiGet, apiPost } from "@/api/client";
 
 interface Bot {
   id: string;
@@ -98,29 +98,16 @@ export function Admin() {
   }
 
   async function postAction(path: string, body?: object): Promise<{ success: boolean; error?: string }> {
-    if (!data) return { success: false, error: "Pas de session" };
     try {
-      const res = await fetch(path, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          "x-csrf-token": data.csrfToken,
-        },
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      if (res.status === 401 || res.status === 403) {
+      const r = await apiPost<{ success?: boolean; error?: string }>(path, body);
+      return { success: !!r?.success, error: r?.error };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erreur réseau";
+      if (msg.includes("401") || msg.includes("403") || msg.includes("Non authentifié")) {
         nav("/admin/login", { replace: true });
         return { success: false, error: "Session expirée" };
       }
-      const text = await res.text();
-      try {
-        return JSON.parse(text);
-      } catch {
-        return { success: false, error: text || `${res.status}` };
-      }
-    } catch (e) {
-      return { success: false, error: e instanceof Error ? e.message : "Erreur réseau" };
+      return { success: false, error: msg };
     }
   }
 

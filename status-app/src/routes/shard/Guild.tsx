@@ -6,7 +6,7 @@ import {
   Sparkles, Layers, Heart,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { apiGet } from "@/api/client";
+import { apiGet, apiPost } from "@/api/client";
 import { isOn, parseObjects } from "@/api/shard";
 import type { ShardGuildData, ShardSettings } from "@/api/shard";
 import { SaveBar } from "@/components/shardguard/SaveBar";
@@ -84,13 +84,7 @@ export function ShardGuild() {
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`/shard/guild/${guildId}/config`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await apiPost(`/shard/guild/${guildId}/config`, draft);
       setSaved(true);
       setTimeout(() => setSaved(false), 3500);
       await refresh();

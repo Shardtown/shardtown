@@ -6,6 +6,7 @@ import {
   NOISE_OPTIONS, ACTION_OPTIONS, RAID_ACTION_OPTIONS, LANGUAGE_OPTIONS,
 } from "@/api/shardguard";
 import { Field, NumberInput, TextInput, Toggle, Select, SectionCard } from "./Field";
+import { apiPost } from "@/api/client";
 
 type Update = (patch: Partial<SGSettings>) => void;
 
@@ -418,12 +419,13 @@ export function PanicTab() {
           className="px-6 py-3 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 font-bold text-sm transition-colors"
           onClick={async () => {
             try {
-              const r = await fetch(window.location.pathname.replace("/shardguard/guild/", "/shardguard/api/guild/") + "/panic", {
-                method: "POST", credentials: "include",
-              });
-              const d = await r.json();
+              const d = await apiPost<{ success?: boolean; error?: string }>(
+                window.location.pathname.replace("/shardguard/guild/", "/shardguard/api/guild/") + "/panic",
+              );
               alert(d.success ? "Mode panic activé" : `Erreur : ${d.error || ""}`);
-            } catch { alert("Erreur réseau"); }
+            } catch (e) {
+              alert(e instanceof Error ? e.message : "Erreur réseau");
+            }
           }}
         >
           Activer le mode panic

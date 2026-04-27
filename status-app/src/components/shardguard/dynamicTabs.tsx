@@ -6,6 +6,7 @@ import {
 import { Field, NumberInput, Select, SectionCard, TextInput } from "./Field";
 import { Admonition } from "@/components/ui/admonition";
 import { ScreenTimeCard } from "@/components/ui/screen-time-card";
+import { apiPost } from "@/api/client";
 
 interface ChartData { join: number; leave: number; success: number; failed: number }
 
@@ -347,13 +348,15 @@ function MemberModal({ guildId, member, onClose }: { guildId: string; member: Me
     if (!action) return;
     setBusy(true);
     try {
-      const r = await fetch(`/shardguard/api/guild/${guildId}/member/${member.id}/action`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, reason, duration, username: member.username }),
-      });
-      const d = await r.json();
+      let d: { success?: boolean; error?: string };
+      try {
+        d = await apiPost<{ success?: boolean; error?: string }>(
+          `/shardguard/api/guild/${guildId}/member/${member.id}/action`,
+          { action, reason, duration, username: member.username },
+        );
+      } catch (e) {
+        d = { success: false, error: e instanceof Error ? e.message : "Erreur réseau" };
+      }
       const target = member.displayName || member.username;
       if (d.success) {
         setResult({
