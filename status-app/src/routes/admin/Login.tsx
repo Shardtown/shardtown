@@ -6,7 +6,9 @@ import { apiGet } from "@/api/client";
 
 export function AdminLogin() {
   const [params] = useSearchParams();
-  const error = params.get("error") === "1";
+  const errorKind = params.get("error");
+  const error = errorKind === "1";
+  const locked = errorKind === "locked";
 
   const [csrfToken, setCsrfToken] = useState("");
   const [loading, setLoading] = useState(true);
@@ -36,6 +38,11 @@ export function AdminLogin() {
             {error && (
               <div className="mb-6 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm font-semibold">
                 Identifiants incorrects. Accès refusé.
+              </div>
+            )}
+            {locked && (
+              <div className="mb-6 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm font-semibold">
+                Compte temporairement verrouillé suite à plusieurs tentatives échouées. Réessayez plus tard.
               </div>
             )}
 

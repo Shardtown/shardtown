@@ -220,6 +220,16 @@ async function connectDB() {
                 `UPDATE redeem_codes SET max_uses = 1, expires_at = '2000-01-01' WHERE code = ?`,
                 ['SHARDTOWN'],
             );
+            // Per-account login lockout — survives restarts unlike the
+            // in-memory IP rate limiter.
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS admin_login_attempts (
+                    username VARCHAR(255) PRIMARY KEY,
+                    failed_attempts INT NOT NULL DEFAULT 0,
+                    last_failed_at DATETIME DEFAULT NULL,
+                    locked_until DATETIME DEFAULT NULL
+                )
+            `);
         } catch (e) { console.error('Erreur migration:', e.message); }
     } catch (err) {
         console.error('❌ Erreur MySQL Dashboard:', err.message);
@@ -2454,12 +2464,77 @@ app.get('/api/admin/csrf', (req, res) => {
     res.json({ csrfToken: generateCsrfToken(req) });
 });
 
-app.post('/admin/login', adminLoginLimiter, verifyCsrf, (req, res) => {
+// Per-account login lockout schedule (failed attempts → cooldown).
+// Combined with `adminLoginLimiter` (IP-based), this defeats distributed
+// brute force from multiple IPs that the rate limiter alone wouldn't catch.
+const LOGIN_LOCKOUT_SCHEDULE = [
+    { attempts: 5, ms: 5 * 60 * 1000 },        // 5 min
+    { attempts: 10, ms: 30 * 60 * 1000 },      // 30 min
+    { attempts: 15, ms: 24 * 60 * 60 * 1000 }, // 24 h
+];
+
+async function checkAdminLockout(username) {
+    if (!username) return { locked: false };
+    try {
+        const [rows] = await db.execute(
+            'SELECT failed_attempts, locked_until FROM admin_login_attempts WHERE username = ?',
+            [username],
+        );
+        const row = rows[0];
+        if (row && row.locked_until && new Date(row.locked_until) > new Date()) {
+            return { locked: true, until: row.locked_until };
+        }
+        return { locked: false };
+    } catch { return { locked: false }; }
+}
+
+async function recordFailedAdminLogin(username) {
+    if (!username) return;
+    try {
+        const [rows] = await db.execute(
+            'SELECT failed_attempts FROM admin_login_attempts WHERE username = ?',
+            [username],
+        );
+        const next = (rows[0]?.failed_attempts || 0) + 1;
+        const tier = [...LOGIN_LOCKOUT_SCHEDULE].reverse().find(t => next >= t.attempts);
+        const lockedUntil = tier ? new Date(Date.now() + tier.ms) : null;
+        await db.execute(
+            `INSERT INTO admin_login_attempts (username, failed_attempts, last_failed_at, locked_until)
+             VALUES (?, ?, NOW(), ?)
+             ON DUPLICATE KEY UPDATE failed_attempts = VALUES(failed_attempts),
+                 last_failed_at = VALUES(last_failed_at), locked_until = VALUES(locked_until)`,
+            [username, next, lockedUntil],
+        );
+    } catch (e) { console.error('recordFailedAdminLogin:', e.message); }
+}
+
+async function clearAdminLockout(username) {
+    if (!username) return;
+    try {
+        await db.execute('DELETE FROM admin_login_attempts WHERE username = ?', [username]);
+    } catch { /* swallow */ }
+}
+
+app.post('/admin/login', adminLoginLimiter, verifyCsrf, async (req, res) => {
     if (req.session && req.session.isAdmin) return res.redirect('/admin');
     const { username, password } = req.body;
+
+    // Only track lockout against the configured admin username so an
+    // attacker can't spam random usernames to bloat the table or DoS
+    // legitimate admins (they'd just hit the IP rate limiter).
     const validUser = timingSafeEqual(username || '', process.env.ADMIN_USERNAME || '');
+    const lockoutKey = validUser ? username : null;
+
+    if (lockoutKey) {
+        const state = await checkAdminLockout(lockoutKey);
+        if (state.locked) {
+            return res.redirect('/admin/login?error=locked');
+        }
+    }
+
     const validPass = verifyAdminPassword(password);
     if (validUser && validPass) {
+        await clearAdminLockout(lockoutKey);
         req.session.regenerate((err) => {
             if (err) return res.status(500).send('Erreur serveur');
             req.session.isAdmin = true;
@@ -2468,6 +2543,8 @@ app.post('/admin/login', adminLoginLimiter, verifyCsrf, (req, res) => {
         });
         return;
     }
+
+    if (lockoutKey) await recordFailedAdminLogin(lockoutKey);
     res.redirect('/admin/login?error=1');
 });
 
