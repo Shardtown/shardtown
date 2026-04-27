@@ -334,17 +334,29 @@ app.param('userId', (req, res, next, value) => {
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
+    // X-XSS-Protection removed — modern browsers ignore it and older
+    // versions had filter bugs that introduced new vulnerabilities.
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+    // Vite-built React SPA emits only external <script src="..."> tags so
+    // it doesn't need 'unsafe-inline'. The legacy EJS templates rendered
+    // under /_legacy/ still contain inline <script> blocks and onclick="..."
+    // handlers, so for those paths we keep the loose policy.
+    const isLegacy = req.path.startsWith('/_legacy/');
+    const scriptSrc = isLegacy
+        ? "'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net"
+        : "'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net";
+
     res.setHeader('Content-Security-Policy',
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; " +
+        `script-src ${scriptSrc}; ` +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com; " +
         "img-src 'self' https://cdn.discordapp.com https://cdn.tailwindcss.com data:; " +
         "connect-src 'self'; " +
         "frame-src 'none'; " +
+        "frame-ancestors 'none'; " +
         "object-src 'none'; " +
         "base-uri 'self';"
     );
