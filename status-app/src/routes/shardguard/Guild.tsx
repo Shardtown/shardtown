@@ -3,13 +3,13 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Check, Settings, ScrollText, Shield, AlertTriangle,
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
-  TrendingUp, TrendingDown, Activity, Heart,
+  TrendingUp, TrendingDown, Heart, ShieldCheck, ShieldX, UserCheck,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet } from "@/api/client";
 import type { ShardGuardGuildData, SGSettings } from "@/api/shardguard";
 import { SaveBar } from "@/components/shardguard/SaveBar";
-import { Sparkline } from "@/components/Sparkline";
+import { ScreenTimeCard } from "@/components/ui/screen-time-card";
 import {
   GeneralTab, RulesTab, CaptchaTab, SecurityTab, WarnsTab, ModRolesTab, BannedWordsTab,
   AutomodTab, StatsTab, LogsTab, MembersTab, PanicTab,
@@ -214,55 +214,108 @@ export function ShardGuardGuild() {
           </div>
         </div>
 
-        {/* LIVE STATS STRIP */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-10">
-          <PulseCard
-            label="Membres"
-            value={data.stats.totalMembers}
-            icon={Users2}
-            accent="white"
-          />
-          <PulseCard
-            label="Vérifiés"
-            value={data.stats.verifiedCount}
-            icon={Check}
-            accent="emerald"
-            ringPct={verifRate}
-            sublabel={`${verifRate}% du serveur`}
-          />
-          <PulseCard
-            label="Arrivées · 14j"
-            value={totalJoin}
-            icon={TrendingUp}
-            accent="blue"
-            sparkline={joins}
-            sparkColor="#3b82f6"
-          />
-          <PulseCard
-            label="Départs · 14j"
-            value={totalLeave}
-            icon={TrendingDown}
-            accent="red"
-            sparkline={leaves}
-            sparkColor="#ef4444"
-          />
-          <PulseCard
-            label="Captchas OK"
-            value={`${checkRate}%`}
-            icon={Activity}
-            accent="violet"
-            ringPct={checkRate}
-            sublabel={`${totalSuccess}/${totalSuccess + totalFailed}`}
-          />
-          <PulseCard
-            label="Score santé"
-            value={healthScore}
-            icon={Heart}
-            accent={healthScore >= 75 ? "emerald" : healthScore >= 50 ? "amber" : "red"}
-            ringPct={healthScore}
-            sublabel={healthScore >= 75 ? "Excellent" : healthScore >= 50 ? "Stable" : "À surveiller"}
-          />
-        </div>
+        {/* LIVE STATS — three thematic ScreenTimeCards */}
+        {(() => {
+          const peakJoin = Math.max(...joins, 0);
+          const peakSuccess = Math.max(...success, 0);
+          const xLabels = days.length >= 3
+            ? [days[0], days[Math.floor(days.length / 2)], days[days.length - 1]].map(d => d.slice(5))
+            : [];
+
+          const healthTone = healthScore >= 75 ? "text-emerald-300"
+            : healthScore >= 50 ? "text-amber-300"
+            : "text-red-300";
+
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-10">
+              {/* COMMUNAUTÉ */}
+              <ScreenTimeCard
+                total={data.stats.totalMembers.toLocaleString("fr-FR")}
+                totalLabel="Membres · communauté"
+                barData={joins.length ? joins : [0]}
+                timeLabels={xLabels}
+                yLabels={[`${peakJoin}`, `${Math.round(peakJoin / 2)}`, "0"]}
+                barAccentClass="bg-gradient-to-t from-emerald-500 to-emerald-400/80"
+                barMutedClass="bg-emerald-500/15"
+                stats={[
+                  {
+                    icon: <UserCheck className="w-3.5 h-3.5 text-emerald-400" />,
+                    label: "Vérifiés", value: data.stats.verifiedCount.toLocaleString("fr-FR"), tone: "text-emerald-300",
+                  },
+                  { label: "Du serveur", value: `${verifRate}%`, tone: "text-white" },
+                  {
+                    icon: <Users2 className="w-3.5 h-3.5 text-white/60" />,
+                    label: "Non vérifiés",
+                    value: Math.max(0, data.stats.totalMembers - data.stats.verifiedCount).toLocaleString("fr-FR"),
+                    tone: "text-white/80",
+                  },
+                ]}
+              />
+
+              {/* ACTIVITÉ */}
+              <ScreenTimeCard
+                total={totalJoin.toLocaleString("fr-FR")}
+                totalLabel="Arrivées · 14 derniers jours"
+                barData={joins.length ? joins : [0]}
+                timeLabels={xLabels}
+                yLabels={[`${peakJoin}`, `${Math.round(peakJoin / 2)}`, "0"]}
+                barAccentClass="bg-gradient-to-t from-blue-500 to-blue-400/80"
+                barMutedClass="bg-blue-500/15"
+                stats={[
+                  {
+                    icon: <TrendingUp className="w-3.5 h-3.5 text-blue-400" />,
+                    label: "Pic / jour", value: peakJoin.toLocaleString("fr-FR"), tone: "text-blue-300",
+                  },
+                  {
+                    icon: <TrendingDown className="w-3.5 h-3.5 text-red-400" />,
+                    label: "Départs", value: totalLeave.toLocaleString("fr-FR"), tone: "text-red-300",
+                  },
+                  {
+                    icon: netGrowth >= 0
+                      ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                      : <TrendingDown className="w-3.5 h-3.5 text-red-400" />,
+                    label: "Net 14j",
+                    value: `${netGrowth >= 0 ? "+" : ""}${netGrowth.toLocaleString("fr-FR")}`,
+                    tone: netGrowth >= 0 ? "text-emerald-300" : "text-red-300",
+                  },
+                ]}
+              />
+
+              {/* SÉCURITÉ */}
+              <ScreenTimeCard
+                total={`${checkRate}%`}
+                totalLabel={`Captchas OK · ${totalSuccess + totalFailed} tentatives`}
+                barData={success.length ? success : [0]}
+                timeLabels={xLabels}
+                yLabels={[`${peakSuccess}`, `${Math.round(peakSuccess / 2)}`, "0"]}
+                barAccentClass={
+                  healthScore >= 75 ? "bg-gradient-to-t from-emerald-500 to-emerald-400/80"
+                  : healthScore >= 50 ? "bg-gradient-to-t from-amber-500 to-amber-400/80"
+                  : "bg-gradient-to-t from-red-500 to-red-400/80"
+                }
+                barMutedClass={
+                  healthScore >= 75 ? "bg-emerald-500/15"
+                  : healthScore >= 50 ? "bg-amber-500/15"
+                  : "bg-red-500/15"
+                }
+                stats={[
+                  {
+                    icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />,
+                    label: "Succès", value: totalSuccess.toLocaleString("fr-FR"), tone: "text-emerald-300",
+                  },
+                  {
+                    icon: <ShieldX className="w-3.5 h-3.5 text-amber-400" />,
+                    label: "Échecs", value: totalFailed.toLocaleString("fr-FR"), tone: "text-amber-300",
+                  },
+                  {
+                    icon: <Heart className={`w-3.5 h-3.5 ${healthTone.replace("300","400")}`} />,
+                    label: "Santé", value: `${healthScore}`, tone: healthTone,
+                  },
+                ]}
+              />
+            </div>
+          );
+        })()}
 
         {/* MAIN GRID */}
         <div className="grid md:grid-cols-[210px_1fr] gap-8">
@@ -326,77 +379,6 @@ export function ShardGuardGuild() {
         onReset={reset}
       />
     </AppLayout>
-  );
-}
-
-/* ─────────── Pulse stat card ─────────── */
-
-const ACCENT: Record<string, { text: string; ring: string; glow: string }> = {
-  white:   { text: "text-white",         ring: "stroke-white/80",       glow: "shadow-[0_0_24px_-6px_rgba(255,255,255,0.25)]" },
-  emerald: { text: "text-emerald-400",   ring: "stroke-emerald-400",    glow: "shadow-[0_0_28px_-6px_rgba(16,185,129,0.45)]" },
-  blue:    { text: "text-blue-400",      ring: "stroke-blue-400",       glow: "shadow-[0_0_28px_-6px_rgba(59,130,246,0.45)]" },
-  red:     { text: "text-red-400",       ring: "stroke-red-400",        glow: "shadow-[0_0_28px_-6px_rgba(239,68,68,0.45)]" },
-  violet:  { text: "text-violet-400",    ring: "stroke-violet-400",     glow: "shadow-[0_0_28px_-6px_rgba(139,92,246,0.45)]" },
-  amber:   { text: "text-amber-400",     ring: "stroke-amber-400",      glow: "shadow-[0_0_28px_-6px_rgba(251,191,36,0.45)]" },
-};
-
-function PulseCard({
-  label, value, icon: Icon, accent, sparkline, sparkColor, ringPct, sublabel,
-}: {
-  label: string;
-  value: number | string;
-  icon: typeof Users2;
-  accent: keyof typeof ACCENT;
-  sparkline?: number[];
-  sparkColor?: string;
-  ringPct?: number;
-  sublabel?: string;
-}) {
-  const a = ACCENT[accent];
-  const display = typeof value === "number" ? value.toLocaleString("fr-FR") : value;
-  return (
-    <div className={`stat-shine group relative bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent border border-white/[0.06] hover:border-white/15 rounded-2xl p-4 transition-all duration-300 hover:-translate-y-0.5 hover:${a.glow}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/40">
-          <Icon className="w-3 h-3" />
-          {label}
-        </div>
-        {ringPct !== undefined && <RingMini pct={ringPct} colorClass={a.ring} />}
-      </div>
-
-      <div key={String(value)} className={`animate-count-pop text-3xl md:text-[32px] leading-none font-extrabold font-mono-num ${a.text}`}>
-        {display}
-      </div>
-
-      {sublabel && (
-        <p className="text-[10px] text-white/40 mt-1.5 font-medium">{sublabel}</p>
-      )}
-
-      {sparkline && sparkline.length > 0 && (
-        <div className="mt-2.5 -mx-1 opacity-80 group-hover:opacity-100 transition-opacity">
-          <Sparkline values={sparkline} color={sparkColor || "#10b981"} height={28} showDot={false} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RingMini({ pct, colorClass }: { pct: number; colorClass: string }) {
-  const r = 11;
-  const c = 2 * Math.PI * r;
-  const off = c - (Math.max(0, Math.min(100, pct)) / 100) * c;
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28" className="flex-shrink-0">
-      <circle cx="14" cy="14" r={r} fill="none" stroke="currentColor" className="text-white/10" strokeWidth="2" />
-      <circle
-        cx="14" cy="14" r={r} fill="none"
-        strokeWidth="2.5" strokeLinecap="round"
-        className={colorClass}
-        strokeDasharray={c}
-        strokeDashoffset={off}
-        transform="rotate(-90 14 14)"
-      />
-    </svg>
   );
 }
 

@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Loader2, AlertTriangle, Ban, UserMinus, X, MessageSquare } from "lucide-react";
+import {
+  Search, Loader2, AlertTriangle, Ban, UserMinus, X, MessageSquare,
+  TrendingUp, TrendingDown, ShieldCheck, ShieldX,
+} from "lucide-react";
 import { Field, NumberInput, Select, SectionCard, TextInput } from "./Field";
-import { Sparkline } from "@/components/Sparkline";
 import { Admonition } from "@/components/ui/admonition";
+import { ScreenTimeCard } from "@/components/ui/screen-time-card";
 
 interface ChartData { join: number; leave: number; success: number; failed: number }
 
@@ -24,6 +27,31 @@ export function StatsTab({ chartData, totalMembers, verifiedCount }: {
   const totalFailed = failed.reduce((s, x) => s + x, 0);
   const successRate = totalSuccess + totalFailed > 0 ? Math.round((totalSuccess / (totalSuccess + totalFailed)) * 100) : 0;
 
+  const peakJoin = Math.max(...joins, 0);
+  const avgJoin = joins.length > 0 ? Math.round(totalJoin / joins.length) : 0;
+  const netGrowth = totalJoin - totalLeave;
+  const peakSuccess = Math.max(...success, 0);
+
+  const xLabels = days.length >= 3
+    ? [days[0], days[Math.floor(days.length / 2)], days[days.length - 1]].map(d => d.slice(5))
+    : [];
+
+  if (days.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KpiBox label="Membres" value={totalMembers.toLocaleString("fr-FR")} color="text-white" />
+          <KpiBox label="Vérifiés" value={verifiedCount.toLocaleString("fr-FR")} color="text-emerald-400" />
+          <KpiBox label="Arrivées (14j)" value="0" color="text-blue-400" />
+          <KpiBox label="Départs (14j)" value="0" color="text-red-400" />
+        </div>
+        <SectionCard title="Croissance" description="Arrivées et départs sur les 14 derniers jours.">
+          <p className="text-sm text-white/30 italic text-center py-8">Pas encore de données.</p>
+        </SectionCard>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -33,37 +61,47 @@ export function StatsTab({ chartData, totalMembers, verifiedCount }: {
         <KpiBox label="Départs (14j)" value={totalLeave.toLocaleString("fr-FR")} color="text-red-400" />
       </div>
 
-      <SectionCard title="Croissance" description="Arrivées et départs sur les 14 derniers jours.">
-        {days.length === 0 ? (
-          <p className="text-sm text-white/30 italic text-center py-8">Pas encore de données.</p>
-        ) : (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-widest">
-              <span className="inline-flex items-center gap-1.5 text-blue-400"><span className="w-2 h-2 rounded-full bg-blue-400" /> Arrivées</span>
-              <span className="inline-flex items-center gap-1.5 text-red-400"><span className="w-2 h-2 rounded-full bg-red-400" /> Départs</span>
-            </div>
-            <div className="h-32"><Sparkline values={joins} color="#3b82f6" height={120} /></div>
-            <div className="h-24"><Sparkline values={leaves} color="#ef4444" height={80} /></div>
-          </div>
-        )}
-      </SectionCard>
+      <ScreenTimeCard
+        total={totalJoin.toLocaleString("fr-FR")}
+        totalLabel="Arrivées · 14 derniers jours"
+        barData={joins}
+        timeLabels={xLabels}
+        yLabels={[`${peakJoin}`, `${Math.round(peakJoin / 2)}`, "0"]}
+        barAccentClass="bg-gradient-to-t from-blue-500 to-blue-400/80"
+        barMutedClass="bg-blue-500/15"
+        stats={[
+          { icon: <TrendingUp className="w-3.5 h-3.5 text-blue-400" />, label: "Pic / jour",   value: peakJoin.toLocaleString("fr-FR"),   tone: "text-blue-300" },
+          { icon: <TrendingUp className="w-3.5 h-3.5 text-white/60" />, label: "Moyenne",       value: avgJoin.toLocaleString("fr-FR"),    tone: "text-white" },
+          { icon: <TrendingDown className="w-3.5 h-3.5 text-red-400" />, label: "Départs",      value: totalLeave.toLocaleString("fr-FR"), tone: "text-red-300" },
+          {
+            icon: netGrowth >= 0
+              ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+              : <TrendingDown className="w-3.5 h-3.5 text-red-400" />,
+            label: "Net 14j",
+            value: `${netGrowth >= 0 ? "+" : ""}${netGrowth.toLocaleString("fr-FR")}`,
+            tone: netGrowth >= 0 ? "text-emerald-300" : "text-red-300",
+          },
+        ]}
+      />
 
-      <SectionCard title="Vérifications" description={`Taux de réussite : ${successRate}%`}>
-        {days.length === 0 ? (
-          <p className="text-sm text-white/30 italic text-center py-8">Pas encore de données.</p>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-400 mb-2">Succès — {totalSuccess}</p>
-              <Sparkline values={success} color="#10b981" height={80} />
-            </div>
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-amber-400 mb-2">Échecs — {totalFailed}</p>
-              <Sparkline values={failed} color="#f59e0b" height={80} />
-            </div>
-          </div>
-        )}
-      </SectionCard>
+      <ScreenTimeCard
+        total={`${successRate}%`}
+        totalLabel={`Vérifications · ${totalSuccess + totalFailed} tentatives`}
+        barData={success}
+        timeLabels={xLabels}
+        yLabels={[`${peakSuccess}`, `${Math.round(peakSuccess / 2)}`, "0"]}
+        barAccentClass="bg-gradient-to-t from-emerald-500 to-emerald-400/80"
+        barMutedClass="bg-emerald-500/15"
+        stats={[
+          { icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />, label: "Succès", value: totalSuccess.toLocaleString("fr-FR"), tone: "text-emerald-300" },
+          { icon: <ShieldX className="w-3.5 h-3.5 text-amber-400" />,       label: "Échecs", value: totalFailed.toLocaleString("fr-FR"),  tone: "text-amber-300" },
+          {
+            label: "Taux",
+            value: `${successRate}%`,
+            tone: successRate >= 90 ? "text-emerald-300" : successRate >= 70 ? "text-amber-300" : "text-red-300",
+          },
+        ]}
+      />
     </div>
   );
 }
