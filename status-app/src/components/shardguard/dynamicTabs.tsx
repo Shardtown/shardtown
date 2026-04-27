@@ -302,7 +302,7 @@ export function MembersTab({ guildId }: { guildId: string }) {
                 className="w-full flex items-center gap-3 py-2.5 text-left hover:bg-white/[0.03] transition-colors px-2 rounded-lg"
               >
                 {m.avatar ? (
-                  <img src={`https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png?size=64`} alt="" className="w-8 h-8 rounded-full border border-white/10" />
+                  <img src={m.avatar} alt="" className="w-8 h-8 rounded-full border border-white/10" />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-white/40">
                     {(m.displayName || m.username)[0]?.toUpperCase()}
@@ -395,7 +395,7 @@ function MemberModal({ guildId, member, onClose }: { guildId: string; member: Me
 
         <div className="flex items-center gap-4 mb-6">
           {member.avatar ? (
-            <img src={`https://cdn.discordapp.com/avatars/${member.id}/${member.avatar}.png?size=128`} alt="" className="w-14 h-14 rounded-2xl border border-white/10" />
+            <img src={member.avatar} alt="" className="w-14 h-14 rounded-2xl border border-white/10" />
           ) : (
             <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center font-bold text-white/40">
               {(member.displayName || member.username)[0]?.toUpperCase()}
