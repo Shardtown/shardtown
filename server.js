@@ -2452,9 +2452,6 @@ const statsRateLimiter = rateLimit({
 
 app.get('/api/stats', statsRateLimiter, async (req, res) => {
     try {
-        const isAdminViewer = !!(req.session && req.session.isAdmin
-            && Date.now() - (req.session.adminLoginAt || 0) < ADMIN_SESSION_TTL);
-
         const botsInfo = await Promise.all(BOTS.map(async b => {
             const info = await fetchBotInfo(b.token);
 
@@ -2463,15 +2460,9 @@ app.get('/api/stats', statsRateLimiter, async (req, res) => {
                 [b.label]
             );
 
-            if (isAdminViewer) {
-                for (let shard of shards) {
-                    const [guilds] = await db.execute('SELECT guild_id, guild_name FROM shard_guilds WHERE bot_label = ? AND shard_id = ?', [b.label, shard.shard_id]);
-                    shard.guilds_list = guilds;
-                }
-            } else {
-                for (let shard of shards) {
-                    delete shard.guilds_list;
-                }
+            for (let shard of shards) {
+                const [guilds] = await db.execute('SELECT guild_id, guild_name FROM shard_guilds WHERE bot_label = ? AND shard_id = ?', [b.label, shard.shard_id]);
+                shard.guilds_list = guilds;
             }
 
             const anyOnline = shards.some(s => s.status === 'Online');
