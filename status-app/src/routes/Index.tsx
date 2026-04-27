@@ -121,7 +121,7 @@ export function Index() {
       </section>
 
       {/* Services / Métiers — slides in from the LEFT */}
-      <section id="services" className="container-wide pt-48 pb-32 scroll-mt-32 overflow-x-clip">
+      <section id="services" className="container-wide pt-48 pb-48 scroll-mt-32 overflow-x-clip">
         <Reveal direction="left" distance={80} className="max-w-3xl mb-20">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
             Nos métiers
@@ -136,7 +136,7 @@ export function Index() {
             on couvre toute la chaîne.
           </p>
         </Reveal>
-        <RevealStagger className="grid md:grid-cols-3 gap-8 md:gap-6" staggerChildren={0.1} delayChildren={0.15}>
+        <RevealStagger className="grid md:grid-cols-3 gap-8 md:gap-10" staggerChildren={0.1} delayChildren={0.15}>
           {SERVICES.map(s => {
             const Icon = s.icon;
             return (
@@ -166,7 +166,7 @@ export function Index() {
       </section>
 
       {/* Outils maison — slides in from the RIGHT (alternance avec services) */}
-      <section id="products" className="container-wide pt-48 pb-32 overflow-x-clip">
+      <section id="products" className="container-wide pt-48 pb-48 overflow-x-clip">
         <Reveal direction="right" distance={80} className="max-w-3xl mb-20 ml-auto md:text-right">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
             Nos outils
@@ -180,7 +180,7 @@ export function Index() {
             Les bots qu'on utilise sur nos missions, disponibles directement pour votre serveur.
           </p>
         </Reveal>
-        <RevealStagger className="grid md:grid-cols-2 gap-8 md:gap-6" staggerChildren={0.1} delayChildren={0.15}>
+        <RevealStagger className="grid md:grid-cols-2 gap-8 md:gap-10" staggerChildren={0.1} delayChildren={0.15}>
           {TOOLS.map(t => {
             const Icon = t.icon;
             return (
@@ -209,7 +209,7 @@ export function Index() {
       </section>
 
       {/* Contact CTA — rises up */}
-      <section id="contact" className="container-wide pt-48 pb-16 scroll-mt-32 overflow-hidden">
+      <section id="contact" className="container-wide pt-48 pb-16 scroll-mt-32 overflow-x-clip">
         <Reveal direction="up" distance={70} duration={0.85} className="bg-white/[0.02] border border-white/[0.06] rounded-3xl p-12 md:p-20 text-center">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">Parlons-en</p>
           <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-6">
