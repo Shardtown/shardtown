@@ -12,6 +12,19 @@ const crypto = require('crypto');
 const { rateLimit } = require('express-rate-limit');
 const Stripe = require('stripe');
 
+// Fisher-Yates with crypto.randomInt — replaces the buggy
+// `arr.sort(() => Math.random() - 0.5)` shuffle, which is both
+// statistically biased and not cryptographically random. Used for
+// giveaway winner draws where users pay (Premium) for a fair lottery.
+function cryptoShuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = crypto.randomInt(0, i + 1);
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
@@ -1316,7 +1329,7 @@ app.post('/shard/guild/:guildID/giveaway/:gwId/end', checkAuthShard, async (req,
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Giveaway introuvable' });
     const gw = rows[0];
     const [entries] = await db.execute(`SELECT userId FROM shard_giveaway_entries WHERE giveawayId = ?`, [gwId]);
-    const shuffled = entries.sort(() => Math.random() - 0.5);
+    const shuffled = cryptoShuffle(entries);
     const winnerIds = shuffled.slice(0, gw.winnersCount).map(e => e.userId);
     const winnersText = winnerIds.length ? winnerIds.map(id => `<@${id}>`).join(', ') : 'Aucun participant';
     await db.execute(`UPDATE shard_giveaways SET ended = 1 WHERE id = ?`, [gwId]);

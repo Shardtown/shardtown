@@ -21,6 +21,7 @@ const {
     MediaGalleryItemBuilder
 } = require('discord.js');
 const { createCanvas } = require('canvas');
+const crypto = require('crypto');
 const mysql = require('mysql2/promise');
 
 const client = new Client({ intents: [
@@ -495,7 +496,9 @@ const generateCaptcha = (digits = 6, noise = 'medium') => {
     // Générer le code
     const min = Math.pow(10, digits - 1);
     const max = Math.pow(10, digits) - 1;
-    const code = Math.floor(min + Math.random() * (max - min + 1)).toString();
+    // Cryptographic RNG so the captcha code can't be predicted from prior
+    // outputs (Node's xorshift128+ state can be recovered from a few samples).
+    const code = crypto.randomInt(min, max + 1).toString();
 
     // Bruit de fond (chiffres gris aléatoires)
     let noiseCount = 15;
