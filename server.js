@@ -1955,6 +1955,13 @@ const apiLimiter = rateLimit({
 
 app.use('/shardguard/api', apiLimiter);
 app.use('/shard/api', apiLimiter);
+// The non-/api guild routes (config save, giveaway/poll/scheduled
+// creation, etc.) write to Discord and were previously unrate-limited.
+// Each successful call hits the Discord API at least once, so an
+// authenticated attacker could spam them to either bloat the audit log
+// or get the bot token rate-limited globally by Discord.
+app.use('/shardguard/guild', apiLimiter);
+app.use('/shard/guild', apiLimiter);
 
 app.get('/shardguard/api/guild/:guildID/members', checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
