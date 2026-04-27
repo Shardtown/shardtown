@@ -304,7 +304,21 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.set('view cache', false);
 
-app.set('trust proxy', 1);
+// Trust only loopback (Express receives traffic from nginx on
+// 127.0.0.1). Trusting `true` or a numeric hop count would let an
+// attacker spoof X-Forwarded-For and bypass IP-keyed rate limits.
+app.set('trust proxy', 'loopback');
+
+// Allow alphanumeric + underscore column names only — used to gate
+// dynamic UPDATE column lists in the settings restore endpoint, where
+// keys come from a JSON-decoded backup row. Today the keys are
+// schema-derived so this is defense in depth, but any future code
+// path that lets a user influence the backup JSON would otherwise be
+// immediate SQL injection.
+function isSafeColumnName(s) {
+    return typeof s === 'string' && s.length > 0 && s.length <= 64
+        && /^[A-Za-z_][A-Za-z0-9_]*$/.test(s);
+}
 
 function isSafeRedirect(url) {
     if (!url || typeof url !== 'string') return false;
@@ -339,6 +353,12 @@ app.use((req, res, next) => {
     // versions had filter bugs that introduced new vulnerabilities.
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    // HSTS: enforce HTTPS for 6 months. Only sent in production so dev
+    // over plain HTTP doesn't get pinned to https://. `includeSubDomains`
+    // keeps subdomain takeover attacks blocked too.
+    if (process.env.NODE_ENV === 'production') {
+        res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+    }
 
     // Vite-built React SPA emits only external <script src="..."> tags so
     // it doesn't need 'unsafe-inline'. The legacy EJS templates rendered
@@ -1431,8 +1451,10 @@ app.post('/guild/:guildID/restore', checkAuth, async (req, res) => {
         if (!backups[0]) return res.status(404).json({ success: false, error: 'Aucun backup trouvé' });
         const config = JSON.parse(backups[0].configJson);
         delete config.id; delete config.guildId;
-        const cols = Object.keys(config).map(k => `${k} = ?`).join(', ');
-        const vals = Object.values(config);
+        const safeKeys = Object.keys(config).filter(isSafeColumnName);
+        if (safeKeys.length === 0) return res.json({ success: true });
+        const cols = safeKeys.map(k => `\`${k}\` = ?`).join(', ');
+        const vals = safeKeys.map(k => config[k]);
         await db.execute(`UPDATE settings SET ${cols} WHERE guildId = ?`, [...vals, guildID]);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
@@ -1464,8 +1486,10 @@ app.post('/shard/guild/:guildID/restore', checkAuthShard, async (req, res) => {
         if (!backups[0]) return res.status(404).json({ success: false, error: 'Aucun backup trouvé' });
         const config = JSON.parse(backups[0].configJson);
         delete config.guildId;
-        const cols = Object.keys(config).map(k => `${k} = ?`).join(', ');
-        const vals = Object.values(config);
+        const safeKeys = Object.keys(config).filter(isSafeColumnName);
+        if (safeKeys.length === 0) return res.json({ success: true });
+        const cols = safeKeys.map(k => `\`${k}\` = ?`).join(', ');
+        const vals = safeKeys.map(k => config[k]);
         await db.execute(`UPDATE shard_settings SET ${cols} WHERE guildId = ?`, [...vals, guildID]);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
@@ -2934,16 +2958,37 @@ app.get('/api/admin', checkAdmin, async (req, res) => {
     }
 });
 
+// Resolve a Discord bot user ID → its config entry. Originally each call
+// hit Discord's `/users/@me` once per bot to find a match — N requests
+// per admin action. We now warm a `botId → bot` map at first call and
+// use it as a static lookup; only one Discord round-trip per bot, ever.
+const botIdCache = new Map();
+let botIdCacheReady = false;
+let botIdCachePromise = null;
+
+async function warmBotIdCache() {
+    if (botIdCacheReady) return;
+    if (botIdCachePromise) return botIdCachePromise;
+    botIdCachePromise = (async () => {
+        for (const b of BOTS) {
+            if (!b.token) continue;
+            try {
+                const me = await axios.get('https://discord.com/api/v10/users/@me', {
+                    headers: { Authorization: `Bot ${b.token}` },
+                    timeout: 5000,
+                });
+                if (me.data?.id) botIdCache.set(me.data.id, b);
+            } catch (e) { console.error('warmBotIdCache:', b.label, e.message); }
+        }
+        botIdCacheReady = true;
+    })();
+    await botIdCachePromise;
+}
+
 async function resolveBotByBotId(botId) {
     if (!isValidSnowflake(botId)) return null;
-    for (const b of BOTS) {
-        if (!b.token) continue;
-        try {
-            const meRes = await axios.get('https://discord.com/api/v10/users/@me', { headers: { Authorization: `Bot ${b.token}` } });
-            if (meRes.data.id === botId) return b;
-        } catch {}
-    }
-    return null;
+    if (!botIdCacheReady) await warmBotIdCache();
+    return botIdCache.get(botId) || null;
 }
 
 app.post('/admin/bot/:botId/guild/:guildId/leave', checkAdmin, verifyCsrf, async (req, res) => {
