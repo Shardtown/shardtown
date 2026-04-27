@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ClipboardList,
   LogOut,
+  Monitor,
   RefreshCw,
   Search,
   Server,
@@ -49,6 +50,15 @@ interface AuditEntry {
   created_at: string;
 }
 
+interface AdminSession {
+  id: number;
+  login_at: string;
+  last_seen: string;
+  ip: string | null;
+  user_agent: string | null;
+  current: boolean;
+}
+
 interface PendingAction {
   label: string;
   title: string;
@@ -86,6 +96,8 @@ export function Admin() {
   const [activeBotId, setActiveBotId] = useState<string | null>(null);
   const [audit, setAudit] = useState<AuditEntry[] | null>(null);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [sessions, setSessions] = useState<AdminSession[] | null>(null);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -117,7 +129,19 @@ export function Admin() {
     }
   }, []);
 
-  useEffect(() => { refresh(); refreshAudit(); }, [refresh, refreshAudit]);
+  const refreshSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const r = await apiGet<{ sessions: AdminSession[] }>("/api/admin/sessions");
+      setSessions(r.sessions);
+    } catch {
+      setSessions([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { refresh(); refreshAudit(); refreshSessions(); }, [refresh, refreshAudit, refreshSessions]);
 
   function showToast(text: string, type: "success" | "error" = "success") {
     setToast({ text, type });
@@ -173,6 +197,25 @@ export function Admin() {
         if (r.success) {
           showToast(`« ${guildName} » bloqué`, "success");
           refresh();
+          refreshAudit();
+        } else {
+          showToast(r.error || "Erreur", "error");
+        }
+      },
+    });
+  }
+
+  function revokeSession(sessionId: number) {
+    setPending({
+      label: "Force déconnexion",
+      title: "Révoquer cette session",
+      desc: "L'utilisateur sera déconnecté à sa prochaine requête (au plus tard sous 30s).",
+      variant: "warning",
+      confirm: async () => {
+        const r = await postAction(`/api/admin/sessions/${sessionId}/revoke`);
+        if (r.success) {
+          showToast("Session révoquée", "success");
+          refreshSessions();
           refreshAudit();
         } else {
           showToast(r.error || "Erreur", "error");
@@ -465,6 +508,43 @@ export function Admin() {
               </p>
             </div>
           )}
+
+        {/* Active admin sessions */}
+        <div className="mt-16">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-300">
+              <Monitor className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-violet-300/70 uppercase">Sécurité</p>
+              <h2 className="text-xl font-extrabold tracking-tight">Sessions actives</h2>
+            </div>
+            <button
+              type="button"
+              onClick={refreshSessions}
+              disabled={sessionsLoading}
+              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/[0.07] transition-colors disabled:opacity-40"
+            >
+              <RefreshCw className={`w-3 h-3 ${sessionsLoading ? "animate-spin" : ""}`} />
+              Actualiser
+            </button>
+          </div>
+          <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-2 space-y-1">
+            {sessions === null ? (
+              <div className="p-6 text-center text-white/30 text-xs font-bold uppercase tracking-widest">
+                Chargement…
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="p-6 text-center text-white/30 text-xs font-bold uppercase tracking-widest">
+                Aucune session active
+              </div>
+            ) : (
+              sessions.map(s => (
+                <SessionRow key={s.id} session={s} onRevoke={() => revokeSession(s.id)} />
+              ))
+            )}
+          </div>
+        </div>
 
         {/* Audit log */}
         <div className="mt-16">
@@ -847,4 +927,74 @@ function formatWhen(ts: string): string {
   const diffHr = Math.floor(diffMin / 60);
   if (diffHr < 24) return `il y a ${diffHr}h`;
   return d.toLocaleString("fr-FR");
+}
+
+function SessionRow({
+  session,
+  onRevoke,
+}: {
+  session: AdminSession;
+  onRevoke: () => void;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${
+        session.current
+          ? "bg-emerald-500/[0.06] border-emerald-500/25"
+          : "bg-white/[0.02] border-white/[0.06] hover:border-white/15"
+      }`}
+    >
+      <div
+        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+          session.current
+            ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
+            : "bg-white/[0.04] border border-white/10 text-white/50"
+        }`}
+      >
+        <Monitor className="w-4 h-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+          <span className="text-[12px] font-bold text-white/80 font-mono-num">
+            {session.ip || "—"}
+          </span>
+          {session.current && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[10px] font-bold uppercase tracking-widest">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Cette session
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-white/40 truncate">
+          {summarizeUserAgent(session.user_agent)}
+        </p>
+        <p className="text-[10px] text-white/25 font-mono-num mt-0.5">
+          Connecté {formatWhen(session.login_at)} · Vu {formatWhen(session.last_seen)}
+        </p>
+      </div>
+      {!session.current && (
+        <button
+          type="button"
+          onClick={onRevoke}
+          className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-[11px] font-bold hover:bg-red-500/15 transition-colors shrink-0"
+        >
+          Forcer la déco
+        </button>
+      )}
+    </div>
+  );
+}
+
+function summarizeUserAgent(ua: string | null): string {
+  if (!ua) return "Agent inconnu";
+  const match =
+    ua.match(/(Edg|Chrome|Safari|Firefox|Opera|OPR)\/(\d+)/) ||
+    ua.match(/(curl|wget|axios|node-fetch)\/(\d+)/i);
+  const browser = match ? `${match[1]} ${match[2]}` : "Navigateur";
+  let os = "OS inconnu";
+  if (/Windows/.test(ua)) os = "Windows";
+  else if (/Mac OS X|Macintosh/.test(ua)) os = "macOS";
+  else if (/iPhone|iPad/.test(ua)) os = "iOS";
+  else if (/Android/.test(ua)) os = "Android";
+  else if (/Linux/.test(ua)) os = "Linux";
+  return `${browser} · ${os}`;
 }
