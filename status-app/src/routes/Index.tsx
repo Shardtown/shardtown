@@ -208,12 +208,11 @@ export function Index() {
         </RevealStagger>
       </section>
 
-      {/* Contact CTA — flat full-width section (no border/bg) so it
-          doesn't get visually grouped with the TOOLS cards above. */}
+      {/* Contact CTA — rises up */}
       <section id="contact" className="container-wide pt-48 pb-16 scroll-mt-32 overflow-x-clip">
-        <Reveal direction="up" distance={70} duration={0.85} className="text-center max-w-3xl mx-auto py-8">
+        <Reveal direction="up" distance={70} duration={0.85} className="bg-white/[0.02] border border-white/[0.06] rounded-3xl p-12 md:p-20 text-center">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">Parlons-en</p>
-          <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05] mb-6">
+          <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-6">
             Un projet en tête ?
           </h2>
           <p className="text-lg text-white/50 mb-12 max-w-xl mx-auto leading-relaxed">
