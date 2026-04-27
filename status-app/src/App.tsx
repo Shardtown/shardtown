@@ -16,6 +16,7 @@ import { ShardGuardServer } from "@/routes/shardguard/Server";
 import { ShardGuardGuild } from "@/routes/shardguard/Guild";
 import { AdminLogin } from "@/routes/admin/Login";
 import { Admin } from "@/routes/admin/Admin";
+import { AdminGuildDetail } from "@/routes/admin/GuildDetail";
 
 export function App() {
   const [user, setUser] = useState<DiscordUser | null>(null);
@@ -51,6 +52,7 @@ export function App() {
           <Route path="/shardguard/guild/:guildId" element={<ShardGuardGuild />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/guild/:guildId" element={<AdminGuildDetail />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

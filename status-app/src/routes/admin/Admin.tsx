@@ -776,6 +776,11 @@ function GuildRow({
           : "bg-white/[0.02] border-white/[0.06] hover:border-white/15 hover:bg-white/[0.04]"
       }`}
     >
+      <Link
+        to={`/admin/guild/${guild.id}`}
+        className="contents"
+        aria-label={`Voir le détail de ${guild.name}`}
+      >
       {icon ? (
         <img src={icon} alt="" className="w-11 h-11 rounded-xl border border-white/5 object-cover shrink-0" />
       ) : (
@@ -785,7 +790,7 @@ function GuildRow({
       )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <h3 className="font-bold text-[14px] tracking-tight truncate">{guild.name}</h3>
+          <h3 className="font-bold text-[14px] tracking-tight truncate hover:underline">{guild.name}</h3>
           {blocked ? (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-300 text-[10px] font-bold uppercase tracking-widest">
               <Ban className="w-2.5 h-2.5" /> Bloqué
@@ -798,6 +803,7 @@ function GuildRow({
         </div>
         <p className="text-[11px] text-white/30 font-mono-num truncate">{guild.id}</p>
       </div>
+      </Link>
       <div className="flex items-center gap-1.5 shrink-0">
         {blocked ? (
           <button
