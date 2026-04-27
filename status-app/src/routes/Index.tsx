@@ -121,7 +121,7 @@ export function Index() {
       </section>
 
       {/* Services / Métiers — slides in from the LEFT */}
-      <section id="services" className="container-wide pt-32 md:pt-40 scroll-mt-32 overflow-hidden">
+      <section id="services" className="container-wide pt-40 scroll-mt-32 overflow-hidden">
         <Reveal direction="left" distance={80} className="max-w-3xl mb-20">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
             Nos métiers
@@ -166,7 +166,7 @@ export function Index() {
       </section>
 
       {/* Outils maison — slides in from the RIGHT (alternance avec services) */}
-      <section id="products" className="container-wide pt-32 md:pt-40 overflow-hidden">
+      <section id="products" className="container-wide pt-40 overflow-hidden">
         <Reveal direction="right" distance={80} className="max-w-3xl mb-20 ml-auto md:text-right">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
             Nos outils
@@ -209,7 +209,7 @@ export function Index() {
       </section>
 
       {/* Contact CTA — rises up */}
-      <section id="contact" className="container-wide pt-32 md:pt-40 pb-12 scroll-mt-32 overflow-hidden">
+      <section id="contact" className="container-wide pt-40 pb-12 scroll-mt-32 overflow-hidden">
         <Reveal direction="up" distance={70} duration={0.85} className="bg-white/[0.02] border border-white/[0.06] rounded-3xl p-12 md:p-20 text-center">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">Parlons-en</p>
           <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-6">
