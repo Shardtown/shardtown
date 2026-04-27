@@ -165,6 +165,9 @@ export function Index() {
         </RevealStagger>
       </section>
 
+      {/* Vertical spacer between SERVICES grid and "Nos outils" */}
+      <div className="py-16 md:py-20" aria-hidden />
+
       {/* Outils maison — slides in from the RIGHT (alternance avec services) */}
       <section id="products" className="container-wide pt-48 pb-48 overflow-x-clip">
         <Reveal direction="right" distance={80} className="max-w-3xl mb-20 ml-auto md:text-right">
@@ -209,7 +212,7 @@ export function Index() {
       </section>
 
       {/* Vertical spacer between cards and CTA */}
-      <div className="py-32 md:py-40" aria-hidden />
+      <div className="py-16 md:py-20" aria-hidden />
 
       {/* Contact CTA — rises up */}
       <section id="contact" className="container-wide pt-48 pb-16 scroll-mt-32 overflow-x-clip">
