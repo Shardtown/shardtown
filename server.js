@@ -230,6 +230,21 @@ async function connectDB() {
                     locked_until DATETIME DEFAULT NULL
                 )
             `);
+            // Forensic audit trail of every admin action.
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS admin_audit_log (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    action VARCHAR(64) NOT NULL,
+                    target_guild_id VARCHAR(255) DEFAULT NULL,
+                    target_bot_id VARCHAR(255) DEFAULT NULL,
+                    details TEXT DEFAULT NULL,
+                    ip VARCHAR(64) DEFAULT NULL,
+                    user_agent VARCHAR(512) DEFAULT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_created (created_at),
+                    INDEX idx_action (action)
+                )
+            `);
         } catch (e) { console.error('Erreur migration:', e.message); }
     } catch (err) {
         console.error('❌ Erreur MySQL Dashboard:', err.message);
@@ -2535,6 +2550,7 @@ app.post('/admin/login', adminLoginLimiter, verifyCsrf, async (req, res) => {
     const validPass = verifyAdminPassword(password);
     if (validUser && validPass) {
         await clearAdminLockout(lockoutKey);
+        await logAdminAction(req, 'login.success', null, { username: lockoutKey || '(unknown)' });
         req.session.regenerate((err) => {
             if (err) return res.status(500).send('Erreur serveur');
             req.session.isAdmin = true;
@@ -2545,11 +2561,51 @@ app.post('/admin/login', adminLoginLimiter, verifyCsrf, async (req, res) => {
     }
 
     if (lockoutKey) await recordFailedAdminLogin(lockoutKey);
+    await logAdminAction(req, 'login.failure', null, { suppliedUsername: String(username || '').slice(0, 64) });
     res.redirect('/admin/login?error=1');
 });
 
 app.get('/admin/logout', (req, res) => {
+    if (req.session && req.session.isAdmin) {
+        logAdminAction(req, 'logout').catch(() => {});
+    }
     req.session.destroy(() => res.redirect('/admin/login'));
+});
+
+// Forensic audit trail. Best-effort — failures are swallowed so a DB
+// hiccup never blocks an admin action.
+async function logAdminAction(req, action, target, details) {
+    try {
+        await db.execute(
+            `INSERT INTO admin_audit_log (action, target_guild_id, target_bot_id, details, ip, user_agent)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+                String(action).slice(0, 64),
+                target?.guildId || null,
+                target?.botId || null,
+                details ? JSON.stringify(details).slice(0, 4000) : null,
+                (req.ip || '').slice(0, 64),
+                String(req.get('User-Agent') || '').slice(0, 512),
+            ],
+        );
+    } catch (e) {
+        console.error('logAdminAction:', e.message);
+    }
+}
+
+// Admin audit log — last N entries
+app.get('/api/admin/audit', checkAdmin, async (req, res) => {
+    try {
+        const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
+        const [rows] = await db.execute(
+            `SELECT id, action, target_guild_id, target_bot_id, details, ip, user_agent, created_at
+             FROM admin_audit_log ORDER BY id DESC LIMIT ${limit}`,
+        );
+        res.json({ entries: rows });
+    } catch (err) {
+        console.error('GET /api/admin/audit:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
 });
 
 // Admin panel data — consumed by React /admin
@@ -2608,8 +2664,10 @@ app.post('/admin/bot/:botId/guild/:guildId/leave', checkAdmin, verifyCsrf, async
     if (!bot) return res.json({ success: false, error: 'Bot introuvable' });
     try {
         await axios.delete(`https://discord.com/api/v10/users/@me/guilds/${guildId}`, { headers: { Authorization: `Bot ${bot.token}` } });
+        await logAdminAction(req, 'guild.leave', { botId, guildId });
         res.json({ success: true });
     } catch (err) {
+        await logAdminAction(req, 'guild.leave.failed', { botId, guildId }, { error: err.message });
         res.json({ success: false, error: err.response?.data?.message || err.message });
     }
 });
@@ -2625,8 +2683,10 @@ app.post('/admin/bot/:botId/guild/:guildId/block', checkAdmin, verifyCsrf, async
         try {
             await axios.delete(`https://discord.com/api/v10/users/@me/guilds/${guildId}`, { headers: { Authorization: `Bot ${bot.token}` } });
         } catch {}
+        await logAdminAction(req, 'guild.block', { botId, guildId }, { guildName: guildName || null });
         res.json({ success: true });
     } catch (err) {
+        await logAdminAction(req, 'guild.block.failed', { botId, guildId }, { error: err.message });
         res.json({ success: false, error: err.message });
     }
 });
@@ -2635,8 +2695,10 @@ app.post('/admin/guild/:guildId/unblock', checkAdmin, verifyCsrf, async (req, re
     const { guildId } = req.params;
     try {
         await db.execute('DELETE FROM blocked_guilds WHERE guild_id = ?', [guildId]);
+        await logAdminAction(req, 'guild.unblock', { guildId });
         res.json({ success: true });
     } catch (err) {
+        await logAdminAction(req, 'guild.unblock.failed', { guildId }, { error: err.message });
         res.json({ success: false, error: err.message });
     }
 });
