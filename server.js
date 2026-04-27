@@ -707,12 +707,23 @@ app.post('/api/create-checkout', checkoutRateLimiter, async (req, res) => {
         };
         if (isMonthly) priceData.recurring = { interval: 'month' };
 
+        // Discord OAuth doesn't include `email` in the `identify` scope by
+        // default, so this is usually undefined. Validate strictly anyway:
+        // the value is attacker-controllable (Discord profile email) and
+        // Stripe will accept any string. Only forward something that
+        // actually looks like an email and is not absurdly long.
+        const rawEmail = typeof req.user?.email === 'string' ? req.user.email.trim() : '';
+        const safeEmail = rawEmail.length > 0 && rawEmail.length <= 254
+            && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)
+            ? rawEmail
+            : undefined;
+
         const session = await stripe.checkout.sessions.create({
             mode: isMonthly ? 'subscription' : 'payment',
             line_items: [{ price_data: priceData, quantity: 1 }],
             metadata: { guildId, guildName: userGuild.name, plan: planChoice },
             ...(isMonthly ? { subscription_data: { metadata: { guildId, guildName: userGuild.name, plan: planChoice } } } : {}),
-            customer_email: req.user.email || undefined,
+            customer_email: safeEmail,
             success_url: `${appUrl}/premium?payment=success`,
             cancel_url: `${appUrl}/premium?payment=cancelled`,
         });
@@ -2561,9 +2572,30 @@ function verifyAdminPassword(input) {
     }
     const fallback = process.env.ADMIN_PASSWORD;
     if (!fallback) return false;
-    console.warn('⚠️  ADMIN_PASSWORD utilisé en clair. Définis ADMIN_PASSWORD_HASH (scrypt salt:hash) et supprime ADMIN_PASSWORD.');
     return timingSafeEqual(String(input || ''), fallback);
 }
+
+// Boot-time check: warn loudly if the admin password is sitting in
+// plaintext in the env. We don't refuse to start (would brick existing
+// deployments) but the warning is unmissable in PM2 logs and we log
+// the migration command so the operator can fix it in seconds.
+(function checkAdminPasswordHardening() {
+    const hasHash = process.env.ADMIN_PASSWORD_HASH && process.env.ADMIN_PASSWORD_HASH.includes(':');
+    const hasPlaintext = !!process.env.ADMIN_PASSWORD;
+    if (!hasHash && !hasPlaintext) {
+        console.error('❌ Aucun ADMIN_PASSWORD_HASH ni ADMIN_PASSWORD défini — login admin impossible.');
+        return;
+    }
+    if (!hasHash && hasPlaintext) {
+        console.warn('━'.repeat(72));
+        console.warn('⚠️  ADMIN_PASSWORD est stocké en clair dans l\'environnement.');
+        console.warn('   Migre vers ADMIN_PASSWORD_HASH (scrypt salt:hash) :');
+        console.warn('   node -e "const c=require(\'crypto\'),s=c.randomBytes(16).toString(\'hex\');' +
+            'console.log(s+\':\'+c.scryptSync(process.argv[1],s,64).toString(\'hex\'))" "TON_MOT_DE_PASSE"');
+        console.warn('   Puis ajoute ADMIN_PASSWORD_HASH=<résultat> à .env, et supprime ADMIN_PASSWORD.');
+        console.warn('━'.repeat(72));
+    }
+})();
 
 function generateCsrfToken(req) {
     if (!req.session.csrfSecret) {
