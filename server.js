@@ -1850,7 +1850,7 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
     try { modRolesJson = JSON.stringify(JSON.parse(modRoles)); } catch { modRolesJson = '[]'; }
 
     const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
-    if (!userGuild) return res.status(403).send('Accès refusé');
+    if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
 
     try {
         // Récupérer l'ancienne configuration pour comparer
@@ -2013,10 +2013,10 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
             `, [guildID, req.user.id, req.user.username, 'Mise à jour configuration', 'Aucun changement majeur détecté']);
         }
 
-        res.redirect(`/shardguard/guild/${guildID}`);
+        res.json({ success: true });
     } catch (err) {
         console.error('Erreur sauvegarde MySQL:', err);
-        res.status(500).send('Erreur lors de la sauvegarde');
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
     }
 });
 
