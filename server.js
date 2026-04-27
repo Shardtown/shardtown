@@ -2659,6 +2659,128 @@ async function logAdminAction(req, action, target, details) {
     }
 }
 
+// Aggregated detail page for a single guild — combines Discord data,
+// per-bot presence, shard mapping, premium flag, audit logs, warnings.
+app.get('/api/admin/guild/:guildId', checkAdmin, async (req, res) => {
+    const { guildId } = req.params;
+    if (!isValidSnowflake(guildId)) return res.status(400).json({ error: 'Guild ID invalide' });
+
+    try {
+        const result = {
+            guildId,
+            bots: [],
+            owner: null,
+            recentAuditLogs: [],
+            warningsCount: 0,
+            blocked: false,
+            blocked_at: null,
+            blocked_name: null,
+        };
+
+        for (const bot of BOTS) {
+            const entry = { label: bot.label, present: false };
+            try {
+                const guildRes = await axios.get(
+                    `https://discord.com/api/v10/guilds/${guildId}?with_counts=true`,
+                    {
+                        headers: { Authorization: `Bot ${bot.token}` },
+                        validateStatus: s => s === 200 || s === 404 || s === 403,
+                        timeout: 5000,
+                    },
+                );
+                if (guildRes.status === 200) {
+                    entry.present = true;
+                    entry.guild = {
+                        id: guildRes.data.id,
+                        name: guildRes.data.name,
+                        icon: guildRes.data.icon,
+                        owner_id: guildRes.data.owner_id,
+                        member_count: guildRes.data.approximate_member_count ?? null,
+                        presence_count: guildRes.data.approximate_presence_count ?? null,
+                        verification_level: guildRes.data.verification_level,
+                        boost_tier: guildRes.data.premium_tier,
+                        boost_count: guildRes.data.premium_subscription_count ?? 0,
+                        roles_count: guildRes.data.roles?.length || 0,
+                        emoji_count: guildRes.data.emojis?.length || 0,
+                        features: guildRes.data.features || [],
+                    };
+
+                    // Owner profile (only fetch once)
+                    if (!result.owner) {
+                        try {
+                            const ownerRes = await axios.get(
+                                `https://discord.com/api/v10/users/${guildRes.data.owner_id}`,
+                                {
+                                    headers: { Authorization: `Bot ${bot.token}` },
+                                    timeout: 5000,
+                                },
+                            );
+                            result.owner = {
+                                id: ownerRes.data.id,
+                                username: ownerRes.data.username,
+                                global_name: ownerRes.data.global_name || null,
+                                avatar: ownerRes.data.avatar || null,
+                            };
+                        } catch { /* non-fatal */ }
+                    }
+
+                    // Shard mapping
+                    try {
+                        const [rows] = await db.execute(
+                            'SELECT shard_id FROM shard_guilds WHERE bot_label = ? AND guild_id = ?',
+                            [bot.label, guildId],
+                        );
+                        if (rows[0]) entry.shardId = rows[0].shard_id;
+                    } catch { /* non-fatal */ }
+
+                    // Premium flag
+                    try {
+                        const table = bot.label === 'ShardGuard' ? 'settings' : 'shard_settings';
+                        const [s] = await db.execute(
+                            `SELECT isPremium FROM ${table} WHERE guildId = ?`,
+                            [guildId],
+                        );
+                        entry.isPremium = !!s[0]?.isPremium;
+                    } catch { /* non-fatal */ }
+                }
+            } catch { /* network: leave entry.present = false */ }
+            result.bots.push(entry);
+        }
+
+        const [blockedRows] = await db.execute(
+            'SELECT guild_name, blocked_at FROM blocked_guilds WHERE guild_id = ?',
+            [guildId],
+        );
+        if (blockedRows[0]) {
+            result.blocked = true;
+            result.blocked_name = blockedRows[0].guild_name;
+            result.blocked_at = blockedRows[0].blocked_at;
+        }
+
+        try {
+            const [logs] = await db.execute(
+                `SELECT id, userId, username, action, details, timestamp
+                 FROM audit_logs WHERE guildId = ? ORDER BY id DESC LIMIT 20`,
+                [guildId],
+            );
+            result.recentAuditLogs = logs;
+        } catch { /* non-fatal */ }
+
+        try {
+            const [w] = await db.execute(
+                'SELECT COUNT(*) as count FROM warnings WHERE guildId = ?',
+                [guildId],
+            );
+            result.warningsCount = w[0]?.count || 0;
+        } catch { /* non-fatal */ }
+
+        res.json(result);
+    } catch (err) {
+        console.error('GET /api/admin/guild:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 // Active admin sessions
 app.get('/api/admin/sessions', checkAdmin, async (req, res) => {
     try {
