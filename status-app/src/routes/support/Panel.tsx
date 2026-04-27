@@ -1,26 +1,31 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Headset, LogOut, MessageSquare, Send, Loader2, Inbox, RefreshCw, X, CheckCircle2,
+  Headset, LogOut, MessageSquare, Send, Loader2, Inbox, RefreshCw, X, CheckCircle2, ShieldCheck, UserCheck,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost } from "@/api/client";
 
+interface ClaimedBy { id: number; name: string }
+
 interface TicketSummary {
   id: number;
-  user_id: string;
+  user_id: string | null;
   user_username: string;
   user_avatar: string | null;
+  guest_email: string | null;
   status: "open" | "closed";
   created_at: string;
   closed_at: string | null;
   last_message_at: string | null;
   message_count: number;
+  claimed_by_id: number | null;
+  claimed_by_name: string | null;
 }
 
 interface Message {
   id: number;
-  side: "user" | "staff";
+  side: "user" | "staff" | "system";
   author_name: string;
   author_avatar: string | null;
   content: string;
@@ -29,15 +34,19 @@ interface Message {
 
 interface TicketDetail {
   id: number;
-  user_id: string;
+  user_id: string | null;
   user_username: string;
   user_avatar: string | null;
+  guest_email: string | null;
   status: "open" | "closed";
   created_at: string;
   closed_at: string | null;
+  claimed_by_id: number | null;
+  claimed_by_name: string | null;
 }
 
-const POLL = 4000;
+const POLL = 1500;
+const TYPING_THROTTLE = 1500;
 
 function relTime(ts: string | null) {
   if (!ts) return "";
@@ -61,17 +70,16 @@ export function SupportPanel() {
   const [sending, setSending] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [userTyping, setUserTyping] = useState(false);
+
   const lastIdRef = useRef(0);
+  const lastTypingPostRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Bootstrap: who am I?
   useEffect(() => {
     apiGet<{ staff: { id: number; name: string } | null }>("/api/support/staff/me")
       .then(d => {
-        if (!d.staff) {
-          nav("/support/login", { replace: true });
-          return;
-        }
+        if (!d.staff) { nav("/support/login", { replace: true }); return; }
         setStaff(d.staff);
       })
       .catch(() => nav("/support/login", { replace: true }));
@@ -87,10 +95,9 @@ export function SupportPanel() {
 
   useEffect(() => { if (staff) refreshList(); }, [staff, refreshList]);
 
-  // Poll the tickets list every 8s when on the "open" tab
   useEffect(() => {
     if (!staff || tab !== "open") return;
-    const id = setInterval(refreshList, 8000);
+    const id = setInterval(refreshList, 6000);
     return () => clearInterval(id);
   }, [staff, tab, refreshList]);
 
@@ -101,32 +108,53 @@ export function SupportPanel() {
       setSelected(r.ticket);
       setMessages(r.messages);
       lastIdRef.current = r.messages.length ? r.messages[r.messages.length - 1].id : 0;
+      setUserTyping(false);
     } finally { setLoadingDetail(false); }
   }
 
-  // Poll messages for the open ticket
+  // Poll messages + typing for the open ticket
   useEffect(() => {
     if (!selected || selected.status !== "open") return;
     const tick = async () => {
       try {
-        const r = await apiGet<{ messages: Message[]; status: TicketDetail["status"] }>(
-          `/api/support/staff/ticket/${selected.id}/messages?since=${lastIdRef.current}`,
-        );
+        const r = await apiGet<{
+          messages: Message[];
+          status: TicketDetail["status"];
+          peer_typing: boolean;
+          claimed_by: ClaimedBy | null;
+        }>(`/api/support/staff/ticket/${selected.id}/messages?since=${lastIdRef.current}`);
         if (r.messages.length) {
           setMessages(prev => [...prev, ...r.messages]);
           lastIdRef.current = r.messages[r.messages.length - 1].id;
         }
-        if (r.status !== selected.status) setSelected(s => (s ? { ...s, status: r.status } : s));
+        setUserTyping(!!r.peer_typing);
+        if (r.status !== selected.status || (r.claimed_by?.id ?? null) !== selected.claimed_by_id) {
+          setSelected(s => (s ? {
+            ...s,
+            status: r.status,
+            claimed_by_id: r.claimed_by?.id ?? null,
+            claimed_by_name: r.claimed_by?.name ?? null,
+          } : s));
+        }
       } catch { /* swallow */ }
     };
     const id = setInterval(tick, POLL);
     return () => clearInterval(id);
   }, [selected]);
 
-  // Autoscroll
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, selected?.id]);
+  }, [messages, selected?.id, userTyping]);
+
+  function onDraftChange(v: string) {
+    setDraft(v);
+    if (!selected || selected.status !== "open") return;
+    const now = Date.now();
+    if (now - lastTypingPostRef.current > TYPING_THROTTLE) {
+      lastTypingPostRef.current = now;
+      apiPost(`/api/support/staff/ticket/${selected.id}/typing`).catch(() => {});
+    }
+  }
 
   async function sendReply() {
     if (!selected || !draft.trim() || sending) return;
@@ -135,7 +163,10 @@ export function SupportPanel() {
     setDraft("");
     try {
       await apiPost(`/api/support/staff/ticket/${selected.id}/message`, { content });
-      // Optimistic
+      // Auto-claim happens server-side; reflect it locally.
+      if (selected.claimed_by_id == null && staff) {
+        setSelected(s => (s ? { ...s, claimed_by_id: staff.id, claimed_by_name: staff.name } : s));
+      }
       setMessages(prev => [
         ...prev,
         {
@@ -150,6 +181,15 @@ export function SupportPanel() {
     } catch {
       setDraft(content);
     } finally { setSending(false); }
+  }
+
+  async function claim() {
+    if (!selected || !staff) return;
+    try {
+      await apiPost(`/api/support/staff/ticket/${selected.id}/claim`);
+      setSelected(s => (s ? { ...s, claimed_by_id: staff.id, claimed_by_name: staff.name } : s));
+      // The system message will arrive via the next poll
+    } catch { /* swallow */ }
   }
 
   async function closeTicket() {
@@ -195,7 +235,7 @@ export function SupportPanel() {
           </button>
         </header>
 
-        <div className="grid lg:grid-cols-[360px_1fr] gap-6 min-h-[60vh]">
+        <div className="grid lg:grid-cols-[380px_1fr] gap-6 min-h-[60vh]">
           {/* List */}
           <aside className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent overflow-hidden flex flex-col">
             <div className="p-3 border-b border-white/[0.06] flex items-center gap-2">
@@ -254,6 +294,16 @@ export function SupportPanel() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold truncate">{t.user_username}</span>
+                          {!t.user_id && (
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-amber-300/80 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">
+                              guest
+                            </span>
+                          )}
+                          {t.claimed_by_id && (
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-300/80 truncate">
+                              · {t.claimed_by_name}
+                            </span>
+                          )}
                           {t.status === "closed" && (
                             <span className="text-[9px] font-bold uppercase tracking-widest text-white/35">fermé</span>
                           )}
@@ -284,7 +334,7 @@ export function SupportPanel() {
               </div>
             ) : (
               <>
-                <header className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3">
+                <header className="px-5 py-4 border-b border-white/[0.06] flex items-center gap-3 flex-wrap">
                   {selected.user_avatar ? (
                     <img src={selected.user_avatar} alt="" className="w-10 h-10 rounded-full border border-white/10 shrink-0" />
                   ) : (
@@ -293,17 +343,52 @@ export function SupportPanel() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-extrabold tracking-tight truncate">{selected.user_username}</h3>
-                    <p className="text-[11px] text-white/40 font-mono-num">#{selected.id} · {selected.user_id}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-extrabold tracking-tight truncate">{selected.user_username}</h3>
+                      {!selected.user_id && (
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-amber-300/80 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full">
+                          invité
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-white/40 font-mono-num truncate">
+                      #{selected.id}
+                      {selected.user_id && <> · {selected.user_id}</>}
+                      {selected.guest_email && <> · {selected.guest_email}</>}
+                    </p>
                   </div>
                   {selected.status === "open" ? (
-                    <button
-                      type="button"
-                      onClick={closeTicket}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-300 text-[11px] font-bold hover:bg-red-500/15"
-                    >
-                      <X className="w-3 h-3" /> Fermer
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {selected.claimed_by_id == null ? (
+                        <button
+                          type="button"
+                          onClick={claim}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[11px] font-bold hover:bg-emerald-500/20"
+                        >
+                          <UserCheck className="w-3 h-3" /> Prendre en charge
+                        </button>
+                      ) : selected.claimed_by_id !== staff.id ? (
+                        <button
+                          type="button"
+                          onClick={claim}
+                          title={`Pris par ${selected.claimed_by_name}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[11px] font-bold hover:bg-amber-500/20"
+                        >
+                          <UserCheck className="w-3 h-3" /> Reprendre ({selected.claimed_by_name})
+                        </button>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-bold">
+                          <CheckCircle2 className="w-3 h-3" /> En charge
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={closeTicket}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-300 text-[11px] font-bold hover:bg-red-500/15"
+                      >
+                        <X className="w-3 h-3" /> Fermer
+                      </button>
+                    </div>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-white/45 text-[11px] font-bold uppercase tracking-widest">
                       <CheckCircle2 className="w-3 h-3" /> Fermé
@@ -311,20 +396,23 @@ export function SupportPanel() {
                   )}
                 </header>
 
-                <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+                <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2.5">
                   {messages.length === 0 && (
                     <p className="text-center text-[12px] text-white/30 py-4">
                       Aucun message pour l'instant.
                     </p>
                   )}
                   {messages.map(m => <Bubble key={m.id} m={m} />)}
+                  {userTyping && selected.status === "open" && (
+                    <TypingDots name={selected.user_username} />
+                  )}
                 </div>
 
                 <div className="border-t border-white/[0.06] p-3 flex items-center gap-2">
                   <input
                     type="text"
                     value={draft}
-                    onChange={e => setDraft(e.target.value)}
+                    onChange={e => onDraftChange(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendReply(); } }}
                     disabled={selected.status !== "open" || sending}
                     placeholder={selected.status === "open" ? "Réponse…" : "Ticket fermé"}
@@ -350,6 +438,16 @@ export function SupportPanel() {
 }
 
 function Bubble({ m }: { m: Message }) {
+  if (m.side === "system") {
+    return (
+      <div className="flex items-center justify-center my-2">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-300 text-[11px] font-medium">
+          <ShieldCheck className="w-3 h-3" />
+          {m.content}
+        </span>
+      </div>
+    );
+  }
   const isStaff = m.side === "staff";
   return (
     <div className={`flex items-end gap-2 ${isStaff ? "justify-end" : "justify-start"}`}>
@@ -377,6 +475,24 @@ function Bubble({ m }: { m: Message }) {
         >
           {m.content}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function TypingDots({ name }: { name: string }) {
+  return (
+    <div className="flex items-end gap-2 justify-start">
+      <div className="w-7 h-7 rounded-full bg-white/[0.05] border border-white/10 shrink-0 flex items-center justify-center text-[10px] font-bold text-white/40">
+        {name[0]?.toUpperCase()}
+      </div>
+      <div className="px-3 py-2 rounded-2xl rounded-bl-md bg-white/[0.06] border border-white/10 inline-flex items-center gap-1.5">
+        <span className="text-[11px] text-white/55">{name} écrit</span>
+        <span className="flex items-end gap-0.5">
+          <span className="w-1 h-1 rounded-full bg-white/55 animate-[bounce_1s_infinite] [animation-delay:-0.3s]" />
+          <span className="w-1 h-1 rounded-full bg-white/55 animate-[bounce_1s_infinite] [animation-delay:-0.15s]" />
+          <span className="w-1 h-1 rounded-full bg-white/55 animate-[bounce_1s_infinite]" />
+        </span>
       </div>
     </div>
   );

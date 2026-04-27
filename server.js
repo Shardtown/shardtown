@@ -305,11 +305,27 @@ async function connectDB() {
                     INDEX idx_discord_msg (discord_message_id)
                 )
             `);
-            // Drop the legacy NOT NULL constraint on channel_id from
-            // pre-staff-panel days so new tickets can omit it.
+            // Drop the legacy NOT NULL constraints on channel_id and
+            // user_id so guest (non-Discord) tickets can be opened.
             try {
                 await db.execute(`ALTER TABLE support_tickets MODIFY channel_id VARCHAR(255) DEFAULT NULL`);
             } catch { /* already nullable */ }
+            try {
+                await db.execute(`ALTER TABLE support_tickets MODIFY user_id VARCHAR(255) DEFAULT NULL`);
+            } catch { /* already nullable */ }
+            // Guest contact info + session-based ownership when there's
+            // no Discord account. Idempotent ADD COLUMN — wrap in try.
+            for (const ddl of [
+                `ALTER TABLE support_tickets ADD COLUMN guest_email VARCHAR(254) DEFAULT NULL`,
+                `ALTER TABLE support_tickets ADD COLUMN session_id VARCHAR(128) DEFAULT NULL`,
+                `ALTER TABLE support_tickets ADD INDEX idx_session (session_id)`,
+                `ALTER TABLE support_tickets ADD COLUMN claimed_by_id INT DEFAULT NULL`,
+                `ALTER TABLE support_tickets ADD COLUMN claimed_by_name VARCHAR(64) DEFAULT NULL`,
+                `ALTER TABLE support_tickets ADD COLUMN claimed_at DATETIME DEFAULT NULL`,
+                `ALTER TABLE support_messages MODIFY side ENUM('user', 'staff', 'system') NOT NULL`,
+            ]) {
+                try { await db.execute(ddl); } catch { /* already exists */ }
+            }
             // Access keys for support staff (mint from admin panel,
             // hashed at rest, one row per staff seat).
             await db.execute(`
@@ -714,15 +730,54 @@ function requireStaff(req, res, next) {
     res.status(401).json({ error: 'Non authentifié' });
 }
 
-// Get current user's open ticket + recent messages
+// Typing indicator state — kept in memory. ticketId → { userAt, staffAt }
+// Each side's timestamp expires after 5s. No persistence needed.
+const typingState = new Map();
+const TYPING_TTL = 5000;
+
+function bumpTyping(ticketId, side) {
+    const now = Date.now();
+    let s = typingState.get(ticketId);
+    if (!s) { s = { userAt: 0, staffAt: 0 }; typingState.set(ticketId, s); }
+    if (side === 'user') s.userAt = now; else s.staffAt = now;
+}
+
+function peerTyping(ticketId, mySide) {
+    const s = typingState.get(ticketId);
+    if (!s) return false;
+    const peerAt = mySide === 'user' ? s.staffAt : s.userAt;
+    return peerAt > 0 && Date.now() - peerAt < TYPING_TTL;
+}
+
+// Periodic cleanup of typing entries (every 60s).
+setInterval(() => {
+    const now = Date.now();
+    for (const [k, v] of typingState) {
+        if (now - Math.max(v.userAt, v.staffAt) > TYPING_TTL * 2) typingState.delete(k);
+    }
+}, 60_000).unref?.();
+
+function ticketRequesterMatches(t, req) {
+    if (!t) return false;
+    if (req.user && t.user_id === req.user.id) return true;
+    if (!t.user_id && t.session_id && t.session_id === req.sessionID) return true;
+    return false;
+}
+
+// Get current ticket (Discord user OR guest by session)
 app.get('/api/support/ticket', async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
     try {
-        const [rows] = await db.execute(
-            `SELECT id, status, created_at FROM support_tickets
-             WHERE user_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1`,
-            [req.user.id],
-        );
+        const [rows] = req.user
+            ? await db.execute(
+                `SELECT id, status, created_at, claimed_by_id, claimed_by_name FROM support_tickets
+                 WHERE user_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1`,
+                [req.user.id],
+            )
+            : await db.execute(
+                `SELECT id, status, created_at, claimed_by_id, claimed_by_name FROM support_tickets
+                 WHERE user_id IS NULL AND session_id = ? AND status = 'open' ORDER BY id DESC LIMIT 1`,
+                [req.sessionID],
+            );
         if (rows.length === 0) return res.json({ ticket: null, messages: [] });
         const ticket = rows[0];
         const [msgs] = await db.execute(
@@ -730,27 +785,56 @@ app.get('/api/support/ticket', async (req, res) => {
              FROM support_messages WHERE ticket_id = ? ORDER BY id ASC LIMIT 200`,
             [ticket.id],
         );
-        res.json({ ticket: { id: ticket.id, status: ticket.status, created_at: ticket.created_at }, messages: msgs });
+        res.json({
+            ticket: {
+                id: ticket.id,
+                status: ticket.status,
+                created_at: ticket.created_at,
+                claimed_by: ticket.claimed_by_id ? { id: ticket.claimed_by_id, name: ticket.claimed_by_name } : null,
+            },
+            messages: msgs,
+        });
     } catch (err) {
         console.error('GET /api/support/ticket:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
-// Open a new ticket (rejects if user already has an open one)
+// Open a new ticket. Discord user → uses their identity. Guest → must
+// supply { name, email } and the ticket gets bound to their session ID.
 app.post('/api/support/ticket', supportRateLimit, async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
     try {
+        if (req.user) {
+            const [existing] = await db.execute(
+                `SELECT id FROM support_tickets WHERE user_id = ? AND status = 'open' LIMIT 1`,
+                [req.user.id],
+            );
+            if (existing.length > 0) {
+                return res.status(409).json({ error: 'Un ticket est déjà ouvert', ticketId: existing[0].id });
+            }
+            const [insert] = await db.execute(
+                `INSERT INTO support_tickets (user_id, user_username, user_avatar, session_id) VALUES (?, ?, ?, ?)`,
+                [req.user.id, req.user.username, userAvatarUrl(req.user), req.sessionID],
+            );
+            return res.json({ ticket: { id: insert.insertId, status: 'open', created_at: new Date().toISOString() }, messages: [] });
+        }
+
+        // Guest path
+        const name = String(req.body?.name || '').trim().slice(0, 64);
+        const email = String(req.body?.email || '').trim().slice(0, 254);
+        if (!name) return res.status(400).json({ error: 'Nom requis' });
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email invalide' });
+
         const [existing] = await db.execute(
-            `SELECT id FROM support_tickets WHERE user_id = ? AND status = 'open' LIMIT 1`,
-            [req.user.id],
+            `SELECT id FROM support_tickets WHERE session_id = ? AND status = 'open' LIMIT 1`,
+            [req.sessionID],
         );
         if (existing.length > 0) {
             return res.status(409).json({ error: 'Un ticket est déjà ouvert', ticketId: existing[0].id });
         }
         const [insert] = await db.execute(
-            `INSERT INTO support_tickets (user_id, user_username, user_avatar) VALUES (?, ?, ?)`,
-            [req.user.id, req.user.username, userAvatarUrl(req.user)],
+            `INSERT INTO support_tickets (user_id, user_username, user_avatar, guest_email, session_id) VALUES (NULL, ?, NULL, ?, ?)`,
+            [name, email, req.sessionID],
         );
         res.json({ ticket: { id: insert.insertId, status: 'open', created_at: new Date().toISOString() }, messages: [] });
     } catch (err) {
@@ -761,25 +845,30 @@ app.post('/api/support/ticket', supportRateLimit, async (req, res) => {
 
 // Send a message in the current user's open ticket
 app.post('/api/support/ticket/:id/message', supportRateLimit, async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
     const ticketId = parseInt(req.params.id, 10);
     if (!Number.isFinite(ticketId)) return res.status(400).json({ error: 'ID invalide' });
     const content = String(req.body?.content || '').trim().slice(0, 2000);
     if (!content) return res.status(400).json({ error: 'Message vide' });
     try {
         const [rows] = await db.execute(
-            `SELECT id, user_id, status FROM support_tickets WHERE id = ?`,
+            `SELECT id, user_id, user_username, session_id, status FROM support_tickets WHERE id = ?`,
             [ticketId],
         );
         const t = rows[0];
-        if (!t || t.user_id !== req.user.id) return res.status(404).json({ error: 'Ticket introuvable' });
+        if (!ticketRequesterMatches(t, req)) return res.status(404).json({ error: 'Ticket introuvable' });
         if (t.status !== 'open') return res.status(409).json({ error: 'Ticket fermé' });
+
+        const authorId = req.user?.id || `guest:${req.sessionID.slice(0, 16)}`;
+        const authorName = req.user?.username || t.user_username || 'Invité';
+        const authorAvatar = req.user ? userAvatarUrl(req.user) : null;
 
         await db.execute(
             `INSERT INTO support_messages (ticket_id, side, author_id, author_name, author_avatar, content)
              VALUES (?, 'user', ?, ?, ?, ?)`,
-            [ticketId, req.user.id, req.user.username, userAvatarUrl(req.user), content],
+            [ticketId, authorId, authorName, authorAvatar, content],
         );
+        // Sending a message clears the typing indicator on this side
+        bumpTyping(ticketId, 'user'); typingState.get(ticketId).userAt = 0;
         res.json({ success: true });
     } catch (err) {
         console.error('POST support message:', err.message);
@@ -787,43 +876,65 @@ app.post('/api/support/ticket/:id/message', supportRateLimit, async (req, res) =
     }
 });
 
-// Poll for new messages since a given message id
+// Poll for new messages since a given message id (also returns whether
+// the staff is currently typing + who, if anyone, has claimed)
 app.get('/api/support/ticket/:id/messages', async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
     const ticketId = parseInt(req.params.id, 10);
     const since = parseInt(req.query.since, 10) || 0;
     if (!Number.isFinite(ticketId)) return res.status(400).json({ error: 'ID invalide' });
     try {
         const [rows] = await db.execute(
-            `SELECT id, user_id, status FROM support_tickets WHERE id = ?`,
+            `SELECT id, user_id, session_id, status, claimed_by_id, claimed_by_name FROM support_tickets WHERE id = ?`,
             [ticketId],
         );
         const t = rows[0];
-        if (!t || t.user_id !== req.user.id) return res.status(404).json({ error: 'Ticket introuvable' });
+        if (!ticketRequesterMatches(t, req)) return res.status(404).json({ error: 'Ticket introuvable' });
         const [msgs] = await db.execute(
             `SELECT id, side, author_name, author_avatar, content, created_at
              FROM support_messages WHERE ticket_id = ? AND id > ? ORDER BY id ASC LIMIT 100`,
             [ticketId, since],
         );
-        res.json({ messages: msgs, status: t.status });
+        res.json({
+            messages: msgs,
+            status: t.status,
+            peer_typing: peerTyping(ticketId, 'user'),
+            claimed_by: t.claimed_by_id ? { id: t.claimed_by_id, name: t.claimed_by_name } : null,
+        });
     } catch (err) {
         console.error('GET support messages:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
-// Close the current user's ticket
-app.post('/api/support/ticket/:id/close', supportRateLimit, async (req, res) => {
-    if (!req.user) return res.status(401).json({ error: 'Non authentifié' });
+// User typing indicator (debounced from the client)
+app.post('/api/support/ticket/:id/typing', async (req, res) => {
     const ticketId = parseInt(req.params.id, 10);
     if (!Number.isFinite(ticketId)) return res.status(400).json({ error: 'ID invalide' });
     try {
         const [rows] = await db.execute(
-            `SELECT id, user_id, status FROM support_tickets WHERE id = ?`,
+            `SELECT id, user_id, session_id, status FROM support_tickets WHERE id = ?`,
             [ticketId],
         );
         const t = rows[0];
-        if (!t || t.user_id !== req.user.id) return res.status(404).json({ error: 'Ticket introuvable' });
+        if (!ticketRequesterMatches(t, req) || t.status !== 'open') return res.status(204).end();
+        bumpTyping(ticketId, 'user');
+        res.status(204).end();
+    } catch {
+        res.status(204).end();
+    }
+});
+
+// Close the current user's ticket
+app.post('/api/support/ticket/:id/close', supportRateLimit, async (req, res) => {
+    const ticketId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(ticketId)) return res.status(400).json({ error: 'ID invalide' });
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, user_id, session_id, status FROM support_tickets WHERE id = ?`,
+            [ticketId],
+        );
+        const t = rows[0];
+        if (!ticketRequesterMatches(t, req)) return res.status(404).json({ error: 'Ticket introuvable' });
         if (t.status === 'closed') return res.json({ success: true });
         await db.execute(`UPDATE support_tickets SET status = 'closed', closed_at = NOW() WHERE id = ?`, [ticketId]);
         res.json({ success: true });
@@ -886,7 +997,9 @@ app.get('/api/support/staff/tickets', requireStaff, async (req, res) => {
     const status = req.query.status === 'closed' ? 'closed' : 'open';
     try {
         const [rows] = await db.execute(
-            `SELECT t.id, t.user_id, t.user_username, t.user_avatar, t.status, t.created_at, t.closed_at,
+            `SELECT t.id, t.user_id, t.user_username, t.user_avatar, t.guest_email,
+                    t.claimed_by_id, t.claimed_by_name, t.claimed_at,
+                    t.status, t.created_at, t.closed_at,
                     (SELECT MAX(created_at) FROM support_messages m WHERE m.ticket_id = t.id) AS last_message_at,
                     (SELECT COUNT(*) FROM support_messages m WHERE m.ticket_id = t.id) AS message_count
              FROM support_tickets t WHERE t.status = ?
@@ -906,7 +1019,9 @@ app.get('/api/support/staff/ticket/:id', requireStaff, async (req, res) => {
     if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
     try {
         const [tickets] = await db.execute(
-            `SELECT id, user_id, user_username, user_avatar, status, created_at, closed_at FROM support_tickets WHERE id = ?`,
+            `SELECT id, user_id, user_username, user_avatar, guest_email,
+                    claimed_by_id, claimed_by_name, claimed_at,
+                    status, created_at, closed_at FROM support_tickets WHERE id = ?`,
             [id],
         );
         if (!tickets.length) return res.status(404).json({ error: 'Ticket introuvable' });
@@ -927,39 +1042,117 @@ app.get('/api/support/staff/ticket/:id/messages', requireStaff, async (req, res)
     const since = parseInt(req.query.since, 10) || 0;
     if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
     try {
-        const [tickets] = await db.execute(`SELECT status FROM support_tickets WHERE id = ?`, [id]);
+        const [tickets] = await db.execute(
+            `SELECT status, claimed_by_id, claimed_by_name FROM support_tickets WHERE id = ?`,
+            [id],
+        );
         if (!tickets.length) return res.status(404).json({ error: 'Ticket introuvable' });
         const [msgs] = await db.execute(
             `SELECT id, side, author_name, author_avatar, content, created_at
              FROM support_messages WHERE ticket_id = ? AND id > ? ORDER BY id ASC LIMIT 100`,
             [id, since],
         );
-        res.json({ messages: msgs, status: tickets[0].status });
+        res.json({
+            messages: msgs,
+            status: tickets[0].status,
+            peer_typing: peerTyping(id, 'staff'),
+            claimed_by: tickets[0].claimed_by_id ? { id: tickets[0].claimed_by_id, name: tickets[0].claimed_by_name } : null,
+        });
     } catch (err) {
         console.error('staff poll:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
-// Staff posts a reply
+// Staff posts a reply (auto-claims the ticket if not yet claimed)
 app.post('/api/support/staff/ticket/:id/message', requireStaff, supportRateLimit, async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
     const content = String(req.body?.content || '').trim().slice(0, 2000);
     if (!content) return res.status(400).json({ error: 'Message vide' });
     try {
-        const [tickets] = await db.execute(`SELECT id, status FROM support_tickets WHERE id = ?`, [id]);
+        const [tickets] = await db.execute(
+            `SELECT id, status, claimed_by_id FROM support_tickets WHERE id = ?`,
+            [id],
+        );
         if (!tickets.length) return res.status(404).json({ error: 'Ticket introuvable' });
         if (tickets[0].status !== 'open') return res.status(409).json({ error: 'Ticket fermé' });
+
+        // Auto-claim on first staff reply if no one's claimed it yet
+        if (!tickets[0].claimed_by_id) {
+            await db.execute(
+                `UPDATE support_tickets SET claimed_by_id = ?, claimed_by_name = ?, claimed_at = NOW() WHERE id = ?`,
+                [req.session.staff.id, req.session.staff.name, id],
+            );
+            await db.execute(
+                `INSERT INTO support_messages (ticket_id, side, author_id, author_name, author_avatar, content)
+                 VALUES (?, 'system', ?, ?, NULL, ?)`,
+                [id, String(req.session.staff.id), req.session.staff.name, `${req.session.staff.name} a pris en charge votre ticket`],
+            );
+        }
+
         await db.execute(
             `INSERT INTO support_messages (ticket_id, side, author_id, author_name, author_avatar, content)
              VALUES (?, 'staff', ?, ?, NULL, ?)`,
             [id, String(req.session.staff.id), req.session.staff.name, content],
         );
+        if (typingState.get(id)) typingState.get(id).staffAt = 0;
         res.json({ success: true });
     } catch (err) {
         console.error('staff post:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Staff explicit claim (also possible without sending a message)
+app.post('/api/support/staff/ticket/:id/claim', requireStaff, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
+    try {
+        const [tickets] = await db.execute(
+            `SELECT id, status, claimed_by_id, claimed_by_name FROM support_tickets WHERE id = ?`,
+            [id],
+        );
+        if (!tickets.length) return res.status(404).json({ error: 'Ticket introuvable' });
+        if (tickets[0].status !== 'open') return res.status(409).json({ error: 'Ticket fermé' });
+        if (tickets[0].claimed_by_id === req.session.staff.id) {
+            return res.json({ success: true, claimed_by: { id: req.session.staff.id, name: req.session.staff.name } });
+        }
+        await db.execute(
+            `UPDATE support_tickets SET claimed_by_id = ?, claimed_by_name = ?, claimed_at = NOW() WHERE id = ?`,
+            [req.session.staff.id, req.session.staff.name, id],
+        );
+        const isReclaim = !!tickets[0].claimed_by_id;
+        await db.execute(
+            `INSERT INTO support_messages (ticket_id, side, author_id, author_name, author_avatar, content)
+             VALUES (?, 'system', ?, ?, NULL, ?)`,
+            [
+                id,
+                String(req.session.staff.id),
+                req.session.staff.name,
+                isReclaim
+                    ? `${req.session.staff.name} a repris en charge votre ticket (auparavant ${tickets[0].claimed_by_name})`
+                    : `${req.session.staff.name} a pris en charge votre ticket`,
+            ],
+        );
+        res.json({ success: true, claimed_by: { id: req.session.staff.id, name: req.session.staff.name } });
+    } catch (err) {
+        console.error('staff claim:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Staff typing indicator
+app.post('/api/support/staff/ticket/:id/typing', requireStaff, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
+    try {
+        const [tickets] = await db.execute(`SELECT status FROM support_tickets WHERE id = ?`, [id]);
+        if (!tickets.length || tickets[0].status !== 'open') return res.status(204).end();
+        bumpTyping(id, 'staff');
+        res.status(204).end();
+    } catch {
+        res.status(204).end();
     }
 });
 
