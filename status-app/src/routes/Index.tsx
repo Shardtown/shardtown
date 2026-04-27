@@ -146,16 +146,16 @@ export function Index() {
                     effect="gravitate"
                     tiltLimit={6}
                     scale={1.02}
-                    className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-10 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full"
+                    className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-7 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full"
                   >
-                    <div className={`w-14 h-14 rounded-2xl border ${s.iconBg} flex items-center justify-center ${s.accent} mb-8`}>
-                      <Icon className="w-6 h-6" strokeWidth={2} />
+                    <div className={`w-11 h-11 rounded-xl border ${s.iconBg} flex items-center justify-center ${s.accent} mb-5`}>
+                      <Icon className="w-5 h-5" strokeWidth={2} />
                     </div>
-                    <h3 className="text-2xl font-bold mb-3">{s.label}</h3>
-                    <p className={`text-xs font-bold uppercase tracking-widest ${s.accent} mb-6`}>{s.tagline}</p>
-                    <p className="text-white/55 leading-relaxed mb-10">{s.description}</p>
-                    <span className="inline-flex items-center gap-2 text-sm font-bold text-white group-hover:gap-3 transition-all">
-                      En discuter <ArrowRight className="w-4 h-4" />
+                    <h3 className="text-lg font-bold mb-2">{s.label}</h3>
+                    <p className={`text-[11px] font-bold uppercase tracking-widest ${s.accent} mb-4`}>{s.tagline}</p>
+                    <p className="text-sm text-white/55 leading-relaxed mb-6">{s.description}</p>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white group-hover:gap-2 transition-all">
+                      En discuter <ArrowRight className="w-3.5 h-3.5" />
                     </span>
                   </TiltCard>
                 </a>
@@ -210,12 +210,12 @@ export function Index() {
 
       {/* Contact CTA — rises up */}
       <section id="contact" className="container-wide pt-48 pb-16 scroll-mt-32 overflow-x-clip">
-        <Reveal direction="up" distance={70} duration={0.85} className="bg-white/[0.02] border border-white/[0.06] rounded-3xl p-12 md:p-20 text-center">
-          <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">Parlons-en</p>
-          <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-6">
+        <Reveal direction="up" distance={70} duration={0.85} className="bg-white/[0.02] border border-white/[0.06] rounded-3xl p-8 md:p-12 text-center max-w-2xl mx-auto">
+          <p className="text-xs font-bold tracking-widest text-white/40 uppercase mb-4">Parlons-en</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight leading-[1.05] mb-4">
             Un projet en tête ?
           </h2>
-          <p className="text-lg text-white/50 mb-12 max-w-xl mx-auto leading-relaxed">
+          <p className="text-sm text-white/50 mb-8 max-w-md mx-auto leading-relaxed">
             Site, bot, dashboard, configuration de serveur — décrivez ce dont vous avez besoin,
             on revient avec une proposition sous 48h.
           </p>
