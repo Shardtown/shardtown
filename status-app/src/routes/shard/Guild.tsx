@@ -136,7 +136,7 @@ export function ShardGuild() {
   const groups = [...new Set(TABS.map(t => t.group))];
 
   return (
-    <AppLayout noBackground>
+    <AppLayout>
       <section className="container-wide pt-32 md:pt-40 pb-32">
         <div className="mb-16 max-w-2xl">
           <Link to="/shard/server" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors mb-6">

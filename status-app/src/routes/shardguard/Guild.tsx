@@ -141,7 +141,7 @@ export function ShardGuardGuild() {
   const groups = [...new Set(TABS.map(t => t.group))];
 
   return (
-    <AppLayout noBackground>
+    <AppLayout>
       <section className="container-wide pt-32 md:pt-40 pb-32">
         {/* Header */}
         <div className="flex items-start justify-between gap-6 mb-16 flex-wrap">

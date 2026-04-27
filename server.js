@@ -221,7 +221,9 @@ async function connectDB() {
         console.error('❌ Erreur MySQL Dashboard:', err.message);
     }
 }
-connectDB();
+console.log('Démarrage de connectDB()...');
+connectDB().then(() => console.log('connectDB() terminé.'));
+console.log('Chargement des routes...');
 
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
@@ -2541,4 +2543,5 @@ app.get(/.*/, (req, res, next) => {
     });
 });
 
+console.log('Tentative de démarrage du serveur...');
 app.listen(PORT, () => console.log(`Tableau de bord démarré sur http://localhost:${PORT}`));
