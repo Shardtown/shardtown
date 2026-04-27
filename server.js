@@ -237,7 +237,12 @@ passport.use(new Strategy({
     clientSecret: process.env.CLIENT_SECRET,
     callbackURL: process.env.REDIRECT_URI,
     scope: ['identify', 'guilds'],
-    prompt: 'consent'
+    prompt: 'consent',
+    // CSRF protection: per-session OAuth state. passport-oauth2 generates a
+    // random state on /login, stashes it in req.session, and verifies it on
+    // /callback — defeating login-CSRF (where an attacker tricks a victim
+    // into completing the OAuth dance with the attacker's `code`).
+    state: true,
 }, (accessToken, refreshToken, profile, done) => {
     process.nextTick(() => done(null, profile));
 }));
