@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { Activity, Cpu, Server, Users, Zap, RefreshCw } from "lucide-react";
+import { Activity, Cpu, Search, Server, Users, Zap, RefreshCw, X } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Admonition } from "@/components/ui/admonition";
 import { BotSection } from "@/components/BotSection";
-import { FilterSelect } from "@/components/FilterSelect";
 import { useStats } from "@/hooks/useStats";
 
 function timeSince(ms: number) {
@@ -15,27 +14,11 @@ function timeSince(ms: number) {
   return `il y a ${Math.floor(m / 60)} h`;
 }
 
-const STATUS_OPTS = [
-  { value: "all", label: "Tous les statuts" },
-  { value: "online", label: "En ligne" },
-  { value: "offline", label: "Hors ligne" },
-];
-const SORT_OPTS = [
-  { value: "last_update", label: "Dernière mise à jour" },
-  { value: "shard_id", label: "Shard ID" },
-  { value: "ping", label: "Ping" },
-  { value: "guilds", label: "Serveurs" },
-];
-const ORDER_OPTS = [
-  { value: "desc", label: "Desc" },
-  { value: "asc", label: "Asc" },
-];
-
 export function Status() {
   const stats = useStats();
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [sortBy, setSortBy] = useState("last_update");
-  const [order, setOrder] = useState("desc");
+  const [query, setQuery] = useState("");
+
+  const canSearch = stats.bots.some(b => b.shards.some(s => (s.guilds_list || []).length > 0));
 
   // Re-render every 5s for "il y a Xs" freshness
   const [, force] = useState(0);
@@ -169,11 +152,28 @@ export function Status() {
             <p className="text-sm font-bold tracking-[0.22em] text-white/40 uppercase mb-2">Activité</p>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Détail par cluster</h2>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <FilterSelect options={STATUS_OPTS} value={filterStatus} onChange={setFilterStatus} />
-            <FilterSelect options={SORT_OPTS} value={sortBy} onChange={setSortBy} />
-            <FilterSelect options={ORDER_OPTS} value={order} onChange={setOrder} />
-          </div>
+          {canSearch && (
+            <div className="relative w-full md:w-80">
+              <Search className="w-4 h-4 text-white/35 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="search"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="ID ou nom de serveur…"
+                className="w-full pl-9 pr-9 py-2.5 text-sm bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-white/30 outline-none focus:border-white/20 focus:bg-white/[0.05] transition-colors font-mono-num"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Effacer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06]"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4">
@@ -191,9 +191,7 @@ export function Status() {
               <BotSection
                 key={bot.label}
                 bot={bot}
-                filterStatus={filterStatus}
-                sortBy={sortBy}
-                order={order}
+                query={query}
                 pingHistoryByKey={stats.pingHistory}
               />
             ))

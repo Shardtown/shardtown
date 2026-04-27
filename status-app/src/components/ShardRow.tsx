@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Search, Server } from "lucide-react";
 import type { Shard } from "@/lib/types";
 import { Sparkline } from "./Sparkline";
@@ -6,6 +6,7 @@ import { Sparkline } from "./Sparkline";
 interface Props {
   shard: Shard;
   pingHistory: number[];
+  externalQuery?: string;
 }
 
 function timeSince(ms: number) {
@@ -26,12 +27,19 @@ function getPingClass(p: number) {
 
 const plural = (n: number, s: string) => (n > 1 ? `${s}s` : s);
 
-export function ShardRow({ shard, pingHistory }: Props) {
+export function ShardRow({ shard, pingHistory, externalQuery }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const isOnline = shard.status === "Online";
   const guildsList = shard.guilds_list || [];
   const guilds = shard.guild_count || guildsList.length;
+
+  useEffect(() => {
+    if (externalQuery) {
+      setOpen(true);
+      setQuery(externalQuery);
+    }
+  }, [externalQuery]);
   const lastUpdateMs = shard.last_update ? new Date(shard.last_update).getTime() : null;
   const timeAgo = lastUpdateMs ? timeSince(lastUpdateMs) : "il y a quelques secondes";
   const sparkColor = !isOnline ? "#ef4444" : shard.ping < 100 ? "#10b981" : shard.ping < 250 ? "#f59e0b" : "#ef4444";

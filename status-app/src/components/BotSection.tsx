@@ -9,33 +9,27 @@ const BOT_IMAGES: Record<string, string> = {
 
 interface Props {
   bot: Bot;
-  filterStatus: string;
-  sortBy: string;
-  order: string;
+  query?: string;
   pingHistoryByKey: Map<string, number[]>;
 }
 
 const fmt = (n: number) => (n || 0).toLocaleString("fr-FR");
 const plural = (n: number, s: string) => (n > 1 ? `${s}s` : s);
 
-export function BotSection({ bot, filterStatus, sortBy, order, pingHistoryByKey }: Props) {
+export function BotSection({ bot, query = "", pingHistoryByKey }: Props) {
   const totalShards = bot.shards.length;
   const onlineShards = bot.shards.filter(s => s.status === "Online").length;
 
-  const filtered = bot.shards.filter(s => {
-    if (filterStatus === "online") return s.status === "Online";
-    if (filterStatus === "offline") return s.status !== "Online";
-    return true;
-  });
+  const q = query.trim().toLowerCase();
+  const matchedShards = q
+    ? bot.shards.filter(s =>
+        (s.guilds_list || []).some(
+          g => g.guild_id.includes(q) || (g.guild_name || "").toLowerCase().includes(q),
+        ),
+      )
+    : bot.shards;
 
-  const sorted = [...filtered].sort((a, b) => {
-    let va: number, vb: number;
-    if (sortBy === "shard_id") { va = a.shard_id; vb = b.shard_id; }
-    else if (sortBy === "ping") { va = a.ping || 0; vb = b.ping || 0; }
-    else if (sortBy === "guilds") { va = a.guild_count || 0; vb = b.guild_count || 0; }
-    else { va = a.last_update ? new Date(a.last_update).getTime() : 0; vb = b.last_update ? new Date(b.last_update).getTime() : 0; }
-    return order === "asc" ? va - vb : vb - va;
-  });
+  const sorted = [...matchedShards].sort((a, b) => a.shard_id - b.shard_id);
 
   const someOk = onlineShards > 0 && onlineShards < totalShards;
   const allDown = !bot.online || onlineShards === 0;
@@ -92,11 +86,12 @@ export function BotSection({ bot, filterStatus, sortBy, order, pingHistoryByKey 
               key={s.shard_id}
               shard={s}
               pingHistory={pingHistoryByKey.get(`${bot.label}-${s.shard_id}`) || []}
+              externalQuery={q || undefined}
             />
           ))
         ) : (
           <div className="py-10 text-center text-white/25 text-xs font-bold uppercase tracking-widest">
-            Aucun shard correspondant
+            {q ? "Aucun shard ne contient ce serveur" : "Aucun shard"}
           </div>
         )}
       </div>
