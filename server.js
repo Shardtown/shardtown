@@ -676,22 +676,28 @@ app.get('/api/me', (req, res) => {
 // A logged-in Discord user can open ONE ticket at a time. Server creates
 // a Discord text channel under SUPPORT_CATEGORY_ID, posts an opening
 // embed pinging staff, and relays messages both ways.
+//
+// All support API calls run as the dedicated Shardtown bot
+// (process.env.SHARDTOWN_TOKEN). The same bot also lives in the support
+// guild as `Shardtown/bot.js` to listen for staff replies.
 const SUPPORT_CATEGORY_ID = process.env.SUPPORT_CATEGORY_ID || '';
+const SUPPORT_BOT_TOKEN = process.env.SHARDTOWN_TOKEN || '';
 let supportGuildId = null; // resolved at first use from the category info
 let supportBotUserId = null;
 const supportRateLimit = rateLimit({ windowMs: 60_000, max: 30, message: { error: 'Trop de messages.' }, standardHeaders: true, legacyHeaders: false });
 
 async function ensureSupportContext() {
     if (!SUPPORT_CATEGORY_ID) throw new Error('SUPPORT_CATEGORY_ID not configured');
+    if (!SUPPORT_BOT_TOKEN) throw new Error('SHARDTOWN_TOKEN not configured');
     if (!supportGuildId) {
         const r = await axios.get(`https://discord.com/api/v10/channels/${SUPPORT_CATEGORY_ID}`, {
-            headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
+            headers: { Authorization: `Bot ${SUPPORT_BOT_TOKEN}` },
         });
         supportGuildId = r.data.guild_id;
     }
     if (!supportBotUserId) {
         const r = await axios.get('https://discord.com/api/v10/users/@me', {
-            headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
+            headers: { Authorization: `Bot ${SUPPORT_BOT_TOKEN}` },
         });
         supportBotUserId = r.data.id;
     }
@@ -707,7 +713,7 @@ function userAvatarUrl(u) {
 }
 
 async function postSupportEmbed(channelId, user, content) {
-    const headers = { Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' };
+    const headers = { Authorization: `Bot ${SUPPORT_BOT_TOKEN}`, 'Content-Type': 'application/json' };
     const avatar = userAvatarUrl(user);
     const r = await axios.post(`https://discord.com/api/v10/channels/${channelId}/messages`, {
         embeds: [{
@@ -759,7 +765,7 @@ app.post('/api/support/ticket', supportRateLimit, async (req, res) => {
 
         await ensureSupportContext();
 
-        const headers = { Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' };
+        const headers = { Authorization: `Bot ${SUPPORT_BOT_TOKEN}`, 'Content-Type': 'application/json' };
         const safeName = (req.user.username || 'user').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 16) || 'user';
         const channelName = `ticket-${safeName}-${req.user.id.slice(-4)}`.slice(0, 90);
 
@@ -868,7 +874,7 @@ app.post('/api/support/ticket/:id/close', supportRateLimit, async (req, res) => 
         try {
             await axios.post(`https://discord.com/api/v10/channels/${t.channel_id}/messages`, {
                 embeds: [{ description: 'L\'utilisateur a fermé le ticket depuis le site.', color: 0xef4444 }],
-            }, { headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` } });
+            }, { headers: { Authorization: `Bot ${SUPPORT_BOT_TOKEN}` } });
         } catch { /* swallow */ }
         res.json({ success: true });
     } catch (err) {

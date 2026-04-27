@@ -1175,55 +1175,6 @@ async function applyModAction(message, action, reason, settings = {}) {
     await sendModAlert(settings, message.guild, `Auto-mod déclenché sur <@${message.author.id}> (\`${message.author.username}\`) — action: **${action}**, raison: **${reason}**`);
 }
 
-// ─── Support tickets relay ──────────────────────────────────────────────
-// When a staff member posts in a channel under SUPPORT_CATEGORY_ID, save
-// the message to support_messages so the web user sees it on poll. Bot
-// messages are skipped — they're either our own embed relays of user
-// messages or admin embeds.
-const SUPPORT_CATEGORY_ID = process.env.SUPPORT_CATEGORY_ID || '';
-client.on('messageCreate', async message => {
-    if (!SUPPORT_CATEGORY_ID || !message.guild) return;
-    if (message.channel.parentId !== SUPPORT_CATEGORY_ID) return;
-    if (message.author.bot) return; // skip our own user-message relays + other bots
-    if (!message.content || !message.content.trim()) return;
-
-    try {
-        const [tickets] = await db.execute(
-            `SELECT id, status FROM support_tickets WHERE channel_id = ? LIMIT 1`,
-            [message.channel.id],
-        );
-        const ticket = tickets[0];
-        if (!ticket || ticket.status !== 'open') return;
-
-        const avatar = message.author.displayAvatarURL({ size: 128, extension: 'png' });
-        const displayName = message.member?.displayName || message.author.globalName || message.author.username;
-
-        await db.execute(
-            `INSERT INTO support_messages
-             (ticket_id, side, author_id, author_name, author_avatar, content, discord_message_id)
-             VALUES (?, 'staff', ?, ?, ?, ?, ?)`,
-            [ticket.id, message.author.id, displayName, avatar, message.content.slice(0, 4000), message.id],
-        );
-    } catch (e) {
-        console.error('support relay:', e.message);
-    }
-});
-
-// When the staff archives/deletes a support ticket channel, mark the
-// ticket as closed so the web side stops polling it.
-client.on('channelDelete', async channel => {
-    if (!SUPPORT_CATEGORY_ID) return;
-    if (channel.parentId !== SUPPORT_CATEGORY_ID) return;
-    try {
-        await db.execute(
-            `UPDATE support_tickets SET status = 'closed', closed_at = NOW() WHERE channel_id = ? AND status = 'open'`,
-            [channel.id],
-        );
-    } catch (e) {
-        console.error('support close:', e.message);
-    }
-});
-
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
 
