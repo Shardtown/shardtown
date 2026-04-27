@@ -413,6 +413,89 @@ app.get('/api/csrf', (req, res) => {
     res.json({ csrfToken: generateCsrfToken(req) });
 });
 
+// ─── Live guild admin re-verification (H1) ───────────────────────────────
+// `req.user.guilds` (and `req.session.shardUser.guilds`) is the snapshot
+// captured at OAuth login and lives in the session for 24h. If a user
+// loses admin perms after login they would otherwise keep dashboard access
+// for the whole TTL. We re-check via the bot token (which is in the guild
+// anyway) with a 60s positive cache to keep latency reasonable.
+const GUILD_ADMIN_CACHE_TTL = 60 * 1000;
+const guildAdminCache = new Map();
+
+async function isGuildAdminLive(userId, guildId, botToken) {
+    if (!userId || !guildId || !botToken) return false;
+    const cacheKey = `${botToken.slice(-8)}:${userId}:${guildId}`;
+    const now = Date.now();
+    const cached = guildAdminCache.get(cacheKey);
+    if (cached && now - cached.fetchedAt < GUILD_ADMIN_CACHE_TTL) {
+        return cached.isAdmin;
+    }
+    try {
+        const [guildRes, memberRes] = await Promise.all([
+            axios.get(`https://discord.com/api/v10/guilds/${guildId}`, {
+                headers: { Authorization: `Bot ${botToken}` },
+                timeout: 5000,
+                validateStatus: s => s === 200 || s === 404,
+            }),
+            axios.get(`https://discord.com/api/v10/guilds/${guildId}/members/${userId}`, {
+                headers: { Authorization: `Bot ${botToken}` },
+                timeout: 5000,
+                validateStatus: s => s === 200 || s === 404,
+            }),
+        ]);
+        if (guildRes.status === 404 || memberRes.status === 404) {
+            guildAdminCache.set(cacheKey, { isAdmin: false, fetchedAt: now });
+            return false;
+        }
+        if (guildRes.data.owner_id === userId) {
+            guildAdminCache.set(cacheKey, { isAdmin: true, fetchedAt: now });
+            return true;
+        }
+        const roleMap = new Map(guildRes.data.roles.map(r => [r.id, BigInt(r.permissions)]));
+        let userPerms = roleMap.get(guildId) || 0n; // @everyone
+        for (const roleId of memberRes.data.roles || []) {
+            userPerms |= roleMap.get(roleId) || 0n;
+        }
+        const isAdmin = (userPerms & 0x8n) === 0x8n;
+        guildAdminCache.set(cacheKey, { isAdmin, fetchedAt: now });
+        return isAdmin;
+    } catch {
+        // Network blip — fall back to last known value if we have one,
+        // otherwise deny rather than fail open.
+        return cached ? cached.isAdmin : false;
+    }
+}
+
+// Cleanup every 10 min so the map doesn't grow unbounded.
+setInterval(() => {
+    const now = Date.now();
+    for (const [k, v] of guildAdminCache) {
+        if (now - v.fetchedAt > GUILD_ADMIN_CACHE_TTL * 10) guildAdminCache.delete(k);
+    }
+}, 10 * 60 * 1000).unref?.();
+
+function liveGuildAdminGuard(getUserId, getBotToken) {
+    return async (req, res, next) => {
+        const m = req.path.match(/\/guild\/(\d{17,20})(?:\/|$)/);
+        if (!m) return next();
+        const guildId = m[1];
+        const userId = getUserId(req);
+        if (!userId) {
+            return res.status(401).json({ error: 'Non authentifié' });
+        }
+        const ok = await isGuildAdminLive(userId, guildId, getBotToken());
+        if (!ok) {
+            return res.status(403).json({ error: 'Accès refusé' });
+        }
+        // Stash for downstream use & invalidation
+        req.liveGuildAdmin = { guildId, userId, verifiedAt: Date.now() };
+        next();
+    };
+}
+
+app.use('/shardguard', liveGuildAdminGuard(req => req.user?.id, () => process.env.DISCORD_TOKEN));
+app.use('/shard', liveGuildAdminGuard(req => req.session?.shardUser?.id, () => process.env.SHARD_TOKEN));
+
 // Migrated to React SPA — kept only as legacy fallback for the EJS template (unused once SPA catch-all is registered)
 app.get('/_legacy/', async (req, res) => {
     if (!req.user) return res.render('index', { user: null, botGuildIds: [], adminGuilds: [] });
