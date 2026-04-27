@@ -18,6 +18,8 @@ import { AdminLogin } from "@/routes/admin/Login";
 import { Admin } from "@/routes/admin/Admin";
 import { AdminGuildDetail } from "@/routes/admin/GuildDetail";
 import { SupportBubble } from "@/components/SupportBubble";
+import { SupportLogin } from "@/routes/support/Login";
+import { SupportPanel } from "@/routes/support/Panel";
 
 export function App() {
   const [user, setUser] = useState<DiscordUser | null>(null);
@@ -54,6 +56,8 @@ export function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/guild/:guildId" element={<AdminGuildDetail />} />
+          <Route path="/support/login" element={<SupportLogin />} />
+          <Route path="/support" element={<SupportPanel />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <SupportBubble />

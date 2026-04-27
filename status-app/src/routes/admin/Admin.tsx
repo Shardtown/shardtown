@@ -5,8 +5,12 @@ import {
   Bot as BotIcon,
   CheckCircle2,
   ClipboardList,
+  Copy,
+  Headset,
+  KeyRound,
   LogOut,
   Monitor,
+  Plus,
   RefreshCw,
   Search,
   Server,
@@ -59,6 +63,14 @@ interface AdminSession {
   current: boolean;
 }
 
+interface SupportKey {
+  id: number;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked: number;
+}
+
 interface PendingAction {
   label: string;
   title: string;
@@ -98,6 +110,10 @@ export function Admin() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [sessions, setSessions] = useState<AdminSession[] | null>(null);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [keys, setKeys] = useState<SupportKey[] | null>(null);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [creatingKey, setCreatingKey] = useState(false);
+  const [freshKey, setFreshKey] = useState<{ id: number; name: string; key: string } | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -141,7 +157,52 @@ export function Admin() {
     }
   }, []);
 
-  useEffect(() => { refresh(); refreshAudit(); refreshSessions(); }, [refresh, refreshAudit, refreshSessions]);
+  const refreshKeys = useCallback(async () => {
+    try {
+      const r = await apiGet<{ keys: SupportKey[] }>("/api/admin/support/keys");
+      setKeys(r.keys);
+    } catch {
+      setKeys([]);
+    }
+  }, []);
+
+  async function createKey() {
+    const name = newKeyName.trim();
+    if (!name || creatingKey) return;
+    setCreatingKey(true);
+    try {
+      const r = await apiPost<{ id: number; name: string; key: string }>("/api/admin/support/keys", { name });
+      setFreshKey(r);
+      setNewKeyName("");
+      refreshKeys();
+      refreshAudit();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "Erreur", "error");
+    } finally {
+      setCreatingKey(false);
+    }
+  }
+
+  function revokeKey(id: number, name: string) {
+    setPending({
+      label: "Révocation",
+      title: "Révoquer cette clé",
+      desc: `« ${name} » ne pourra plus se connecter au panel support.`,
+      variant: "danger",
+      confirm: async () => {
+        const r = await postAction(`/api/admin/support/keys/${id}/revoke`);
+        if (r.success) {
+          showToast(`Clé « ${name} » révoquée`, "success");
+          refreshKeys();
+          refreshAudit();
+        } else {
+          showToast(r.error || "Erreur", "error");
+        }
+      },
+    });
+  }
+
+  useEffect(() => { refresh(); refreshAudit(); refreshSessions(); refreshKeys(); }, [refresh, refreshAudit, refreshSessions, refreshKeys]);
 
   function showToast(text: string, type: "success" | "error" = "success") {
     setToast({ text, type });
@@ -551,6 +612,98 @@ export function Admin() {
               sessions.map(s => (
                 <SessionRow key={s.id} session={s} onRevoke={() => revokeSession(s.id)} />
               ))
+            )}
+          </div>
+        </div>
+
+        {/* Support staff keys */}
+        <div className="mt-16">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-300">
+              <Headset className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-blue-300/70 uppercase">Support</p>
+              <h2 className="text-xl font-extrabold tracking-tight">Clés staff support</h2>
+            </div>
+            <Link
+              to="/support"
+              target="_blank"
+              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[11px] font-bold uppercase tracking-widest hover:bg-blue-500/15"
+            >
+              <Headset className="w-3 h-3" /> Ouvrir le panel
+            </Link>
+          </div>
+
+          {/* Fresh key — shown ONCE */}
+          {freshKey && (
+            <div className="mb-4 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] p-4 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-300 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-emerald-200">
+                  Clé créée pour « {freshKey.name} »
+                </p>
+                <p className="text-[11px] text-white/55 mb-2">
+                  Copie-la et envoie-la au staff — elle ne sera plus jamais affichée.
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 px-3 py-2 rounded-lg bg-black/40 border border-white/10 text-[12px] text-white font-mono-num break-all">
+                    {freshKey.key}
+                  </code>
+                  <button
+                    type="button"
+                    onClick={() => { navigator.clipboard.writeText(freshKey.key); showToast("Clé copiée"); }}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] font-bold hover:bg-white/[0.1]"
+                  >
+                    <Copy className="w-3 h-3" /> Copier
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFreshKey(null)}
+                    aria-label="Fermer"
+                    className="shrink-0 w-9 h-9 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center text-white/50"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Create form */}
+          <div className="mb-3 flex items-center gap-2">
+            <div className="relative flex-1">
+              <KeyRound className="w-4 h-4 text-white/35 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={newKeyName}
+                onChange={e => setNewKeyName(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); createKey(); } }}
+                placeholder="Nom du staff (ex: Léa)"
+                className="w-full pl-9 pr-3 py-2.5 text-sm bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-white/30 outline-none focus:border-white/20"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={createKey}
+              disabled={!newKeyName.trim() || creatingKey}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-[12px] font-bold hover:bg-emerald-500/25 disabled:opacity-40"
+            >
+              <Plus className="w-3.5 h-3.5" /> Générer
+            </button>
+          </div>
+
+          <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-2 space-y-1">
+            {keys === null ? (
+              <div className="p-6 text-center text-white/30 text-xs font-bold uppercase tracking-widest">
+                Chargement…
+              </div>
+            ) : keys.length === 0 ? (
+              <div className="p-6 text-center text-white/30 text-xs font-bold uppercase tracking-widest">
+                Aucune clé. Crée la première au-dessus.
+              </div>
+            ) : (
+              keys.map(k => <SupportKeyRow key={k.id} k={k} onRevoke={() => revokeKey(k.id, k.name)} />)
             )}
           </div>
         </div>
@@ -1012,4 +1165,50 @@ function summarizeUserAgent(ua: string | null): string {
   else if (/Android/.test(ua)) os = "Android";
   else if (/Linux/.test(ua)) os = "Linux";
   return `${browser} · ${os}`;
+}
+
+function SupportKeyRow({ k, onRevoke }: { k: SupportKey; onRevoke: () => void }) {
+  const isRevoked = !!k.revoked;
+  return (
+    <div
+      className={`flex items-center gap-3 p-3 rounded-2xl border transition-colors ${
+        isRevoked
+          ? "bg-white/[0.02] border-white/[0.04] opacity-60"
+          : "bg-white/[0.02] border-white/[0.06] hover:border-white/15"
+      }`}
+    >
+      <div
+        className={`w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 ${
+          isRevoked
+            ? "bg-white/[0.04] border-white/10 text-white/30"
+            : "bg-blue-500/10 border-blue-500/20 text-blue-300"
+        }`}
+      >
+        <KeyRound className="w-4 h-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-bold tracking-tight">{k.name}</span>
+          {isRevoked && (
+            <span className="text-[9px] font-bold uppercase tracking-widest text-red-300/80 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-full">
+              Révoquée
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-white/35 font-mono-num mt-0.5">
+          Créée {formatWhen(k.created_at)}
+          {k.last_used_at && <> · Dernière utilisation {formatWhen(k.last_used_at)}</>}
+        </p>
+      </div>
+      {!isRevoked && (
+        <button
+          type="button"
+          onClick={onRevoke}
+          className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-[11px] font-bold hover:bg-red-500/15 transition-colors"
+        >
+          Révoquer
+        </button>
+      )}
+    </div>
+  );
 }
