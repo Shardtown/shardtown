@@ -2535,6 +2535,7 @@ app.get(/.*/, (req, res, next) => {
         p.startsWith('/image/') ||
         p === '/favicon.ico'
     ) return next();
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(SPA_DIST, 'index.html'), err => {
         if (err) {
             console.warn('[spa] React bundle missing — run: npm --prefix status-app run build');
