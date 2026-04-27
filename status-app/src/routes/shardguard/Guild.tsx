@@ -10,6 +10,7 @@ import { apiGet } from "@/api/client";
 import type { ShardGuardGuildData, SGSettings } from "@/api/shardguard";
 import { SaveBar } from "@/components/shardguard/SaveBar";
 import { ScreenTimeCard } from "@/components/ui/screen-time-card";
+import AnimatedGradient from "@/components/ui/animated-gradient";
 import {
   GeneralTab, RulesTab, CaptchaTab, SecurityTab, WarnsTab, ModRolesTab, BannedWordsTab,
   AutomodTab, StatsTab, LogsTab, MembersTab, PanicTab,
@@ -133,7 +134,7 @@ export function ShardGuardGuild() {
       <AppLayout>
         <section className="container-wide pt-24 text-center max-w-xl mx-auto">
           <p className="text-red-400 mb-4">{error || "Aucune donnée"}</p>
-          <Link to="/shardguard/server" className="bg-white text-black px-6 py-3 rounded-full font-bold text-sm">Retour aux serveurs</Link>
+          <Link to="/shardguard/server" className="btn-liquid btn-liquid--primary rounded-full px-6 py-3 font-bold text-sm inline-flex items-center justify-center">Retour aux serveurs</Link>
         </section>
       </AppLayout>
     );
@@ -169,12 +170,31 @@ export function ShardGuardGuild() {
     : null;
 
   return (
-    <AppLayout>
-      {/* Decorative aurora bleed behind dashboard for "integration" with page bg */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[640px] -z-10 opacity-70">
-        <div className="absolute -top-40 left-1/4 w-[700px] h-[700px] rounded-full blur-3xl bg-emerald-500/10" />
-        <div className="absolute -top-20 right-1/4 w-[600px] h-[600px] rounded-full blur-3xl bg-blue-500/10" />
-        <div className="absolute top-32 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full blur-3xl bg-violet-500/10" />
+    <AppLayout noBackground>
+      {/* WebGL animated gradient — grayscale, subtle */}
+      <div className="fixed inset-0 -z-10 pointer-events-none opacity-45">
+        <AnimatedGradient
+          config={{
+            preset: "custom",
+            color1: "#050505",
+            color2: "#3a3a3a",
+            color3: "#161616",
+            rotation: -50,
+            proportion: 50,
+            scale: 0.55,
+            speed: 12,
+            distortion: 4,
+            swirl: 60,
+            swirlIterations: 6,
+            softness: 100,
+            offset: -120,
+            shape: "Edge",
+            shapeSize: 30,
+          }}
+          noise={{ opacity: 0.35, scale: 1 }}
+        />
+        {/* Vignette to keep text readable */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/70" />
       </div>
 
       <section className="container-dashboard pt-20 md:pt-24 pb-32">
@@ -208,9 +228,6 @@ export function ShardGuardGuild() {
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-[1.05] truncate">{data.guild.name}</h1>
               <p className="text-[11px] text-white/30 font-mono-num mt-2">{data.guild.id}</p>
             </div>
-
-            {/* Health gauge */}
-            <HealthGauge score={healthScore} />
           </div>
         </div>
 
@@ -382,35 +399,3 @@ export function ShardGuardGuild() {
   );
 }
 
-function HealthGauge({ score }: { score: number }) {
-  const r = 32;
-  const c = 2 * Math.PI * r;
-  const off = c - (Math.max(0, Math.min(100, score)) / 100) * c;
-  const tone = score >= 75 ? "text-emerald-400" : score >= 50 ? "text-amber-400" : "text-red-400";
-  const label = score >= 75 ? "Excellent" : score >= 50 ? "Stable" : "À surveiller";
-  return (
-    <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-      <div className="relative">
-        <svg width="76" height="76" viewBox="0 0 76 76">
-          <circle cx="38" cy="38" r={r} fill="none" stroke="currentColor" className="text-white/8" strokeWidth="6" />
-          <circle
-            cx="38" cy="38" r={r} fill="none"
-            strokeWidth="6" strokeLinecap="round"
-            className={tone}
-            strokeDasharray={c}
-            strokeDashoffset={off}
-            transform="rotate(-90 38 38)"
-            style={{ transition: "stroke-dashoffset 0.8s cubic-bezier(0.2,0.7,0.2,1)" }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`text-lg font-extrabold font-mono-num ${tone}`}>{score}</span>
-        </div>
-      </div>
-      <div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 mb-0.5">Santé</p>
-        <p className={`text-sm font-bold ${tone}`}>{label}</p>
-      </div>
-    </div>
-  );
-}

@@ -185,7 +185,7 @@ export function Header() {
                 )}
                 <Link
                   to="/dashboard"
-                  className="group relative inline-flex items-center gap-1.5 bg-white text-black pl-5 pr-4 py-2.5 rounded-full font-bold text-[13px] tracking-tight overflow-hidden hover:bg-white/90 transition-colors"
+                  className="btn-liquid btn-liquid--primary group inline-flex items-center gap-1.5 rounded-full pl-5 pr-4 py-2.5 font-bold text-[13px] tracking-tight"
                 >
                   <span className="relative">Dashboard</span>
                   <svg

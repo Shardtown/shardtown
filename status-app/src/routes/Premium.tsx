@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Check, Crown, Lock, Star, ChevronDown } from "lucide-react";
+import {
+  Check, Crown, Lock, Star, ChevronDown, Shield, Zap, Sparkles,
+  Headset, Infinity as InfinityIcon, Bolt, Heart,
+} from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/api/auth";
 import { apiGet, apiPost } from "@/api/client";
+import { Admonition } from "@/components/ui/admonition";
 
 interface AdminGuild { id: string; name: string }
-
-interface PremiumData {
-  adminGuilds: AdminGuild[];
-}
+interface PremiumData { adminGuilds: AdminGuild[] }
 
 const PRICE = {
-  monthly: { amount: 4.97, label: "4,97 €", suffix: "/mois", elsewhere: "9,99 €/mois ailleurs — Économisez 50%" },
-  lifetime: { amount: 49.97, label: "49,97 €", suffix: "paiement unique", elsewhere: "59,64 €/an en mensuel — Économisez 16%" },
+  monthly:  { amount: 4.97,  label: "4,97 €",  suffix: "/mois",          elsewhere: "9,99 €/mois ailleurs · −50 %" },
+  lifetime: { amount: 49.97, label: "49,97 €", suffix: "paiement unique", elsewhere: "59,64 €/an en mensuel · −16 %" },
 };
 
 const FEATURES = {
@@ -26,7 +27,7 @@ const FEATURES = {
   ],
   lifetime: [
     "Toutes les fonctionnalités Premium",
-    "Aucun renouvellement jamais",
+    "Aucun renouvellement, jamais",
     "Toutes les futures mises à jour",
     "Équivaut à ~10 mois d'abonnement",
     "Support prioritaire",
@@ -34,43 +35,77 @@ const FEATURES = {
   ],
 };
 
+const HIGHLIGHTS = [
+  { icon: Shield,     title: "Sécurité avancée",      desc: "Anti-raid + quarantaine automatique, mots interdits illimités, alerte modérateur en DM, blacklist globale." },
+  { icon: Zap,        title: "Engagement boosté",     desc: "20 paliers XP, multiplicateurs par rôle, sondages anonymes, parrainage, alertes Twitch & YouTube." },
+  { icon: Sparkles,   title: "Tickets pro",           desc: "Panel public, transcripts, jusqu'à 10 tickets/membre, journalisation complète." },
+  { icon: Headset,    title: "Support prioritaire",   desc: "Réponses < 4 h en jours ouvrés, accès direct au salon premium sur le serveur de support." },
+  { icon: InfinityIcon, title: "Backup & restauration", desc: "Sauvegarde automatique de toute ta config. Restauration en un clic en cas de fausse manip." },
+  { icon: Bolt,  title: "Mises à jour anticipées", desc: "Tu testes les nouveaux modules avant tout le monde, et tu votes sur les prochains." },
+];
+
 const COMPARISON: { title: string; rows: { label: string; free: string; premium: string }[] }[] = [
   {
     title: "ShardGuard",
     rows: [
-      { label: "Vérification Captcha", free: "✓", premium: "✓" },
-      { label: "Sanctions progressives", free: "✓", premium: "✓" },
-      { label: "Mots interdits", free: "3 max", premium: "Illimités" },
-      { label: "Règles auto-mod", free: "3 max", premium: "20 max" },
-      { label: "Anti-raid automatique", free: "—", premium: "✓" },
-      { label: "Quarantaine automatique", free: "—", premium: "✓" },
-      { label: "Alerte modérateur DM", free: "—", premium: "✓" },
-      { label: "Liste noire globale", free: "—", premium: "✓" },
-      { label: "Backup & restauration", free: "—", premium: "✓" },
+      { label: "Vérification Captcha",        free: "✓",      premium: "✓" },
+      { label: "Sanctions progressives",      free: "✓",      premium: "✓" },
+      { label: "Mots interdits",              free: "3 max",  premium: "Illimités" },
+      { label: "Règles auto-mod",             free: "3 max",  premium: "20 max" },
+      { label: "Anti-raid automatique",       free: "—",      premium: "✓" },
+      { label: "Quarantaine automatique",     free: "—",      premium: "✓" },
+      { label: "Alerte modérateur DM",        free: "—",      premium: "✓" },
+      { label: "Liste noire globale",         free: "—",      premium: "✓" },
+      { label: "Backup & restauration",       free: "—",      premium: "✓" },
     ],
   },
   {
     title: "Shard",
     rows: [
-      { label: "Paliers XP", free: "3 max", premium: "20 max" },
-      { label: "Multiplicateur XP par rôle", free: "—", premium: "✓" },
-      { label: "Giveaways simultanés", free: "1 max", premium: "5 max" },
-      { label: "Hubs vocaux temporaires", free: "1 max", premium: "5 max" },
-      { label: "Sondages anonymes", free: "—", premium: "✓" },
-      { label: "Rappels automatiques", free: "—", premium: "✓" },
-      { label: "Messages programmés", free: "—", premium: "✓" },
-      { label: "Panel de tickets", free: "—", premium: "✓" },
-      { label: "Parrainage", free: "—", premium: "✓" },
-      { label: "Alertes Twitch / YouTube", free: "—", premium: "✓" },
-      { label: "Stats d'activité", free: "—", premium: "✓" },
+      { label: "Paliers XP",                  free: "3 max",  premium: "20 max" },
+      { label: "Multiplicateur XP par rôle",  free: "—",      premium: "✓" },
+      { label: "Giveaways simultanés",        free: "1 max",  premium: "5 max" },
+      { label: "Hubs vocaux temporaires",     free: "1 max",  premium: "5 max" },
+      { label: "Sondages anonymes",           free: "—",      premium: "✓" },
+      { label: "Rappels automatiques",        free: "—",      premium: "✓" },
+      { label: "Messages programmés",         free: "—",      premium: "✓" },
+      { label: "Panel de tickets",            free: "—",      premium: "✓" },
+      { label: "Parrainage",                  free: "—",      premium: "✓" },
+      { label: "Alertes Twitch / YouTube",    free: "—",      premium: "✓" },
+      { label: "Stats d'activité",            free: "—",      premium: "✓" },
     ],
   },
 ];
 
+const FAQ = [
+  {
+    q: "Puis-je annuler à tout moment ?",
+    a: "Oui. Le plan mensuel est résiliable en 1 clic depuis le portail Stripe (lien dans l'activation). L'annulation prend effet à la fin de la période en cours — tu gardes le Premium jusque-là.",
+  },
+  {
+    q: "L'achat à vie expire-t-il un jour ?",
+    a: "Non. Une fois payé, le serveur garde le Premium tant que les bots existent. Tu reçois aussi toutes les futures mises à jour gratuitement.",
+  },
+  {
+    q: "Puis-je transférer Premium sur un autre serveur ?",
+    a: "Oui, le transfert est gratuit mais ponctuel. Contacte le support avec ton ID de serveur de destination, on s'occupe du reste.",
+  },
+  {
+    q: "Et si Stripe me demande des frais de transaction ?",
+    a: "Tous les frais Stripe sont déjà inclus dans le prix affiché — tu ne paies pas un centime de plus.",
+  },
+  {
+    q: "Avez-vous un essai gratuit ?",
+    a: "Tout ce qui n'est pas marqué Premium dans le wiki est gratuit, sans limite de temps. Tu peux donc utiliser ShardGuard et Shard sur ton serveur dès maintenant et passer Premium quand tu en as besoin.",
+  },
+  {
+    q: "Mes données sont-elles en sécurité ?",
+    a: "Oui : hébergement en Europe, transmissions TLS, aucun mot de passe stocké en clair, conformité RGPD. Stripe gère les paiements — on ne voit jamais ton numéro de carte.",
+  },
+];
+
 function GuildSelect({
-  guilds,
-  value,
-  onChange,
+  guilds, value, onChange,
 }: {
   guilds: AdminGuild[];
   value: string | null;
@@ -94,7 +129,7 @@ function GuildSelect({
         type="button"
         onClick={() => setOpen(o => !o)}
         className={`w-full flex items-center justify-between gap-3 px-5 py-4 bg-white/[0.03] border ${
-          open ? "border-amber-500/30" : "border-white/10"
+          open ? "border-amber-500/40" : "border-white/10"
         } rounded-2xl text-left transition-all`}
       >
         <span className={`font-bold text-sm truncate ${current ? "text-white" : "text-white/40"}`}>
@@ -103,18 +138,15 @@ function GuildSelect({
         <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""} text-white/40`} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 mt-2 bg-[#0f0f0f] border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-80 overflow-y-auto">
+        <div className="absolute left-0 right-0 mt-2 bg-[#0f0f0f]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-80 overflow-y-auto">
           {guilds.length === 0 && (
-            <div className="px-5 py-4 text-sm text-white/30">Aucun serveur administrable trouvé.</div>
+            <div className="px-5 py-4 text-sm text-white/40">Aucun serveur administrable trouvé.</div>
           )}
           {guilds.map(g => (
             <button
               key={g.id}
               type="button"
-              onClick={() => {
-                onChange(g.id);
-                setOpen(false);
-              }}
+              onClick={() => { onChange(g.id); setOpen(false); }}
               className={`block w-full text-left px-5 py-3 text-sm font-medium transition-colors ${
                 g.id === value ? "bg-amber-500/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"
               }`}
@@ -139,6 +171,7 @@ export function Premium() {
   const [guildId, setGuildId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
@@ -148,21 +181,17 @@ export function Premium() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  const buttonLabel = useMemo(() => {
-    return `Payer avec Stripe — ${PRICE[plan].label}`;
-  }, [plan]);
+  const buttonLabel = useMemo(() => `Payer avec Stripe — ${PRICE[plan].label}`, [plan]);
 
   async function startCheckout() {
     if (!guildId) {
-      setError("Veuillez sélectionner un serveur Discord.");
+      setError("Sélectionne d'abord le serveur Discord à activer.");
       return;
     }
     setError(null);
     setSubmitting(true);
     try {
-      const res = await apiPost<{ success: boolean; url?: string; error?: string }>("/api/create-checkout", {
-        guildId, plan,
-      });
+      const res = await apiPost<{ success: boolean; url?: string; error?: string }>("/api/create-checkout", { guildId, plan });
       if (res.success && res.url) {
         window.location.href = res.url;
       } else {
@@ -177,57 +206,56 @@ export function Premium() {
 
   return (
     <AppLayout>
-      {/* Hero */}
-      <section className="container-wide text-center py-16">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-6">
-          <Crown className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-bold tracking-widest uppercase">Shardtown Premium</span>
-        </div>
-        <h1
-          className="font-extrabold leading-[0.9] tracking-tight uppercase mb-8"
-          style={{ fontSize: "clamp(3rem, 8vw, 6rem)" }}
-        >
-          PREMIUM
-        </h1>
-        <h2 className="text-2xl md:text-3xl font-bold mb-4 tracking-tight uppercase">
-          Tous les bots, une seule offre.
-        </h2>
-        <p className="text-white/40 max-w-2xl mx-auto uppercase text-sm tracking-wide leading-relaxed">
-          Débloquez l'ensemble des fonctionnalités avancées de ShardGuard et Shard sur votre serveur Discord.
-        </p>
-        <a
-          href="#pricing"
-          className="inline-block mt-10 text-sm font-bold tracking-widest hover:opacity-70 transition-opacity"
-        >
-          VOIR LES TARIFS &gt;
-        </a>
-      </section>
+      {/* Aurora bleed — amber + violet pour Premium */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[760px] -z-10 opacity-65">
+        <div className="absolute -top-40 left-[15%] w-[700px] h-[700px] rounded-full blur-3xl bg-amber-500/12" />
+        <div className="absolute -top-20 right-[10%] w-[600px] h-[600px] rounded-full blur-3xl bg-violet-500/10" />
+        <div className="absolute top-32 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full blur-3xl bg-pink-500/8" />
+      </div>
 
-      {/* Pricing cards */}
-      <section id="pricing" className="container-wide pt-16">
-        <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Nos Tarifs</p>
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">Choisissez votre formule</h2>
-          <p className="text-white/40 text-sm">Une seule offre, deux façons de payer. Annulez à tout moment.</p>
-        </div>
+      <section className="container-dashboard pt-20 md:pt-28 pb-32">
+        {/* Hero — centered, editorial */}
+        <header className="text-center max-w-3xl mx-auto mb-14">
+          <p className="text-[11px] font-medium tracking-[0.32em] text-white/35 uppercase mb-6 inline-flex items-center gap-2">
+            <Crown className="w-3 h-3 text-amber-300" /> Shardtown Premium
+          </p>
+          <h1 className="font-extrabold leading-[1.02] tracking-[-0.02em] mb-6 text-6xl md:text-7xl">
+            Tous les modules.<br />
+            <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent">Aucune limite.</span>
+          </h1>
+          <p className="text-white/55 text-[17px] leading-relaxed">
+            Une seule offre couvre ShardGuard et Shard. Mensuel sans engagement ou achat à vie —
+            les deux débloquent exactement les mêmes fonctionnalités.
+          </p>
 
-        <div className="grid md:grid-cols-2 gap-6">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-[12px] text-white/45">
+            <span className="inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> Paiement sécurisé Stripe</span>
+            <span className="inline-flex items-center gap-1.5"><Heart className="w-3.5 h-3.5 text-pink-400" /> Annulation en 1 clic</span>
+            <span className="inline-flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-emerald-400" /> RGPD · Hébergement EU</span>
+          </div>
+        </header>
+
+        <div className="h-px w-full bg-white/[0.06] mb-14" />
+
+
+        {/* Pricing cards */}
+        <div id="pricing" className="grid md:grid-cols-2 gap-5 max-w-4xl mx-auto mb-20">
           {/* Monthly */}
-          <div className="relative bg-[#0a0a0a] border border-white/[0.06] rounded-3xl p-8 transition-all hover:border-white/10">
-            <p className="text-[11px] font-bold tracking-widest uppercase text-white/30 mb-4">
+          <div className="relative rounded-3xl p-7 md:p-8 bg-white/[0.025] border border-white/[0.08] hover:border-white/15 transition-colors backdrop-blur-sm">
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/30 mb-4">
               Pour tester sans engagement
             </p>
-            <h3 className="text-2xl font-bold mb-2">Mensuel</h3>
+            <h3 className="text-2xl font-bold mb-3">Mensuel</h3>
             <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-5xl font-extrabold font-mono-num">{PRICE.monthly.label}</span>
+              <span className="text-5xl md:text-6xl font-extrabold font-mono-num">{PRICE.monthly.label}</span>
               <span className="text-white/40 font-bold">{PRICE.monthly.suffix}</span>
             </div>
-            <p className="text-xs text-emerald-400/80 font-bold mb-8">{PRICE.monthly.elsewhere}</p>
-            <ul className="space-y-3 mb-10">
+            <p className="text-xs text-emerald-300 font-bold mb-7">{PRICE.monthly.elsewhere}</p>
+            <ul className="space-y-2.5 mb-8">
               {FEATURES.monthly.map(f => (
-                <li key={f} className="flex items-start gap-3 text-sm text-white/70">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-500/15 border border-amber-500/20 flex items-center justify-center text-amber-400 mt-0.5">
-                    <Check className="w-3 h-3" strokeWidth={3} />
+                <li key={f} className="flex items-start gap-2.5 text-[13.5px] text-white/75">
+                  <span className="flex-shrink-0 w-4 h-4 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 mt-0.5">
+                    <Check className="w-2.5 h-2.5" strokeWidth={3.5} />
                   </span>
                   {f}
                 </li>
@@ -236,34 +264,31 @@ export function Premium() {
             <button
               type="button"
               onClick={() => { setPlan("monthly"); document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" }); }}
-              className="w-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors rounded-full px-6 py-3.5 font-bold text-sm"
+              className="btn-liquid w-full rounded-full px-6 py-3.5 font-bold text-sm"
             >
               Choisir le mensuel
             </button>
           </div>
 
-          {/* Lifetime — featured */}
-          <div
-            className="relative bg-gradient-to-br from-amber-500/10 to-amber-500/[0.02] border border-amber-500/20 rounded-3xl p-8 transition-all hover:border-amber-500/30"
-            style={{ boxShadow: "0 0 80px -30px rgba(251,191,36,0.35)" }}
-          >
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-amber-500 text-black text-[10px] font-extrabold tracking-widest uppercase flex items-center gap-1">
+          {/* Lifetime — featured with glow border */}
+          <div className="glow-border relative rounded-3xl p-7 md:p-8 bg-gradient-to-br from-amber-500/[0.12] via-amber-500/[0.04] to-transparent backdrop-blur-sm">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 text-black text-[10px] font-extrabold tracking-[0.18em] uppercase flex items-center gap-1 shadow-lg">
               <Star className="w-3 h-3" fill="currentColor" /> Meilleure offre
             </div>
-            <p className="text-[11px] font-bold tracking-widest uppercase text-amber-400 mb-4">
+            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-amber-300 mb-4">
               La meilleure valeur à long terme
             </p>
-            <h3 className="text-2xl font-bold mb-2">À vie</h3>
+            <h3 className="text-2xl font-bold mb-3">À vie</h3>
             <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-5xl font-extrabold font-mono-num text-amber-400">{PRICE.lifetime.label}</span>
+              <span className="text-5xl md:text-6xl font-extrabold font-mono-num text-amber-300">{PRICE.lifetime.label}</span>
               <span className="text-white/40 font-bold">{PRICE.lifetime.suffix}</span>
             </div>
-            <p className="text-xs text-emerald-400/80 font-bold mb-8">{PRICE.lifetime.elsewhere}</p>
-            <ul className="space-y-3 mb-10">
+            <p className="text-xs text-emerald-300 font-bold mb-7">{PRICE.lifetime.elsewhere}</p>
+            <ul className="space-y-2.5 mb-8">
               {FEATURES.lifetime.map(f => (
-                <li key={f} className="flex items-start gap-3 text-sm text-white/70">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-amber-500/15 border border-amber-500/20 flex items-center justify-center text-amber-400 mt-0.5">
-                    <Check className="w-3 h-3" strokeWidth={3} />
+                <li key={f} className="flex items-start gap-2.5 text-[13.5px] text-white/85">
+                  <span className="flex-shrink-0 w-4 h-4 rounded-full bg-amber-500/25 border border-amber-500/50 flex items-center justify-center text-amber-300 mt-0.5">
+                    <Check className="w-2.5 h-2.5" strokeWidth={3.5} />
                   </span>
                   {f}
                 </li>
@@ -272,137 +297,153 @@ export function Premium() {
             <button
               type="button"
               onClick={() => { setPlan("lifetime"); document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" }); }}
-              className="w-full bg-gradient-to-r from-amber-400 to-amber-500 text-black hover:opacity-90 transition-opacity rounded-full px-6 py-3.5 font-extrabold text-sm"
+              className="btn-liquid btn-liquid--gold w-full rounded-full px-6 py-3.5 font-extrabold text-sm"
             >
               Choisir l'offre à vie
             </button>
           </div>
         </div>
-      </section>
 
-      {/* Activate */}
-      <section id="activate" className="container-wide pt-24">
-        <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Activer Premium</p>
-        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-12">Sur quel serveur ?</h2>
-
-        {paymentResult === "success" && (
-          <div className="mb-6 p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">
-            <p className="font-bold mb-1">Paiement confirmé !</p>
-            <p className="text-sm text-emerald-300/80">
-              Premium sera activé sur votre serveur dès réception de la confirmation Stripe (quelques secondes).
-            </p>
-          </div>
-        )}
-        {paymentResult === "cancelled" && (
-          <div className="mb-6 p-5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300">
-            <p className="font-bold">Paiement annulé.</p>
-          </div>
-        )}
-
-        <div className="bg-[#0a0a0a] border border-white/[0.06] rounded-3xl p-6 md:p-8">
-          {!user && !loading ? (
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <p className="text-white/70">Connectez-vous avec Discord pour activer Premium sur votre serveur.</p>
-              </div>
-              <a
-                href="/login?returnTo=/premium"
-                className="bg-[#5865F2] text-white px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity inline-flex items-center justify-center"
+        {/* Highlights — what you get */}
+        <p className="text-sm font-bold tracking-[0.22em] text-white/40 uppercase mb-3">Ce que tu débloques</p>
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-8">Six raisons concrètes de passer Premium</h2>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-20">
+          {HIGHLIGHTS.map(h => {
+            const Icon = h.icon;
+            return (
+              <div
+                key={h.title}
+                className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-5 hover:border-white/15 hover:bg-white/[0.035] transition-colors"
               >
-                Se connecter avec Discord
-              </a>
-            </div>
-          ) : loading ? (
-            <div className="h-32 animate-pulse" />
-          ) : (
-            <div className="space-y-6">
-              {/* Plan toggle */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-widest text-white/40 mb-3">
-                  Formule
-                </label>
-                <div className="grid grid-cols-2 gap-2 p-1 bg-white/[0.03] border border-white/5 rounded-2xl">
-                  {(["monthly", "lifetime"] as const).map(p => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPlan(p)}
-                      className={`px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-                        plan === p
-                          ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
-                          : "text-white/50 hover:text-white border border-transparent"
-                      }`}
-                    >
-                      {p === "monthly" ? "Mensuel" : "À vie"}{" "}
-                      <span className="text-white/30 font-mono-num">— {PRICE[p].label}</span>
-                    </button>
-                  ))}
+                <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center justify-center mb-3">
+                  <Icon className="w-4 h-4" />
                 </div>
+                <h3 className="font-bold text-[15px] mb-1.5">{h.title}</h3>
+                <p className="text-[13.5px] text-white/55 leading-relaxed">{h.desc}</p>
               </div>
+            );
+          })}
+        </div>
 
-              {/* Guild selector */}
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-widest text-white/40 mb-3">
-                  Serveur Discord
-                </label>
-                <GuildSelect
-                  guilds={data?.adminGuilds || []}
-                  value={guildId}
-                  onChange={setGuildId}
-                />
-              </div>
+        {/* Activate */}
+        <div id="activate" className="max-w-2xl mx-auto mb-20 scroll-mt-32">
+          <p className="text-sm font-bold tracking-[0.22em] text-white/40 uppercase mb-3 text-center">Activer Premium</p>
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-center mb-8">Sur quel serveur ?</h2>
 
-              {error && (
-                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={startCheckout}
-                disabled={submitting || !guildId}
-                className="w-full bg-gradient-to-r from-amber-400 to-amber-500 text-black hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity rounded-full px-6 py-4 font-extrabold text-sm flex items-center justify-center gap-2"
-              >
-                <Crown className="w-4 h-4" />
-                {submitting ? "Redirection vers Stripe…" : buttonLabel}
-              </button>
-              <p className="text-xs text-white/30 text-center leading-relaxed">
-                Paiement sécurisé via Stripe. Vous pouvez annuler l'abonnement mensuel à tout moment.
-              </p>
+          {paymentResult === "success" && (
+            <div className="mb-5">
+              <Admonition type="success" title="Paiement confirmé !">
+                Premium sera activé sur ton serveur dès réception de la confirmation Stripe (quelques secondes).
+              </Admonition>
             </div>
           )}
-        </div>
-      </section>
+          {paymentResult === "cancelled" && (
+            <div className="mb-5">
+              <Admonition type="warning" title="Paiement annulé">
+                Aucun débit n'a été effectué. Tu peux relancer la souscription à tout moment.
+              </Admonition>
+            </div>
+          )}
 
-      {/* Comparison */}
-      <section className="container-wide pt-24">
-        <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Comparaison</p>
-        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-12">Free vs Premium</h2>
-        <div className="space-y-12">
-          {COMPARISON.map(group => (
-            <div key={group.title} className="bg-[#0a0a0a] border border-white/[0.06] rounded-3xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-                <h3 className="font-bold text-lg">{group.title}</h3>
-                <div className="hidden md:grid grid-cols-2 gap-12 text-[11px] font-bold uppercase tracking-widest">
-                  <span className="text-white/40">Free</span>
-                  <span className="text-amber-400">Premium</span>
+          <div className="rounded-3xl bg-white/[0.025] border border-white/[0.08] p-6 md:p-8 backdrop-blur-sm">
+            {!user && !loading ? (
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <p className="text-white/70">Connecte-toi avec Discord pour activer Premium sur ton serveur.</p>
                 </div>
+                <a
+                  href="/login?returnTo=/premium"
+                  className="btn-liquid btn-liquid--discord rounded-full px-6 py-3 font-bold text-sm inline-flex items-center justify-center"
+                >
+                  Se connecter avec Discord
+                </a>
               </div>
-              <ul className="divide-y divide-white/5">
-                {group.rows.map(r => (
+            ) : loading ? (
+              <div className="h-32 animate-pulse" />
+            ) : (
+              <div className="space-y-5">
+                {/* Plan toggle */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-white/40 mb-2.5">
+                    Formule
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-white/[0.03] border border-white/[0.06] rounded-2xl">
+                    {(["monthly", "lifetime"] as const).map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPlan(p)}
+                        className={`px-4 py-3 rounded-xl text-sm font-bold transition-all ${
+                          plan === p
+                            ? "bg-amber-500/15 text-amber-200 border border-amber-500/40 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.15)]"
+                            : "text-white/50 hover:text-white border border-transparent"
+                        }`}
+                      >
+                        {p === "monthly" ? "Mensuel" : "À vie"}{" "}
+                        <span className="text-white/30 font-mono-num">— {PRICE[p].label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Guild selector */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-white/40 mb-2.5">
+                    Serveur Discord
+                  </label>
+                  <GuildSelect guilds={data?.adminGuilds || []} value={guildId} onChange={setGuildId} />
+                </div>
+
+                {error && (
+                  <Admonition type="danger" title="Vérification">
+                    {error}
+                  </Admonition>
+                )}
+
+                <button
+                  type="button"
+                  onClick={startCheckout}
+                  disabled={submitting || !guildId}
+                  className="btn-liquid btn-liquid--gold w-full rounded-full px-6 py-4 font-extrabold text-sm flex items-center justify-center gap-2"
+                >
+                  <Crown className="w-4 h-4" />
+                  {submitting ? "Redirection vers Stripe…" : buttonLabel}
+                </button>
+                <p className="text-[11px] text-white/35 text-center leading-relaxed">
+                  Paiement sécurisé via Stripe. Annulation à tout moment depuis le portail client.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Comparison */}
+        <p className="text-sm font-bold tracking-[0.22em] text-white/40 uppercase mb-3">Comparaison détaillée</p>
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-8">Free vs Premium</h2>
+        <div className="space-y-5 mb-20">
+          {COMPARISON.map(group => (
+            <div key={group.title} className="rounded-2xl bg-white/[0.025] border border-white/[0.08] backdrop-blur-sm overflow-hidden">
+              <div className="px-5 md:px-6 py-3.5 border-b border-white/[0.06] grid grid-cols-3 md:grid-cols-[1fr_repeat(2,minmax(120px,160px))] items-center gap-4">
+                <h3 className="font-bold text-[15px]">{group.title}</h3>
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/40">Free</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300 inline-flex items-center gap-1.5"><Crown className="w-3 h-3" /> Premium</span>
+              </div>
+              <ul>
+                {group.rows.map((r, i) => (
                   <li
                     key={r.label}
-                    className="px-6 py-3.5 grid grid-cols-3 md:grid-cols-[1fr_repeat(2,minmax(120px,160px))] items-center gap-4"
+                    className={`px-5 md:px-6 py-3 grid grid-cols-3 md:grid-cols-[1fr_repeat(2,minmax(120px,160px))] items-center gap-4 ${
+                      i % 2 === 0 ? "bg-white/[0.005]" : ""
+                    }`}
                   >
-                    <span className="text-sm text-white/70">{r.label}</span>
-                    <span className={`text-sm font-mono-num ${r.free === "—" ? "text-white/20" : "text-white/60"}`}>
+                    <span className="text-[13.5px] text-white/75">{r.label}</span>
+                    <span className={`text-[13px] font-mono-num ${r.free === "—" ? "text-white/25" : "text-white/55"}`}>
                       {r.free}
                     </span>
-                    <span className={`text-sm font-mono-num font-bold ${r.premium === "✓" ? "text-amber-400" : "text-white"}`}>
+                    <span className={`text-[13px] font-mono-num font-bold ${r.premium === "✓" ? "text-amber-300" : "text-white"}`}>
                       {r.premium}
                     </span>
                   </li>
@@ -411,9 +452,43 @@ export function Premium() {
             </div>
           ))}
         </div>
-        <p className="text-center text-xs text-white/30 mt-8">
-          Besoin d'aide pour choisir ?{" "}
-          <Link to="/wiki" className="underline hover:text-white">Consultez le wiki</Link>.
+
+        {/* FAQ */}
+        <p className="text-sm font-bold tracking-[0.22em] text-white/40 uppercase mb-3">Questions fréquentes</p>
+        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-8">FAQ</h2>
+        <div className="max-w-3xl mx-auto space-y-2 mb-12">
+          {FAQ.map((item, i) => {
+            const open = openFaq === i;
+            return (
+              <div
+                key={i}
+                className={`rounded-2xl border backdrop-blur-sm transition-colors ${
+                  open ? "border-amber-500/25 bg-amber-500/[0.04]" : "border-white/[0.08] bg-white/[0.02] hover:border-white/15"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setOpenFaq(open ? null : i)}
+                  className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left"
+                  aria-expanded={open}
+                >
+                  <span className={`font-bold text-[14.5px] ${open ? "text-amber-100" : "text-white"}`}>
+                    {item.q}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${open ? "rotate-180 text-amber-300" : "text-white/40"}`} />
+                </button>
+                {open && (
+                  <div className="px-5 pb-4 pt-0 text-[13.5px] text-white/65 leading-relaxed">
+                    {item.a}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="text-center text-[12.5px] text-white/40">
+          Une question qui n'apparaît pas ? <Link to="/wiki#faq" className="text-emerald-300 hover:text-emerald-200 underline-offset-2 hover:underline">Consulte le wiki</Link> ou ouvre un ticket sur notre serveur.
         </p>
       </section>
     </AppLayout>

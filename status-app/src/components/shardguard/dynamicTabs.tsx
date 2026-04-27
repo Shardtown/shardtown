@@ -370,11 +370,11 @@ function MemberModal({ guildId, member, onClose }: { guildId: string; member: Me
     } finally { setBusy(false); }
   }
 
-  const actions: { key: typeof action; label: string; icon: typeof AlertTriangle; classes: string }[] = [
-    { key: "warn", label: "Avertir", icon: AlertTriangle, classes: "bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20" },
-    { key: "mute", label: "Mute",    icon: MessageSquare, classes: "bg-yellow-500/10 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20" },
-    { key: "kick", label: "Kick",    icon: UserMinus,    classes: "bg-orange-500/10 border-orange-500/30 text-orange-400 hover:bg-orange-500/20" },
-    { key: "ban",  label: "Ban",     icon: Ban,          classes: "bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20" },
+  const actions: { key: typeof action; label: string; icon: typeof AlertTriangle; tone: string }[] = [
+    { key: "warn", label: "Avertir", icon: AlertTriangle, tone: "text-amber-300" },
+    { key: "mute", label: "Mute",    icon: MessageSquare, tone: "text-yellow-200" },
+    { key: "kick", label: "Kick",    icon: UserMinus,     tone: "text-orange-300" },
+    { key: "ban",  label: "Ban",     icon: Ban,           tone: "text-red-300" },
   ];
 
   return (
@@ -416,7 +416,7 @@ function MemberModal({ guildId, member, onClose }: { guildId: string; member: Me
               const Icon = a.icon;
               return (
                 <button key={a.key} type="button" onClick={() => setAction(a.key)}
-                  className={`px-4 py-3 rounded-xl border text-sm font-bold inline-flex items-center justify-center gap-2 transition-colors ${a.classes}`}>
+                  className={`btn-liquid rounded-xl px-4 py-3 text-sm font-bold inline-flex items-center justify-center gap-2 ${a.tone}`}>
                   <Icon className="w-4 h-4" /> {a.label}
                 </button>
               );
@@ -438,7 +438,7 @@ function MemberModal({ guildId, member, onClose }: { guildId: string; member: Me
               </Field>
             )}
             <button type="button" onClick={submit} disabled={busy}
-              className="w-full bg-white text-black px-5 py-3 rounded-full font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity">
+              className="btn-liquid btn-liquid--primary w-full rounded-full px-5 py-3 font-bold text-sm">
               {busy ? "Application…" : `Confirmer le ${action}`}
             </button>
             {result && (

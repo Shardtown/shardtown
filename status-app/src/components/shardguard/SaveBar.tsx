@@ -34,7 +34,7 @@ export function SaveBar({ dirty, saving, saved, error, onSave, onReset }: Props)
             <button
               type="button"
               onClick={onSave}
-              className="px-3 py-1 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-100 text-xs font-bold transition-colors"
+              className="btn-liquid btn-liquid--danger rounded-full px-3 py-1 text-xs font-bold"
             >
               Réessayer
             </button>
@@ -67,7 +67,7 @@ export function SaveBar({ dirty, saving, saved, error, onSave, onReset }: Props)
             type="button"
             onClick={onReset}
             disabled={saving}
-            className="px-4 py-1.5 rounded-full text-xs font-bold text-white/60 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+            className="btn-liquid rounded-full px-4 py-1.5 text-xs font-bold"
           >
             Annuler
           </button>
@@ -75,7 +75,7 @@ export function SaveBar({ dirty, saving, saved, error, onSave, onReset }: Props)
             type="button"
             onClick={onSave}
             disabled={saving || !dirty}
-            className="px-5 py-1.5 rounded-full bg-white text-black text-xs font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            className="btn-liquid btn-liquid--primary rounded-full px-5 py-1.5 text-xs font-bold"
           >
             {saving ? "Enregistrement…" : "Enregistrer"}
           </button>
