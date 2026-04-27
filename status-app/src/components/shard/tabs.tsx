@@ -7,6 +7,7 @@ import {
 } from "@/api/shard";
 import { Field, NumberInput, TextInput, TextArea, Toggle, Select, SectionCard } from "@/components/shardguard/Field";
 import { ColorPicker } from "@/components/forms/ColorPicker";
+import { apiPost, apiDelete } from "@/api/client";
 
 type Update = (patch: Partial<ShardSettings>) => void;
 
@@ -39,13 +40,7 @@ const roleOpts = (roles: DRole[]) => [
 
 async function postJson(path: string, body?: object) {
   try {
-    const r = await fetch(path, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return await r.json();
+    return await apiPost<{ success?: boolean; error?: string }>(path, body);
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Erreur réseau" };
   }
@@ -53,8 +48,7 @@ async function postJson(path: string, body?: object) {
 
 async function delJson(path: string) {
   try {
-    const r = await fetch(path, { method: "DELETE", credentials: "include" });
-    return await r.json();
+    return await apiDelete<{ success?: boolean; error?: string }>(path);
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Erreur réseau" };
   }

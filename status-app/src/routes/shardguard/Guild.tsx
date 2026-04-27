@@ -6,7 +6,7 @@ import {
   TrendingUp, TrendingDown, Heart, ShieldCheck, ShieldX, UserCheck, Percent,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { apiGet } from "@/api/client";
+import { apiGet, apiPost } from "@/api/client";
 import type { ShardGuardGuildData, SGSettings } from "@/api/shardguard";
 import { SaveBar } from "@/components/shardguard/SaveBar";
 import { ScreenTimeCard } from "@/components/ui/screen-time-card";
@@ -84,13 +84,7 @@ export function ShardGuardGuild() {
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`/shardguard/guild/${guildId}/config`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await apiPost(`/shardguard/guild/${guildId}/config`, draft);
       setSaved(true);
       setTimeout(() => setSaved(false), 3500);
       await refresh();

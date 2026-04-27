@@ -395,6 +395,24 @@ app.use('/image', express.static(path.join(__dirname, 'image')));
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Global CSRF guard — applies to every state-changing request that carries a
+// session cookie. Skipped for safe methods, the Stripe webhook (signature-
+// verified, no session), and the OAuth callback (passport state-protected).
+// Individual routes used to opt in via `verifyCsrf`; this catches the ones
+// that didn't.
+app.use((req, res, next) => {
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+    if (req.path === '/webhook/stripe') return next();
+    return verifyCsrf(req, res, next);
+});
+
+// Per-session CSRF token — read by the SPA's apiPost helper before issuing
+// any state-changing request. Returned as JSON regardless of auth state so
+// even pre-login flows (Discord OAuth init, /admin/login form) can use it.
+app.get('/api/csrf', (req, res) => {
+    res.json({ csrfToken: generateCsrfToken(req) });
+});
+
 // Migrated to React SPA — kept only as legacy fallback for the EJS template (unused once SPA catch-all is registered)
 app.get('/_legacy/', async (req, res) => {
     if (!req.user) return res.render('index', { user: null, botGuildIds: [], adminGuilds: [] });
@@ -2347,9 +2365,9 @@ async function fetchBotInfo(token) {
     } catch { return null; }
 }
 
-// CSRF for the React /admin/login form
+// CSRF for the React /admin/login form (kept for backward compat with the
+// Login route — /api/csrf returns the same value)
 app.get('/api/admin/csrf', (req, res) => {
-    if (req.session && req.session.isAdmin) return res.json({ csrfToken: '' });
     res.json({ csrfToken: generateCsrfToken(req) });
 });
 
