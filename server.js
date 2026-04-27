@@ -245,6 +245,20 @@ async function connectDB() {
                     INDEX idx_action (action)
                 )
             `);
+            // Active admin sessions (one row per logged-in browser/device).
+            // The SID stays server-side; the admin UI only ever sees `id`.
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS admin_sessions (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    sid VARCHAR(128) NOT NULL UNIQUE,
+                    login_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    ip VARCHAR(64) DEFAULT NULL,
+                    user_agent VARCHAR(512) DEFAULT NULL,
+                    revoked TINYINT NOT NULL DEFAULT 0,
+                    INDEX idx_revoked (revoked)
+                )
+            `);
         } catch (e) { console.error('Erreur migration:', e.message); }
     } catch (err) {
         console.error('❌ Erreur MySQL Dashboard:', err.message);
@@ -2386,6 +2400,38 @@ function checkAuth(req, res, next) {
 
 const ADMIN_SESSION_TTL = 4 * 60 * 60 * 1000;
 
+// Cached lookup of admin_sessions row state, keyed by sid. Avoids hitting
+// the DB on every admin request — refreshed every 30s, so a force-logout
+// takes effect within that window.
+const adminSessionCache = new Map();
+const ADMIN_SESSION_CACHE_TTL = 30 * 1000;
+
+async function isAdminSessionValid(sid) {
+    if (!sid) return false;
+    const now = Date.now();
+    const cached = adminSessionCache.get(sid);
+    if (cached && now - cached.fetchedAt < ADMIN_SESSION_CACHE_TTL) {
+        return cached.valid;
+    }
+    try {
+        const [rows] = await db.execute(
+            'SELECT revoked FROM admin_sessions WHERE sid = ?',
+            [sid],
+        );
+        const valid = rows.length > 0 && !rows[0].revoked;
+        adminSessionCache.set(sid, { valid, fetchedAt: now });
+        // Best-effort last_seen bump, async
+        if (valid) {
+            db.execute('UPDATE admin_sessions SET last_seen = NOW() WHERE sid = ?', [sid]).catch(() => {});
+        }
+        return valid;
+    } catch {
+        // DB hiccup — fall back to cached value if any, otherwise let the
+        // session through (fail open) since the cookie itself is still valid.
+        return cached ? cached.valid : true;
+    }
+}
+
 function checkAdmin(req, res, next) {
     const wantsJson =
         req.path.startsWith('/api/') ||
@@ -2400,9 +2446,17 @@ function checkAdmin(req, res, next) {
 
     if (req.session && req.session.isAdmin) {
         if (Date.now() - req.session.adminLoginAt > ADMIN_SESSION_TTL) {
+            adminSessionCache.delete(req.sessionID);
             return req.session.destroy(() => denyOrRedirect());
         }
-        return next();
+        // Validate against the DB-tracked active-sessions list (force logout)
+        return isAdminSessionValid(req.sessionID).then(ok => {
+            if (!ok) {
+                adminSessionCache.delete(req.sessionID);
+                return req.session.destroy(() => denyOrRedirect());
+            }
+            next();
+        }).catch(() => denyOrRedirect());
     }
     denyOrRedirect();
 }
@@ -2551,10 +2605,19 @@ app.post('/admin/login', adminLoginLimiter, verifyCsrf, async (req, res) => {
     if (validUser && validPass) {
         await clearAdminLockout(lockoutKey);
         await logAdminAction(req, 'login.success', null, { username: lockoutKey || '(unknown)' });
-        req.session.regenerate((err) => {
+        req.session.regenerate(async (err) => {
             if (err) return res.status(500).send('Erreur serveur');
             req.session.isAdmin = true;
             req.session.adminLoginAt = Date.now();
+            try {
+                await db.execute(
+                    `INSERT INTO admin_sessions (sid, ip, user_agent) VALUES (?, ?, ?)
+                     ON DUPLICATE KEY UPDATE login_at = NOW(), last_seen = NOW(), revoked = 0,
+                     ip = VALUES(ip), user_agent = VALUES(user_agent)`,
+                    [req.sessionID, (req.ip || '').slice(0, 64), String(req.get('User-Agent') || '').slice(0, 512)],
+                );
+                adminSessionCache.delete(req.sessionID);
+            } catch (e) { console.error('admin_sessions insert:', e.message); }
             res.redirect('/admin');
         });
         return;
@@ -2567,6 +2630,9 @@ app.post('/admin/login', adminLoginLimiter, verifyCsrf, async (req, res) => {
 
 app.get('/admin/logout', (req, res) => {
     if (req.session && req.session.isAdmin) {
+        const sid = req.sessionID;
+        db.execute('DELETE FROM admin_sessions WHERE sid = ?', [sid]).catch(() => {});
+        adminSessionCache.delete(sid);
         logAdminAction(req, 'logout').catch(() => {});
     }
     req.session.destroy(() => res.redirect('/admin/login'));
@@ -2592,6 +2658,56 @@ async function logAdminAction(req, action, target, details) {
         console.error('logAdminAction:', e.message);
     }
 }
+
+// Active admin sessions
+app.get('/api/admin/sessions', checkAdmin, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, sid, login_at, last_seen, ip, user_agent
+             FROM admin_sessions WHERE revoked = 0 ORDER BY last_seen DESC`,
+        );
+        // Don't leak the SID — only flag the current row.
+        const sessions = rows.map(r => ({
+            id: r.id,
+            login_at: r.login_at,
+            last_seen: r.last_seen,
+            ip: r.ip,
+            user_agent: r.user_agent,
+            current: r.sid === req.sessionID,
+        }));
+        res.json({ sessions });
+    } catch (err) {
+        console.error('GET /api/admin/sessions:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/api/admin/sessions/:id/revoke', checkAdmin, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
+    try {
+        const [rows] = await db.execute('SELECT sid FROM admin_sessions WHERE id = ?', [id]);
+        if (rows.length === 0) return res.status(404).json({ error: 'Session introuvable' });
+        if (rows[0].sid === req.sessionID) {
+            return res.status(400).json({ error: 'Utilise /admin/logout pour cette session' });
+        }
+        await db.execute('UPDATE admin_sessions SET revoked = 1 WHERE id = ?', [id]);
+        adminSessionCache.delete(rows[0].sid);
+        await logAdminAction(req, 'session.revoke', null, { revokedSessionId: id });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('revoke session:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Periodic cleanup of revoked or stale rows. Runs every 30 min.
+setInterval(() => {
+    db.execute(
+        `DELETE FROM admin_sessions
+         WHERE revoked = 1 OR last_seen < DATE_SUB(NOW(), INTERVAL 5 DAY)`,
+    ).catch(() => {});
+}, 30 * 60 * 1000).unref?.();
 
 // Admin audit log — last N entries
 app.get('/api/admin/audit', checkAdmin, async (req, res) => {
