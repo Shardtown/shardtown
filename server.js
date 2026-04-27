@@ -212,9 +212,13 @@ async function connectDB() {
                     PRIMARY KEY (code, guildId)
                 )
             `);
+            // Disable the legacy "SHARDTOWN" universal code in case it was
+            // ever seeded. It used to be created with max_uses=0 (= unlimited)
+            // and zero expiry, which let anyone unlock Premium for free by
+            // reading the source. Force max_uses=1 and expire it 1 year ago.
             await db.execute(
-                `INSERT IGNORE INTO redeem_codes (code, max_uses) VALUES (?, ?)`,
-                ['SHARDTOWN', 0]
+                `UPDATE redeem_codes SET max_uses = 1, expires_at = '2000-01-01' WHERE code = ?`,
+                ['SHARDTOWN'],
             );
         } catch (e) { console.error('Erreur migration:', e.message); }
     } catch (err) {
