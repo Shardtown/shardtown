@@ -4,7 +4,9 @@ import {
   Ban,
   Bot as BotIcon,
   CheckCircle2,
+  ClipboardList,
   LogOut,
+  RefreshCw,
   Search,
   Server,
   ShieldAlert,
@@ -34,6 +36,17 @@ interface AdminData {
   totalGuilds: number;
   totalMembers: number;
   csrfToken: string;
+}
+
+interface AuditEntry {
+  id: number;
+  action: string;
+  target_guild_id: string | null;
+  target_bot_id: string | null;
+  details: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  created_at: string;
 }
 
 interface PendingAction {
@@ -71,6 +84,8 @@ export function Admin() {
   const [tab, setTab] = useState<Tab>("all");
   const [query, setQuery] = useState("");
   const [activeBotId, setActiveBotId] = useState<string | null>(null);
+  const [audit, setAudit] = useState<AuditEntry[] | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -90,7 +105,19 @@ export function Admin() {
     }
   }, [nav]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  const refreshAudit = useCallback(async () => {
+    setAuditLoading(true);
+    try {
+      const r = await apiGet<{ entries: AuditEntry[] }>("/api/admin/audit?limit=100");
+      setAudit(r.entries);
+    } catch {
+      setAudit([]);
+    } finally {
+      setAuditLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { refresh(); refreshAudit(); }, [refresh, refreshAudit]);
 
   function showToast(text: string, type: "success" | "error" = "success") {
     setToast({ text, type });
@@ -124,6 +151,7 @@ export function Admin() {
         if (r.success) {
           showToast(`Bot a quitté « ${guildName} »`, "success");
           refresh();
+          refreshAudit();
         } else {
           showToast(r.error || "Erreur", "error");
         }
@@ -145,6 +173,7 @@ export function Admin() {
         if (r.success) {
           showToast(`« ${guildName} » bloqué`, "success");
           refresh();
+          refreshAudit();
         } else {
           showToast(r.error || "Erreur", "error");
         }
@@ -163,6 +192,7 @@ export function Admin() {
         if (r.success) {
           showToast(`« ${guildName} » débloqué`, "success");
           refresh();
+          refreshAudit();
         } else {
           showToast(r.error || "Erreur", "error");
         }
@@ -435,6 +465,45 @@ export function Admin() {
               </p>
             </div>
           )}
+
+        {/* Audit log */}
+        <div className="mt-16">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-300">
+              <ClipboardList className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-blue-300/70 uppercase">Forensic</p>
+              <h2 className="text-xl font-extrabold tracking-tight">Journal d'audit</h2>
+            </div>
+            <button
+              type="button"
+              onClick={refreshAudit}
+              disabled={auditLoading}
+              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/[0.07] transition-colors disabled:opacity-40"
+            >
+              <RefreshCw className={`w-3 h-3 ${auditLoading ? "animate-spin" : ""}`} />
+              Actualiser
+            </button>
+          </div>
+          <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent overflow-hidden">
+            {audit === null ? (
+              <div className="p-8 text-center text-white/30 text-xs font-bold uppercase tracking-widest">
+                Chargement…
+              </div>
+            ) : audit.length === 0 ? (
+              <div className="p-8 text-center text-white/30 text-xs font-bold uppercase tracking-widest">
+                Aucune action enregistrée pour l'instant
+              </div>
+            ) : (
+              <ul className="divide-y divide-white/[0.04] max-h-[480px] overflow-y-auto">
+                {audit.map(e => (
+                  <AuditRow key={e.id} entry={e} />
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* Toast */}
@@ -708,4 +777,74 @@ function BlockedRow({
       </button>
     </div>
   );
+}
+
+function AuditRow({ entry }: { entry: AuditEntry }) {
+  const tone = actionTone(entry.action);
+  const when = formatWhen(entry.created_at);
+  const target = entry.target_guild_id || entry.target_bot_id || null;
+
+  let detailsObj: Record<string, unknown> | null = null;
+  if (entry.details) {
+    try {
+      detailsObj = JSON.parse(entry.details);
+    } catch {
+      detailsObj = { raw: entry.details };
+    }
+  }
+
+  return (
+    <li className="px-4 py-3 hover:bg-white/[0.02] transition-colors">
+      <div className="flex items-start gap-3">
+        <span className={`mt-0.5 inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-widest shrink-0 ${tone}`}>
+          {entry.action}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-3 flex-wrap">
+            {target && (
+              <span className="text-[12px] font-mono-num text-white/70 truncate">{target}</span>
+            )}
+            {detailsObj && Object.keys(detailsObj).length > 0 && (
+              <span className="text-[11px] text-white/40 truncate">
+                {Object.entries(detailsObj)
+                  .slice(0, 3)
+                  .map(([k, v]) => `${k}=${typeof v === "string" ? v : JSON.stringify(v)}`)
+                  .join("  ·  ")}
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] text-white/30 font-mono-num mt-0.5 truncate">
+            {when}
+            {entry.ip && <> · {entry.ip}</>}
+          </p>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function actionTone(action: string): string {
+  if (action.startsWith("login.success") || action.endsWith(".unblock")) {
+    return "bg-emerald-500/10 border-emerald-500/20 text-emerald-300";
+  }
+  if (action.startsWith("login.failure") || action.endsWith(".failed")) {
+    return "bg-red-500/10 border-red-500/20 text-red-300";
+  }
+  if (action.endsWith(".block") || action === "logout") {
+    return "bg-amber-500/10 border-amber-500/20 text-amber-300";
+  }
+  return "bg-white/[0.04] border-white/10 text-white/60";
+}
+
+function formatWhen(ts: string): string {
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return ts;
+  const diffMs = Date.now() - d.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return `il y a ${diffSec}s`;
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `il y a ${diffMin}min`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `il y a ${diffHr}h`;
+  return d.toLocaleString("fr-FR");
 }
