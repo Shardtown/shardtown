@@ -171,7 +171,20 @@ const server = http.createServer((req, res) => {
                 modAlertUserId: '', webhookAlertEnabled: '0', webhookAlertChannelId: '',
             },
             stats: { totalMembers: 1284, verifiedCount: 1102 },
-            chartData: {},
+            chartData: (() => {
+                const out = {};
+                const today = new Date();
+                for (let i = 13; i >= 0; i--) {
+                    const d = new Date(today.getTime() - i * 86400_000);
+                    const key = d.toISOString().slice(0, 10);
+                    const join = Math.floor(8 + Math.random() * 22);
+                    const leave = Math.floor(2 + Math.random() * 10);
+                    const success = Math.floor(join * (0.7 + Math.random() * 0.25));
+                    const failed = Math.max(0, join - success - Math.floor(Math.random() * 2));
+                    out[key] = { join, leave, success, failed };
+                }
+                return out;
+            })(),
         }));
         return;
     }

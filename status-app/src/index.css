@@ -42,9 +42,90 @@
 @layer utilities {
   .font-mono-num { font-family: "JetBrains Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
   .container-wide { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  .container-dashboard { max-width: 1600px; margin: 0 auto; padding: 0 28px; }
+
+  /* Pulsing live dot */
+  .live-dot {
+    position: relative;
+    width: 8px; height: 8px;
+    border-radius: 9999px;
+    background: #10b981;
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+    animation: live-pulse 2s ease-out infinite;
+  }
+  .live-dot::after {
+    content: ""; position: absolute; inset: -4px;
+    border-radius: 9999px;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    animation: live-ring 2s ease-out infinite;
+  }
+
+  /* Subtle shimmer for stat cards */
+  .stat-shine {
+    position: relative; overflow: hidden;
+  }
+  .stat-shine::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.06) 50%, transparent 70%);
+    transform: translateX(-100%);
+    animation: stat-shine 6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  /* Slow gradient border drift for the hero card */
+  .glow-border {
+    position: relative;
+  }
+  .glow-border::before {
+    content: "";
+    position: absolute; inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(120deg,
+      rgba(16, 185, 129, 0.35),
+      rgba(59, 130, 246, 0.25) 35%,
+      rgba(255,255,255,0.05) 60%,
+      rgba(139, 92, 246, 0.3) 100%);
+    background-size: 200% 200%;
+    animation: glow-drift 12s linear infinite;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+  }
 }
 
+@keyframes live-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
+  70%  { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+@keyframes live-ring {
+  0%   { transform: scale(0.8); opacity: 0.7; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+@keyframes stat-shine {
+  0%, 100% { transform: translateX(-100%); }
+  50%      { transform: translateX(100%); }
+}
+@keyframes glow-drift {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes count-pop {
+  0%   { transform: translateY(8px); opacity: 0; }
+  60%  { transform: translateY(-2px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.animate-count-pop { animation: count-pop 0.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-spark-draw, .animate-spike-pulse { animation: none !important; }
+  .animate-spark-draw, .animate-spike-pulse,
+  .live-dot, .live-dot::after,
+  .stat-shine::before, .glow-border::before,
+  .animate-count-pop { animation: none !important; }
 }
 
