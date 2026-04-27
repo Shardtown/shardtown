@@ -820,7 +820,10 @@ app.get('/logout', (req, res) => {
 });
 
 // Migrated to React SPA
-app.get('/_legacy/dashboard', (req, res) => res.render('dashboard', { user: req.user }));
+// Legacy redirect — the EJS dashboard template was removed (its
+// build sites used innerHTML with audit-log fields and would have
+// reintroduced stored-XSS sinks). The React SPA handles /dashboard.
+app.get('/_legacy/dashboard', (req, res) => res.redirect('/dashboard'));
 
 app.get('/shard/login', loginRateLimiter, (req, res) => {
     if (req.session.shardUser) return res.redirect(isSafeRedirect(req.session.shardReturnTo) ? req.session.shardReturnTo : '/shard/server');
