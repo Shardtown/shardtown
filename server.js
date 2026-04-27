@@ -1196,7 +1196,7 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error('Erreur save shard config:', err.message);
-        res.status(500).json({ success: false, error: err.message });
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
     }
 });
 
@@ -1230,7 +1230,7 @@ app.post('/shard/guild/:guildID/ticket-panel', checkAuthShard, async (req, res) 
         });
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ success: false, error: err.response?.data?.message || err.message });
+        res.status(500).json({ success: false, error: err.response?.data?.message || 'Erreur serveur' });
     }
 });
 
@@ -1259,7 +1259,7 @@ app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
         const messageId = msgRes.data.id;
         const [result] = await db.execute(`INSERT INTO shard_polls (guildId, channelId, messageId, question, choices, endsAt, anonymous) VALUES (?, ?, ?, ?, ?, ?, ?)`, [guildID, channelId, messageId, question, JSON.stringify(choices), endsAtDate || null, anonymousVal]);
         res.json({ success: true, id: result.insertId });
-    } catch (err) { res.status(500).json({ success: false, error: err.response?.data?.message || err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: err.response?.data?.message || 'Erreur serveur' }); }
 });
 
 app.post('/shard/guild/:guildID/poll/:pollId/end', checkAuthShard, async (req, res) => {
@@ -1317,7 +1317,7 @@ app.post('/shard/guild/:guildID/giveaway', checkAuthShard, async (req, res) => {
             [guildID, channelId, messageId, prize, winnersCount, endsAtDate, shardUser.id, gwMinRole || '', parseInt(gwMinLevel) || 0]
         );
         res.json({ success: true, id: result.insertId });
-    } catch (err) { res.status(500).json({ success: false, error: err.response?.data?.message || err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: err.response?.data?.message || 'Erreur serveur' }); }
 });
 
 app.post('/shard/guild/:guildID/giveaway/:gwId/end', checkAuthShard, async (req, res) => {
@@ -1360,7 +1360,7 @@ app.post('/shard/guild/:guildID/scheduled', checkAuthShard, async (req, res) => 
             [guildID, channelId, message, intervalHours, new Date(nextRun)]
         );
         res.json({ success: true, id: result.insertId });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
 app.delete('/shard/guild/:guildID/scheduled/:id', checkAuthShard, async (req, res) => {
@@ -1371,7 +1371,7 @@ app.delete('/shard/guild/:guildID/scheduled/:id', checkAuthShard, async (req, re
     try {
         await db.execute(`DELETE FROM shard_scheduled WHERE id = ? AND guildId = ?`, [id, guildID]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
 app.post('/guild/:guildID/backup', checkAuth, async (req, res) => {
@@ -1385,7 +1385,7 @@ app.post('/guild/:guildID/backup', checkAuth, async (req, res) => {
         const configJson = JSON.stringify(rows[0]);
         await db.execute(`INSERT INTO config_backups (guildId, botLabel, configJson) VALUES (?, ?, ?)`, [guildID, 'ShardGuard', configJson]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
 app.post('/guild/:guildID/restore', checkAuth, async (req, res) => {
@@ -1404,7 +1404,7 @@ app.post('/guild/:guildID/restore', checkAuth, async (req, res) => {
         const vals = Object.values(config);
         await db.execute(`UPDATE settings SET ${cols} WHERE guildId = ?`, [...vals, guildID]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
 app.post('/shard/guild/:guildID/backup', checkAuthShard, async (req, res) => {
@@ -1418,7 +1418,7 @@ app.post('/shard/guild/:guildID/backup', checkAuthShard, async (req, res) => {
         const configJson = JSON.stringify(rows[0]);
         await db.execute(`INSERT INTO config_backups (guildId, botLabel, configJson) VALUES (?, ?, ?)`, [guildID, 'Shard', configJson]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
 app.post('/shard/guild/:guildID/restore', checkAuthShard, async (req, res) => {
@@ -1437,7 +1437,7 @@ app.post('/shard/guild/:guildID/restore', checkAuthShard, async (req, res) => {
         const vals = Object.values(config);
         await db.execute(`UPDATE shard_settings SET ${cols} WHERE guildId = ?`, [...vals, guildID]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
 app.post('/shard/guild/:guildID/shop', checkAuthShard, async (req, res) => {
@@ -1450,7 +1450,7 @@ app.post('/shard/guild/:guildID/shop', checkAuthShard, async (req, res) => {
     try {
         const [result] = await db.execute(`INSERT INTO shard_shop (guildId, roleId, price) VALUES (?, ?, ?)`, [guildID, roleId, price]);
         res.json({ success: true, id: result.insertId });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
 app.delete('/shard/guild/:guildID/shop/:id', checkAuthShard, async (req, res) => {
@@ -1461,7 +1461,7 @@ app.delete('/shard/guild/:guildID/shop/:id', checkAuthShard, async (req, res) =>
     try {
         await db.execute(`DELETE FROM shard_shop WHERE id = ? AND guildId = ?`, [id, guildID]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
 app.post('/shard/guild/:guildID/send-embed', checkAuthShard, async (req, res) => {
@@ -1480,7 +1480,7 @@ app.post('/shard/guild/:guildID/send-embed', checkAuthShard, async (req, res) =>
     try {
         await axios.post(`https://discord.com/api/v10/channels/${channelId}/messages`, { embeds: [embed] }, { headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' } });
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ success: false, error: err.response?.data?.message || err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: err.response?.data?.message || 'Erreur serveur' }); }
 });
 
 app.post('/shard/guild/:guildID/reactions', checkAuthShard, async (req, res) => {
@@ -1493,7 +1493,7 @@ app.post('/shard/guild/:guildID/reactions', checkAuthShard, async (req, res) => 
         await db.execute(`INSERT INTO shard_settings (guildId, autoReactions) VALUES (?, ?) ON DUPLICATE KEY UPDATE autoReactions = VALUES(autoReactions)`,
             [guildID, JSON.stringify(autoReactions || [])]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
 app.post('/shard/guild/:guildID/rewards', checkAuthShard, async (req, res) => {
@@ -1506,7 +1506,7 @@ app.post('/shard/guild/:guildID/rewards', checkAuthShard, async (req, res) => {
         await db.execute(`INSERT INTO shard_settings (guildId, levelRewards) VALUES (?, ?) ON DUPLICATE KEY UPDATE levelRewards = VALUES(levelRewards)`,
             [guildID, JSON.stringify(levelRewards || [])]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
 app.post('/shard/guild/:guildID/test', checkAuthShard, async (req, res) => {
@@ -2038,7 +2038,7 @@ app.get('/shardguard/api/guild/:guildID/members', checkAuth, async (req, res) =>
         res.json({ success: true, members });
     } catch (e) {
         console.error('Erreur members:', e.response?.data || e.message);
-        res.status(500).json({ success: false, error: e.message });
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
     }
 });
 
@@ -2133,7 +2133,7 @@ app.post('/shardguard/api/guild/:guildID/member/:userId/action', checkAuth, asyn
         res.status(400).json({ success: false, error: 'Action inconnue' });
     } catch(e) {
         console.error('Erreur action membre:', e.response?.data || e.message);
-        res.status(500).json({ success: false, error: e.response?.data?.message || e.message });
+        res.status(500).json({ success: false, error: e.response?.data?.message || 'Erreur serveur' });
     }
 });
 
@@ -2241,7 +2241,7 @@ app.post('/shardguard/api/guild/:guildID/panic', checkAuth, async (req, res) => 
         await db.execute('UPDATE settings SET panicModeActive = ? WHERE guildId = ?', [activate ? 1 : 0, guildID]);
 
         res.json({ success: true, count, active: !!activate });
-    } catch (err) { res.status(500).json({ success: false, error: err.message }); }
+    } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
 app.post('/shardguard/api/guild/:guildID/deploy', checkAuth, async (req, res) => {
@@ -2313,7 +2313,7 @@ app.post('/shardguard/api/guild/:guildID/deploy', checkAuth, async (req, res) =>
                 sent = true;
             } catch (e) {
                 console.error('Erreur Discord (Vérif):', e.response?.data || e.message);
-                lastError = e.response?.data?.message || e.message;
+                lastError = e.response?.data?.message || 'Erreur serveur';
             }
         }
 
@@ -2336,7 +2336,7 @@ app.post('/shardguard/api/guild/:guildID/deploy', checkAuth, async (req, res) =>
                 sent = true;
             } catch (e) { 
                 console.error('Erreur Discord (Code):', e.response?.data || e.message);
-                lastError = e.response?.data?.message || e.message;
+                lastError = e.response?.data?.message || 'Erreur serveur';
             }
         }
 
@@ -2402,7 +2402,7 @@ app.post('/shardguard/api/guild/:guildID/bulk/:action', checkAuth, async (req, r
         res.json({ success: true, count });
     } catch (err) {
         console.error(`Erreur bulk ${action}:`, err.response?.data || err.message);
-        res.status(500).json({ success: false, error: err.response?.data?.message || err.message });
+        res.status(500).json({ success: false, error: err.response?.data?.message || 'Erreur serveur' });
     }
 });
 
@@ -2925,8 +2925,8 @@ app.post('/admin/bot/:botId/guild/:guildId/leave', checkAdmin, verifyCsrf, async
         await logAdminAction(req, 'guild.leave', { botId, guildId });
         res.json({ success: true });
     } catch (err) {
-        await logAdminAction(req, 'guild.leave.failed', { botId, guildId }, { error: err.message });
-        res.json({ success: false, error: err.response?.data?.message || err.message });
+        await logAdminAction(req, 'guild.leave.failed', { botId, guildId }, { error: 'Erreur serveur' });
+        res.json({ success: false, error: err.response?.data?.message || 'Erreur serveur' });
     }
 });
 
@@ -2944,8 +2944,8 @@ app.post('/admin/bot/:botId/guild/:guildId/block', checkAdmin, verifyCsrf, async
         await logAdminAction(req, 'guild.block', { botId, guildId }, { guildName: guildName || null });
         res.json({ success: true });
     } catch (err) {
-        await logAdminAction(req, 'guild.block.failed', { botId, guildId }, { error: err.message });
-        res.json({ success: false, error: err.message });
+        await logAdminAction(req, 'guild.block.failed', { botId, guildId }, { error: 'Erreur serveur' });
+        res.json({ success: false, error: 'Erreur serveur' });
     }
 });
 
@@ -2956,8 +2956,8 @@ app.post('/admin/guild/:guildId/unblock', checkAdmin, verifyCsrf, async (req, re
         await logAdminAction(req, 'guild.unblock', { guildId });
         res.json({ success: true });
     } catch (err) {
-        await logAdminAction(req, 'guild.unblock.failed', { guildId }, { error: err.message });
-        res.json({ success: false, error: err.message });
+        await logAdminAction(req, 'guild.unblock.failed', { guildId }, { error: 'Erreur serveur' });
+        res.json({ success: false, error: 'Erreur serveur' });
     }
 });
 
@@ -3051,6 +3051,15 @@ app.get(/.*/, (req, res, next) => {
             res.status(500).send('SPA build missing');
         }
     });
+});
+
+// Global error handler — last line of defense for synchronous throws or
+// unhandled promise rejections that bubble up. Always returns a generic
+// message; the original error is only logged server-side.
+app.use((err, req, res, next) => {
+    console.error('[unhandled]', req.method, req.path, err);
+    if (res.headersSent) return next(err);
+    res.status(500).json({ error: 'Erreur serveur' });
 });
 
 console.log('Tentative de démarrage du serveur...');
