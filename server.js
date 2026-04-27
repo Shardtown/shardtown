@@ -1,6 +1,7 @@
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 const express = require('express');
 const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 const passport = require('passport');
 const { Strategy } = require('passport-discord');
 const path = require('path');
@@ -364,7 +365,25 @@ app.use((req, res, next) => {
     next();
 });
 
+// Persistent session store backed by MySQL — sessions survive Node
+// restarts (no more wiping every logged-in user on deploy) and the
+// MemoryStore production warning goes away. The library auto-creates a
+// `sessions` table the first time it boots, then prunes expired rows
+// every 15 min.
+const sessionStore = new MySQLStore({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    database: process.env.DB_NAME,
+    clearExpired: true,
+    checkExpirationInterval: 15 * 60 * 1000,
+    expiration: 24 * 60 * 60 * 1000,
+    createDatabaseTable: true,
+});
+sessionStore.on?.('error', err => console.error('[session-store]', err));
+
 app.use(session({
+    store: sessionStore,
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
