@@ -136,7 +136,7 @@ export function Index() {
             on couvre toute la chaîne.
           </p>
         </Reveal>
-        <RevealStagger className="grid md:grid-cols-3 gap-6" staggerChildren={0.1} delayChildren={0.15}>
+        <RevealStagger className="grid md:grid-cols-3 gap-8 md:gap-6" staggerChildren={0.1} delayChildren={0.15}>
           {SERVICES.map(s => {
             const Icon = s.icon;
             return (
@@ -180,7 +180,7 @@ export function Index() {
             Les bots qu'on utilise sur nos missions, disponibles directement pour votre serveur.
           </p>
         </Reveal>
-        <RevealStagger className="grid md:grid-cols-2 gap-6" staggerChildren={0.1} delayChildren={0.15}>
+        <RevealStagger className="grid md:grid-cols-2 gap-8 md:gap-6" staggerChildren={0.1} delayChildren={0.15}>
           {TOOLS.map(t => {
             const Icon = t.icon;
             return (
