@@ -114,88 +114,92 @@ export function BotServerPage({
 
   return (
     <AppLayout>
-      <section className="container-wide pt-12">
-        <div className="flex items-center gap-3 mb-10">
-          <img src={botImage} alt={botLabel} className="w-8 h-8 rounded-xl object-cover border border-white/5" />
-          <span className="text-xs font-bold uppercase tracking-widest text-white/40">{botLabel}</span>
+      <section className="container-wide pt-32 md:pt-40 pb-32">
+        <div className="max-w-3xl mb-20">
+          <div className="flex items-center gap-3 mb-6">
+            <img src={botImage} alt={botLabel} className="w-9 h-9 rounded-xl object-cover border border-white/10" />
+            <span className="text-xs font-bold uppercase tracking-widest text-white/40">{botLabel}</span>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05] mb-6">
+            Vos serveurs
+          </h1>
+          <p className="text-lg text-white/50 leading-relaxed">
+            Configurez {botLabel} sur les serveurs où vous êtes administrateur,
+            ou invitez-le sur ceux qu'il manque.
+          </p>
         </div>
 
         {/* Stats */}
-        <div className="grid md:grid-cols-3 gap-6 mb-20">
-          <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-8">
-            <div className="text-5xl font-extrabold font-mono-num mb-1">{guilds.length}</div>
-            <p className="text-sm font-bold text-white/40 uppercase tracking-widest">Communautés</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-20">
+          <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-7 hover:border-white/15 transition-colors">
+            <div className="text-4xl md:text-5xl font-extrabold font-mono-num mb-2">{guilds.length}</div>
+            <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Communautés</p>
           </div>
-          <div className="bg-[#0a0a0a] border border-blue-500/20 rounded-3xl p-8">
-            <div className="text-5xl font-extrabold font-mono-num mb-1 text-blue-400">{botGuildIds.length}</div>
-            <p className="text-sm font-bold text-white/40 uppercase tracking-widest">Serveurs Actifs</p>
+          <div className="bg-white/[0.02] border border-blue-500/20 rounded-2xl p-7 hover:border-blue-500/40 transition-colors">
+            <div className="text-4xl md:text-5xl font-extrabold font-mono-num mb-2 text-blue-400">{botGuildIds.length}</div>
+            <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Serveurs actifs</p>
           </div>
-          <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-8">
-            <div className="text-5xl font-extrabold mb-1 text-white/30">GRATUIT</div>
-            <p className="text-sm font-bold text-white/40 uppercase tracking-widest">Statut du Compte</p>
+          <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-7 hover:border-white/15 transition-colors col-span-2 md:col-span-1">
+            <div className="text-4xl md:text-5xl font-extrabold mb-2 text-white/30">GRATUIT</div>
+            <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Statut du compte</p>
           </div>
         </div>
 
-        <div className="mb-12">
-          <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Gestion</p>
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight uppercase">Vos Serveurs</h2>
+        <div className="mb-10">
+          <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Configurés</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+            {guildsWithBot.length} serveur{guildsWithBot.length !== 1 ? "s" : ""} actif{guildsWithBot.length !== 1 ? "s" : ""}
+          </h2>
         </div>
 
         {/* With bot */}
         {guildsWithBot.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-12">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-20">
             {guildsWithBot.map(g => (
               <a
                 key={g.id}
                 href={`${configRoutePrefix}/${g.id}`}
-                className="group bg-[#0a0a0a] border border-white/[0.08] rounded-3xl p-6 flex items-center gap-5 hover:border-white/20 hover:-translate-y-1 transition-all"
+                className="group bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 flex items-center gap-5 hover:border-white/20 hover:bg-white/[0.04] hover:-translate-y-0.5 transition-all"
               >
                 <div className="relative flex-shrink-0">
                   {g.icon ? (
                     <img
                       src={`https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png`}
                       alt=""
-                      className="w-16 h-16 rounded-2xl border border-white/5 object-cover group-hover:scale-110 transition-transform duration-500"
+                      className="w-14 h-14 rounded-2xl border border-white/10 object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center font-bold text-xl text-white/30 group-hover:scale-110 transition-transform duration-500">
+                    <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center font-bold text-base text-white/40 group-hover:scale-105 transition-transform duration-500">
                       {initials(g.name)}
                     </div>
                   )}
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-4 border-black" />
+                  <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full border-2 border-black" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-base truncate mb-1">{g.name}</h3>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                  <h3 className="font-bold text-base truncate mb-1.5">{g.name}</h3>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest bg-blue-500/10 border border-blue-500/20 text-blue-400">
                     Configurer
                   </span>
                 </div>
-                <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white group-hover:text-black transition-all">
-                  <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
-                </div>
+                <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" strokeWidth={2.5} />
               </a>
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-white/5 rounded-3xl border border-white/5 mb-12">
-            <p className="text-white/40 font-bold uppercase tracking-widest text-xs">Aucun serveur actif</p>
+          <div className="text-center py-16 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl mb-20">
+            <p className="text-white/40 font-bold uppercase tracking-widest text-xs">Aucun serveur actif pour le moment</p>
           </div>
         )}
 
         {/* Without bot */}
         {guildsWithoutBot.length > 0 && (
           <>
-            <div className="relative py-16">
-              <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                <div className="w-full border-t border-white/[0.04]" />
-              </div>
-              <div className="relative flex justify-center">
-                <div className="bg-black/40 backdrop-blur-xl border border-white/5 px-6 py-2.5 rounded-full">
-                  <span className="text-[10px] font-black tracking-[0.3em] text-white/30 uppercase">
-                    Autres Communautés
-                  </span>
-                </div>
-              </div>
+            <div className="mb-10">
+              <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Disponibles</p>
+              <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+                Vos autres communautés
+              </h2>
+              <p className="text-white/40 mt-3 text-sm">Cliquez sur une carte pour y inviter {botLabel}.</p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -204,30 +208,28 @@ export function BotServerPage({
                   key={g.id}
                   type="button"
                   onClick={() => (showBotPicker ? setPickerGuildId(g.id) : inviteBot(g.id))}
-                  className="group bg-[#0a0a0a] border border-white/[0.08] rounded-3xl p-6 flex items-center gap-5 hover:border-white/20 hover:-translate-y-1 hover:opacity-100 opacity-60 transition-all text-left grayscale hover:grayscale-0"
+                  className="group bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 flex items-center gap-5 hover:border-white/20 hover:bg-white/[0.04] hover:-translate-y-0.5 hover:opacity-100 opacity-70 transition-all text-left grayscale hover:grayscale-0"
                 >
                   <div className="flex-shrink-0">
                     {g.icon ? (
                       <img
                         src={`https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png`}
                         alt=""
-                        className="w-16 h-16 rounded-2xl border border-white/5 object-cover group-hover:scale-110 transition-transform duration-500"
+                        className="w-14 h-14 rounded-2xl border border-white/10 object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
-                      <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center font-bold text-xl text-white/30 group-hover:scale-110 transition-transform duration-500">
+                      <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center font-bold text-base text-white/40 group-hover:scale-105 transition-transform duration-500">
                         {initials(g.name)}
                       </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-base truncate mb-1">{g.name}</h3>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-white/5 border border-white/10 text-white/50">
+                    <h3 className="font-bold text-base truncate mb-1.5">{g.name}</h3>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest bg-white/5 border border-white/10 text-white/50">
                       Inviter {botLabel}
                     </span>
                   </div>
-                  <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white group-hover:text-black transition-all">
-                    <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
-                  </div>
+                  <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" strokeWidth={2.5} />
                 </button>
               ))}
             </div>
@@ -244,7 +246,7 @@ export function BotServerPage({
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
-            className="relative bg-[#0a0a0a] border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl"
+            className="relative bg-[#0d0d10]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button

@@ -157,7 +157,7 @@ export function Admin() {
 
   if (loading && !data) {
     return (
-      <AppLayout noBackground>
+      <AppLayout>
         <section className="container-wide pt-12 space-y-6">
           <div className="h-8 w-48 bg-white/5 rounded animate-pulse" />
           <div className="grid md:grid-cols-4 gap-4">
@@ -170,7 +170,7 @@ export function Admin() {
 
   if (error) {
     return (
-      <AppLayout noBackground>
+      <AppLayout>
         <section className="container-wide pt-24 max-w-xl mx-auto text-center">
           <p className="text-red-400 mb-4">{error}</p>
           <Link to="/admin/login" className="bg-white text-black px-6 py-3 rounded-full font-bold text-sm">Se connecter</Link>
@@ -185,11 +185,11 @@ export function Admin() {
 
   return (
     <AppLayout noBackground>
-      <section className="container-wide pt-12">
-        <div className="flex items-start justify-between mb-12 gap-6 flex-wrap">
+      <section className="container-wide pt-32 md:pt-40 pb-32">
+        <div className="flex items-start justify-between mb-16 gap-6 flex-wrap max-w-3xl">
           <div>
-            <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Panneau de Contrôle</p>
-            <h1 className="text-4xl md:text-5xl font-bold uppercase tracking-tight">Administration</h1>
+            <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">Panneau de contrôle</p>
+            <h1 className="text-4xl md:text-6xl font-extrabold uppercase tracking-tight leading-[1.05]">Administration</h1>
           </div>
           <a
             href="/admin/logout"
@@ -200,24 +200,24 @@ export function Admin() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
-          <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6">
-            <div className="text-4xl font-extrabold font-mono-num mb-1">{data.bots.length}</div>
-            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Bots Actifs</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-20">
+          <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-7 hover:border-white/15 transition-colors">
+            <div className="text-4xl font-extrabold font-mono-num mb-2">{data.bots.length}</div>
+            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Bots actifs</p>
           </div>
-          <div className="bg-[#0a0a0a] border border-blue-500/20 rounded-3xl p-6">
-            <div className="text-4xl font-extrabold font-mono-num mb-1 text-blue-400">{data.totalGuilds}</div>
-            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Serveurs Totaux</p>
+          <div className="bg-white/[0.02] border border-blue-500/20 rounded-2xl p-7 hover:border-blue-500/40 transition-colors">
+            <div className="text-4xl font-extrabold font-mono-num mb-2 text-blue-400">{data.totalGuilds}</div>
+            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Serveurs totaux</p>
           </div>
-          <div className="bg-[#0a0a0a] border border-red-500/20 rounded-3xl p-6">
-            <div className="text-4xl font-extrabold font-mono-num mb-1 text-red-400">{data.blockedGuilds.length}</div>
-            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Serveurs Bloqués</p>
+          <div className="bg-white/[0.02] border border-red-500/20 rounded-2xl p-7 hover:border-red-500/40 transition-colors">
+            <div className="text-4xl font-extrabold font-mono-num mb-2 text-red-400">{data.blockedGuilds.length}</div>
+            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Serveurs bloqués</p>
           </div>
-          <div className="bg-[#0a0a0a] border border-white/5 rounded-3xl p-6">
-            <div className="text-4xl font-extrabold font-mono-num mb-1 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+          <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-7 hover:border-white/15 transition-colors">
+            <div className="text-4xl font-extrabold font-mono-num mb-2 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               {data.totalMembers.toLocaleString("fr-FR")}
             </div>
-            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Membres Protégés</p>
+            <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Membres protégés</p>
           </div>
         </div>
 
@@ -242,7 +242,7 @@ export function Admin() {
               </div>
             </div>
 
-            <div className="bg-[#0a0a0a] border border-white/[0.06] rounded-2xl p-6 mb-6">
+            <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 mb-6 hover:border-white/15 transition-colors">
               <p className="text-[11px] font-bold tracking-widest uppercase text-white/30 mb-4">Informations</p>
               <div className="space-y-2">
                 <div className="flex items-center gap-3 py-2 border-b border-white/[0.04]">
@@ -272,7 +272,7 @@ export function Admin() {
                   return (
                     <div
                       key={g.id}
-                      className={`bg-[#0a0a0a] border ${blocked ? "border-red-500/20" : "border-white/[0.06]"} rounded-2xl p-4 flex items-center gap-4`}
+                      className={`bg-white/[0.02] border ${blocked ? "border-red-500/20" : "border-white/[0.08]"} rounded-2xl p-4 flex items-center gap-4 hover:border-white/15 transition-colors`}
                     >
                       {guildIconUrl(g.id, g.icon) ? (
                         <img src={guildIconUrl(g.id, g.icon)!} alt="" className="w-12 h-12 rounded-xl border border-white/5 object-cover" />
@@ -347,7 +347,7 @@ export function Admin() {
               {data.blockedGuilds.map(b => (
                 <div
                   key={b.guild_id}
-                  className="bg-[#0a0a0a] border border-red-500/20 rounded-2xl p-4 flex items-center gap-4"
+                  className="bg-white/[0.02] border border-red-500/20 rounded-2xl p-4 flex items-center gap-4 hover:border-red-500/40 transition-colors"
                 >
                   <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-red-400">
                     <Ban className="w-5 h-5" />

@@ -22,7 +22,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 focus:border-white/30 focus:outline-none text-white placeholder:text-white/20 transition-colors text-sm ${props.className || ""}`}
+      className={`w-full px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] focus:border-white/25 focus:bg-white/[0.04] focus:outline-none text-white placeholder:text-white/25 transition-colors text-sm ${props.className || ""}`}
     />
   );
 }
@@ -32,7 +32,7 @@ export function NumberInput(props: React.InputHTMLAttributes<HTMLInputElement>) 
     <input
       type="number"
       {...props}
-      className={`w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 focus:border-white/30 focus:outline-none text-white font-mono-num placeholder:text-white/20 transition-colors text-sm ${props.className || ""}`}
+      className={`w-full px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] focus:border-white/25 focus:bg-white/[0.04] focus:outline-none text-white font-mono-num placeholder:text-white/25 transition-colors text-sm ${props.className || ""}`}
     />
   );
 }
@@ -41,7 +41,7 @@ export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
   return (
     <textarea
       {...props}
-      className={`w-full px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 focus:border-white/30 focus:outline-none text-white placeholder:text-white/20 transition-colors text-sm resize-y min-h-[90px] ${props.className || ""}`}
+      className={`w-full px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] focus:border-white/25 focus:bg-white/[0.04] focus:outline-none text-white placeholder:text-white/25 transition-colors text-sm resize-y min-h-[90px] ${props.className || ""}`}
     />
   );
 }
@@ -53,7 +53,7 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] transition-colors w-full text-left`}
+      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] hover:bg-white/[0.05] hover:border-white/15 transition-colors w-full text-left`}
     >
       <span
         className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${checked ? "bg-emerald-500" : "bg-white/10"}`}
@@ -93,13 +93,13 @@ export function Select({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-white/[0.03] border ${open ? "border-white/30" : "border-white/10"} hover:bg-white/[0.06] transition-colors text-left text-sm`}
+        className={`w-full flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-white/[0.02] border ${open ? "border-white/25 bg-white/[0.04]" : "border-white/[0.08]"} hover:bg-white/[0.05] hover:border-white/15 transition-colors text-left text-sm`}
       >
         <span className={current ? "text-white" : "text-white/40"}>{current ? current.label : placeholder}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-white/40 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 mt-1.5 bg-[#0f0f0f] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
+        <div className="absolute left-0 right-0 mt-1.5 bg-[#0d0d10]/95 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
           {options.length === 0 && <div className="px-4 py-2.5 text-sm text-white/30">Aucune option</div>}
           {options.map(o => (
             <button
@@ -122,10 +122,10 @@ export function Select({
 
 export function SectionCard({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
-    <div className="bg-[#0a0a0a] border border-white/[0.06] rounded-2xl p-6">
-      <div className="mb-5">
+    <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-7 hover:border-white/15 transition-colors">
+      <div className="mb-6">
         <h3 className="font-bold text-base">{title}</h3>
-        {description && <p className="text-[12px] text-white/40 mt-1">{description}</p>}
+        {description && <p className="text-[12px] text-white/45 mt-1.5 leading-relaxed">{description}</p>}
       </div>
       <div className="space-y-4">{children}</div>
     </div>

@@ -102,7 +102,7 @@ export function ShardGuild() {
 
   if (loading) {
     return (
-      <AppLayout noBackground>
+      <AppLayout>
         <section className="container-wide pt-12">
           <div className="h-8 w-48 bg-white/5 rounded animate-pulse mb-8" />
           <div className="grid md:grid-cols-[240px_1fr] gap-6">
@@ -119,7 +119,7 @@ export function ShardGuild() {
 
   if (error || !data || !draft || !guildId) {
     return (
-      <AppLayout noBackground>
+      <AppLayout>
         <section className="container-wide pt-24 text-center max-w-xl mx-auto">
           <p className="text-red-400 mb-4">{error || "Aucune donnée"}</p>
           <Link to="/shard/server" className="bg-white text-black px-6 py-3 rounded-full font-bold text-sm">Retour aux serveurs</Link>
@@ -137,16 +137,14 @@ export function ShardGuild() {
 
   return (
     <AppLayout noBackground>
-      <section className="container-wide pt-12 pb-32">
-        <div className="flex items-start justify-between gap-4 mb-10 flex-wrap">
-          <div className="min-w-0">
-            <Link to="/shard/server" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors mb-3">
-              <ArrowLeft className="w-3 h-3" /> Mes serveurs
-            </Link>
-            <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-2">Configuration Shard</p>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight truncate">{data.guild.name}</h1>
-            <p className="text-[11px] text-white/30 font-mono-num mt-1">{data.guild.id}</p>
-          </div>
+      <section className="container-wide pt-32 md:pt-40 pb-32">
+        <div className="mb-16 max-w-2xl">
+          <Link to="/shard/server" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors mb-6">
+            <ArrowLeft className="w-3 h-3" /> Mes serveurs
+          </Link>
+          <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Configuration Shard</p>
+          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05] truncate">{data.guild.name}</h1>
+          <p className="text-[11px] text-white/30 font-mono-num mt-3">{data.guild.id}</p>
         </div>
 
         <div className="grid md:grid-cols-[220px_1fr] gap-6">

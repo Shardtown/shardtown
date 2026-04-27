@@ -109,7 +109,7 @@ export function ShardGuardGuild() {
 
   if (loading) {
     return (
-      <AppLayout noBackground>
+      <AppLayout>
         <section className="container-wide pt-12">
           <div className="h-8 w-48 bg-white/5 rounded animate-pulse mb-8" />
           <div className="grid md:grid-cols-[240px_1fr] gap-6">
@@ -128,7 +128,7 @@ export function ShardGuardGuild() {
 
   if (error || !data || !draft) {
     return (
-      <AppLayout noBackground>
+      <AppLayout>
         <section className="container-wide pt-24 text-center max-w-xl mx-auto">
           <p className="text-red-400 mb-4">{error || "Aucune donnée"}</p>
           <Link to="/shardguard/server" className="bg-white text-black px-6 py-3 rounded-full font-bold text-sm">Retour aux serveurs</Link>
@@ -142,24 +142,24 @@ export function ShardGuardGuild() {
 
   return (
     <AppLayout noBackground>
-      <section className="container-wide pt-12 pb-32">
+      <section className="container-wide pt-32 md:pt-40 pb-32">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-10 flex-wrap">
-          <div className="min-w-0">
-            <Link to="/shardguard/server" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors mb-3">
+        <div className="flex items-start justify-between gap-6 mb-16 flex-wrap">
+          <div className="min-w-0 max-w-2xl">
+            <Link to="/shardguard/server" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors mb-6">
               <ArrowLeft className="w-3 h-3" /> Mes serveurs
             </Link>
-            <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-2">Configuration ShardGuard</p>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight truncate">{data.guild.name}</h1>
-            <p className="text-[11px] text-white/30 font-mono-num mt-1">{data.guild.id}</p>
+            <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Configuration ShardGuard</p>
+            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05] truncate">{data.guild.name}</h1>
+            <p className="text-[11px] text-white/30 font-mono-num mt-3">{data.guild.id}</p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Membres</p>
+            <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-5 min-w-[120px]">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">Membres</p>
               <p className="text-2xl font-extrabold font-mono-num">{data.stats.totalMembers.toLocaleString("fr-FR")}</p>
             </div>
-            <div className="text-right">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Vérifiés</p>
+            <div className="bg-white/[0.02] border border-emerald-500/20 rounded-2xl p-5 min-w-[120px]">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">Vérifiés</p>
               <p className="text-2xl font-extrabold font-mono-num text-emerald-400">{data.stats.verifiedCount.toLocaleString("fr-FR")}</p>
             </div>
           </div>
