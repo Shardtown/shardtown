@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Lock } from "lucide-react";
+import { Lock, ShieldAlert, Clock, ArrowRight } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet } from "@/api/client";
 
@@ -23,33 +23,55 @@ export function AdminLogin() {
 
   return (
     <AppLayout noBackground>
-      <section className="min-h-[70vh] flex items-center justify-center pt-12 pb-24 px-6">
+      {/* Aurora bleed (admin tone) */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-32 left-[18%] w-[600px] h-[600px] rounded-full blur-3xl bg-red-500/12" />
+        <div className="absolute top-1/3 right-[12%] w-[480px] h-[480px] rounded-full blur-3xl bg-blue-500/10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60" />
+      </div>
+
+      <section className="min-h-[78vh] flex items-center justify-center pt-12 pb-24 px-6">
         <div className="w-full max-w-md">
+          {/* Hero */}
           <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 mb-6">
-              <Lock className="w-6 h-6" />
+            <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/25 text-red-300 mb-7 shadow-[0_0_28px_-8px_rgba(239,68,68,0.5)]">
+              <Lock className="w-7 h-7" />
+              <span className="absolute -top-1 -right-1 flex w-3 h-3">
+                <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75" />
+                <span className="relative w-3 h-3 rounded-full bg-red-500 border-2 border-black" />
+              </span>
             </div>
-            <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Accès Restreint</p>
-            <h1 className="text-4xl font-bold uppercase tracking-tight">Administration</h1>
-            <p className="text-white/40 text-sm mt-3">Espace réservé aux administrateurs Shardtown.</p>
+            <p className="text-[11px] font-bold tracking-[0.32em] text-red-300/70 uppercase mb-4">
+              Accès restreint
+            </p>
+            <h1 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-5xl md:text-6xl mb-4">
+              Administration
+            </h1>
+            <p className="text-white/45 text-[15px] leading-relaxed max-w-sm mx-auto">
+              Espace réservé à l'équipe Shardtown. Toutes les actions sont auditées.
+            </p>
           </div>
 
-          <div className="bg-[#0a0a0a] border border-white/[0.06] rounded-3xl p-8">
+          {/* Card */}
+          <div className="relative rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl p-7 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
             {error && (
-              <div className="mb-6 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm font-semibold">
-                Identifiants incorrects. Accès refusé.
+              <div className="mb-6 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/25 text-red-300 text-sm font-semibold flex items-start gap-2.5">
+                <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>Identifiants incorrects. Accès refusé.</span>
               </div>
             )}
             {locked && (
-              <div className="mb-6 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm font-semibold">
-                Compte temporairement verrouillé suite à plusieurs tentatives échouées. Réessayez plus tard.
+              <div className="mb-6 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm font-semibold flex items-start gap-2.5">
+                <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>Compte temporairement verrouillé après plusieurs tentatives. Réessayez dans quelques minutes.</span>
               </div>
             )}
 
             <form ref={formRef} method="POST" action="/admin/login" className="flex flex-col gap-5">
               <input type="hidden" name="_csrf" value={csrfToken} />
+
               <div>
-                <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-2">
+                <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-2.5">
                   Identifiant
                 </label>
                 <input
@@ -58,12 +80,13 @@ export function AdminLogin() {
                   required
                   autoComplete="username"
                   placeholder="Identifiant"
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/10 focus:border-white/30 focus:outline-none text-white placeholder:text-white/20 transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/[0.06] text-white placeholder:text-white/20 transition-all"
                 />
               </div>
+
               <div>
-                <label className="text-xs font-bold text-white/40 uppercase tracking-widest block mb-2">
-                  Mot de Passe
+                <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-2.5">
+                  Mot de passe
                 </label>
                 <input
                   type="password"
@@ -71,18 +94,27 @@ export function AdminLogin() {
                   required
                   autoComplete="current-password"
                   placeholder="••••••••••••"
-                  className="w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/10 focus:border-white/30 focus:outline-none text-white placeholder:text-white/20 transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/[0.06] text-white placeholder:text-white/20 transition-all"
                 />
               </div>
+
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-2 bg-white text-black px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
+                className="btn-liquid btn-liquid--primary group mt-3 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 font-bold text-[14px] tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? "Chargement…" : "Accéder"}
+                <span className="relative">{loading ? "Chargement…" : "Accéder au panel"}</span>
+                {!loading && (
+                  <ArrowRight className="relative w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                )}
               </button>
             </form>
           </div>
+
+          {/* Footer note */}
+          <p className="mt-8 text-center text-[11px] text-white/30 font-mono-num tracking-wide">
+            Toutes les tentatives sont enregistrées · IP + user-agent
+          </p>
         </div>
       </section>
     </AppLayout>
