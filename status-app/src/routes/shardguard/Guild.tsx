@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Check, Settings, ScrollText, Shield, AlertTriangle,
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
-  TrendingUp, TrendingDown, Heart, ShieldCheck, ShieldX, UserCheck,
+  TrendingUp, TrendingDown, Heart, ShieldCheck, ShieldX, UserCheck, Percent,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet } from "@/api/client";
@@ -259,7 +259,10 @@ export function ShardGuardGuild() {
                     icon: <UserCheck className="w-3.5 h-3.5 text-emerald-400" />,
                     label: "Vérifiés", value: data.stats.verifiedCount.toLocaleString("fr-FR"), tone: "text-emerald-300",
                   },
-                  { label: "Du serveur", value: `${verifRate}%`, tone: "text-white" },
+                  {
+                    icon: <Percent className="w-3.5 h-3.5 text-white/60" />,
+                    label: "Du serveur", value: `${verifRate}%`, tone: "text-white",
+                  },
                   {
                     icon: <Users2 className="w-3.5 h-3.5 text-white/60" />,
                     label: "Non vérifiés",
