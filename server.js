@@ -2252,13 +2252,24 @@ function checkAuth(req, res, next) {
 const ADMIN_SESSION_TTL = 4 * 60 * 60 * 1000;
 
 function checkAdmin(req, res, next) {
+    const wantsJson =
+        req.path.startsWith('/api/') ||
+        req.method !== 'GET' ||
+        req.xhr ||
+        req.get('Accept')?.includes('application/json');
+
+    const denyOrRedirect = () => {
+        if (wantsJson) return res.status(401).json({ error: 'Non authentifié' });
+        return res.redirect('/admin/login');
+    };
+
     if (req.session && req.session.isAdmin) {
         if (Date.now() - req.session.adminLoginAt > ADMIN_SESSION_TTL) {
-            return req.session.destroy(() => res.redirect('/admin/login'));
+            return req.session.destroy(() => denyOrRedirect());
         }
         return next();
     }
-    res.redirect('/admin/login');
+    denyOrRedirect();
 }
 
 const BOTS = [
@@ -2329,7 +2340,7 @@ async function fetchBotInfo(token) {
 
 // CSRF for the React /admin/login form
 app.get('/api/admin/csrf', (req, res) => {
-    if (req.session && req.session.isAdmin) return res.status(204).end();
+    if (req.session && req.session.isAdmin) return res.json({ csrfToken: '' });
     res.json({ csrfToken: generateCsrfToken(req) });
 });
 
