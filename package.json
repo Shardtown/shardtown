@@ -7,7 +7,6 @@
     "start": "node server.js",
     "bot:shardguard": "node ShardGuard/bot.js",
     "bot:shard": "node Shard/bot.js",
-    "bot:shardtown": "node Shardtown/bot.js",
     "dev": "node server.js"
   },
   "keywords": [],

@@ -6,7 +6,6 @@
 #    - shardtown      : Site web                 (server.js)
 #    - shard          : Shard Bot                (Shard/sharder.js)
 #    - shardguard     : ShardGuard Bot           (ShardGuard/sharder.js)
-#    - shardtown-bot  : Shardtown Support Bot    (Shardtown/bot.js)
 #    - paladium       : Paladium Com Portal      (dist/index.js)
 # =============================================================================
 
@@ -26,14 +25,12 @@ NC='\033[0m'
 PM2_SITE="shardtown"
 PM2_SHARD="shard"
 PM2_SHARDGUARD="shardguard"
-PM2_SHARDTOWN_BOT="shardtown-bot"
 PM2_PALADIUM="paladium"
 
 # -------- Dossiers de travail ------------------------------------------------
 DIR_SITE="/root/shardtown"
 DIR_SHARD="/root/shardtown"
 DIR_SHARDGUARD="/root/shardtown"
-DIR_SHARDTOWN_BOT="/root/shardtown"
 DIR_PALADIUM="/root/PaladiumComPortal"
 DIR="/root/shardtown"  # alias historique
 
@@ -41,7 +38,6 @@ DIR="/root/shardtown"  # alias historique
 FILE_SITE="server.js"
 FILE_SHARD="Shard/sharder.js"
 FILE_SHARDGUARD="ShardGuard/sharder.js"
-FILE_SHARDTOWN_BOT="Shardtown/bot.js"
 FILE_PALADIUM="dist/index.js"
 
 # =============================================================================
@@ -190,7 +186,6 @@ overview() {
     print_service_line "Site Web"        "$CYAN"    "$PM2_SITE"
     print_service_line "Shard Bot"       "$MAGENTA" "$PM2_SHARD"
     print_service_line "ShardGuard Bot"  "$BLUE"    "$PM2_SHARDGUARD"
-    print_service_line "Shardtown Bot"   "$GREEN"   "$PM2_SHARDTOWN_BOT"
     print_service_line "Paladium Portal" "$YELLOW"  "$PM2_PALADIUM"
     echo ""
 
@@ -532,14 +527,13 @@ main_menu() {
         echo -e "  ${YELLOW}[1]${NC}  Gerer le Site Web (${PM2_SITE})"
         echo -e "  ${YELLOW}[2]${NC}  Gerer Shard Bot (${PM2_SHARD})"
         echo -e "  ${YELLOW}[3]${NC}  Gerer ShardGuard Bot (${PM2_SHARDGUARD})"
-        echo -e "  ${YELLOW}[4]${NC}  Gerer Shardtown Support Bot (${PM2_SHARDTOWN_BOT})"
-        echo -e "  ${YELLOW}[5]${NC}  Gerer Paladium Portal (${PM2_PALADIUM})"
+        echo -e "  ${YELLOW}[4]${NC}  Gerer Paladium Portal (${PM2_PALADIUM})"
         echo ""
         echo -e "  ${BOLD}Actions globales${NC}"
-        echo -e "  ${YELLOW}[6]${NC}  Vue & controle des Shards"
-        echo -e "  ${YELLOW}[7]${NC}  Redemarrer TOUS les services PM2"
-        echo -e "  ${YELLOW}[8]${NC}  Arreter TOUS les services PM2"
-        echo -e "  ${YELLOW}[9]${NC}  Demarrer TOUS les services PM2"
+        echo -e "  ${YELLOW}[5]${NC}  Vue & controle des Shards"
+        echo -e "  ${YELLOW}[6]${NC}  Redemarrer TOUS les services PM2"
+        echo -e "  ${YELLOW}[7]${NC}  Arreter TOUS les services PM2"
+        echo -e "  ${YELLOW}[8]${NC}  Demarrer TOUS les services PM2"
         echo ""
         echo -e "  ${BOLD}Outils${NC}"
         echo -e "  ${YELLOW}[u]${NC}  Mise a jour (git pull / npm install / build SPA)"
@@ -557,22 +551,21 @@ main_menu() {
             1) control_service "$PM2_SITE"          "Site Web"               "$FILE_SITE"          "$DIR_SITE" ;;
             2) control_service "$PM2_SHARD"         "Shard Bot"              "$FILE_SHARD"         "$DIR_SHARD" ;;
             3) control_service "$PM2_SHARDGUARD"    "ShardGuard Bot"         "$FILE_SHARDGUARD"    "$DIR_SHARDGUARD" ;;
-            4) control_service "$PM2_SHARDTOWN_BOT" "Shardtown Support Bot"  "$FILE_SHARDTOWN_BOT" "$DIR_SHARDTOWN_BOT" ;;
-            5) control_service "$PM2_PALADIUM"      "Paladium Portal"        "$FILE_PALADIUM"      "$DIR_PALADIUM" ;;
-            6) shards_menu ;;
-            7)
+            4) control_service "$PM2_PALADIUM"      "Paladium Portal"        "$FILE_PALADIUM"      "$DIR_PALADIUM" ;;
+            5) shards_menu ;;
+            6)
                 if confirm "Redemarrer TOUS les services PM2 ?"; then
                     pm2 restart all
                     echo -e "\n  ${GREEN}>> Tous les services redemarres.${NC}"
                     sleep 1
                 fi ;;
-            8)
+            7)
                 if confirm "Arreter TOUS les services PM2 ?"; then
                     pm2 stop all
                     echo -e "\n  ${RED}>> Tous les services arretes.${NC}"
                     sleep 1
                 fi ;;
-            9)
+            8)
                 if confirm "Demarrer TOUS les services PM2 ?"; then
                     pm2 start all
                     echo -e "\n  ${GREEN}>> Tous les services demarres.${NC}"
