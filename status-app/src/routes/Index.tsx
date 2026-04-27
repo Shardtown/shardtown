@@ -166,7 +166,7 @@ export function Index() {
       </section>
 
       {/* Vertical spacer between SERVICES grid and "Nos outils" */}
-      <div className="py-16 md:py-20" aria-hidden />
+      <div className="py-8 md:py-10" aria-hidden />
 
       {/* Outils maison — slides in from the RIGHT (alternance avec services) */}
       <section id="products" className="container-wide pt-48 pb-48 overflow-x-clip">
@@ -212,7 +212,7 @@ export function Index() {
       </section>
 
       {/* Vertical spacer between cards and CTA */}
-      <div className="py-16 md:py-20" aria-hidden />
+      <div className="py-8 md:py-10" aria-hidden />
 
       {/* Contact CTA — rises up */}
       <section id="contact" className="container-wide pt-48 pb-16 scroll-mt-32 overflow-x-clip">
