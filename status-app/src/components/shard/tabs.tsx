@@ -38,17 +38,20 @@ const roleOpts = (roles: DRole[]) => [
   ...roles.map(r => ({ value: r.id, label: `@${r.name}` })),
 ];
 
-async function postJson(path: string, body?: object) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type JsonResponse = { success?: boolean; error?: string; [key: string]: any };
+
+async function postJson(path: string, body?: object): Promise<JsonResponse> {
   try {
-    return await apiPost<{ success?: boolean; error?: string }>(path, body);
+    return await apiPost<JsonResponse>(path, body);
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Erreur réseau" };
   }
 }
 
-async function delJson(path: string) {
+async function delJson(path: string): Promise<JsonResponse> {
   try {
-    return await apiDelete<{ success?: boolean; error?: string }>(path);
+    return await apiDelete<JsonResponse>(path);
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Erreur réseau" };
   }
