@@ -296,6 +296,17 @@ async function connectDB() {
                     INDEX idx_token (token_hash)
                 )
             `);
+            // Phase 2 — Discord linking columns
+            for (const ddl of [
+                `ALTER TABLE accounts ADD COLUMN discord_access_token TEXT DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN discord_refresh_token TEXT DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN discord_token_expires_at DATETIME DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN discord_guilds_json MEDIUMTEXT DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN discord_guilds_fetched_at DATETIME DEFAULT NULL`,
+                `ALTER TABLE accounts ADD UNIQUE KEY uniq_discord (discord_id)`,
+            ]) {
+                try { await db.execute(ddl); } catch { /* already exists */ }
+            }
             // Active admin sessions (one row per logged-in browser/device).
             // The SID stays server-side; the admin UI only ever sees `id`.
             await db.execute(`
@@ -600,6 +611,35 @@ app.use((req, res, next) => {
 app.use('/image', express.static(path.join(__dirname, 'image')));
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Synthesize req.user from the linked Discord on the current account.
+// Lets all dashboard routes (which read `req.user.guilds`, `req.user.id`,
+// etc.) work transparently when the user signed in via /account/login
+// rather than via the legacy passport-discord flow.
+app.use(async (req, res, next) => {
+    if (req.user) return next(); // passport already populated
+    if (!req.session?.account?.id) return next();
+    try {
+        const [rows] = await db.execute(
+            `SELECT discord_id, discord_username, discord_avatar, discord_guilds_json
+             FROM accounts WHERE id = ? LIMIT 1`,
+            [req.session.account.id],
+        );
+        const a = rows[0];
+        if (!a || !a.discord_id) return next();
+        let guilds = [];
+        try { guilds = a.discord_guilds_json ? JSON.parse(a.discord_guilds_json) : []; } catch { /* */ }
+        req.user = {
+            id: a.discord_id,
+            username: a.discord_username || '',
+            global_name: a.discord_username || null,
+            avatar: a.discord_avatar || null,
+            discriminator: '0',
+            guilds,
+        };
+    } catch { /* swallow — fall back to anonymous */ }
+    next();
+});
 
 // Global CSRF guard — applies to every state-changing request that carries a
 // session cookie. Skipped for safe methods, the Stripe webhook (signature-
@@ -1477,6 +1517,180 @@ app.get('/api/account/verify-email', async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error('verify-email:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ─── Discord linking (phase 2) ─────────────────────────────────────────
+// The user is logged into a Shardtown account; we redirect them through
+// Discord OAuth (identify+guilds), exchange the code, persist the
+// access/refresh tokens and the cached guild list on their account row.
+const DISCORD_LINK_REDIRECT = (process.env.APP_URL || 'http://localhost:3000') + '/api/account/discord/callback';
+
+function requireAccount(req, res, next) {
+    if (req.session?.account?.id) return next();
+    res.status(401).json({ error: 'Non authentifié' });
+}
+
+app.get('/api/account/discord/link', requireAccount, (req, res) => {
+    if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET) {
+        return res.status(503).send('Discord OAuth non configuré');
+    }
+    const state = crypto.randomBytes(24).toString('hex');
+    req.session.discordLinkState = state;
+    const params = new URLSearchParams({
+        client_id: process.env.CLIENT_ID,
+        redirect_uri: DISCORD_LINK_REDIRECT,
+        response_type: 'code',
+        scope: 'identify guilds',
+        state,
+        prompt: 'consent',
+    });
+    res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
+});
+
+async function fetchDiscordGuildsFor(accessToken) {
+    const r = await axios.get('https://discord.com/api/v10/users/@me/guilds', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        timeout: 8000,
+    });
+    return r.data;
+}
+
+app.get('/api/account/discord/callback', async (req, res) => {
+    if (!req.session?.account?.id) return res.redirect('/account/login');
+    const state = String(req.query.state || '');
+    if (!state || state !== req.session.discordLinkState) {
+        req.session.discordLinkState = null;
+        return res.redirect('/account?linked=error&reason=state');
+    }
+    req.session.discordLinkState = null;
+    const code = String(req.query.code || '');
+    if (!code) return res.redirect('/account?linked=error&reason=code');
+
+    try {
+        // Exchange the code for an access token
+        const tokenRes = await axios.post(
+            'https://discord.com/api/v10/oauth2/token',
+            new URLSearchParams({
+                client_id: process.env.CLIENT_ID,
+                client_secret: process.env.CLIENT_SECRET,
+                grant_type: 'authorization_code',
+                code,
+                redirect_uri: DISCORD_LINK_REDIRECT,
+            }),
+            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 8000 },
+        );
+        const { access_token, refresh_token, expires_in } = tokenRes.data;
+        const meRes = await axios.get('https://discord.com/api/v10/users/@me', {
+            headers: { Authorization: `Bearer ${access_token}` },
+            timeout: 5000,
+        });
+        const me = meRes.data;
+        let guilds = [];
+        try { guilds = await fetchDiscordGuildsFor(access_token); } catch { /* will retry from /account */ }
+
+        // Reject if this Discord account is already linked to a different Shardtown account
+        const [otherRows] = await db.execute(
+            'SELECT id FROM accounts WHERE discord_id = ? AND id <> ? LIMIT 1',
+            [me.id, req.session.account.id],
+        );
+        if (otherRows.length) {
+            return res.redirect('/account?linked=error&reason=already_linked');
+        }
+
+        await db.execute(
+            `UPDATE accounts SET
+                discord_id = ?,
+                discord_username = ?,
+                discord_avatar = ?,
+                discord_linked_at = NOW(),
+                discord_access_token = ?,
+                discord_refresh_token = ?,
+                discord_token_expires_at = DATE_ADD(NOW(), INTERVAL ? SECOND),
+                discord_guilds_json = ?,
+                discord_guilds_fetched_at = NOW()
+             WHERE id = ?`,
+            [
+                me.id,
+                me.username,
+                me.avatar || null,
+                access_token,
+                refresh_token,
+                Math.max(60, parseInt(expires_in, 10) || 0),
+                JSON.stringify(guilds),
+                req.session.account.id,
+            ],
+        );
+        res.redirect('/account?linked=ok');
+    } catch (err) {
+        console.error('discord link callback:', err.response?.data || err.message);
+        res.redirect('/account?linked=error&reason=exchange');
+    }
+});
+
+app.post('/api/account/discord/unlink', requireAccount, async (req, res) => {
+    try {
+        await db.execute(
+            `UPDATE accounts SET
+                discord_id = NULL, discord_username = NULL, discord_avatar = NULL,
+                discord_linked_at = NULL, discord_access_token = NULL,
+                discord_refresh_token = NULL, discord_token_expires_at = NULL,
+                discord_guilds_json = NULL, discord_guilds_fetched_at = NULL
+             WHERE id = ?`,
+            [req.session.account.id],
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error('discord unlink:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Manual refresh of the cached guild list (calls Discord with the
+// stored access token, refreshes if expired)
+app.post('/api/account/discord/refresh-guilds', requireAccount, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, discord_access_token, discord_refresh_token, discord_token_expires_at
+             FROM accounts WHERE id = ? LIMIT 1`,
+            [req.session.account.id],
+        );
+        const a = rows[0];
+        if (!a || !a.discord_access_token) return res.status(400).json({ error: 'Aucun Discord lié' });
+        let token = a.discord_access_token;
+        const expired = a.discord_token_expires_at && new Date(a.discord_token_expires_at) < new Date();
+        if (expired && a.discord_refresh_token) {
+            const refreshed = await axios.post(
+                'https://discord.com/api/v10/oauth2/token',
+                new URLSearchParams({
+                    client_id: process.env.CLIENT_ID,
+                    client_secret: process.env.CLIENT_SECRET,
+                    grant_type: 'refresh_token',
+                    refresh_token: a.discord_refresh_token,
+                }),
+                { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 8000 },
+            );
+            token = refreshed.data.access_token;
+            await db.execute(
+                `UPDATE accounts SET discord_access_token = ?, discord_refresh_token = ?,
+                  discord_token_expires_at = DATE_ADD(NOW(), INTERVAL ? SECOND) WHERE id = ?`,
+                [
+                    refreshed.data.access_token,
+                    refreshed.data.refresh_token,
+                    Math.max(60, parseInt(refreshed.data.expires_in, 10) || 0),
+                    a.id,
+                ],
+            );
+        }
+        const guilds = await fetchDiscordGuildsFor(token);
+        await db.execute(
+            'UPDATE accounts SET discord_guilds_json = ?, discord_guilds_fetched_at = NOW() WHERE id = ?',
+            [JSON.stringify(guilds), a.id],
+        );
+        res.json({ success: true, guilds_count: guilds.length });
+    } catch (err) {
+        console.error('refresh-guilds:', err.response?.data || err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
