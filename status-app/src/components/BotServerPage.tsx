@@ -21,7 +21,8 @@ interface Props {
   botLabel: string;
   botImage: string;
   configRoutePrefix: string;
-  loginPath: string;
+  /** Legacy — no longer used since the unified account login. Kept for callsite compat. */
+  loginPath?: string;
   inviteScopes: string;
   /** Optional modal-based bot picker (ShardGuard) — for now just opens invite directly */
   showBotPicker?: boolean;
@@ -36,7 +37,6 @@ export function BotServerPage({
   botLabel,
   botImage,
   configRoutePrefix,
-  loginPath,
   inviteScopes,
   showBotPicker,
 }: Props) {
@@ -86,13 +86,13 @@ export function BotServerPage({
             {botLabel}
           </h1>
           <p className="text-white/50 text-lg mb-10 leading-relaxed">
-            Connectez-vous avec Discord pour gérer vos serveurs.
+            Connectez-vous à votre compte Shardtown (avec Discord lié) pour gérer vos serveurs.
           </p>
           <a
-            href={`${loginPath}?returnTo=/${botKey}/server`}
-            className="bg-[#5865F2] text-white px-8 py-4 rounded-full font-bold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2"
+            href="/account/login"
+            className="btn-liquid btn-liquid--primary rounded-full px-8 py-4 font-bold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2"
           >
-            Se connecter avec Discord <ArrowRight className="w-4 h-4" />
+            Se connecter <ArrowRight className="w-4 h-4" />
           </a>
         </section>
       </AppLayout>
