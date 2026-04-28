@@ -1346,29 +1346,42 @@ function getMailer() {
     return mailer;
 }
 
-async function sendVerificationEmail(account, link) {
+async function sendVerificationEmail(account, code) {
     const m = getMailer();
-    const subject = 'Vérifie ton adresse Shardtown';
-    const text = `Salut ${account.pseudo},\n\nClique ce lien pour confirmer ton inscription :\n${link}\n\nLien valable 24h.\n\n— Shardtown`;
-    const html = `<p>Salut <b>${account.pseudo}</b>,</p>
-<p>Clique ce lien pour confirmer ton inscription :</p>
-<p><a href="${link}">${link}</a></p>
-<p style="color:#888;font-size:12px">Lien valable 24h.</p>`;
+    const subject = `Ton code Shardtown : ${code}`;
+    const text = `Salut ${account.pseudo},\n\nTon code de vérification Shardtown : ${code}\n\nValable 15 minutes. Si tu n'es pas à l'origine de cette inscription, ignore ce message.\n\n— Shardtown`;
+    const html = `<div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#0a0a0a;color:#fff;padding:40px 20px">
+  <div style="max-width:480px;margin:0 auto;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:40px;text-align:center">
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:800;letter-spacing:-0.02em">Salut ${account.pseudo} 👋</h1>
+    <p style="margin:0 0 28px;color:rgba(255,255,255,0.6);font-size:15px;line-height:1.5">
+      Pour finaliser ton inscription sur Shardtown, entre ce code dans la page de vérification :
+    </p>
+    <div style="font-size:36px;font-weight:800;letter-spacing:0.4em;background:#000;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:24px;margin-bottom:28px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff">${code}</div>
+    <p style="margin:0;color:rgba(255,255,255,0.4);font-size:13px;line-height:1.5">
+      Code valable 15 minutes. Si tu n'es pas à l'origine de cette inscription, ignore ce message.
+    </p>
+  </div>
+  <p style="text-align:center;margin:24px 0 0;color:rgba(255,255,255,0.3);font-size:11px">— L'équipe Shardtown</p>
+</div>`;
     if (!m) {
-        console.warn('[mailer] SMTP non configuré — lien de vérif loggé en console');
-        console.warn(`[mailer] Pour ${account.email}: ${link}`);
+        console.warn('[mailer] SMTP non configuré — code loggé en console');
+        console.warn(`[mailer] Pour ${account.email}: ${code}`);
         return;
     }
     try {
         await m.sendMail({
-            from: process.env.SMTP_FROM || '"Shardtown" <noreply@shardtwn.xyz>',
+            from: process.env.SMTP_FROM || '"Shardtown" <noreply@shardtwn.fr>',
             to: account.email,
             subject, text, html,
         });
     } catch (e) {
         console.error('[mailer]', e.message);
-        console.warn(`[mailer] Fallback log — ${account.email}: ${link}`);
+        console.warn(`[mailer] Fallback log — ${account.email}: ${code}`);
     }
+}
+
+function generateVerificationCode() {
+    return String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
 }
 
 function hashPassword(password, salt) {
@@ -1458,16 +1471,16 @@ app.post('/api/account/signup', accountSignupLimiter, async (req, res) => {
         );
         const accountId = insert.insertId;
 
-        const rawToken = crypto.randomBytes(32).toString('hex');
-        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const code = generateVerificationCode();
+        const tokenHash = crypto.createHash('sha256').update(code).digest('hex');
         await db.execute(
             `INSERT INTO account_tokens (account_id, type, token_hash, expires_at)
-             VALUES (?, 'email_verify', ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
+             VALUES (?, 'email_verify', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))`,
             [accountId, tokenHash],
         );
-        await sendVerificationEmail({ email, pseudo }, `${APP_URL}/account/verify?token=${rawToken}`);
+        await sendVerificationEmail({ email, pseudo }, code);
 
-        res.json({ success: true });
+        res.json({ success: true, pendingVerification: true, email });
     } catch (err) {
         console.error('signup:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
@@ -1496,7 +1509,26 @@ app.post('/api/account/login', accountAuthLimiter, async (req, res) => {
             return res.status(401).json({ error: 'Identifiants invalides' });
         }
         if (!a.email_verified) {
-            return res.status(403).json({ error: 'Email non vérifié — clique le lien envoyé.' });
+            // Générer + envoyer un nouveau code à la volée
+            await db.execute(
+                `UPDATE account_tokens SET used_at = NOW()
+                 WHERE account_id = ? AND type = 'email_verify' AND used_at IS NULL`,
+                [a.id]
+            );
+            const code = generateVerificationCode();
+            const tokenHash = crypto.createHash('sha256').update(code).digest('hex');
+            await db.execute(
+                `INSERT INTO account_tokens (account_id, type, token_hash, expires_at)
+                 VALUES (?, 'email_verify', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))`,
+                [a.id, tokenHash],
+            );
+            try { await sendVerificationEmail(a, code); }
+            catch (e) { console.error('resend on login failed:', e.message); }
+            return res.status(403).json({
+                pendingVerification: true,
+                email: a.email,
+                error: 'Email non vérifié — un nouveau code a été envoyé.'
+            });
         }
         await db.execute('UPDATE accounts SET last_login_at = NOW() WHERE id = ?', [a.id]);
         req.session.regenerate(err => {
@@ -1529,7 +1561,48 @@ app.get('/api/account/me', async (req, res) => {
     }
 });
 
-// Email verification — token comes via URL, consumed once
+// Email verification by 6-digit code (POST { email, code })
+app.post('/api/account/verify-email-code', accountAuthLimiter, async (req, res) => {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const code = String(req.body?.code || '').trim();
+    if (!email) return res.status(400).json({ error: 'Email requis' });
+    if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: 'Code invalide (6 chiffres)' });
+    try {
+        const [accs] = await db.execute(
+            'SELECT id, email, pseudo, email_verified FROM accounts WHERE email = ? LIMIT 1',
+            [email]
+        );
+        const a = accs[0];
+        if (!a) return res.status(400).json({ error: 'Compte introuvable' });
+        if (a.email_verified) return res.status(400).json({ error: 'Email déjà vérifié' });
+
+        const tokenHash = crypto.createHash('sha256').update(code).digest('hex');
+        const [toks] = await db.execute(
+            `SELECT id, expires_at, used_at FROM account_tokens
+             WHERE account_id = ? AND type = 'email_verify' AND token_hash = ? LIMIT 1`,
+            [a.id, tokenHash]
+        );
+        const tok = toks[0];
+        if (!tok) return res.status(401).json({ error: 'Code incorrect' });
+        if (tok.used_at) return res.status(400).json({ error: 'Code déjà utilisé' });
+        if (new Date(tok.expires_at) < new Date()) return res.status(400).json({ error: 'Code expiré' });
+
+        await db.execute('UPDATE accounts SET email_verified = 1, last_login_at = NOW() WHERE id = ?', [a.id]);
+        await db.execute('UPDATE account_tokens SET used_at = NOW() WHERE id = ?', [tok.id]);
+
+        // Connecte directement après vérification
+        req.session.regenerate(err => {
+            if (err) return res.status(500).json({ error: 'Erreur serveur' });
+            req.session.account = { id: a.id, loginAt: Date.now() };
+            res.json({ success: true, account: { id: a.id, email: a.email, pseudo: a.pseudo, email_verified: true } });
+        });
+    } catch (err) {
+        console.error('verify-email-code:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Email verification — token comes via URL, consumed once (legacy)
 app.get('/api/account/verify-email', async (req, res) => {
     const raw = String(req.query.token || '');
     if (!raw) return res.status(400).json({ error: 'Token manquant' });
@@ -2168,14 +2241,20 @@ app.post('/api/account/resend-verification', accountAuthLimiter, async (req, res
         const a = rows[0];
         // Always 200 to avoid email enumeration
         if (!a || a.email_verified) return res.json({ success: true });
-        const rawToken = crypto.randomBytes(32).toString('hex');
-        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        // Invalider les codes précédents pour cet account
+        await db.execute(
+            `UPDATE account_tokens SET used_at = NOW()
+             WHERE account_id = ? AND type = 'email_verify' AND used_at IS NULL`,
+            [a.id]
+        );
+        const code = generateVerificationCode();
+        const tokenHash = crypto.createHash('sha256').update(code).digest('hex');
         await db.execute(
             `INSERT INTO account_tokens (account_id, type, token_hash, expires_at)
-             VALUES (?, 'email_verify', ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
+             VALUES (?, 'email_verify', ?, DATE_ADD(NOW(), INTERVAL 15 MINUTE))`,
             [a.id, tokenHash],
         );
-        await sendVerificationEmail(a, `${APP_URL}/account/verify?token=${rawToken}`);
+        await sendVerificationEmail(a, code);
         res.json({ success: true });
     } catch (err) {
         console.error('resend:', err.message);

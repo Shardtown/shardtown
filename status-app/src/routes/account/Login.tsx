@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  LogIn, AtSign, KeyRound, ArrowRight, ShieldAlert, Eye, EyeOff, Fingerprint, Loader2,
+  AtSign, KeyRound, ArrowRight, ShieldAlert, Eye, EyeOff,
+  Fingerprint, Loader2, Mail, UserPlus,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost } from "@/api/client";
@@ -9,16 +11,84 @@ import { CaptchaBlock } from "@/routes/account/Signup";
 import { OAuthButtons, OrDivider } from "@/components/auth/OAuthButtons";
 import { authenticateWithPasskey } from "@/api/passkey";
 
+type Mode = "login" | "register" | "verify";
+
+interface AuthErrorPayload {
+  error?: string;
+  pendingVerification?: boolean;
+  email?: string;
+}
+
+function extractAuthError(raw: string): AuthErrorPayload {
+  // Try direct JSON
+  try {
+    const j = JSON.parse(raw);
+    if (j && typeof j === "object") return j as AuthErrorPayload;
+  } catch {}
+  // Match "<status> <body>" form thrown by apiPost
+  const m = raw.match(/^\d{3}\s+(.+)$/);
+  if (m) {
+    try {
+      const j = JSON.parse(m[1]);
+      if (j && typeof j === "object") return j as AuthErrorPayload;
+    } catch {}
+    return { error: m[1] };
+  }
+  return { error: raw.length > 200 ? "Erreur serveur" : raw };
+}
+
 export function AccountLogin() {
   const nav = useNavigate();
+  const [params] = useSearchParams();
+  const initialMode: Mode = params.get("mode") === "register" ? "register" : "login";
+
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
+  const [pseudo, setPseudo] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [captcha, setCaptcha] = useState("");
   const [captchaImage, setCaptchaImage] = useState<string | null>(null);
+
+  const [verifyEmail, setVerifyEmail] = useState("");
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const codeRefs = useRef<(HTMLInputElement | null)[]>([]);
+
   const [loading, setLoading] = useState(false);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+
+  async function refreshCaptcha() {
+    setCaptcha("");
+    try {
+      const r = await apiGet<{ image: string }>("/api/account/captcha");
+      setCaptchaImage(r.image);
+    } catch { /* */ }
+  }
+  useEffect(() => { refreshCaptcha(); }, []);
+
+  useEffect(() => {
+    if (mode === "verify") {
+      setTimeout(() => codeRefs.current[0]?.focus(), 200);
+    }
+  }, [mode]);
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setInfo(null);
+    setCode(["", "", "", "", "", ""]);
+  }
+
+  function goToVerify(targetEmail: string, infoMsg?: string) {
+    setVerifyEmail(targetEmail);
+    setMode("verify");
+    setError(null);
+    setInfo(infoMsg ?? null);
+    setCode(["", "", "", "", "", ""]);
+  }
 
   async function loginWithPasskey() {
     if (!identifier.trim()) {
@@ -32,65 +102,158 @@ export function AccountLogin() {
       nav("/account", { replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      // Most cancel paths throw NotAllowedError or AbortError
       if (/NotAllowedError|AbortError|not allowed/i.test(msg)) {
         setError("Authentification annulée.");
       } else {
-        setError(extractError(msg));
+        setError(extractAuthError(msg).error || "Erreur passkey");
       }
     } finally {
       setPasskeyBusy(false);
     }
   }
 
-  async function refreshCaptcha() {
-    setCaptcha("");
-    try {
-      const r = await apiGet<{ image: string }>("/api/account/captcha");
-      setCaptchaImage(r.image);
-    } catch { /* swallow */ }
-  }
-  useEffect(() => { refreshCaptcha(); }, []);
-
-  async function submit(e: React.FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setInfo(null);
     try {
-      await apiPost("/api/account/login", { identifier, password, captcha });
-      nav("/account", { replace: true });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(extractError(msg));
-      refreshCaptcha();
+      if (mode === "login") {
+        try {
+          await apiPost("/api/account/login", { identifier, password, captcha });
+          nav("/account", { replace: true });
+        } catch (err) {
+          const parsed = extractAuthError(err instanceof Error ? err.message : String(err));
+          if (parsed.pendingVerification && parsed.email) {
+            goToVerify(parsed.email, "Cet email n'est pas vérifié. Un nouveau code vient d'être envoyé.");
+            return;
+          }
+          setError(parsed.error || "Erreur");
+          refreshCaptcha();
+        }
+      } else if (mode === "register") {
+        try {
+          await apiPost<{ success: true; email: string }>("/api/account/signup", {
+            email, pseudo, password, captcha,
+          });
+          goToVerify(email, `Code envoyé à ${email}. Vérifie ta boîte mail.`);
+        } catch (err) {
+          const parsed = extractAuthError(err instanceof Error ? err.message : String(err));
+          setError(parsed.error || "Erreur");
+          refreshCaptcha();
+        }
+      } else {
+        const codeStr = code.join("");
+        if (codeStr.length !== 6) {
+          setError("Entre les 6 chiffres du code.");
+          return;
+        }
+        try {
+          await apiPost("/api/account/verify-email-code", {
+            email: verifyEmail,
+            code: codeStr,
+          });
+          nav("/account", { replace: true });
+        } catch (err) {
+          const parsed = extractAuthError(err instanceof Error ? err.message : String(err));
+          setError(parsed.error || "Code incorrect");
+        }
+      }
     } finally {
       setLoading(false);
     }
   }
 
+  async function resendCode() {
+    if (!verifyEmail) return;
+    setError(null);
+    setInfo(null);
+    try {
+      await apiPost("/api/account/resend-verification", { email: verifyEmail });
+      setInfo("Nouveau code envoyé.");
+      setCode(["", "", "", "", "", ""]);
+      codeRefs.current[0]?.focus();
+    } catch {
+      setError("Impossible de renvoyer le code.");
+    }
+  }
+
+  function handleCodeChange(i: number, v: string) {
+    const digit = v.replace(/\D/g, "").slice(0, 1);
+    const next = [...code];
+    next[i] = digit;
+    setCode(next);
+    if (digit && i < 5) codeRefs.current[i + 1]?.focus();
+  }
+  function handleCodeKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !code[i] && i > 0) codeRefs.current[i - 1]?.focus();
+  }
+  function handleCodePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return;
+    e.preventDefault();
+    const next = pasted.split("").concat(["", "", "", "", "", ""]).slice(0, 6);
+    setCode(next);
+    codeRefs.current[Math.min(pasted.length, 5)]?.focus();
+  }
+
+  const eyebrow = mode === "login" ? "Connexion" : mode === "register" ? "Inscription" : "Vérification";
+  const title = mode === "login" ? "Bon retour." : mode === "register" ? "Créer un compte" : "Code envoyé";
+  const subtitle =
+    mode === "login" ? "Email ou pseudo, c'est comme tu veux."
+    : mode === "register" ? "Rejoins Shardtown en quelques secondes."
+    : verifyEmail
+      ? `Entre le code à 6 chiffres reçu à ${verifyEmail}.`
+      : "Entre le code à 6 chiffres reçu par email.";
+
   return (
     <AppLayout>
       <section className="min-h-[78vh] flex items-center justify-center pt-12 pb-24 px-6">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-violet-500/10 border border-violet-500/25 text-violet-300 mb-5 shadow-[0_0_28px_-8px_rgba(139,92,246,0.5)]">
-              <LogIn className="w-6 h-6" />
-            </div>
-            <p className="text-[11px] font-bold tracking-[0.32em] text-violet-300/70 uppercase mb-3">
-              Connexion
+          <motion.div
+            key={`hd-${mode}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="text-center mb-8"
+          >
+            <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-3">
+              {eyebrow}
             </p>
             <h1 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl">
-              Bon retour.
+              {title}
             </h1>
-          </div>
+            <p className="text-white/50 text-sm mt-3">{subtitle}</p>
+          </motion.div>
 
-          <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl p-6 md:p-7 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
-            <div className="mb-5">
-              <h2 className="text-lg font-extrabold tracking-tight">Se connecter</h2>
-              <p className="text-[12px] text-white/50 mt-1">
-                Email ou pseudo, c'est comme tu veux.
-              </p>
-            </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl p-6 md:p-7 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]"
+          >
+            {mode !== "verify" && (
+              <div className="grid grid-cols-2 gap-1 p-1 bg-white/[0.03] rounded-full mb-6">
+                <button
+                  type="button"
+                  onClick={() => switchMode("login")}
+                  className={`py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-colors ${
+                    mode === "login" ? "bg-white text-black" : "text-white/50 hover:text-white"
+                  }`}
+                >
+                  Connexion
+                </button>
+                <button
+                  type="button"
+                  onClick={() => switchMode("register")}
+                  className={`py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-colors ${
+                    mode === "register" ? "bg-white text-black" : "text-white/50 hover:text-white"
+                  }`}
+                >
+                  Inscription
+                </button>
+              </div>
+            )}
 
             {error && (
               <div className="mb-5 p-3 rounded-2xl bg-red-500/10 border border-red-500/25 text-red-300 text-sm font-semibold flex items-start gap-2.5">
@@ -98,117 +261,253 @@ export function AccountLogin() {
                 <span>{error}</span>
               </div>
             )}
-
-            <OAuthButtons verb="Se connecter avec" />
-            <button
-              type="button"
-              onClick={loginWithPasskey}
-              disabled={passkeyBusy || !identifier.trim()}
-              className="mt-2.5 w-full inline-flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white font-bold text-sm hover:bg-white/[0.08] transition-colors disabled:opacity-50"
-              title={!identifier.trim() ? "Renseigne d'abord ton email ou pseudo" : ""}
-            >
-              {passkeyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
-              Clé de sécurité / Passkey
-            </button>
-            <OrDivider label="ou via email" />
-
-            <form onSubmit={submit} className="space-y-4">
-              <div>
-                <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-2">
-                  Email ou pseudo
-                </label>
-                <div className="relative">
-                  <AtSign className="w-4 h-4 text-white/30 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    required
-                    autoComplete="username"
-                    value={identifier}
-                    onChange={e => setIdentifier(e.target.value)}
-                    placeholder="ton@email.com ou ton_pseudo"
-                    className="w-full pl-10 pr-3 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/20 text-sm transition-all"
-                  />
-                </div>
+            {info && !error && (
+              <div className="mb-5 p-3 rounded-2xl bg-blue-500/10 border border-blue-500/25 text-blue-200 text-sm font-semibold flex items-start gap-2.5">
+                <Mail className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{info}</span>
               </div>
+            )}
 
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em]">
-                    Mot de passe
-                  </label>
+            <AnimatePresence mode="wait">
+              {mode === "login" && (
+                <motion.div
+                  key="login"
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <OAuthButtons verb="Se connecter avec" />
                   <button
                     type="button"
-                    onClick={() => alert("Fonctionnalité bientôt disponible")}
-                    className="text-[11px] font-bold text-white/40 hover:text-white transition-colors"
+                    onClick={loginWithPasskey}
+                    disabled={passkeyBusy || !identifier.trim()}
+                    className="mt-2.5 w-full inline-flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white font-bold text-sm hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+                    title={!identifier.trim() ? "Renseigne d'abord ton email ou pseudo" : ""}
                   >
-                    Mot de passe oublié ?
+                    {passkeyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
+                    Clé de sécurité / Passkey
                   </button>
-                </div>
-                <div className="relative">
-                  <KeyRound className="w-4 h-4 text-white/30 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    required
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-10 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/20 text-sm transition-all"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(s => !s)}
-                    aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center"
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
+                  <OrDivider label="ou via email" />
 
-              <CaptchaBlock image={captchaImage} value={captcha} onChange={setCaptcha} onRefresh={refreshCaptcha} />
+                  <form onSubmit={submit} className="space-y-4">
+                    <FieldWithIcon
+                      label="Email ou pseudo"
+                      icon={<AtSign className="w-4 h-4 text-white/30" />}
+                      type="text"
+                      value={identifier}
+                      onChange={setIdentifier}
+                      autoComplete="username"
+                      placeholder="ton@email.com ou ton_pseudo"
+                      required
+                    />
+                    <PasswordField
+                      label="Mot de passe"
+                      value={password}
+                      onChange={setPassword}
+                      show={showPassword}
+                      onToggle={() => setShowPassword(s => !s)}
+                      autoComplete="current-password"
+                    />
+                    <CaptchaBlock image={captchaImage} value={captcha} onChange={setCaptcha} onRefresh={refreshCaptcha} />
+                    <SubmitButton loading={loading} label="Se connecter" />
+                  </form>
+                </motion.div>
+              )}
 
-              <button
-                type="submit"
-                disabled={loading || !captcha.trim()}
-                className="btn-liquid btn-liquid--primary group mt-2 w-full inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-[14px] tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Connexion…" : "Se connecter"}
-                {!loading && <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />}
-              </button>
-            </form>
+              {mode === "register" && (
+                <motion.div
+                  key="register"
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <OAuthButtons verb="S'inscrire avec" />
+                  <OrDivider label="ou via email" />
 
-            <div className="mt-6 pt-5 border-t border-white/[0.06] space-y-3">
-              <p className="text-center text-[12px] text-white/45">
-                Pas encore de compte ?{" "}
-                <Link to="/account/signup" className="text-white hover:underline font-bold">
-                  S'inscrire
-                </Link>
-              </p>
-              <p className="text-[10px] text-white/30 text-center leading-relaxed">
-                En te connectant, tu acceptes nos{" "}
-                <Link to="/terms" className="underline hover:text-white/60">
-                  Conditions Générales
-                </Link>{" "}
-                et notre{" "}
-                <Link to="/privacy" className="underline hover:text-white/60">
-                  Politique de Confidentialité
-                </Link>.
-              </p>
-            </div>
-          </div>
+                  <form onSubmit={submit} className="space-y-4">
+                    <FieldWithIcon
+                      label="Email"
+                      icon={<Mail className="w-4 h-4 text-white/30" />}
+                      type="email"
+                      value={email}
+                      onChange={setEmail}
+                      autoComplete="email"
+                      placeholder="ton@email.com"
+                      required
+                    />
+                    <FieldWithIcon
+                      label="Pseudo"
+                      icon={<UserPlus className="w-4 h-4 text-white/30" />}
+                      type="text"
+                      value={pseudo}
+                      onChange={setPseudo}
+                      autoComplete="username"
+                      placeholder="ton_pseudo"
+                      required
+                    />
+                    <PasswordField
+                      label="Mot de passe"
+                      value={password}
+                      onChange={setPassword}
+                      show={showPassword}
+                      onToggle={() => setShowPassword(s => !s)}
+                      autoComplete="new-password"
+                      placeholder="8 caractères minimum"
+                    />
+                    <CaptchaBlock image={captchaImage} value={captcha} onChange={setCaptcha} onRefresh={refreshCaptcha} />
+                    <SubmitButton loading={loading} label="Créer mon compte" />
+                  </form>
+                </motion.div>
+              )}
+
+              {mode === "verify" && (
+                <motion.div
+                  key="verify"
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <form onSubmit={submit} className="space-y-5">
+                    <div>
+                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3 text-center">
+                        Code à 6 chiffres
+                      </label>
+                      <div className="flex justify-center gap-2 mb-3">
+                        {code.map((d, i) => (
+                          <input
+                            key={i}
+                            ref={el => { codeRefs.current[i] = el; }}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={1}
+                            value={d}
+                            onChange={e => handleCodeChange(i, e.target.value)}
+                            onKeyDown={e => handleCodeKey(i, e)}
+                            onPaste={i === 0 ? handleCodePaste : undefined}
+                            className="w-11 h-14 text-center text-2xl font-bold rounded-xl bg-black/40 border border-white/10 focus:border-white/40 focus:outline-none text-white transition-colors"
+                          />
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={resendCode}
+                        className="block mx-auto text-xs text-white/50 hover:text-white transition-colors"
+                      >
+                        Renvoyer un code
+                      </button>
+                    </div>
+                    <SubmitButton loading={loading} label="Vérifier" />
+                    <button
+                      type="button"
+                      onClick={() => switchMode("login")}
+                      className="w-full text-xs text-white/40 hover:text-white/70 transition-colors"
+                    >
+                      ← Revenir à la connexion
+                    </button>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <p className="text-[10px] text-white/30 text-center leading-relaxed mt-6 pt-5 border-t border-white/[0.06]">
+              En continuant, tu acceptes nos{" "}
+              <Link to="/terms" className="underline hover:text-white/60">Conditions Générales</Link>{" "}
+              et notre{" "}
+              <Link to="/privacy" className="underline hover:text-white/60">Politique de Confidentialité</Link>.
+            </p>
+          </motion.div>
         </div>
       </section>
     </AppLayout>
   );
 }
 
-function extractError(msg: string): string {
-  const m = msg.match(/^\d{3}\s+(.+)$/);
-  if (m) return m[1];
-  try {
-    const j = JSON.parse(msg);
-    if (j.error) return j.error;
-  } catch { /* */ }
-  return msg.length > 200 ? "Erreur serveur" : msg;
+function FieldWithIcon({
+  label, icon, type, value, onChange, required, autoComplete, placeholder,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  type: string;
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+  autoComplete?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-2">
+        {label}
+      </label>
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">{icon}</div>
+        <input
+          type={type}
+          required={required}
+          autoComplete={autoComplete}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full pl-10 pr-3 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/20 text-sm transition-all"
+        />
+      </div>
+    </div>
+  );
+}
+
+function PasswordField({
+  label, value, onChange, show, onToggle, autoComplete, placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  show: boolean;
+  onToggle: () => void;
+  autoComplete?: string;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-2">
+        {label}
+      </label>
+      <div className="relative">
+        <KeyRound className="w-4 h-4 text-white/30 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input
+          type={show ? "text" : "password"}
+          required
+          autoComplete={autoComplete}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder ?? "••••••••"}
+          className="w-full pl-10 pr-10 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/20 text-sm transition-all"
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={show ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06] flex items-center justify-center"
+        >
+          {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
+  return (
+    <button
+      type="submit"
+      disabled={loading}
+      className="btn-liquid btn-liquid--primary group mt-2 w-full inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-[14px] tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {loading ? "Chargement…" : label}
+      {!loading && <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />}
+    </button>
+  );
 }

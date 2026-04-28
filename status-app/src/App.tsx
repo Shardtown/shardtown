@@ -20,7 +20,6 @@ import { AdminGuildDetail } from "@/routes/admin/GuildDetail";
 import { SupportBubble } from "@/components/SupportBubble";
 import { SupportLogin } from "@/routes/support/Login";
 import { SupportPanel } from "@/routes/support/Panel";
-import { Signup } from "@/routes/account/Signup";
 import { AccountLogin } from "@/routes/account/Login";
 import { VerifyEmail } from "@/routes/account/VerifyEmail";
 import { Account } from "@/routes/account/Account";
@@ -62,7 +61,7 @@ export function App() {
           <Route path="/admin/guild/:guildId" element={<AdminGuildDetail />} />
           <Route path="/support/login" element={<SupportLogin />} />
           <Route path="/support" element={<SupportPanel />} />
-          <Route path="/account/signup" element={<Signup />} />
+          <Route path="/account/signup" element={<Navigate to="/account/login?mode=register" replace />} />
           <Route path="/account/login" element={<AccountLogin />} />
           <Route path="/account/verify" element={<VerifyEmail />} />
           <Route path="/account" element={<Account />} />
