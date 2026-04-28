@@ -67,17 +67,20 @@ export function Account() {
   // Surface ?linked=ok / ?linked=error from the OAuth callback
   useEffect(() => {
     const linked = params.get("linked");
-    if (!linked) return;
-    if (linked === "ok") setBanner({ kind: "ok", text: "Discord lié avec succès." });
+    const shardLinked = params.get("shardLinked");
+    if (!linked && !shardLinked) return;
+    const which = shardLinked ? "Shard" : "Shardtown";
+    const okState = (linked || shardLinked) === "ok";
+    if (okState) setBanner({ kind: "ok", text: `${which} lié avec succès.` });
     else {
       const reason = params.get("reason");
       const msg = reason === "already_linked"
-        ? "Ce compte Discord est déjà associé à un autre compte Shardtown."
-        : "La liaison Discord a échoué. Réessaie.";
+        ? `Ce compte ${which} est déjà associé à un autre compte Shardtown.`
+        : `La liaison ${which} a échoué. Réessaie.`;
       setBanner({ kind: "error", text: msg });
     }
     // Clean the URL
-    params.delete("linked"); params.delete("reason");
+    params.delete("linked"); params.delete("shardLinked"); params.delete("reason");
     setParams(params, { replace: true });
   }, [params, setParams]);
 
@@ -87,10 +90,21 @@ export function Account() {
   }
 
   async function unlink() {
-    if (!confirm("Délier ton compte Discord ?")) return;
+    if (!confirm("Délier ton compte Shardtown ?")) return;
     try {
       await apiPost("/api/account/discord/unlink");
-      setBanner({ kind: "ok", text: "Discord délié." });
+      setBanner({ kind: "ok", text: "Shardtown délié." });
+      refresh();
+    } catch {
+      setBanner({ kind: "error", text: "Échec du déliage." });
+    }
+  }
+
+  async function unlinkShard() {
+    if (!confirm("Délier ton compte Shard ?")) return;
+    try {
+      await apiPost("/api/account/shard/unlink");
+      setBanner({ kind: "ok", text: "Shard délié." });
       refresh();
     } catch {
       setBanner({ kind: "error", text: "Échec du déliage." });
@@ -176,7 +190,7 @@ export function Account() {
           />
         </div>
 
-        {/* Discord linking */}
+        {/* Shardtown linking (main Discord app — also covers ShardGuard) */}
         <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-6 md:p-8">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-300">
@@ -184,21 +198,21 @@ export function Account() {
             </div>
             <div>
               <p className="text-[10px] font-bold tracking-[0.22em] text-blue-300/70 uppercase">Intégration</p>
-              <h2 className="text-xl font-extrabold tracking-tight">Discord</h2>
+              <h2 className="text-xl font-extrabold tracking-tight">Shardtown <span className="text-white/40 font-bold text-sm">(ShardGuard)</span></h2>
             </div>
           </div>
 
           {!account.discord_id ? (
             <>
               <p className="text-white/55 text-sm mb-5 max-w-xl">
-                Lie ton compte Discord pour qu'on récupère la liste des serveurs où tu es admin
-                et que tu puisses configurer ShardGuard / Shard.
+                Lie ton compte Shardtown pour qu'on récupère la liste des serveurs où tu es admin
+                et que tu puisses configurer ShardGuard.
               </p>
               <a
                 href="/api/account/discord/link"
                 className="btn-liquid btn-liquid--discord rounded-full px-5 py-3 font-bold text-sm inline-flex items-center gap-2"
               >
-                Lier mon Discord <ArrowRight className="w-4 h-4" />
+                Lier mon compte Shardtown <ArrowRight className="w-4 h-4" />
               </a>
             </>
           ) : (
@@ -249,6 +263,63 @@ export function Account() {
                   <Unplug className="w-3.5 h-3.5" /> Délier
                 </button>
               </div>
+            </>
+          )}
+        </div>
+
+        {/* Shard linking (separate Discord application) */}
+        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-300">
+              <Link2 className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-emerald-300/70 uppercase">Intégration</p>
+              <h2 className="text-xl font-extrabold tracking-tight">Shard</h2>
+            </div>
+          </div>
+
+          {!account.shard_id ? (
+            <>
+              <p className="text-white/55 text-sm mb-5 max-w-xl">
+                Lie ton compte Shard pour configurer le bot Shard sur tes serveurs.
+              </p>
+              <a
+                href="/api/account/shard/link"
+                className="btn-liquid btn-liquid--discord rounded-full px-5 py-3 font-bold text-sm inline-flex items-center gap-2"
+              >
+                Lier mon compte Shard <ArrowRight className="w-4 h-4" />
+              </a>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 mb-5 flex-wrap">
+                {account.shard_avatar ? (
+                  <img
+                    src={`https://cdn.discordapp.com/avatars/${account.shard_id}/${account.shard_avatar}.png?size=128`}
+                    alt=""
+                    className="w-12 h-12 rounded-2xl border border-white/10"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-2xl bg-white/[0.05] border border-white/10 flex items-center justify-center font-bold text-white/40">
+                    {account.shard_username?.[0]?.toUpperCase()}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-base">{account.shard_username}</p>
+                  <p className="text-[11px] text-white/35 font-mono-num">{account.shard_id}</p>
+                </div>
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[11px] font-bold uppercase tracking-widest">
+                  <ShieldCheck className="w-3 h-3" /> Lié
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={unlinkShard}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/25 text-red-300 text-[12px] font-bold hover:bg-red-500/20"
+              >
+                <Unplug className="w-3.5 h-3.5" /> Délier
+              </button>
             </>
           )}
         </div>

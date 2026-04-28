@@ -317,6 +317,15 @@ async function connectDB() {
                 `ALTER TABLE accounts ADD COLUMN oauth_github_username VARCHAR(64) DEFAULT NULL`,
                 `ALTER TABLE accounts ADD UNIQUE KEY uniq_google (oauth_google_id)`,
                 `ALTER TABLE accounts ADD UNIQUE KEY uniq_github (oauth_github_id)`,
+                // Shard bot Discord linking (separate Discord application)
+                `ALTER TABLE accounts ADD COLUMN shard_id VARCHAR(255) DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN shard_username VARCHAR(255) DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN shard_avatar VARCHAR(255) DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN shard_access_token TEXT DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN shard_refresh_token TEXT DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN shard_token_expires_at DATETIME DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN shard_linked_at DATETIME DEFAULT NULL`,
+                `ALTER TABLE accounts ADD UNIQUE KEY uniq_shard (shard_id)`,
             ]) {
                 try { await db.execute(ddl); } catch { /* already exists */ }
             }
@@ -1440,6 +1449,10 @@ function publicAccount(a) {
         oauth_google_email: a.oauth_google_email || null,
         oauth_github_id: a.oauth_github_id || null,
         oauth_github_username: a.oauth_github_username || null,
+        shard_id: a.shard_id || null,
+        shard_username: a.shard_username || null,
+        shard_avatar: a.shard_avatar || null,
+        shard_linked_at: a.shard_linked_at || null,
         created_at: a.created_at,
     };
 }
@@ -1789,6 +1802,109 @@ app.get('/api/account/discord/callback', async (req, res) => {
     } catch (err) {
         console.error('discord link callback:', err.response?.data || err.message);
         res.redirect('/account?linked=error&reason=exchange');
+    }
+});
+
+// ─── Shard bot linking — separate Discord application ───────────────────
+const SHARD_LINK_REDIRECT = (process.env.APP_URL || 'http://localhost:3000') + '/api/account/shard/callback';
+
+app.get('/api/account/shard/link', requireAccount, (req, res) => {
+    if (!process.env.SHARD_CLIENT_ID || !process.env.SHARD_CLIENT_SECRET) {
+        return res.status(503).send('Shard OAuth non configuré');
+    }
+    const state = crypto.randomBytes(24).toString('hex');
+    req.session.shardLinkState = state;
+    const params = new URLSearchParams({
+        client_id: process.env.SHARD_CLIENT_ID,
+        redirect_uri: SHARD_LINK_REDIRECT,
+        response_type: 'code',
+        scope: 'identify',
+        state,
+        prompt: 'consent',
+    });
+    res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
+});
+
+app.get('/api/account/shard/callback', async (req, res) => {
+    if (!req.session?.account?.id) return res.redirect('/account/login');
+    const state = String(req.query.state || '');
+    if (!state || state !== req.session.shardLinkState) {
+        req.session.shardLinkState = null;
+        return res.redirect('/account?shardLinked=error&reason=state');
+    }
+    req.session.shardLinkState = null;
+    const code = String(req.query.code || '');
+    if (!code) return res.redirect('/account?shardLinked=error&reason=code');
+
+    try {
+        const tokenRes = await axios.post(
+            'https://discord.com/api/v10/oauth2/token',
+            new URLSearchParams({
+                client_id: process.env.SHARD_CLIENT_ID,
+                client_secret: process.env.SHARD_CLIENT_SECRET,
+                grant_type: 'authorization_code',
+                code,
+                redirect_uri: SHARD_LINK_REDIRECT,
+            }),
+            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 8000 },
+        );
+        const { access_token, refresh_token, expires_in } = tokenRes.data;
+        const meRes = await axios.get('https://discord.com/api/v10/users/@me', {
+            headers: { Authorization: `Bearer ${access_token}` },
+            timeout: 5000,
+        });
+        const me = meRes.data;
+
+        const [otherRows] = await db.execute(
+            'SELECT id FROM accounts WHERE shard_id = ? AND id <> ? LIMIT 1',
+            [me.id, req.session.account.id],
+        );
+        if (otherRows.length) {
+            return res.redirect('/account?shardLinked=error&reason=already_linked');
+        }
+
+        await db.execute(
+            `UPDATE accounts SET
+                shard_id = ?,
+                shard_username = ?,
+                shard_avatar = ?,
+                shard_linked_at = NOW(),
+                shard_access_token = ?,
+                shard_refresh_token = ?,
+                shard_token_expires_at = DATE_ADD(NOW(), INTERVAL ? SECOND)
+             WHERE id = ?`,
+            [
+                me.id,
+                me.username,
+                me.avatar || null,
+                access_token,
+                refresh_token,
+                Math.max(60, parseInt(expires_in, 10) || 0),
+                req.session.account.id,
+            ],
+        );
+        res.redirect('/account?shardLinked=ok');
+    } catch (err) {
+        console.error('shard link callback:', err.response?.data || err.message);
+        res.redirect('/account?shardLinked=error&reason=exchange');
+    }
+});
+
+app.post('/api/account/shard/unlink', requireAccount, async (req, res) => {
+    try {
+        await db.execute(
+            `UPDATE accounts SET
+                shard_id = NULL, shard_username = NULL, shard_avatar = NULL,
+                shard_linked_at = NULL,
+                shard_access_token = NULL, shard_refresh_token = NULL,
+                shard_token_expires_at = NULL
+             WHERE id = ?`,
+            [req.session.account.id],
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error('shard unlink:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

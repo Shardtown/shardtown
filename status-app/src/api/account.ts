@@ -12,6 +12,10 @@ export interface Account {
   oauth_google_email: string | null;
   oauth_github_id: string | null;
   oauth_github_username: string | null;
+  shard_id: string | null;
+  shard_username: string | null;
+  shard_avatar: string | null;
+  shard_linked_at: string | null;
   created_at: string;
 }
 
