@@ -244,7 +244,7 @@ export function AccountLogin() {
   return (
     <AppLayout>
       <section className="min-h-[78vh] flex items-center justify-center pt-12 pb-24 px-6">
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-3xl">
           <motion.div
             key={`hd-${mode}`}
             initial={{ opacity: 0, y: 20 }}
