@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { apiPost } from "@/api/client";
 import { OAuthButtons, OrDivider } from "@/components/auth/OAuthButtons";
 import { ShardSecure } from "@/components/auth/ShardSecure";
+import { ProgressIndicator } from "@/components/ui/progress-indicator";
 import { authenticateWithPasskey } from "@/api/passkey";
 
 type Mode = "login" | "register" | "verify";
@@ -218,6 +219,14 @@ export function AccountLogin() {
               {title}
             </h1>
             <p className="text-white/50 text-sm mt-3">{subtitle}</p>
+            {mode !== "login" && (
+              <div className="mt-6 flex justify-center">
+                <ProgressIndicator
+                  total={3}
+                  current={mode === "register" ? 1 : 2}
+                />
+              </div>
+            )}
           </motion.div>
 
           <motion.div
