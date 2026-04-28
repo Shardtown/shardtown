@@ -90,14 +90,14 @@ export function OAuthIcons({ label = "Ou continuer avec", onPasskey, passkeyDisa
           aria-label="Continuer avec Google"
           className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
         >
-          <GoogleIcon className="w-3.5 h-3.5" />
+          <GoogleIcon className="w-5 h-5" />
         </a>
         <a
           href="/api/account/oauth/github"
           aria-label="Continuer avec GitHub"
           className="w-7 h-7 rounded-full bg-[#1f2328] text-white border border-white/10 flex items-center justify-center hover:bg-[#2a2e34] transition-colors"
         >
-          <GitHubIcon className="w-3.5 h-3.5" />
+          <GitHubIcon className="w-5 h-5" />
         </a>
         {onPasskey && (
           <button
@@ -110,7 +110,7 @@ export function OAuthIcons({ label = "Ou continuer avec", onPasskey, passkeyDisa
             {passkeyBusy ? (
               <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
             ) : (
-              <FingerprintIcon className="w-3.5 h-3.5" />
+              <FingerprintIcon className="w-5 h-5" />
             )}
           </button>
         )}
