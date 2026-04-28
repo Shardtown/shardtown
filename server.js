@@ -304,6 +304,13 @@ async function connectDB() {
                 `ALTER TABLE accounts ADD COLUMN discord_guilds_json MEDIUMTEXT DEFAULT NULL`,
                 `ALTER TABLE accounts ADD COLUMN discord_guilds_fetched_at DATETIME DEFAULT NULL`,
                 `ALTER TABLE accounts ADD UNIQUE KEY uniq_discord (discord_id)`,
+                // Google + GitHub OAuth identities
+                `ALTER TABLE accounts ADD COLUMN oauth_google_id VARCHAR(64) DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN oauth_google_email VARCHAR(254) DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN oauth_github_id VARCHAR(64) DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN oauth_github_username VARCHAR(64) DEFAULT NULL`,
+                `ALTER TABLE accounts ADD UNIQUE KEY uniq_google (oauth_google_id)`,
+                `ALTER TABLE accounts ADD UNIQUE KEY uniq_github (oauth_github_id)`,
             ]) {
                 try { await db.execute(ddl); } catch { /* already exists */ }
             }
@@ -1371,6 +1378,10 @@ function publicAccount(a) {
         discord_id: a.discord_id || null,
         discord_username: a.discord_username || null,
         discord_avatar: a.discord_avatar || null,
+        oauth_google_id: a.oauth_google_id || null,
+        oauth_google_email: a.oauth_google_email || null,
+        oauth_github_id: a.oauth_github_id || null,
+        oauth_github_username: a.oauth_github_username || null,
         created_at: a.created_at,
     };
 }
@@ -1626,6 +1637,218 @@ app.get('/api/account/discord/callback', async (req, res) => {
     } catch (err) {
         console.error('discord link callback:', err.response?.data || err.message);
         res.redirect('/account?linked=error&reason=exchange');
+    }
+});
+
+// ─── OAuth: Google + GitHub ─────────────────────────────────────────────
+// Two flows: link-while-logged-in, OR sign-in / auto-create-account.
+// Provider profile data is fetched after the token exchange and used
+// for both linking and account creation.
+
+const OAUTH_CONFIGS = {
+    google: {
+        authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenUrl: 'https://oauth2.googleapis.com/token',
+        userinfoUrl: 'https://www.googleapis.com/oauth2/v3/userinfo',
+        scope: 'openid email profile',
+        clientIdEnv: 'GOOGLE_CLIENT_ID',
+        clientSecretEnv: 'GOOGLE_CLIENT_SECRET',
+        idColumn: 'oauth_google_id',
+        labelColumn: 'oauth_google_email',
+        async fetchProfile(accessToken) {
+            const r = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${accessToken}` },
+                timeout: 8000,
+            });
+            return {
+                providerId: String(r.data.sub),
+                email: r.data.email_verified ? r.data.email : null,
+                username: r.data.name || r.data.email?.split('@')[0] || null,
+            };
+        },
+    },
+    github: {
+        authUrl: 'https://github.com/login/oauth/authorize',
+        tokenUrl: 'https://github.com/login/oauth/access_token',
+        userinfoUrl: 'https://api.github.com/user',
+        scope: 'read:user user:email',
+        clientIdEnv: 'GITHUB_CLIENT_ID',
+        clientSecretEnv: 'GITHUB_CLIENT_SECRET',
+        idColumn: 'oauth_github_id',
+        labelColumn: 'oauth_github_username',
+        async fetchProfile(accessToken) {
+            const headers = { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'shardtown', Accept: 'application/vnd.github+json' };
+            const [meRes, emailsRes] = await Promise.all([
+                axios.get('https://api.github.com/user', { headers, timeout: 8000 }),
+                axios.get('https://api.github.com/user/emails', { headers, timeout: 8000, validateStatus: s => s === 200 || s === 401 || s === 403 }),
+            ]);
+            let email = meRes.data.email || null;
+            if (Array.isArray(emailsRes.data)) {
+                const primary = emailsRes.data.find(e => e.primary && e.verified);
+                if (primary) email = primary.email;
+            }
+            return {
+                providerId: String(meRes.data.id),
+                email,
+                username: meRes.data.login || meRes.data.name || null,
+            };
+        },
+    },
+};
+
+function oauthRedirect(provider) {
+    return `${(process.env.APP_URL || 'http://localhost:3000')}/api/account/oauth/${provider}/callback`;
+}
+
+app.get('/api/account/oauth/:provider', (req, res) => {
+    const cfg = OAUTH_CONFIGS[req.params.provider];
+    if (!cfg) return res.status(404).send('Provider inconnu');
+    const clientId = process.env[cfg.clientIdEnv];
+    if (!clientId) return res.status(503).send(`${req.params.provider} OAuth non configuré`);
+
+    const state = crypto.randomBytes(24).toString('hex');
+    req.session.oauthState = { provider: req.params.provider, state };
+    const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: oauthRedirect(req.params.provider),
+        response_type: 'code',
+        scope: cfg.scope,
+        state,
+        ...(req.params.provider === 'google' ? { prompt: 'select_account', access_type: 'online' } : {}),
+    });
+    res.redirect(`${cfg.authUrl}?${params}`);
+});
+
+async function uniquePseudo(seed) {
+    let base = String(seed || '').replace(/[^A-Za-z0-9._-]/g, '').slice(0, 24);
+    if (base.length < 3) base = `user${Date.now().toString().slice(-6)}`;
+    for (let i = 0; i < 200; i++) {
+        const candidate = i === 0 ? base : `${base}${i}`;
+        const [c] = await db.execute('SELECT id FROM accounts WHERE pseudo = ? LIMIT 1', [candidate]);
+        if (!c.length) return candidate;
+    }
+    return `user${Date.now()}`;
+}
+
+app.get('/api/account/oauth/:provider/callback', async (req, res) => {
+    const provider = req.params.provider;
+    const cfg = OAUTH_CONFIGS[provider];
+    if (!cfg) return res.redirect('/account/login?oauth=error&reason=provider');
+    const clientId = process.env[cfg.clientIdEnv];
+    const clientSecret = process.env[cfg.clientSecretEnv];
+    if (!clientId || !clientSecret) return res.redirect('/account/login?oauth=error&reason=config');
+
+    // Verify state
+    const expected = req.session.oauthState;
+    if (!expected || expected.provider !== provider || expected.state !== req.query.state) {
+        req.session.oauthState = null;
+        return res.redirect('/account/login?oauth=error&reason=state');
+    }
+    req.session.oauthState = null;
+    const code = String(req.query.code || '');
+    if (!code) return res.redirect('/account/login?oauth=error&reason=code');
+
+    let profile;
+    try {
+        const tokenRes = await axios.post(
+            cfg.tokenUrl,
+            new URLSearchParams({
+                client_id: clientId,
+                client_secret: clientSecret,
+                grant_type: 'authorization_code',
+                code,
+                redirect_uri: oauthRedirect(provider),
+            }),
+            {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+                timeout: 8000,
+            },
+        );
+        profile = await cfg.fetchProfile(tokenRes.data.access_token);
+    } catch (err) {
+        console.error(`[oauth:${provider}]`, err.response?.data || err.message);
+        return res.redirect('/account/login?oauth=error&reason=exchange');
+    }
+
+    if (!profile.providerId) return res.redirect('/account/login?oauth=error&reason=profile');
+
+    try {
+        // Linking branch
+        if (req.session?.account?.id) {
+            const [other] = await db.execute(
+                `SELECT id FROM accounts WHERE ${cfg.idColumn} = ? AND id <> ? LIMIT 1`,
+                [profile.providerId, req.session.account.id],
+            );
+            if (other.length) return res.redirect(`/account?oauth=${provider}_taken`);
+            await db.execute(
+                `UPDATE accounts SET ${cfg.idColumn} = ?, ${cfg.labelColumn} = ? WHERE id = ?`,
+                [profile.providerId, profile.email || profile.username || null, req.session.account.id],
+            );
+            return res.redirect(`/account?oauth=${provider}_linked`);
+        }
+
+        // Sign-in branch
+        let [matchByProvider] = await db.execute(
+            `SELECT * FROM accounts WHERE ${cfg.idColumn} = ? LIMIT 1`,
+            [profile.providerId],
+        );
+        let account = matchByProvider[0];
+
+        if (!account && profile.email) {
+            const [matchByEmail] = await db.execute(
+                'SELECT * FROM accounts WHERE email = ? LIMIT 1',
+                [profile.email.toLowerCase()],
+            );
+            if (matchByEmail.length) {
+                account = matchByEmail[0];
+                await db.execute(
+                    `UPDATE accounts SET ${cfg.idColumn} = ?, ${cfg.labelColumn} = ? WHERE id = ?`,
+                    [profile.providerId, profile.email || profile.username || null, account.id],
+                );
+            }
+        }
+
+        if (!account) {
+            // Create a new account, auto-verified email since the provider already verified it
+            if (!profile.email) return res.redirect('/account/login?oauth=error&reason=no_email');
+            const pseudo = await uniquePseudo(profile.username || profile.email.split('@')[0]);
+            const salt = crypto.randomBytes(16).toString('hex');
+            const randomPwd = crypto.randomBytes(32).toString('hex');
+            const hash = hashPassword(randomPwd, salt);
+            const [insert] = await db.execute(
+                `INSERT INTO accounts
+                  (email, email_verified, pseudo, password_hash, password_salt, ${cfg.idColumn}, ${cfg.labelColumn})
+                 VALUES (?, 1, ?, ?, ?, ?, ?)`,
+                [profile.email.toLowerCase(), pseudo, hash, salt, profile.providerId, profile.email || profile.username || null],
+            );
+            const [rows] = await db.execute('SELECT * FROM accounts WHERE id = ?', [insert.insertId]);
+            account = rows[0];
+        }
+
+        await db.execute('UPDATE accounts SET last_login_at = NOW() WHERE id = ?', [account.id]);
+        req.session.regenerate(err => {
+            if (err) return res.redirect('/account/login?oauth=error&reason=session');
+            req.session.account = { id: account.id, loginAt: Date.now() };
+            res.redirect('/account');
+        });
+    } catch (err) {
+        console.error(`[oauth:${provider}] post-token`, err.message);
+        res.redirect('/account/login?oauth=error&reason=db');
+    }
+});
+
+app.post('/api/account/oauth/:provider/unlink', requireAccount, async (req, res) => {
+    const cfg = OAUTH_CONFIGS[req.params.provider];
+    if (!cfg) return res.status(404).json({ error: 'Provider inconnu' });
+    try {
+        await db.execute(
+            `UPDATE accounts SET ${cfg.idColumn} = NULL, ${cfg.labelColumn} = NULL WHERE id = ?`,
+            [req.session.account.id],
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error('oauth unlink:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 

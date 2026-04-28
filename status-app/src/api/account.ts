@@ -8,6 +8,10 @@ export interface Account {
   discord_id: string | null;
   discord_username: string | null;
   discord_avatar: string | null;
+  oauth_google_id: string | null;
+  oauth_google_email: string | null;
+  oauth_github_id: string | null;
+  oauth_github_username: string | null;
   created_at: string;
 }
 
