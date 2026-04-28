@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   User, Mail, AtSign, LogOut, ShieldCheck, ShieldAlert, Calendar,
-  Link2, RefreshCw, Server, ArrowRight, Unplug,
+  Link2, RefreshCw, Server, ArrowRight, Unplug, Fingerprint, Plus, Trash2, Loader2,
 } from "lucide-react";
+import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@/api/passkey";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost } from "@/api/client";
 import type { Account as AccountT } from "@/api/account";
@@ -16,6 +17,8 @@ export function Account() {
   const [refreshing, setRefreshing] = useState(false);
   const [guildsCount, setGuildsCount] = useState<number | null>(null);
   const [banner, setBanner] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [passkeys, setPasskeys] = useState<PasskeyRow[] | null>(null);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -30,6 +33,36 @@ export function Account() {
   }, [nav]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  const refreshPasskeys = useCallback(async () => {
+    try { setPasskeys(await listPasskeys()); } catch { setPasskeys([]); }
+  }, []);
+  useEffect(() => { refreshPasskeys(); }, [refreshPasskeys]);
+
+  async function addPasskey() {
+    const name = prompt("Nom de cette clé (ex: MacBook, iPhone, YubiKey) :", "");
+    if (!name) return;
+    setPasskeyBusy(true);
+    try {
+      await registerPasskey(name.trim() || "Clé sans nom");
+      setBanner({ kind: "ok", text: "Clé enregistrée." });
+      refreshPasskeys();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setBanner({ kind: "error", text: /NotAllowedError|AbortError/.test(msg) ? "Enregistrement annulé." : "Échec : " + msg });
+    } finally { setPasskeyBusy(false); }
+  }
+
+  async function removePasskey(id: number, name: string) {
+    if (!confirm(`Supprimer la clé « ${name} » ?`)) return;
+    try {
+      await deletePasskey(id);
+      setBanner({ kind: "ok", text: "Clé supprimée." });
+      refreshPasskeys();
+    } catch {
+      setBanner({ kind: "error", text: "Échec de la suppression." });
+    }
+  }
 
   // Surface ?linked=ok / ?linked=error from the OAuth callback
   useEffect(() => {
@@ -258,6 +291,61 @@ export function Account() {
               }}
             />
           </div>
+        </div>
+
+        {/* Passkeys */}
+        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-300">
+              <Fingerprint className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-emerald-300/70 uppercase">Sécurité</p>
+              <h2 className="text-xl font-extrabold tracking-tight">Clés de sécurité (passkeys)</h2>
+            </div>
+            <button
+              type="button"
+              onClick={addPasskey}
+              disabled={passkeyBusy}
+              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[12px] font-bold hover:bg-emerald-500/20 disabled:opacity-50"
+            >
+              {passkeyBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+              Ajouter
+            </button>
+          </div>
+          <p className="text-white/55 text-sm mb-5 max-w-xl">
+            Connecte-toi avec Touch ID, Windows Hello, ou une clé physique (YubiKey, Titan…) au lieu de ton mot de passe.
+          </p>
+          {passkeys === null ? (
+            <p className="text-white/30 text-xs uppercase tracking-widest font-bold py-3">Chargement…</p>
+          ) : passkeys.length === 0 ? (
+            <p className="text-white/30 text-xs uppercase tracking-widest font-bold py-3">Aucune clé enregistrée</p>
+          ) : (
+            <div className="space-y-2">
+              {passkeys.map(p => (
+                <div key={p.id} className="flex items-center gap-3 p-3 rounded-2xl border border-white/[0.06] bg-white/[0.02]">
+                  <div className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-white/55 shrink-0">
+                    <Fingerprint className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm truncate">{p.name}</p>
+                    <p className="text-[11px] text-white/35 font-mono-num">
+                      {p.transports || "—"} · ajoutée {new Date(p.created_at).toLocaleDateString("fr-FR")}
+                      {p.last_used_at && <> · utilisée {new Date(p.last_used_at).toLocaleDateString("fr-FR")}</>}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePasskey(p.id, p.name)}
+                    aria-label="Supprimer"
+                    className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/15 flex items-center justify-center shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </AppLayout>

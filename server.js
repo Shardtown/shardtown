@@ -14,6 +14,12 @@ const { rateLimit } = require('express-rate-limit');
 const Stripe = require('stripe');
 const nodemailer = require('nodemailer');
 const { CaptchaGenerator } = require('captcha-canvas');
+const {
+    generateRegistrationOptions,
+    verifyRegistrationResponse,
+    generateAuthenticationOptions,
+    verifyAuthenticationResponse,
+} = require('@simplewebauthn/server');
 
 // Fisher-Yates with crypto.randomInt — replaces the buggy
 // `arr.sort(() => Math.random() - 0.5)` shuffle, which is both
@@ -314,6 +320,21 @@ async function connectDB() {
             ]) {
                 try { await db.execute(ddl); } catch { /* already exists */ }
             }
+            // Passkeys / WebAuthn credentials
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS account_passkeys (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    account_id INT NOT NULL,
+                    credential_id VARCHAR(512) NOT NULL UNIQUE,
+                    public_key TEXT NOT NULL,
+                    counter BIGINT NOT NULL DEFAULT 0,
+                    name VARCHAR(64) NOT NULL,
+                    transports VARCHAR(64) DEFAULT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_used_at DATETIME DEFAULT NULL,
+                    INDEX idx_account (account_id)
+                )
+            `);
             // Active admin sessions (one row per logged-in browser/device).
             // The SID stays server-side; the admin UI only ever sees `id`.
             await db.execute(`
@@ -1849,6 +1870,226 @@ app.post('/api/account/oauth/:provider/unlink', requireAccount, async (req, res)
     } catch (err) {
         console.error('oauth unlink:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ─── Passkeys / WebAuthn ────────────────────────────────────────────────
+function rpInfo() {
+    const url = new URL(process.env.APP_URL || 'http://localhost:3000');
+    return { rpName: 'Shardtown', rpID: url.hostname, expectedOrigin: url.origin };
+}
+
+function b64uToBuffer(b64u) {
+    const b64 = b64u.replace(/-/g, '+').replace(/_/g, '/').padEnd(b64u.length + (4 - b64u.length % 4) % 4, '=');
+    return Buffer.from(b64, 'base64');
+}
+function bufferToB64u(buf) {
+    return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// List + delete (account-scoped)
+app.get('/api/account/passkeys', requireAccount, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, name, transports, created_at, last_used_at
+             FROM account_passkeys WHERE account_id = ? ORDER BY id DESC`,
+            [req.session.account.id],
+        );
+        res.json({ passkeys: rows });
+    } catch (err) {
+        console.error('list passkeys:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.delete('/api/account/passkeys/:id', requireAccount, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
+    try {
+        await db.execute('DELETE FROM account_passkeys WHERE id = ? AND account_id = ?', [id, req.session.account.id]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('delete passkey:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ── Registration ──
+app.post('/api/account/passkey/register-begin', requireAccount, async (req, res) => {
+    try {
+        const [accs] = await db.execute('SELECT id, pseudo, email FROM accounts WHERE id = ?', [req.session.account.id]);
+        const a = accs[0];
+        if (!a) return res.status(404).json({ error: 'Compte introuvable' });
+
+        const [existing] = await db.execute(
+            'SELECT credential_id, transports FROM account_passkeys WHERE account_id = ?',
+            [a.id],
+        );
+        const { rpName, rpID } = rpInfo();
+        const options = await generateRegistrationOptions({
+            rpName,
+            rpID,
+            userName: a.email,
+            userID: Buffer.from(`shardtown:${a.id}`),
+            userDisplayName: a.pseudo,
+            attestationType: 'none',
+            authenticatorSelection: {
+                residentKey: 'preferred',
+                userVerification: 'preferred',
+            },
+            excludeCredentials: existing.map(c => ({
+                id: c.credential_id,
+                transports: c.transports ? c.transports.split(',') : undefined,
+            })),
+        });
+        req.session.passkeyRegChallenge = options.challenge;
+        res.json(options);
+    } catch (err) {
+        console.error('passkey register begin:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/api/account/passkey/register-complete', requireAccount, async (req, res) => {
+    const expectedChallenge = req.session.passkeyRegChallenge;
+    if (!expectedChallenge) return res.status(400).json({ error: 'Pas de challenge en cours' });
+    req.session.passkeyRegChallenge = null;
+
+    const name = String(req.body?.name || '').trim().slice(0, 64) || 'Clé sans nom';
+    const response = req.body?.response;
+    if (!response) return res.status(400).json({ error: 'Réponse manquante' });
+
+    try {
+        const { rpID, expectedOrigin } = rpInfo();
+        const verification = await verifyRegistrationResponse({
+            response,
+            expectedChallenge,
+            expectedOrigin,
+            expectedRPID: rpID,
+            requireUserVerification: false,
+        });
+        if (!verification.verified || !verification.registrationInfo) {
+            return res.status(400).json({ error: 'Vérification échouée' });
+        }
+        const { credential, credentialBackedUp } = verification.registrationInfo;
+        const credentialID = credential.id;
+        const credentialPublicKey = credential.publicKey;
+        const counter = credential.counter ?? 0;
+        const transports = (response.response?.transports || []).filter(Boolean).join(',') || null;
+
+        await db.execute(
+            `INSERT INTO account_passkeys
+              (account_id, credential_id, public_key, counter, name, transports)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+                req.session.account.id,
+                typeof credentialID === 'string' ? credentialID : bufferToB64u(credentialID),
+                bufferToB64u(credentialPublicKey),
+                counter,
+                name,
+                transports,
+            ],
+        );
+        res.json({ success: true, backed_up: !!credentialBackedUp });
+    } catch (err) {
+        console.error('passkey register complete:', err.message);
+        res.status(500).json({ error: err.message || 'Erreur serveur' });
+    }
+});
+
+// ── Authentication ──
+// User supplies their identifier so we can scope allowed credentials.
+app.post('/api/account/passkey/auth-begin', accountAuthLimiter, async (req, res) => {
+    const identifier = String(req.body?.identifier || '').trim().toLowerCase();
+    if (!identifier) return res.status(400).json({ error: 'Identifiant requis' });
+    try {
+        const [accs] = await db.execute(
+            'SELECT id FROM accounts WHERE email = ? OR pseudo = ? LIMIT 1',
+            [identifier, identifier],
+        );
+        const a = accs[0];
+        // Always 200 with a generic challenge to avoid user enumeration
+        const { rpID } = rpInfo();
+        let allowCredentials = [];
+        if (a) {
+            const [creds] = await db.execute(
+                'SELECT credential_id, transports FROM account_passkeys WHERE account_id = ?',
+                [a.id],
+            );
+            allowCredentials = creds.map(c => ({
+                id: c.credential_id,
+                transports: c.transports ? c.transports.split(',') : undefined,
+            }));
+        }
+        const options = await generateAuthenticationOptions({
+            rpID,
+            allowCredentials,
+            userVerification: 'preferred',
+        });
+        req.session.passkeyAuthChallenge = { challenge: options.challenge, accountId: a?.id || null };
+        res.json(options);
+    } catch (err) {
+        console.error('passkey auth begin:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/api/account/passkey/auth-complete', accountAuthLimiter, async (req, res) => {
+    const stored = req.session.passkeyAuthChallenge;
+    if (!stored?.challenge) return res.status(400).json({ error: 'Pas de challenge en cours' });
+    req.session.passkeyAuthChallenge = null;
+
+    const response = req.body?.response;
+    if (!response?.id) return res.status(400).json({ error: 'Réponse manquante' });
+
+    try {
+        const [creds] = await db.execute(
+            `SELECT p.id, p.account_id, p.credential_id, p.public_key, p.counter, p.transports
+             FROM account_passkeys p WHERE p.credential_id = ? LIMIT 1`,
+            [response.id],
+        );
+        const cred = creds[0];
+        if (!cred) return res.status(401).json({ error: 'Clé inconnue' });
+        if (stored.accountId && stored.accountId !== cred.account_id) {
+            return res.status(401).json({ error: 'Clé non autorisée' });
+        }
+
+        const { rpID, expectedOrigin } = rpInfo();
+        const verification = await verifyAuthenticationResponse({
+            response,
+            expectedChallenge: stored.challenge,
+            expectedOrigin,
+            expectedRPID: rpID,
+            credential: {
+                id: cred.credential_id,
+                publicKey: b64uToBuffer(cred.public_key),
+                counter: Number(cred.counter) || 0,
+                transports: cred.transports ? cred.transports.split(',') : undefined,
+            },
+            requireUserVerification: false,
+        });
+        if (!verification.verified) return res.status(401).json({ error: 'Vérification échouée' });
+
+        const newCounter = verification.authenticationInfo?.newCounter ?? cred.counter;
+        await db.execute(
+            'UPDATE account_passkeys SET counter = ?, last_used_at = NOW() WHERE id = ?',
+            [newCounter, cred.id],
+        );
+
+        const [accs] = await db.execute('SELECT * FROM accounts WHERE id = ?', [cred.account_id]);
+        const account = accs[0];
+        if (!account) return res.status(401).json({ error: 'Compte introuvable' });
+        if (!account.email_verified) return res.status(403).json({ error: 'Email non vérifié' });
+
+        await db.execute('UPDATE accounts SET last_login_at = NOW() WHERE id = ?', [account.id]);
+        req.session.regenerate(err => {
+            if (err) return res.status(500).json({ error: 'Erreur serveur' });
+            req.session.account = { id: account.id, loginAt: Date.now() };
+            res.json({ account: publicAccount(account) });
+        });
+    } catch (err) {
+        console.error('passkey auth complete:', err.message);
+        res.status(500).json({ error: err.message || 'Erreur serveur' });
     }
 });
 

@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
-  LogIn, AtSign, KeyRound, ArrowRight, ShieldAlert, Eye, EyeOff,
+  LogIn, AtSign, KeyRound, ArrowRight, ShieldAlert, Eye, EyeOff, Fingerprint, Loader2,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost } from "@/api/client";
 import { CaptchaBlock } from "@/routes/account/Signup";
 import { OAuthButtons, OrDivider } from "@/components/auth/OAuthButtons";
+import { authenticateWithPasskey } from "@/api/passkey";
 
 export function AccountLogin() {
   const nav = useNavigate();
@@ -16,7 +17,31 @@ export function AccountLogin() {
   const [captcha, setCaptcha] = useState("");
   const [captchaImage, setCaptchaImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function loginWithPasskey() {
+    if (!identifier.trim()) {
+      setError("Renseigne ton email ou pseudo pour utiliser une clé de sécurité.");
+      return;
+    }
+    setPasskeyBusy(true);
+    setError(null);
+    try {
+      await authenticateWithPasskey(identifier.trim());
+      nav("/account", { replace: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Most cancel paths throw NotAllowedError or AbortError
+      if (/NotAllowedError|AbortError|not allowed/i.test(msg)) {
+        setError("Authentification annulée.");
+      } else {
+        setError(extractError(msg));
+      }
+    } finally {
+      setPasskeyBusy(false);
+    }
+  }
 
   async function refreshCaptcha() {
     setCaptcha("");
@@ -75,6 +100,16 @@ export function AccountLogin() {
             )}
 
             <OAuthButtons verb="Se connecter avec" />
+            <button
+              type="button"
+              onClick={loginWithPasskey}
+              disabled={passkeyBusy || !identifier.trim()}
+              className="mt-2.5 w-full inline-flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white font-bold text-sm hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+              title={!identifier.trim() ? "Renseigne d'abord ton email ou pseudo" : ""}
+            >
+              {passkeyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
+              Clé de sécurité / Passkey
+            </button>
             <OrDivider label="ou via email" />
 
             <form onSubmit={submit} className="space-y-4">
