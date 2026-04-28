@@ -69,7 +69,7 @@ export function Account() {
     const linked = params.get("linked");
     const shardLinked = params.get("shardLinked");
     if (!linked && !shardLinked) return;
-    const which = shardLinked ? "Shard" : "Shardtown";
+    const which = shardLinked ? "Shard" : "ShardGuard";
     const okState = (linked || shardLinked) === "ok";
     if (okState) setBanner({ kind: "ok", text: `${which} lié avec succès.` });
     else {
@@ -90,10 +90,10 @@ export function Account() {
   }
 
   async function unlink() {
-    if (!confirm("Délier ton compte Shardtown ?")) return;
+    if (!confirm("Délier ton compte ShardGuard ?")) return;
     try {
       await apiPost("/api/account/discord/unlink");
-      setBanner({ kind: "ok", text: "Shardtown délié." });
+      setBanner({ kind: "ok", text: "ShardGuard délié." });
       refresh();
     } catch {
       setBanner({ kind: "error", text: "Échec du déliage." });
@@ -184,7 +184,7 @@ export function Account() {
           <Tile icon={Calendar} label="Inscrit le" value={new Date(account.created_at).toLocaleDateString("fr-FR")} />
           <Tile
             icon={User}
-            label="Discord"
+            label="ShardGuard"
             value={account.discord_username ? `${account.discord_username}` : "Non lié"}
             muted={!account.discord_username}
           />
@@ -198,21 +198,21 @@ export function Account() {
             </div>
             <div>
               <p className="text-[10px] font-bold tracking-[0.22em] text-blue-300/70 uppercase">Intégration</p>
-              <h2 className="text-xl font-extrabold tracking-tight">Shardtown <span className="text-white/40 font-bold text-sm">(ShardGuard)</span></h2>
+              <h2 className="text-xl font-extrabold tracking-tight">ShardGuard</h2>
             </div>
           </div>
 
           {!account.discord_id ? (
             <>
               <p className="text-white/55 text-sm mb-5 max-w-xl">
-                Lie ton compte Shardtown pour qu'on récupère la liste des serveurs où tu es admin
-                et que tu puisses configurer ShardGuard.
+                Lie ton compte ShardGuard pour qu'on récupère la liste des serveurs où tu es admin
+                et que tu puisses configurer le bot.
               </p>
               <a
                 href="/api/account/discord/link"
                 className="btn-liquid btn-liquid--discord rounded-full px-5 py-3 font-bold text-sm inline-flex items-center gap-2"
               >
-                Lier mon compte Shardtown <ArrowRight className="w-4 h-4" />
+                Lier mon compte ShardGuard <ArrowRight className="w-4 h-4" />
               </a>
             </>
           ) : (
