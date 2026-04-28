@@ -43,29 +43,7 @@ export function OAuthButtons({ verb = "Continuer avec" }: Props) {
   );
 }
 
-function FingerprintIcon({ className = "w-4 h-4" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12 10a3 3 0 0 0-3 3" />
-      <path d="M5.2 14.5C4.4 13.7 4 12.4 4 11a8 8 0 0 1 14.7-4.5" />
-      <path d="M2 14a14 14 0 0 0 1.5 5" />
-      <path d="M5 19c.5 1 1 1.5 1.8 2.5" />
-      <path d="M12 5a7 7 0 0 1 7 7c0 .8-.1 1.6-.3 2.4" />
-      <path d="M16.7 19.6c-.6 1.2-1.4 2-2.7 2.4" />
-      <path d="M12 22a10 10 0 0 1-1.5-2c-.5-.7-1-1.5-1.4-2.4" />
-      <path d="M12 13a4 4 0 0 1 4 4c0 2-.6 3.5-1.5 4.5" />
-    </svg>
-  );
-}
+import { Fingerprint } from "lucide-react";
 
 interface IconsProps {
   label?: string;
@@ -110,7 +88,7 @@ export function OAuthIcons({ label = "Ou continuer avec", onPasskey, passkeyDisa
             {passkeyBusy ? (
               <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
             ) : (
-              <FingerprintIcon className="w-5 h-5" />
+              <Fingerprint className="w-5 h-5" strokeWidth={2.2} />
             )}
           </button>
         )}
