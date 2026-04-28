@@ -12,6 +12,8 @@ const mysql = require('mysql2/promise');
 const crypto = require('crypto');
 const { rateLimit } = require('express-rate-limit');
 const Stripe = require('stripe');
+const nodemailer = require('nodemailer');
+const { CaptchaGenerator } = require('captcha-canvas');
 
 // Fisher-Yates with crypto.randomInt — replaces the buggy
 // `arr.sort(() => Math.random() - 0.5)` shuffle, which is both
@@ -257,6 +259,41 @@ async function connectDB() {
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     INDEX idx_created (created_at),
                     INDEX idx_action (action)
+                )
+            `);
+            // Shardtown user accounts (separate from admin / Discord OAuth).
+            // Email + pseudo + scrypt-hashed password. Discord can be
+            // linked in a follow-up PR (columns reserved here so the
+            // schema doesn't churn later).
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS accounts (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    email VARCHAR(254) NOT NULL UNIQUE,
+                    email_verified TINYINT NOT NULL DEFAULT 0,
+                    pseudo VARCHAR(32) NOT NULL UNIQUE,
+                    password_hash VARCHAR(256) NOT NULL,
+                    password_salt VARCHAR(64) NOT NULL,
+                    discord_id VARCHAR(255) DEFAULT NULL,
+                    discord_username VARCHAR(255) DEFAULT NULL,
+                    discord_avatar VARCHAR(255) DEFAULT NULL,
+                    discord_linked_at DATETIME DEFAULT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_login_at DATETIME DEFAULT NULL,
+                    INDEX idx_pseudo (pseudo),
+                    INDEX idx_discord (discord_id)
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS account_tokens (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    account_id INT NOT NULL,
+                    type ENUM('email_verify', 'password_reset') NOT NULL,
+                    token_hash CHAR(64) NOT NULL UNIQUE,
+                    expires_at DATETIME NOT NULL,
+                    used_at DATETIME DEFAULT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_account_type (account_id, type),
+                    INDEX idx_token (token_hash)
                 )
             `);
             // Active admin sessions (one row per logged-in browser/device).
@@ -1219,6 +1256,251 @@ app.post('/api/admin/support/keys/:id/revoke', checkAdmin, async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error('admin revoke key:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ─── Shardtown accounts (email + pseudo + password) ───────────────────
+const APP_URL = process.env.APP_URL || 'http://localhost:3000';
+
+let mailer = null;
+function getMailer() {
+    if (mailer) return mailer;
+    if (!process.env.SMTP_HOST) return null;
+    mailer = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT, 10) || 587,
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: process.env.SMTP_USER
+            ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+            : undefined,
+    });
+    return mailer;
+}
+
+async function sendVerificationEmail(account, link) {
+    const m = getMailer();
+    const subject = 'Vérifie ton adresse Shardtown';
+    const text = `Salut ${account.pseudo},\n\nClique ce lien pour confirmer ton inscription :\n${link}\n\nLien valable 24h.\n\n— Shardtown`;
+    const html = `<p>Salut <b>${account.pseudo}</b>,</p>
+<p>Clique ce lien pour confirmer ton inscription :</p>
+<p><a href="${link}">${link}</a></p>
+<p style="color:#888;font-size:12px">Lien valable 24h.</p>`;
+    if (!m) {
+        console.warn('[mailer] SMTP non configuré — lien de vérif loggé en console');
+        console.warn(`[mailer] Pour ${account.email}: ${link}`);
+        return;
+    }
+    try {
+        await m.sendMail({
+            from: process.env.SMTP_FROM || '"Shardtown" <noreply@shardtwn.xyz>',
+            to: account.email,
+            subject, text, html,
+        });
+    } catch (e) {
+        console.error('[mailer]', e.message);
+        console.warn(`[mailer] Fallback log — ${account.email}: ${link}`);
+    }
+}
+
+function hashPassword(password, salt) {
+    return crypto.scryptSync(String(password), salt, 64).toString('hex');
+}
+
+function newCaptcha() {
+    const cg = new CaptchaGenerator({ height: 100, width: 280 });
+    cg.setBackground();
+    cg.setDecoy({ opacity: 0.5, total: 12 });
+    cg.setTrace();
+    cg.setCaptcha({ size: 50 });
+    const buffer = cg.generateSync();
+    const text = cg.text;
+    return { dataUrl: `data:image/png;base64,${buffer.toString('base64')}`, answer: text };
+}
+
+const accountAuthLimiter = rateLimit({ windowMs: 60_000, max: 10, standardHeaders: true, legacyHeaders: false });
+const accountSignupLimiter = rateLimit({ windowMs: 15 * 60_000, max: 5, standardHeaders: true, legacyHeaders: false });
+
+function publicAccount(a) {
+    if (!a) return null;
+    return {
+        id: a.id,
+        email: a.email,
+        email_verified: !!a.email_verified,
+        pseudo: a.pseudo,
+        discord_id: a.discord_id || null,
+        discord_username: a.discord_username || null,
+        discord_avatar: a.discord_avatar || null,
+        created_at: a.created_at,
+    };
+}
+
+// Captcha — issues an image + an opaque ID; the answer is stashed in
+// the session and consumed once on signup/login. New call replaces any
+// previous captcha for this session.
+app.get('/api/account/captcha', (req, res) => {
+    const c = newCaptcha();
+    req.session.captcha = {
+        answer: c.answer,
+        expiresAt: Date.now() + 5 * 60_000,
+    };
+    res.json({ image: c.dataUrl });
+});
+
+function consumeCaptcha(req, submitted) {
+    const c = req.session.captcha;
+    if (!c) return false;
+    if (Date.now() > c.expiresAt) { req.session.captcha = null; return false; }
+    const ok = String(submitted || '').trim().toLowerCase() === String(c.answer || '').toLowerCase();
+    req.session.captcha = null;
+    return ok;
+}
+
+// Signup
+app.post('/api/account/signup', accountSignupLimiter, async (req, res) => {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const pseudo = String(req.body?.pseudo || '').trim();
+    const password = String(req.body?.password || '');
+    const captcha = String(req.body?.captcha || '');
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
+        return res.status(400).json({ error: 'Email invalide' });
+    if (!/^[A-Za-z0-9._-]{3,32}$/.test(pseudo))
+        return res.status(400).json({ error: 'Pseudo : 3-32 caractères, lettres/chiffres/._-' });
+    if (password.length < 8 || password.length > 200)
+        return res.status(400).json({ error: 'Mot de passe : 8 caractères minimum' });
+    if (!consumeCaptcha(req, captcha))
+        return res.status(400).json({ error: 'Captcha incorrect ou expiré' });
+
+    try {
+        const [byEmail] = await db.execute('SELECT id FROM accounts WHERE email = ? LIMIT 1', [email]);
+        if (byEmail.length) return res.status(409).json({ error: 'Email déjà utilisé' });
+        const [byPseudo] = await db.execute('SELECT id FROM accounts WHERE pseudo = ? LIMIT 1', [pseudo]);
+        if (byPseudo.length) return res.status(409).json({ error: 'Pseudo déjà pris' });
+
+        const salt = crypto.randomBytes(16).toString('hex');
+        const hash = hashPassword(password, salt);
+        const [insert] = await db.execute(
+            `INSERT INTO accounts (email, pseudo, password_hash, password_salt) VALUES (?, ?, ?, ?)`,
+            [email, pseudo, hash, salt],
+        );
+        const accountId = insert.insertId;
+
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        await db.execute(
+            `INSERT INTO account_tokens (account_id, type, token_hash, expires_at)
+             VALUES (?, 'email_verify', ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
+            [accountId, tokenHash],
+        );
+        await sendVerificationEmail({ email, pseudo }, `${APP_URL}/account/verify?token=${rawToken}`);
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('signup:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Login
+app.post('/api/account/login', accountAuthLimiter, async (req, res) => {
+    const identifier = String(req.body?.identifier || '').trim().toLowerCase(); // email or pseudo
+    const password = String(req.body?.password || '');
+    const captcha = String(req.body?.captcha || '');
+    if (!identifier || !password) return res.status(400).json({ error: 'Identifiants requis' });
+    if (!consumeCaptcha(req, captcha)) return res.status(400).json({ error: 'Captcha incorrect ou expiré' });
+
+    try {
+        const [rows] = await db.execute(
+            `SELECT * FROM accounts WHERE email = ? OR pseudo = ? LIMIT 1`,
+            [identifier, identifier],
+        );
+        const a = rows[0];
+        if (!a) return res.status(401).json({ error: 'Identifiants invalides' });
+        const test = hashPassword(password, a.password_salt);
+        const stored = Buffer.from(a.password_hash, 'hex');
+        const computed = Buffer.from(test, 'hex');
+        if (stored.length !== computed.length || !crypto.timingSafeEqual(stored, computed)) {
+            return res.status(401).json({ error: 'Identifiants invalides' });
+        }
+        if (!a.email_verified) {
+            return res.status(403).json({ error: 'Email non vérifié — clique le lien envoyé.' });
+        }
+        await db.execute('UPDATE accounts SET last_login_at = NOW() WHERE id = ?', [a.id]);
+        req.session.regenerate(err => {
+            if (err) return res.status(500).json({ error: 'Erreur serveur' });
+            req.session.account = { id: a.id, loginAt: Date.now() };
+            res.json({ account: publicAccount(a) });
+        });
+    } catch (err) {
+        console.error('login:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/api/account/logout', (req, res) => {
+    if (req.session) req.session.account = null;
+    req.session.destroy(() => res.json({ success: true }));
+});
+
+app.get('/api/account/me', async (req, res) => {
+    if (!req.session?.account?.id) return res.json({ account: null });
+    try {
+        const [rows] = await db.execute('SELECT * FROM accounts WHERE id = ? LIMIT 1', [req.session.account.id]);
+        if (!rows[0]) {
+            req.session.account = null;
+            return res.json({ account: null });
+        }
+        res.json({ account: publicAccount(rows[0]) });
+    } catch {
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Email verification — token comes via URL, consumed once
+app.get('/api/account/verify-email', async (req, res) => {
+    const raw = String(req.query.token || '');
+    if (!raw) return res.status(400).json({ error: 'Token manquant' });
+    try {
+        const tokenHash = crypto.createHash('sha256').update(raw).digest('hex');
+        const [rows] = await db.execute(
+            `SELECT t.id, t.account_id, t.expires_at, t.used_at FROM account_tokens t
+             WHERE t.token_hash = ? AND t.type = 'email_verify' LIMIT 1`,
+            [tokenHash],
+        );
+        const tok = rows[0];
+        if (!tok) return res.status(400).json({ error: 'Token invalide' });
+        if (tok.used_at) return res.status(400).json({ error: 'Token déjà utilisé' });
+        if (new Date(tok.expires_at) < new Date()) return res.status(400).json({ error: 'Token expiré' });
+        await db.execute('UPDATE accounts SET email_verified = 1 WHERE id = ?', [tok.account_id]);
+        await db.execute('UPDATE account_tokens SET used_at = NOW() WHERE id = ?', [tok.id]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('verify-email:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Re-send verification email if the user lost it
+app.post('/api/account/resend-verification', accountAuthLimiter, async (req, res) => {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ error: 'Email requis' });
+    try {
+        const [rows] = await db.execute('SELECT id, email, pseudo, email_verified FROM accounts WHERE email = ? LIMIT 1', [email]);
+        const a = rows[0];
+        // Always 200 to avoid email enumeration
+        if (!a || a.email_verified) return res.json({ success: true });
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        await db.execute(
+            `INSERT INTO account_tokens (account_id, type, token_hash, expires_at)
+             VALUES (?, 'email_verify', ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
+            [a.id, tokenHash],
+        );
+        await sendVerificationEmail(a, `${APP_URL}/account/verify?token=${rawToken}`);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('resend:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
