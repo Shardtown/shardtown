@@ -21,12 +21,7 @@ export function VerifyEmail() {
   }, [token]);
 
   return (
-    <AppLayout noBackground>
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute -top-32 left-[18%] w-[600px] h-[600px] rounded-full blur-3xl bg-emerald-500/12" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60" />
-      </div>
-
+    <AppLayout>
       <section className="min-h-[78vh] flex items-center justify-center pt-12 pb-24 px-6">
         <div className="w-full max-w-md text-center">
           {state === "loading" && (
