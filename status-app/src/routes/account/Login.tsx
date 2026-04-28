@@ -6,6 +6,7 @@ import {
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost } from "@/api/client";
 import { CaptchaBlock } from "@/routes/account/Signup";
+import { OAuthButtons, OrDivider } from "@/components/auth/OAuthButtons";
 
 export function AccountLogin() {
   const nav = useNavigate();
@@ -72,6 +73,9 @@ export function AccountLogin() {
                 <span>{error}</span>
               </div>
             )}
+
+            <OAuthButtons verb="Se connecter avec" />
+            <OrDivider label="ou via email" />
 
             <form onSubmit={submit} className="space-y-4">
               <div>

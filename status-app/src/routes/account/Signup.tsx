@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { UserPlus, Mail, Lock, AtSign, RefreshCw, ArrowRight, ShieldAlert, ShieldCheck } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost } from "@/api/client";
+import { OAuthButtons, OrDivider } from "@/components/auth/OAuthButtons";
 
 export function Signup() {
   const nav = useNavigate();
@@ -93,6 +94,10 @@ export function Signup() {
                 <span>{error}</span>
               </div>
             )}
+
+            <OAuthButtons verb="S'inscrire avec" />
+            <OrDivider label="ou via email" />
+
             <form onSubmit={submit} className="flex flex-col gap-4">
               <Field icon={<Mail className="w-4 h-4" />} label="Email">
                 <input

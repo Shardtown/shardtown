@@ -219,8 +219,81 @@ export function Account() {
             </>
           )}
         </div>
+
+        {/* External logins (Google + GitHub) */}
+        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-300">
+              <Link2 className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-violet-300/70 uppercase">Identifiants externes</p>
+              <h2 className="text-xl font-extrabold tracking-tight">Connexions tierces</h2>
+            </div>
+          </div>
+          <p className="text-white/55 text-sm mb-5 max-w-xl">
+            Lie un compte Google ou GitHub pour te connecter en un clic.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <ExternalLogin
+              name="Google"
+              linked={!!account.oauth_google_id}
+              label={account.oauth_google_email}
+              hrefLink="/api/account/oauth/google"
+              onUnlink={async () => {
+                if (!confirm("Délier Google ?")) return;
+                await apiPost("/api/account/oauth/google/unlink").catch(() => {});
+                refresh();
+              }}
+            />
+            <ExternalLogin
+              name="GitHub"
+              linked={!!account.oauth_github_id}
+              label={account.oauth_github_username}
+              hrefLink="/api/account/oauth/github"
+              onUnlink={async () => {
+                if (!confirm("Délier GitHub ?")) return;
+                await apiPost("/api/account/oauth/github/unlink").catch(() => {});
+                refresh();
+              }}
+            />
+          </div>
+        </div>
       </section>
     </AppLayout>
+  );
+}
+
+function ExternalLogin({
+  name, linked, label, hrefLink, onUnlink,
+}: { name: string; linked: boolean; label: string | null; hrefLink: string; onUnlink: () => void }) {
+  return (
+    <div className={`rounded-2xl border p-4 ${linked ? "bg-emerald-500/[0.04] border-emerald-500/20" : "bg-white/[0.02] border-white/[0.06]"}`}>
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-sm">{name}</p>
+          <p className={`text-[11px] truncate ${linked ? "text-emerald-300/80" : "text-white/35"}`}>
+            {linked ? (label || "Lié") : "Non lié"}
+          </p>
+        </div>
+        {linked ? (
+          <button
+            type="button"
+            onClick={onUnlink}
+            className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-[11px] font-bold hover:bg-red-500/15"
+          >
+            Délier
+          </button>
+        ) : (
+          <a
+            href={hrefLink}
+            className="px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] font-bold hover:bg-white/[0.1]"
+          >
+            Lier
+          </a>
+        )}
+      </div>
+    </div>
   );
 }
 
