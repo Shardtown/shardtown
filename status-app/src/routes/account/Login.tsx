@@ -44,6 +44,7 @@ export function AccountLogin() {
 
   const [mode, setMode] = useState<Mode>(initialMode);
   const [subStep, setSubStep] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
   const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
   const [pseudo, setPseudo] = useState("");
@@ -73,6 +74,7 @@ export function AccountLogin() {
   function switchMode(next: Mode) {
     setMode(next);
     setSubStep(0);
+    setDirection(1);
     setError(null);
     setInfo(null);
     setCode(["", "", "", "", "", ""]);
@@ -87,25 +89,33 @@ export function AccountLogin() {
     setCode(["", "", "", "", "", ""]);
   }
 
-  const TOTAL_LOGIN_STEPS = 2;
-  const TOTAL_REGISTER_STEPS = 3;
+  const TOTAL_LOGIN_STEPS = 3; // identifier → password → ShardSecure
+  const TOTAL_REGISTER_STEPS = 4; // email → pseudo → password → ShardSecure
   function goNext() {
     setError(null);
     const max = mode === "login" ? TOTAL_LOGIN_STEPS - 1 : TOTAL_REGISTER_STEPS - 1;
-    if (subStep < max) setSubStep(subStep + 1);
+    if (subStep < max) {
+      setDirection(1);
+      setSubStep(subStep + 1);
+    }
   }
   function goBack() {
     setError(null);
-    if (subStep > 0) setSubStep(subStep - 1);
+    if (subStep > 0) {
+      setDirection(-1);
+      setSubStep(subStep - 1);
+    }
   }
   function canAdvance(): boolean {
     if (mode === "login") {
       if (subStep === 0) return identifier.trim().length > 0;
+      if (subStep === 1) return password.length >= 1;
       return false;
     }
     if (mode === "register") {
       if (subStep === 0) return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
       if (subStep === 1) return /^[A-Za-z0-9._-]{3,32}$/.test(pseudo.trim());
+      if (subStep === 2) return password.length >= 8;
       return false;
     }
     return false;
@@ -113,6 +123,7 @@ export function AccountLogin() {
   const isLastSubStep =
     (mode === "login" && subStep === TOTAL_LOGIN_STEPS - 1) ||
     (mode === "register" && subStep === TOTAL_REGISTER_STEPS - 1);
+  const canSubmit = isLastSubStep && shardSecure.length > 0;
 
   async function loginWithPasskey() {
     if (!identifier.trim()) {
@@ -250,14 +261,14 @@ export function AccountLogin() {
             <p className="text-white/50 text-sm mt-3">{subtitle}</p>
             {mode === "login" && (
               <div className="mt-6 flex justify-center">
-                <ProgressIndicator total={2} current={subStep + 1} />
+                <ProgressIndicator total={3} current={subStep + 1} />
               </div>
             )}
             {(mode === "register" || mode === "verify") && (
               <div className="mt-6 flex justify-center">
                 <ProgressIndicator
-                  total={4}
-                  current={mode === "verify" ? 4 : subStep + 1}
+                  total={5}
+                  current={mode === "verify" ? 5 : subStep + 1}
                 />
               </div>
             )}
@@ -319,17 +330,25 @@ export function AccountLogin() {
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (!isLastSubStep && canAdvance()) goNext();
-                      else if (isLastSubStep) submit(e);
+                      else if (isLastSubStep && canSubmit) submit(e);
                     }}
                     className="space-y-4"
                   >
-                    <div className="relative overflow-hidden">
-                      <motion.div
-                        key={`${mode}-${subStep}`}
-                        initial={{ opacity: 0, x: 60 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                      >
+                    <div className="relative overflow-hidden min-h-[88px]">
+                      <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+                        <motion.div
+                          key={`${mode}-${subStep}`}
+                          custom={direction}
+                          variants={{
+                            enter: (dir: number) => ({ x: dir * 80, opacity: 0 }),
+                            center: { x: 0, opacity: 1 },
+                            exit: (dir: number) => ({ x: dir * -80, opacity: 0 }),
+                          }}
+                          initial="enter"
+                          animate="center"
+                          exit="exit"
+                          transition={{ x: { type: "spring", stiffness: 320, damping: 32 }, opacity: { duration: 0.2 } }}
+                        >
                           {mode === "login" && subStep === 0 && (
                             <FieldWithIcon
                               label="Email ou pseudo"
@@ -345,18 +364,19 @@ export function AccountLogin() {
                           )}
 
                           {mode === "login" && subStep === 1 && (
-                            <div className="space-y-4">
-                              <PasswordField
-                                label="Mot de passe"
-                                value={password}
-                                onChange={setPassword}
-                                show={showPassword}
-                                onToggle={() => setShowPassword(s => !s)}
-                                autoComplete="current-password"
-                                autoFocus
-                              />
-                              <ShardSecure token={shardSecure} onChange={setShardSecure} />
-                            </div>
+                            <PasswordField
+                              label="Mot de passe"
+                              value={password}
+                              onChange={setPassword}
+                              show={showPassword}
+                              onToggle={() => setShowPassword(s => !s)}
+                              autoComplete="current-password"
+                              autoFocus
+                            />
+                          )}
+
+                          {mode === "login" && subStep === 2 && (
+                            <ShardSecure token={shardSecure} onChange={setShardSecure} />
                           )}
 
                           {mode === "register" && subStep === 0 && (
@@ -388,21 +408,23 @@ export function AccountLogin() {
                           )}
 
                           {mode === "register" && subStep === 2 && (
-                            <div className="space-y-4">
-                              <PasswordField
-                                label="Mot de passe"
-                                value={password}
-                                onChange={setPassword}
-                                show={showPassword}
-                                onToggle={() => setShowPassword(s => !s)}
-                                autoComplete="new-password"
-                                placeholder="8 caractères minimum"
-                                autoFocus
-                              />
-                              <ShardSecure token={shardSecure} onChange={setShardSecure} />
-                            </div>
+                            <PasswordField
+                              label="Mot de passe"
+                              value={password}
+                              onChange={setPassword}
+                              show={showPassword}
+                              onToggle={() => setShowPassword(s => !s)}
+                              autoComplete="new-password"
+                              placeholder="8 caractères minimum"
+                              autoFocus
+                            />
                           )}
-                      </motion.div>
+
+                          {mode === "register" && subStep === 3 && (
+                            <ShardSecure token={shardSecure} onChange={setShardSecure} />
+                          )}
+                        </motion.div>
+                      </AnimatePresence>
                     </div>
 
                     <div className="flex gap-2 pt-1">
@@ -427,6 +449,7 @@ export function AccountLogin() {
                       ) : (
                         <SubmitButton
                           loading={loading}
+                          disabled={!canSubmit}
                           label={mode === "login" ? "Se connecter" : "Créer mon compte"}
                         />
                       )}
@@ -587,11 +610,11 @@ function PasswordField({
   );
 }
 
-function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
+function SubmitButton({ loading, label, disabled }: { loading: boolean; label: string; disabled?: boolean }) {
   return (
     <button
       type="submit"
-      disabled={loading}
+      disabled={loading || disabled}
       className="btn-liquid btn-liquid--primary group flex-1 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-[14px] tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {loading ? "Chargement…" : label}

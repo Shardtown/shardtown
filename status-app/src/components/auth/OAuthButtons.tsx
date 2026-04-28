@@ -62,20 +62,20 @@ export function OAuthIcons({ label = "Ou continuer avec", onPasskey, passkeyDisa
           {label}
         </span>
       )}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 md:gap-3">
         <a
           href="/api/account/oauth/google"
           aria-label="Continuer avec Google"
-          className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
+          className="w-7 h-7 md:w-11 md:h-11 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
         >
-          <GoogleIcon className="w-5 h-5" />
+          <GoogleIcon className="w-5 h-5 md:w-7 md:h-7" />
         </a>
         <a
           href="/api/account/oauth/github"
           aria-label="Continuer avec GitHub"
-          className="w-7 h-7 rounded-full bg-[#1f2328] text-white border border-white/10 flex items-center justify-center hover:bg-[#2a2e34] transition-colors"
+          className="w-7 h-7 md:w-11 md:h-11 rounded-full bg-[#1f2328] text-white border border-white/10 flex items-center justify-center hover:bg-[#2a2e34] transition-colors"
         >
-          <GitHubIcon className="w-5 h-5" />
+          <GitHubIcon className="w-5 h-5 md:w-7 md:h-7" />
         </a>
         {onPasskey && (
           <button
@@ -83,12 +83,12 @@ export function OAuthIcons({ label = "Ou continuer avec", onPasskey, passkeyDisa
             onClick={onPasskey}
             disabled={passkeyDisabled || passkeyBusy}
             aria-label="Se connecter avec une clé de sécurité"
-            className="w-7 h-7 rounded-full bg-white/[0.04] border border-white/10 text-white flex items-center justify-center hover:bg-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-7 h-7 md:w-11 md:h-11 rounded-full bg-white/[0.04] border border-white/10 text-white flex items-center justify-center hover:bg-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {passkeyBusy ? (
-              <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              <span className="w-3 h-3 md:w-4 md:h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
             ) : (
-              <Fingerprint className="w-5 h-5" strokeWidth={2.2} />
+              <Fingerprint className="w-5 h-5 md:w-7 md:h-7" strokeWidth={2.2} />
             )}
           </button>
         )}
