@@ -170,7 +170,7 @@ export function Header() {
               <>
                 {user && (
                   <Link
-                    to="/dashboard"
+                    to="/account"
                     className={`hidden md:flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 ${pillBase} ${pillSurface} hover:bg-white/[0.08]`}
                   >
                     <img
@@ -184,10 +184,10 @@ export function Header() {
                   </Link>
                 )}
                 <Link
-                  to={user ? "/dashboard" : "/account/login"}
+                  to={user ? "/account" : "/account/login"}
                   className="btn-liquid btn-liquid--primary group inline-flex items-center gap-1.5 rounded-full pl-5 pr-4 py-2.5 font-bold text-[13px] tracking-tight"
                 >
-                  <span className="relative">{user ? "Dashboard" : "Connexion"}</span>
+                  <span className="relative">{user ? "Mon compte" : "Connexion"}</span>
                   <svg
                     className="relative w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5"
                     viewBox="0 0 24 24"
@@ -271,7 +271,7 @@ export function Header() {
             )}
             {user && !isAdmin && (
               <Link
-                to="/dashboard"
+                to="/account"
                 onClick={() => setMobileOpen(false)}
                 className="mt-2 flex items-center gap-2.5 px-3 py-2.5 bg-white/[0.06] border border-white/10 rounded-2xl"
               >

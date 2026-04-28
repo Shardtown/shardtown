@@ -798,7 +798,31 @@ const SPA_DIST = path.join(__dirname, 'status-app', 'dist');
 app.use('/assets', express.static(path.join(SPA_DIST, 'assets'), { maxAge: '1y', immutable: true }));
 
 // Lightweight session info for the React app
-app.get('/api/me', (req, res) => {
+app.get('/api/me', async (req, res) => {
+    // Prefer the new accounts session (email/password / OAuth)
+    if (req.session?.account?.id && db) {
+        try {
+            const [rows] = await db.execute(
+                'SELECT id, email, pseudo FROM accounts WHERE id = ? LIMIT 1',
+                [req.session.account.id]
+            );
+            const a = rows[0];
+            if (a) {
+                return res.json({
+                    user: {
+                        id: a.id,
+                        username: a.pseudo,
+                        global_name: a.pseudo,
+                        avatar: null,
+                        discriminator: null,
+                    }
+                });
+            }
+            // Stale session pointing to deleted account
+            req.session.account = null;
+        } catch { /* fall through */ }
+    }
+    // Legacy Discord passport user
     if (!req.user) return res.json({ user: null });
     res.json({
         user: {
