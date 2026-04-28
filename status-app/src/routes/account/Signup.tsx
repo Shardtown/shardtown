@@ -43,8 +43,7 @@ export function Signup() {
 
   if (done) {
     return (
-      <AppLayout noBackground>
-        <Aurora />
+      <AppLayout>
         <section className="min-h-[78vh] flex items-center justify-center pt-12 pb-24 px-6">
           <div className="w-full max-w-md text-center">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 mb-7 shadow-[0_0_28px_-8px_rgba(16,185,129,0.5)]">
@@ -69,8 +68,7 @@ export function Signup() {
   }
 
   return (
-    <AppLayout noBackground>
-      <Aurora />
+    <AppLayout>
       <section className="min-h-[78vh] flex items-center justify-center pt-12 pb-24 px-6">
         <div className="w-full max-w-md">
           <div className="text-center mb-10">
@@ -203,16 +201,6 @@ export function CaptchaBlock({
         placeholder="Recopie le texte"
         className="w-full px-3 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:outline-none text-white placeholder:text-white/20 text-sm font-mono-num"
       />
-    </div>
-  );
-}
-
-function Aurora() {
-  return (
-    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-      <div className="absolute -top-32 left-[18%] w-[600px] h-[600px] rounded-full blur-3xl bg-blue-500/12" />
-      <div className="absolute top-1/3 right-[12%] w-[480px] h-[480px] rounded-full blur-3xl bg-violet-500/10" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60" />
     </div>
   );
 }
