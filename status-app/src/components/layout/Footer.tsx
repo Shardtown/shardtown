@@ -14,6 +14,7 @@ export function Footer() {
             <span className="font-bold tracking-tight text-sm uppercase">Shardtown</span>
           </Link>
           <div className="flex flex-wrap justify-center gap-6 md:gap-8">
+            <Link to="/account/login" className="text-xs font-bold text-white/30 hover:text-white transition-colors">Connexion</Link>
             <Link to="/status" className="text-xs font-bold text-white/30 hover:text-white transition-colors">Statut</Link>
             <Link to="/terms" className="text-xs font-bold text-white/30 hover:text-white transition-colors">Conditions Générales</Link>
             <Link to="/privacy" className="text-xs font-bold text-white/30 hover:text-white transition-colors">Politique de Confidentialité</Link>
