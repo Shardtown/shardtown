@@ -1873,29 +1873,13 @@ const loginRateLimiter = rateLimit({
     message: 'Trop de tentatives de connexion. Réessayez plus tard.'
 });
 
-app.get('/login', loginRateLimiter, (req, res, next) => {
-    if (req.query.returnTo && isSafeRedirect(req.query.returnTo)) {
-        req.session.returnTo = req.query.returnTo;
-    }
-    next();
-}, passport.authenticate('discord'));
-app.get('/callback', loginRateLimiter, passport.authenticate('discord', {
-    failureRedirect: '/'
-}), (req, res) => {
-    const returnTo = isSafeRedirect(req.session.returnTo) ? req.session.returnTo : '/shardguard/server';
-    delete req.session.returnTo;
-    const user = req.user;
-    req.session.regenerate((err) => {
-        if (err) return res.redirect('/');
-        req.login(user, (err2) => {
-            if (err2) return res.redirect('/');
-            res.redirect(returnTo);
-        });
-    });
-});
-
+// Legacy Discord-only login is removed — visitors must register a
+// Shardtown account at /account/signup and link Discord from /account.
+// Kept as redirects for any old bookmark or email link.
+app.get('/login', (req, res) => res.redirect('/account/login'));
+app.get('/callback', (req, res) => res.redirect('/account/login'));
 app.get('/logout', (req, res) => {
-    req.logout(() => res.redirect('/'));
+    req.logout?.(() => req.session.destroy(() => res.redirect('/')));
 });
 
 // Migrated to React SPA

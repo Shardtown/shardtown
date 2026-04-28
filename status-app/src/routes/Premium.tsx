@@ -352,13 +352,13 @@ export function Premium() {
                   <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
                     <Lock className="w-5 h-5" />
                   </div>
-                  <p className="text-white/70">Connecte-toi avec Discord pour activer Premium sur ton serveur.</p>
+                  <p className="text-white/70">Connecte-toi à ton compte Shardtown (avec Discord lié) pour activer Premium sur ton serveur.</p>
                 </div>
                 <a
-                  href="/login?returnTo=/premium"
-                  className="btn-liquid btn-liquid--discord rounded-full px-6 py-3 font-bold text-sm inline-flex items-center justify-center"
+                  href="/account/login"
+                  className="btn-liquid btn-liquid--primary rounded-full px-6 py-3 font-bold text-sm inline-flex items-center justify-center"
                 >
-                  Se connecter avec Discord
+                  Se connecter
                 </a>
               </div>
             ) : loading ? (
