@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiPost } from "@/api/client";
-import { OAuthButtons, OrDivider } from "@/components/auth/OAuthButtons";
+import { OAuthIcons } from "@/components/auth/OAuthButtons";
 import { ShardSecure } from "@/components/auth/ShardSecure";
 import { ProgressIndicator } from "@/components/ui/progress-indicator";
 import { authenticateWithPasskey } from "@/api/passkey";
@@ -315,23 +315,17 @@ export function AccountLogin() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {subStep === 0 && (
-                    <>
-                      <OAuthButtons verb={mode === "login" ? "Se connecter avec" : "S'inscrire avec"} />
-                      {mode === "login" && (
-                        <button
-                          type="button"
-                          onClick={loginWithPasskey}
-                          disabled={passkeyBusy || !identifier.trim()}
-                          className="mt-2.5 w-full inline-flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white font-bold text-sm hover:bg-white/[0.08] transition-colors disabled:opacity-50"
-                          title={!identifier.trim() ? "Renseigne d'abord ton email ou pseudo" : ""}
-                        >
-                          {passkeyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
-                          Clé de sécurité / Passkey
-                        </button>
-                      )}
-                      <OrDivider label="ou via email" />
-                    </>
+                  {mode === "login" && subStep === 0 && (
+                    <button
+                      type="button"
+                      onClick={loginWithPasskey}
+                      disabled={passkeyBusy || !identifier.trim()}
+                      className="mb-4 w-full inline-flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white font-bold text-sm hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+                      title={!identifier.trim() ? "Renseigne d'abord ton email ou pseudo" : ""}
+                    >
+                      {passkeyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
+                      Clé de sécurité / Passkey
+                    </button>
                   )}
 
                   <form
@@ -451,6 +445,12 @@ export function AccountLogin() {
                       )}
                     </div>
                   </form>
+
+                  {subStep === 0 && (
+                    <div className="mt-6 pt-5 border-t border-white/[0.06]">
+                      <OAuthIcons label={mode === "login" ? "Ou se connecter avec" : "Ou s'inscrire avec"} />
+                    </div>
+                  )}
                 </motion.div>
               )}
 

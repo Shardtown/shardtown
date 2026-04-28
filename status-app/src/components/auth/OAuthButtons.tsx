@@ -43,6 +43,35 @@ export function OAuthButtons({ verb = "Continuer avec" }: Props) {
   );
 }
 
+/** Icon-only variant — affiche juste les logos en ligne */
+export function OAuthIcons({ label = "Ou continuer avec" }: { label?: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      {label && (
+        <span className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">
+          {label}
+        </span>
+      )}
+      <div className="flex items-center gap-3">
+        <a
+          href="/api/account/oauth/google"
+          aria-label="Continuer avec Google"
+          className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
+        >
+          <GoogleIcon className="w-5 h-5" />
+        </a>
+        <a
+          href="/api/account/oauth/github"
+          aria-label="Continuer avec GitHub"
+          className="w-11 h-11 rounded-full bg-[#1f2328] text-white border border-white/10 flex items-center justify-center hover:bg-[#2a2e34] transition-colors"
+        >
+          <GitHubIcon className="w-5 h-5" />
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export function OrDivider({ label = "ou" }: { label?: string }) {
   return (
     <div className="relative my-5">
