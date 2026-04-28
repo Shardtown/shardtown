@@ -2267,6 +2267,7 @@ app.post('/api/account/discord/refresh-guilds', requireAccount, async (req, res)
 });
 
 // Re-send verification email if the user lost it
+const RESEND_COOLDOWN_MS = 60_000;
 app.post('/api/account/resend-verification', accountAuthLimiter, async (req, res) => {
     const email = String(req.body?.email || '').trim().toLowerCase();
     if (!email) return res.status(400).json({ error: 'Email requis' });
@@ -2275,6 +2276,22 @@ app.post('/api/account/resend-verification', accountAuthLimiter, async (req, res
         const a = rows[0];
         // Always 200 to avoid email enumeration
         if (!a || a.email_verified) return res.json({ success: true });
+
+        // Cooldown : refuse si un code a été émis il y a moins de 60s
+        const [last] = await db.execute(
+            `SELECT created_at FROM account_tokens
+             WHERE account_id = ? AND type = 'email_verify'
+             ORDER BY id DESC LIMIT 1`,
+            [a.id]
+        );
+        if (last[0]) {
+            const elapsed = Date.now() - new Date(last[0].created_at).getTime();
+            if (elapsed < RESEND_COOLDOWN_MS) {
+                const wait = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+                return res.status(429).json({ error: `Patiente ${wait}s avant un nouveau code.`, retryAfter: wait });
+            }
+        }
+
         // Invalider les codes précédents pour cet account
         await db.execute(
             `UPDATE account_tokens SET used_at = NOW()

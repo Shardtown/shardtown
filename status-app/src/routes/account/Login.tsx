@@ -199,8 +199,19 @@ export function AccountLogin() {
     }
   }
 
+  const RESEND_COOLDOWN_S = 60;
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setInterval(() => {
+      setResendCooldown(s => Math.max(0, s - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [resendCooldown]);
+
   async function resendCode() {
-    if (!verifyEmail) return;
+    if (!verifyEmail || resendCooldown > 0) return;
     setError(null);
     setInfo(null);
     try {
@@ -208,8 +219,15 @@ export function AccountLogin() {
       setInfo("Nouveau code envoyé.");
       setCode(["", "", "", "", "", ""]);
       codeRefs.current[0]?.focus();
-    } catch {
-      setError("Impossible de renvoyer le code.");
+      setResendCooldown(RESEND_COOLDOWN_S);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const parsed = extractAuthError(msg);
+      const retryAfter = (parsed as { retryAfter?: number }).retryAfter;
+      if (typeof retryAfter === "number") {
+        setResendCooldown(retryAfter);
+      }
+      setError(parsed.error || "Impossible de renvoyer le code.");
     }
   }
 
@@ -502,9 +520,12 @@ export function AccountLogin() {
                       <button
                         type="button"
                         onClick={resendCode}
-                        className="block mx-auto text-xs text-white/50 hover:text-white transition-colors"
+                        disabled={resendCooldown > 0}
+                        className="block mx-auto text-xs text-white/50 hover:text-white transition-colors disabled:text-white/30 disabled:cursor-not-allowed disabled:hover:text-white/30"
                       >
-                        Renvoyer un code
+                        {resendCooldown > 0
+                          ? `Renvoyer dans ${resendCooldown}s`
+                          : "Renvoyer un code"}
                       </button>
                     </div>
                     <SubmitButton loading={loading} label="Vérifier" />
