@@ -78,26 +78,26 @@ interface IconsProps {
 /** Icon-only variant — affiche juste les logos en ligne */
 export function OAuthIcons({ label = "Ou continuer avec", onPasskey, passkeyDisabled, passkeyBusy }: IconsProps) {
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-2">
       {label && (
-        <span className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">
+        <span className="text-[9px] font-bold tracking-[0.22em] text-white/35 uppercase">
           {label}
         </span>
       )}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         <a
           href="/api/account/oauth/google"
           aria-label="Continuer avec Google"
-          className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
+          className="w-7 h-7 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
         >
-          <GoogleIcon className="w-4 h-4" />
+          <GoogleIcon className="w-3.5 h-3.5" />
         </a>
         <a
           href="/api/account/oauth/github"
           aria-label="Continuer avec GitHub"
-          className="w-9 h-9 rounded-full bg-[#1f2328] text-white border border-white/10 flex items-center justify-center hover:bg-[#2a2e34] transition-colors"
+          className="w-7 h-7 rounded-full bg-[#1f2328] text-white border border-white/10 flex items-center justify-center hover:bg-[#2a2e34] transition-colors"
         >
-          <GitHubIcon className="w-4 h-4" />
+          <GitHubIcon className="w-3.5 h-3.5" />
         </a>
         {onPasskey && (
           <button
@@ -105,12 +105,12 @@ export function OAuthIcons({ label = "Ou continuer avec", onPasskey, passkeyDisa
             onClick={onPasskey}
             disabled={passkeyDisabled || passkeyBusy}
             aria-label="Se connecter avec une clé de sécurité"
-            className="w-9 h-9 rounded-full bg-white/[0.04] border border-white/10 text-white flex items-center justify-center hover:bg-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-7 h-7 rounded-full bg-white/[0.04] border border-white/10 text-white flex items-center justify-center hover:bg-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {passkeyBusy ? (
-              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
             ) : (
-              <FingerprintIcon className="w-4 h-4" />
+              <FingerprintIcon className="w-3.5 h-3.5" />
             )}
           </button>
         )}

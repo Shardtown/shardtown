@@ -434,7 +434,7 @@ export function AccountLogin() {
                   </form>
 
                   {subStep === 0 && (
-                    <div className="mt-6 pt-5 border-t border-white/[0.06]">
+                    <div className="mt-4 pt-3 border-t border-white/[0.06]">
                       <OAuthIcons
                         label={mode === "login" ? "Ou se connecter avec" : "Ou s'inscrire avec"}
                         onPasskey={mode === "login" ? loginWithPasskey : undefined}
