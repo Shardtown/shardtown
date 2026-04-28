@@ -221,8 +221,20 @@ export default function AnimatedGradient({
       premultipliedAlpha: true,
       alpha: true,
       antialias: true,
+      powerPreference: "low-power",
     });
     if (!gl) return;
+
+    let contextLost = false;
+    const handleContextLost = (e: Event) => {
+      e.preventDefault();
+      contextLost = true;
+      if (frameIdRef.current !== undefined) {
+        cancelAnimationFrame(frameIdRef.current);
+        frameIdRef.current = undefined;
+      }
+    };
+    canvas.addEventListener("webglcontextlost", handleContextLost);
 
     const vertexShaderSource = `#version 300 es
     in vec4 a_position;
@@ -292,6 +304,7 @@ export default function AnimatedGradient({
     startTimeRef.current = performance.now();
 
     const animate = (time: number) => {
+      if (contextLost || gl.isContextLost()) return;
       const elapsed = (time - startTimeRef.current) / 1000;
       const speed = (params.speed / 100) * 5;
 
@@ -328,12 +341,19 @@ export default function AnimatedGradient({
     return () => {
       if (frameIdRef.current !== undefined) {
         cancelAnimationFrame(frameIdRef.current);
+        frameIdRef.current = undefined;
       }
       resizeObserver.disconnect();
-      gl.deleteProgram(program);
-      gl.deleteShader(vertexShader);
-      gl.deleteShader(fragmentShader);
-      gl.deleteBuffer(positionBuffer);
+      canvas.removeEventListener("webglcontextlost", handleContextLost);
+      if (!gl.isContextLost()) {
+        gl.deleteProgram(program);
+        gl.deleteShader(vertexShader);
+        gl.deleteShader(fragmentShader);
+        gl.deleteBuffer(positionBuffer);
+      }
+      // Force-release the WebGL context so we don't pile up past the
+      // browser's per-page limit (~16) when navigating between pages.
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
     };
   }, [isMounted, params]);
 
