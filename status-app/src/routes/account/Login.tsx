@@ -45,6 +45,9 @@ export function AccountLogin() {
   const [mode, setMode] = useState<Mode>(initialMode);
   const [subStep, setSubStep] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
+
+  // Surface OAuth callback errors that arrive as ?oauth=error&reason=...
+  const oauthError = params.get("oauth") === "error" ? params.get("reason") : null;
   const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
   const [pseudo, setPseudo] = useState("");
@@ -70,6 +73,22 @@ export function AccountLogin() {
       setTimeout(() => codeRefs.current[0]?.focus(), 200);
     }
   }, [mode]);
+
+  useEffect(() => {
+    if (!oauthError) return;
+    const messages: Record<string, string> = {
+      config: "OAuth non configuré côté serveur (CLIENT_ID/SECRET manquants).",
+      state: "Session expirée pendant l'authentification — réessaie.",
+      code: "Code OAuth manquant.",
+      exchange: "Échec de l'échange de jeton avec le provider.",
+      profile: "Profil OAuth incomplet.",
+      no_email: "Aucun email vérifié récupéré du provider. Active un email primaire vérifié dans tes paramètres.",
+      session: "Erreur de session.",
+      db: "Erreur base de données.",
+      provider: "Provider OAuth inconnu.",
+    };
+    setError(messages[oauthError] || `Erreur OAuth : ${oauthError}`);
+  }, [oauthError]);
 
   function switchMode(next: Mode) {
     setMode(next);
