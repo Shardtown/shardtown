@@ -44,6 +44,7 @@ export function AccountLogin() {
   const initialMode: Mode = params.get("mode") === "register" ? "register" : "login";
 
   const [mode, setMode] = useState<Mode>(initialMode);
+  const [subStep, setSubStep] = useState(0);
   const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
   const [pseudo, setPseudo] = useState("");
@@ -72,6 +73,7 @@ export function AccountLogin() {
 
   function switchMode(next: Mode) {
     setMode(next);
+    setSubStep(0);
     setError(null);
     setInfo(null);
     setCode(["", "", "", "", "", ""]);
@@ -80,10 +82,38 @@ export function AccountLogin() {
   function goToVerify(targetEmail: string, infoMsg?: string) {
     setVerifyEmail(targetEmail);
     setMode("verify");
+    setSubStep(0);
     setError(null);
     setInfo(infoMsg ?? null);
     setCode(["", "", "", "", "", ""]);
   }
+
+  const TOTAL_LOGIN_STEPS = 2;
+  const TOTAL_REGISTER_STEPS = 3;
+  function goNext() {
+    setError(null);
+    const max = mode === "login" ? TOTAL_LOGIN_STEPS - 1 : TOTAL_REGISTER_STEPS - 1;
+    if (subStep < max) setSubStep(subStep + 1);
+  }
+  function goBack() {
+    setError(null);
+    if (subStep > 0) setSubStep(subStep - 1);
+  }
+  function canAdvance(): boolean {
+    if (mode === "login") {
+      if (subStep === 0) return identifier.trim().length > 0;
+      return false;
+    }
+    if (mode === "register") {
+      if (subStep === 0) return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+      if (subStep === 1) return /^[A-Za-z0-9._-]{3,32}$/.test(pseudo.trim());
+      return false;
+    }
+    return false;
+  }
+  const isLastSubStep =
+    (mode === "login" && subStep === TOTAL_LOGIN_STEPS - 1) ||
+    (mode === "register" && subStep === TOTAL_REGISTER_STEPS - 1);
 
   async function loginWithPasskey() {
     if (!identifier.trim()) {
@@ -219,11 +249,16 @@ export function AccountLogin() {
               {title}
             </h1>
             <p className="text-white/50 text-sm mt-3">{subtitle}</p>
-            {mode !== "login" && (
+            {mode === "login" && (
+              <div className="mt-6 flex justify-center">
+                <ProgressIndicator total={2} current={subStep + 1} />
+              </div>
+            )}
+            {(mode === "register" || mode === "verify") && (
               <div className="mt-6 flex justify-center">
                 <ProgressIndicator
-                  total={3}
-                  current={mode === "register" ? 1 : 2}
+                  total={4}
+                  current={mode === "verify" ? 4 : subStep + 1}
                 />
               </div>
             )}
@@ -272,95 +307,149 @@ export function AccountLogin() {
             )}
 
             <AnimatePresence mode="wait">
-              {mode === "login" && (
+              {(mode === "login" || mode === "register") && (
                 <motion.div
-                  key="login"
-                  initial={{ opacity: 0, x: 12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -12 }}
-                  transition={{ duration: 0.25 }}
+                  key={`${mode}-form`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
                 >
-                  <OAuthButtons verb="Se connecter avec" />
-                  <button
-                    type="button"
-                    onClick={loginWithPasskey}
-                    disabled={passkeyBusy || !identifier.trim()}
-                    className="mt-2.5 w-full inline-flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white font-bold text-sm hover:bg-white/[0.08] transition-colors disabled:opacity-50"
-                    title={!identifier.trim() ? "Renseigne d'abord ton email ou pseudo" : ""}
+                  {subStep === 0 && (
+                    <>
+                      <OAuthButtons verb={mode === "login" ? "Se connecter avec" : "S'inscrire avec"} />
+                      {mode === "login" && (
+                        <button
+                          type="button"
+                          onClick={loginWithPasskey}
+                          disabled={passkeyBusy || !identifier.trim()}
+                          className="mt-2.5 w-full inline-flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white font-bold text-sm hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+                          title={!identifier.trim() ? "Renseigne d'abord ton email ou pseudo" : ""}
+                        >
+                          {passkeyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
+                          Clé de sécurité / Passkey
+                        </button>
+                      )}
+                      <OrDivider label="ou via email" />
+                    </>
+                  )}
+
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!isLastSubStep && canAdvance()) goNext();
+                      else if (isLastSubStep) submit(e);
+                    }}
+                    className="space-y-4"
                   >
-                    {passkeyBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
-                    Clé de sécurité / Passkey
-                  </button>
-                  <OrDivider label="ou via email" />
+                    <div className="relative overflow-hidden">
+                      <motion.div
+                        key={`${mode}-${subStep}`}
+                        initial={{ opacity: 0, x: 60 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                      >
+                          {mode === "login" && subStep === 0 && (
+                            <FieldWithIcon
+                              label="Email ou pseudo"
+                              icon={<AtSign className="w-4 h-4 text-white/30" />}
+                              type="text"
+                              value={identifier}
+                              onChange={setIdentifier}
+                              autoComplete="username"
+                              placeholder="ton@email.com ou ton_pseudo"
+                              required
+                              autoFocus
+                            />
+                          )}
 
-                  <form onSubmit={submit} className="space-y-4">
-                    <FieldWithIcon
-                      label="Email ou pseudo"
-                      icon={<AtSign className="w-4 h-4 text-white/30" />}
-                      type="text"
-                      value={identifier}
-                      onChange={setIdentifier}
-                      autoComplete="username"
-                      placeholder="ton@email.com ou ton_pseudo"
-                      required
-                    />
-                    <PasswordField
-                      label="Mot de passe"
-                      value={password}
-                      onChange={setPassword}
-                      show={showPassword}
-                      onToggle={() => setShowPassword(s => !s)}
-                      autoComplete="current-password"
-                    />
-                    <ShardSecure token={shardSecure} onChange={setShardSecure} />
-                    <SubmitButton loading={loading} label="Se connecter" />
-                  </form>
-                </motion.div>
-              )}
+                          {mode === "login" && subStep === 1 && (
+                            <div className="space-y-4">
+                              <PasswordField
+                                label="Mot de passe"
+                                value={password}
+                                onChange={setPassword}
+                                show={showPassword}
+                                onToggle={() => setShowPassword(s => !s)}
+                                autoComplete="current-password"
+                                autoFocus
+                              />
+                              <ShardSecure token={shardSecure} onChange={setShardSecure} />
+                            </div>
+                          )}
 
-              {mode === "register" && (
-                <motion.div
-                  key="register"
-                  initial={{ opacity: 0, x: 12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -12 }}
-                  transition={{ duration: 0.25 }}
-                >
-                  <OAuthButtons verb="S'inscrire avec" />
-                  <OrDivider label="ou via email" />
+                          {mode === "register" && subStep === 0 && (
+                            <FieldWithIcon
+                              label="Email"
+                              icon={<Mail className="w-4 h-4 text-white/30" />}
+                              type="email"
+                              value={email}
+                              onChange={setEmail}
+                              autoComplete="email"
+                              placeholder="ton@email.com"
+                              required
+                              autoFocus
+                            />
+                          )}
 
-                  <form onSubmit={submit} className="space-y-4">
-                    <FieldWithIcon
-                      label="Email"
-                      icon={<Mail className="w-4 h-4 text-white/30" />}
-                      type="email"
-                      value={email}
-                      onChange={setEmail}
-                      autoComplete="email"
-                      placeholder="ton@email.com"
-                      required
-                    />
-                    <FieldWithIcon
-                      label="Pseudo"
-                      icon={<UserPlus className="w-4 h-4 text-white/30" />}
-                      type="text"
-                      value={pseudo}
-                      onChange={setPseudo}
-                      autoComplete="username"
-                      placeholder="ton_pseudo"
-                      required
-                    />
-                    <PasswordField
-                      label="Mot de passe"
-                      value={password}
-                      onChange={setPassword}
-                      show={showPassword}
-                      onToggle={() => setShowPassword(s => !s)}
-                      autoComplete="new-password"
-                      placeholder="8 caractères minimum"
-                    />
-                    <ShardSecure token={shardSecure} onChange={setShardSecure} />
-                    <SubmitButton loading={loading} label="Créer mon compte" />
+                          {mode === "register" && subStep === 1 && (
+                            <FieldWithIcon
+                              label="Pseudo"
+                              icon={<UserPlus className="w-4 h-4 text-white/30" />}
+                              type="text"
+                              value={pseudo}
+                              onChange={setPseudo}
+                              autoComplete="username"
+                              placeholder="ton_pseudo"
+                              required
+                              autoFocus
+                            />
+                          )}
+
+                          {mode === "register" && subStep === 2 && (
+                            <div className="space-y-4">
+                              <PasswordField
+                                label="Mot de passe"
+                                value={password}
+                                onChange={setPassword}
+                                show={showPassword}
+                                onToggle={() => setShowPassword(s => !s)}
+                                autoComplete="new-password"
+                                placeholder="8 caractères minimum"
+                                autoFocus
+                              />
+                              <ShardSecure token={shardSecure} onChange={setShardSecure} />
+                            </div>
+                          )}
+                      </motion.div>
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                      {subStep > 0 && (
+                        <button
+                          type="button"
+                          onClick={goBack}
+                          className="px-5 py-3 rounded-full bg-white/[0.04] border border-white/10 text-white/70 hover:text-white hover:bg-white/[0.08] font-bold text-sm transition-colors"
+                        >
+                          ←
+                        </button>
+                      )}
+                      {!isLastSubStep ? (
+                        <button
+                          type="submit"
+                          disabled={!canAdvance()}
+                          className="btn-liquid btn-liquid--primary group flex-1 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-[14px] tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Suivant
+                          <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                        </button>
+                      ) : (
+                        <SubmitButton
+                          loading={loading}
+                          label={mode === "login" ? "Se connecter" : "Créer mon compte"}
+                        />
+                      )}
+                    </div>
                   </form>
                 </motion.div>
               )}
@@ -430,7 +519,7 @@ export function AccountLogin() {
 }
 
 function FieldWithIcon({
-  label, icon, type, value, onChange, required, autoComplete, placeholder,
+  label, icon, type, value, onChange, required, autoComplete, placeholder, autoFocus,
 }: {
   label: string;
   icon: React.ReactNode;
@@ -440,6 +529,7 @@ function FieldWithIcon({
   required?: boolean;
   autoComplete?: string;
   placeholder?: string;
+  autoFocus?: boolean;
 }) {
   return (
     <div>
@@ -452,6 +542,7 @@ function FieldWithIcon({
           type={type}
           required={required}
           autoComplete={autoComplete}
+          autoFocus={autoFocus}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
@@ -463,7 +554,7 @@ function FieldWithIcon({
 }
 
 function PasswordField({
-  label, value, onChange, show, onToggle, autoComplete, placeholder,
+  label, value, onChange, show, onToggle, autoComplete, placeholder, autoFocus,
 }: {
   label: string;
   value: string;
@@ -472,6 +563,7 @@ function PasswordField({
   onToggle: () => void;
   autoComplete?: string;
   placeholder?: string;
+  autoFocus?: boolean;
 }) {
   return (
     <div>
@@ -484,6 +576,7 @@ function PasswordField({
           type={show ? "text" : "password"}
           required
           autoComplete={autoComplete}
+          autoFocus={autoFocus}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder ?? "••••••••"}
@@ -507,7 +600,7 @@ function SubmitButton({ loading, label }: { loading: boolean; label: string }) {
     <button
       type="submit"
       disabled={loading}
-      className="btn-liquid btn-liquid--primary group mt-2 w-full inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-[14px] tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
+      className="btn-liquid btn-liquid--primary group flex-1 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-bold text-[14px] tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {loading ? "Chargement…" : label}
       {!loading && <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />}
