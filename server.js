@@ -1441,21 +1441,53 @@ function consumeCaptcha(req, submitted) {
     return ok;
 }
 
+// ─── ShardSecure — case à cocher anti-bot léger ────────────────────────
+// Token de session, validé après un délai minimum + même origine
+const shardSecureLimiter = rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false });
+const SHARDSECURE_MIN_MS = 600;
+const SHARDSECURE_TTL_MS = 5 * 60_000;
+
+app.post('/api/account/shardsecure', shardSecureLimiter, (req, res) => {
+    const honeypot = String(req.body?.website || '').trim();
+    if (honeypot) return res.status(400).json({ error: 'Bot détecté' });
+
+    const issuedAt = req.session.shardSecureIssuedAt || 0;
+    if (issuedAt && Date.now() - issuedAt < SHARDSECURE_MIN_MS) {
+        return res.status(400).json({ error: 'Trop rapide' });
+    }
+
+    const token = crypto.randomBytes(24).toString('hex');
+    req.session.shardSecure = { token, expiresAt: Date.now() + SHARDSECURE_TTL_MS };
+    req.session.shardSecureIssuedAt = Date.now();
+    res.json({ token, expiresIn: SHARDSECURE_TTL_MS });
+});
+
+function consumeShardSecure(req, submitted) {
+    const s = req.session.shardSecure;
+    if (!s) return false;
+    if (Date.now() > s.expiresAt) { req.session.shardSecure = null; return false; }
+    const ok = typeof submitted === 'string' && submitted.length === 48 && submitted === s.token;
+    req.session.shardSecure = null;
+    return ok;
+}
+
 // Signup
 app.post('/api/account/signup', accountSignupLimiter, async (req, res) => {
     const email = String(req.body?.email || '').trim().toLowerCase();
     const pseudo = String(req.body?.pseudo || '').trim();
     const password = String(req.body?.password || '');
-    const captcha = String(req.body?.captcha || '');
+    const shardSecure = String(req.body?.shardSecure || req.body?.captcha || '');
+    const honeypot = String(req.body?.website || '').trim();
 
+    if (honeypot) return res.status(400).json({ error: 'Vérification anti-bot échouée' });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)
         return res.status(400).json({ error: 'Email invalide' });
     if (!/^[A-Za-z0-9._-]{3,32}$/.test(pseudo))
         return res.status(400).json({ error: 'Pseudo : 3-32 caractères, lettres/chiffres/._-' });
     if (password.length < 8 || password.length > 200)
         return res.status(400).json({ error: 'Mot de passe : 8 caractères minimum' });
-    if (!consumeCaptcha(req, captcha))
-        return res.status(400).json({ error: 'Captcha incorrect ou expiré' });
+    if (!consumeShardSecure(req, shardSecure))
+        return res.status(400).json({ error: 'Vérification ShardSecure expirée ou invalide' });
 
     try {
         const [byEmail] = await db.execute('SELECT id FROM accounts WHERE email = ? LIMIT 1', [email]);
@@ -1491,9 +1523,11 @@ app.post('/api/account/signup', accountSignupLimiter, async (req, res) => {
 app.post('/api/account/login', accountAuthLimiter, async (req, res) => {
     const identifier = String(req.body?.identifier || '').trim().toLowerCase(); // email or pseudo
     const password = String(req.body?.password || '');
-    const captcha = String(req.body?.captcha || '');
+    const shardSecure = String(req.body?.shardSecure || req.body?.captcha || '');
+    const honeypot = String(req.body?.website || '').trim();
+    if (honeypot) return res.status(400).json({ error: 'Vérification anti-bot échouée' });
     if (!identifier || !password) return res.status(400).json({ error: 'Identifiants requis' });
-    if (!consumeCaptcha(req, captcha)) return res.status(400).json({ error: 'Captcha incorrect ou expiré' });
+    if (!consumeShardSecure(req, shardSecure)) return res.status(400).json({ error: 'Vérification ShardSecure expirée ou invalide' });
 
     try {
         const [rows] = await db.execute(

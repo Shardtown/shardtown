@@ -6,9 +6,9 @@ import {
   Fingerprint, Loader2, Mail, UserPlus,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { apiGet, apiPost } from "@/api/client";
-import { CaptchaBlock } from "@/routes/account/Signup";
+import { apiPost } from "@/api/client";
 import { OAuthButtons, OrDivider } from "@/components/auth/OAuthButtons";
+import { ShardSecure } from "@/components/auth/ShardSecure";
 import { authenticateWithPasskey } from "@/api/passkey";
 
 type Mode = "login" | "register" | "verify";
@@ -48,8 +48,7 @@ export function AccountLogin() {
   const [pseudo, setPseudo] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [captcha, setCaptcha] = useState("");
-  const [captchaImage, setCaptchaImage] = useState<string | null>(null);
+  const [shardSecure, setShardSecure] = useState("");
 
   const [verifyEmail, setVerifyEmail] = useState("");
   const [code, setCode] = useState(["", "", "", "", "", ""]);
@@ -60,14 +59,9 @@ export function AccountLogin() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  async function refreshCaptcha() {
-    setCaptcha("");
-    try {
-      const r = await apiGet<{ image: string }>("/api/account/captcha");
-      setCaptchaImage(r.image);
-    } catch { /* */ }
+  function resetShardSecure() {
+    setShardSecure("");
   }
-  useEffect(() => { refreshCaptcha(); }, []);
 
   useEffect(() => {
     if (mode === "verify") {
@@ -120,7 +114,7 @@ export function AccountLogin() {
     try {
       if (mode === "login") {
         try {
-          await apiPost("/api/account/login", { identifier, password, captcha });
+          await apiPost("/api/account/login", { identifier, password, shardSecure });
           nav("/account", { replace: true });
         } catch (err) {
           const parsed = extractAuthError(err instanceof Error ? err.message : String(err));
@@ -129,18 +123,18 @@ export function AccountLogin() {
             return;
           }
           setError(parsed.error || "Erreur");
-          refreshCaptcha();
+          resetShardSecure();
         }
       } else if (mode === "register") {
         try {
           await apiPost<{ success: true; email: string }>("/api/account/signup", {
-            email, pseudo, password, captcha,
+            email, pseudo, password, shardSecure,
           });
           goToVerify(email, `Code envoyé à ${email}. Vérifie ta boîte mail.`);
         } catch (err) {
           const parsed = extractAuthError(err instanceof Error ? err.message : String(err));
           setError(parsed.error || "Erreur");
-          refreshCaptcha();
+          resetShardSecure();
         }
       } else {
         const codeStr = code.join("");
@@ -309,7 +303,7 @@ export function AccountLogin() {
                       onToggle={() => setShowPassword(s => !s)}
                       autoComplete="current-password"
                     />
-                    <CaptchaBlock image={captchaImage} value={captcha} onChange={setCaptcha} onRefresh={refreshCaptcha} />
+                    <ShardSecure token={shardSecure} onChange={setShardSecure} />
                     <SubmitButton loading={loading} label="Se connecter" />
                   </form>
                 </motion.div>
@@ -356,7 +350,7 @@ export function AccountLogin() {
                       autoComplete="new-password"
                       placeholder="8 caractères minimum"
                     />
-                    <CaptchaBlock image={captchaImage} value={captcha} onChange={setCaptcha} onRefresh={refreshCaptcha} />
+                    <ShardSecure token={shardSecure} onChange={setShardSecure} />
                     <SubmitButton loading={loading} label="Créer mon compte" />
                   </form>
                 </motion.div>
