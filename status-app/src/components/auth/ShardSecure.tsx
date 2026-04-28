@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Loader2, ShieldCheck, RefreshCw } from "lucide-react";
+import { Check, Loader2, RefreshCw } from "lucide-react";
 import { apiPost } from "@/api/client";
 
 type Status = "idle" | "loading" | "verified" | "error";
@@ -115,13 +115,6 @@ export function ShardSecure({ token, onChange }: Props) {
         {status === "error" && errorMsg && (
           <div className="text-[11px] text-red-300/80 mt-0.5">{errorMsg}</div>
         )}
-      </div>
-
-      <div className="flex items-center gap-1.5 pl-2 border-l border-white/10">
-        <ShieldCheck className="w-4 h-4 text-violet-300/70" />
-        <div className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/40 leading-tight">
-          Shard<br />Secure
-        </div>
       </div>
     </div>
   );

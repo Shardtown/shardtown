@@ -43,8 +43,40 @@ export function OAuthButtons({ verb = "Continuer avec" }: Props) {
   );
 }
 
+function FingerprintIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 10a3 3 0 0 0-3 3" />
+      <path d="M5.2 14.5C4.4 13.7 4 12.4 4 11a8 8 0 0 1 14.7-4.5" />
+      <path d="M2 14a14 14 0 0 0 1.5 5" />
+      <path d="M5 19c.5 1 1 1.5 1.8 2.5" />
+      <path d="M12 5a7 7 0 0 1 7 7c0 .8-.1 1.6-.3 2.4" />
+      <path d="M16.7 19.6c-.6 1.2-1.4 2-2.7 2.4" />
+      <path d="M12 22a10 10 0 0 1-1.5-2c-.5-.7-1-1.5-1.4-2.4" />
+      <path d="M12 13a4 4 0 0 1 4 4c0 2-.6 3.5-1.5 4.5" />
+    </svg>
+  );
+}
+
+interface IconsProps {
+  label?: string;
+  /** When provided, a Passkey icon is added next to the OAuth icons */
+  onPasskey?: () => void;
+  passkeyDisabled?: boolean;
+  passkeyBusy?: boolean;
+}
+
 /** Icon-only variant — affiche juste les logos en ligne */
-export function OAuthIcons({ label = "Ou continuer avec" }: { label?: string }) {
+export function OAuthIcons({ label = "Ou continuer avec", onPasskey, passkeyDisabled, passkeyBusy }: IconsProps) {
   return (
     <div className="flex flex-col items-center gap-3">
       {label && (
@@ -52,21 +84,36 @@ export function OAuthIcons({ label = "Ou continuer avec" }: { label?: string }) 
           {label}
         </span>
       )}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         <a
           href="/api/account/oauth/google"
           aria-label="Continuer avec Google"
-          className="w-11 h-11 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
+          className="w-9 h-9 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
         >
-          <GoogleIcon className="w-5 h-5" />
+          <GoogleIcon className="w-4 h-4" />
         </a>
         <a
           href="/api/account/oauth/github"
           aria-label="Continuer avec GitHub"
-          className="w-11 h-11 rounded-full bg-[#1f2328] text-white border border-white/10 flex items-center justify-center hover:bg-[#2a2e34] transition-colors"
+          className="w-9 h-9 rounded-full bg-[#1f2328] text-white border border-white/10 flex items-center justify-center hover:bg-[#2a2e34] transition-colors"
         >
-          <GitHubIcon className="w-5 h-5" />
+          <GitHubIcon className="w-4 h-4" />
         </a>
+        {onPasskey && (
+          <button
+            type="button"
+            onClick={onPasskey}
+            disabled={passkeyDisabled || passkeyBusy}
+            aria-label="Se connecter avec une clé de sécurité"
+            className="w-9 h-9 rounded-full bg-white/[0.04] border border-white/10 text-white flex items-center justify-center hover:bg-white/[0.08] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {passkeyBusy ? (
+              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+            ) : (
+              <FingerprintIcon className="w-4 h-4" />
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
