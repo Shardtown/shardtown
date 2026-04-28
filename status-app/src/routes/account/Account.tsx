@@ -205,14 +205,14 @@ export function Account() {
           {!account.discord_id ? (
             <>
               <p className="text-white/55 text-sm mb-5 max-w-xl">
-                Lie ton compte ShardGuard pour qu'on récupère la liste des serveurs où tu es admin
+                Lie ton compte à ShardGuard pour qu'on récupère la liste des serveurs où tu es admin
                 et que tu puisses configurer le bot.
               </p>
               <a
                 href="/api/account/discord/link"
                 className="btn-liquid btn-liquid--discord rounded-full px-5 py-3 font-bold text-sm inline-flex items-center gap-2"
               >
-                Lier mon compte ShardGuard <ArrowRight className="w-4 h-4" />
+                Lier mon compte à ShardGuard <ArrowRight className="w-4 h-4" />
               </a>
             </>
           ) : (
@@ -282,13 +282,13 @@ export function Account() {
           {!account.shard_id ? (
             <>
               <p className="text-white/55 text-sm mb-5 max-w-xl">
-                Lie ton compte Shard pour configurer le bot Shard sur tes serveurs.
+                Lie ton compte à Shard pour configurer le bot sur tes serveurs.
               </p>
               <a
                 href="/api/account/shard/link"
                 className="btn-liquid btn-liquid--discord rounded-full px-5 py-3 font-bold text-sm inline-flex items-center gap-2"
               >
-                Lier mon compte Shard <ArrowRight className="w-4 h-4" />
+                Lier mon compte à Shard <ArrowRight className="w-4 h-4" />
               </a>
             </>
           ) : (
