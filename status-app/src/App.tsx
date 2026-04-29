@@ -23,6 +23,7 @@ import { SupportPanel } from "@/routes/support/Panel";
 import { AccountLogin } from "@/routes/account/Login";
 import { VerifyEmail } from "@/routes/account/VerifyEmail";
 import { Account } from "@/routes/account/Account";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export function App() {
   const [user, setUser] = useState<DiscordUser | null>(null);
@@ -44,6 +45,7 @@ export function App() {
   return (
     <AuthContext.Provider value={{ user, loading, refresh }}>
       <BrowserRouter>
+        <ErrorBoundary>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/status" element={<Status />} />
@@ -67,6 +69,7 @@ export function App() {
           <Route path="/account" element={<Account />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </ErrorBoundary>
         <SupportBubble />
       </BrowserRouter>
     </AuthContext.Provider>
