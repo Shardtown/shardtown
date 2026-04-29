@@ -21,6 +21,7 @@ export function Account() {
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [showAddPasskey, setShowAddPasskey] = useState(false);
   const [newPasskeyName, setNewPasskeyName] = useState("");
+  const [passkeyToDelete, setPasskeyToDelete] = useState<{ id: number; name: string } | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -60,11 +61,17 @@ export function Account() {
     } finally { setPasskeyBusy(false); }
   }
 
-  async function removePasskey(id: number, name: string) {
-    if (!confirm(`Supprimer la clé « ${name} » ?`)) return;
+  function askDeletePasskey(id: number, name: string) {
+    setPasskeyToDelete({ id, name });
+  }
+
+  async function confirmDeletePasskey() {
+    const target = passkeyToDelete;
+    if (!target) return;
+    setPasskeyToDelete(null);
     try {
-      await deletePasskey(id);
-      setBanner({ kind: "ok", text: "Clé supprimée." });
+      await deletePasskey(target.id);
+      setBanner({ kind: "ok", text: `Clé « ${target.name} » supprimée.` });
       refreshPasskeys();
     } catch {
       setBanner({ kind: "error", text: "Échec de la suppression." });
@@ -414,7 +421,7 @@ export function Account() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => removePasskey(p.id, p.name)}
+                    onClick={() => askDeletePasskey(p.id, p.name)}
                     aria-label="Supprimer"
                     className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/15 flex items-center justify-center shrink-0"
                   >
@@ -485,6 +492,58 @@ export function Account() {
                 className="flex-1 py-3 rounded-full font-bold text-sm bg-emerald-500 text-white transition-opacity hover:opacity-90"
               >
                 Continuer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete-passkey confirmation modal */}
+      {passkeyToDelete && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          onClick={() => setPasskeyToDelete(null)}
+          onKeyDown={e => e.key === "Escape" && setPasskeyToDelete(null)}
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+          <div
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-7 w-full max-w-sm shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPasskeyToDelete(null)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+              aria-label="Fermer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-red-500/10 text-red-300 border border-red-500/20 mb-5">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <p className="text-[10px] font-bold tracking-[0.28em] text-red-300/80 uppercase mb-2">
+              Action irréversible
+            </p>
+            <h3 className="text-xl font-extrabold tracking-tight mb-2">
+              Supprimer cette clé ?
+            </h3>
+            <p className="text-white/55 text-sm leading-relaxed mb-6">
+              Tu ne pourras plus utiliser <b className="text-white">« {passkeyToDelete.name} »</b> pour te connecter. Cette action ne supprime pas la clé sur l'appareil lui-même.
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setPasskeyToDelete(null)}
+                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeletePasskey}
+                className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90"
+              >
+                Supprimer
               </button>
             </div>
           </div>
