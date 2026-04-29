@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   User, Mail, AtSign, LogOut, ShieldCheck, ShieldAlert, Calendar,
-  Link2, RefreshCw, Server, ArrowRight, Unplug, Fingerprint, Plus, Trash2, Loader2,
+  Link2, RefreshCw, Server, ArrowRight, Unplug, Fingerprint, Plus, Trash2, Loader2, X,
 } from "lucide-react";
 import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@/api/passkey";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -19,6 +19,8 @@ export function Account() {
   const [banner, setBanner] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [passkeys, setPasskeys] = useState<PasskeyRow[] | null>(null);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
+  const [showAddPasskey, setShowAddPasskey] = useState(false);
+  const [newPasskeyName, setNewPasskeyName] = useState("");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -39,12 +41,17 @@ export function Account() {
   }, []);
   useEffect(() => { refreshPasskeys(); }, [refreshPasskeys]);
 
-  async function addPasskey() {
-    const name = prompt("Nom de cette clé (ex: MacBook, iPhone, YubiKey) :", "");
-    if (!name) return;
+  function openAddPasskey() {
+    setNewPasskeyName("");
+    setShowAddPasskey(true);
+  }
+
+  async function confirmAddPasskey() {
+    const name = newPasskeyName.trim() || "Clé sans nom";
+    setShowAddPasskey(false);
     setPasskeyBusy(true);
     try {
-      await registerPasskey(name.trim() || "Clé sans nom");
+      await registerPasskey(name);
       setBanner({ kind: "ok", text: "Clé enregistrée." });
       refreshPasskeys();
     } catch (err) {
@@ -376,7 +383,7 @@ export function Account() {
             </div>
             <button
               type="button"
-              onClick={addPasskey}
+              onClick={openAddPasskey}
               disabled={passkeyBusy}
               className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[12px] font-bold hover:bg-emerald-500/20 disabled:opacity-50"
             >
@@ -419,6 +426,70 @@ export function Account() {
           )}
         </div>
       </section>
+
+      {/* Add-passkey modal */}
+      {showAddPasskey && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          onClick={() => setShowAddPasskey(false)}
+          onKeyDown={e => e.key === "Escape" && setShowAddPasskey(false)}
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+          <div
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-7 w-full max-w-sm shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowAddPasskey(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+              aria-label="Fermer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 mb-5">
+              <Fingerprint className="w-5 h-5" />
+            </div>
+            <p className="text-[10px] font-bold tracking-[0.28em] text-emerald-300/80 uppercase mb-2">
+              Nouvelle clé
+            </p>
+            <h3 className="text-xl font-extrabold tracking-tight mb-2">
+              Nom de la clé
+            </h3>
+            <p className="text-white/55 text-sm leading-relaxed mb-5">
+              Donne-lui un nom pour t'y retrouver dans ta liste.
+            </p>
+            <input
+              autoFocus
+              type="text"
+              value={newPasskeyName}
+              onChange={e => setNewPasskeyName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter") { e.preventDefault(); confirmAddPasskey(); }
+              }}
+              placeholder="MacBook, iPhone, YubiKey…"
+              maxLength={64}
+              className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/[0.06] text-white placeholder:text-white/25 text-sm transition-all mb-6"
+            />
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowAddPasskey(false)}
+                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmAddPasskey}
+                className="flex-1 py-3 rounded-full font-bold text-sm bg-emerald-500 text-white transition-opacity hover:opacity-90"
+              >
+                Continuer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }
