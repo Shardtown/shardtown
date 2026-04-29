@@ -36,7 +36,8 @@ export async function registerPasskey(name: string): Promise<void> {
   }
   let attResp;
   try {
-    attResp = await startRegistration(options as Parameters<typeof startRegistration>[0]);
+    // v11 requires the wrapper { optionsJSON: ... }
+    attResp = await startRegistration({ optionsJSON: options as never });
   } catch (e) {
     console.error("[passkey] startRegistration failed", e);
     throw e;
@@ -59,7 +60,8 @@ export async function authenticateWithPasskey(identifier: string): Promise<void>
   }
   let authResp;
   try {
-    authResp = await startAuthentication(options as Parameters<typeof startAuthentication>[0]);
+    // v11 requires the wrapper { optionsJSON: ... }
+    authResp = await startAuthentication({ optionsJSON: options as never });
   } catch (e) {
     console.error("[passkey] startAuthentication failed", e);
     throw e;
