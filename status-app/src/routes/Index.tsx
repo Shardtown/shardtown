@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { TiltCard } from "@/components/ui/tilt-card";
 import { LiquidButton } from "@/components/ui/liquid-glass-button";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
+import { HolographicCard } from "@/components/ui/holographic-card";
 
 const SERVICES = [
   {
@@ -188,22 +189,24 @@ export function Index() {
             const Icon = t.icon;
             return (
               <RevealItem key={t.label} direction="right" distance={70} className="relative hover:z-10">
-                <Link to={t.href} className="group block h-full relative">
-                  <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-8 hover:border-white/15 hover:bg-white/[0.04] transition-colors h-full flex items-start gap-6">
-                    <div className={`w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center ${t.accent} flex-shrink-0`}>
-                      <Icon className="w-6 h-6" strokeWidth={2} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h3 className="font-bold text-xl">{t.label}</h3>
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${t.accent}`}>{t.tagline}</span>
+                <Link to={t.href} className="group block h-full">
+                  <HolographicCard className="h-full">
+                    <div className="flex items-start gap-6 h-full">
+                      <div className={`w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center ${t.accent} flex-shrink-0`}>
+                        <Icon className="w-6 h-6" strokeWidth={2} />
                       </div>
-                      <p className="text-sm text-white/55 leading-relaxed mb-5">{t.description}</p>
-                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white/70 group-hover:text-white group-hover:gap-2 transition-all">
-                        Configurer sur mon serveur <ArrowRight className="w-3 h-3" />
-                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                          <h3 className="font-bold text-xl">{t.label}</h3>
+                          <span className={`text-[10px] font-bold uppercase tracking-widest ${t.accent}`}>{t.tagline}</span>
+                        </div>
+                        <p className="text-sm text-white/55 leading-relaxed mb-5">{t.description}</p>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white/70 group-hover:text-white group-hover:gap-2 transition-all">
+                          Configurer sur mon serveur <ArrowRight className="w-3 h-3" />
+                        </span>
+                      </div>
                     </div>
-                  </div>
+                  </HolographicCard>
                 </Link>
               </RevealItem>
             );

@@ -249,3 +249,118 @@
   .animate-count-pop { animation: none !important; }
 }
 
+/* ────────────────────────────────────────────────────────────────────────
+   Holographic card — cursor-tracked rainbow shimmer + glow
+   Used for the bot tiles on the homepage. The component sets --x / --y /
+   --bg-x / --bg-y on mousemove; CSS reads them to position the radial
+   highlight, the conic holo gradient and the glow halo.
+   ──────────────────────────────────────────────────────────────────────── */
+.holographic-card {
+  --x: 50%;
+  --y: 50%;
+  --bg-x: 50%;
+  --bg-y: 50%;
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: 1.25rem;
+  padding: 2rem;
+  background:
+    radial-gradient(circle at var(--x) var(--y),
+      rgba(255, 255, 255, 0.08),
+      transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 24px 60px -30px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  transform-style: preserve-3d;
+  transition: transform 0.25s ease-out, border-color 0.25s ease-out;
+  isolation: isolate;
+}
+
+.holographic-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg at var(--bg-x) var(--bg-y),
+    rgba(99, 102, 241, 0.0),
+    rgba(168, 85, 247, 0.55),
+    rgba(236, 72, 153, 0.5),
+    rgba(245, 158, 11, 0.45),
+    rgba(16, 185, 129, 0.45),
+    rgba(59, 130, 246, 0.55),
+    rgba(99, 102, 241, 0.0)
+  );
+  mix-blend-mode: color-dodge;
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+  z-index: 0;
+}
+
+.holographic-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    600px circle at var(--x) var(--y),
+    rgba(255, 255, 255, 0.12),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+  z-index: 1;
+}
+
+.holographic-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.holographic-card:hover::before,
+.holographic-card:hover::after {
+  opacity: 1;
+}
+
+.holo-content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+}
+
+.holo-glow {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 280px;
+  height: 280px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle,
+    rgba(168, 85, 247, 0.35),
+    rgba(59, 130, 246, 0.18),
+    transparent 60%
+  );
+  filter: blur(60px);
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.holographic-card:hover .holo-glow {
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holographic-card { transition: none !important; }
+  .holographic-card::before,
+  .holographic-card::after,
+  .holo-glow { transition: none !important; }
+}
+
