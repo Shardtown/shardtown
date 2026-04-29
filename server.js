@@ -2688,8 +2688,26 @@ app.get('/shard/logout', (req, res) => {
 
 function checkAuthShard(req, res, next) {
     if (req.session && req.session.shardUser) return next();
+    // Fall back to the Shardtown account session: the Phase-2 middleware
+    // synthesizes req.user from accounts.discord_* columns when a Shardtown
+    // account with linked Discord is logged in. Same shape as shardUser.
+    if (req.user) {
+        req.session.shardUser = {
+            id: req.user.id,
+            username: req.user.username,
+            avatar: req.user.avatar,
+            guilds: req.user.guilds || [],
+        };
+        return next();
+    }
+    const isAjax = req.headers['content-type'] === 'application/json'
+        || req.path.includes('/api/')
+        || req.headers['x-requested-with'] === 'XMLHttpRequest';
+    if (isAjax) {
+        return res.status(401).json({ error: 'Session expirée', redirect: '/account/login' });
+    }
     req.session.shardReturnTo = req.originalUrl;
-    res.redirect('/shard/login');
+    res.redirect('/account/login');
 }
 
 // Shard dashboard data — consumed by React /shard/server
