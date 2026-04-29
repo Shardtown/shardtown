@@ -1,10 +1,11 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Shield, Zap, Code2, Bot, Users, MessageSquare, Mail } from "lucide-react";
+import { ArrowRight, Code2, Bot, Users, MessageSquare, Mail } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TiltCard } from "@/components/ui/tilt-card";
 import { LiquidButton } from "@/components/ui/liquid-glass-button";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
+import { InteractiveProductCard } from "@/components/ui/interactive-product-card";
 
 const SERVICES = [
   {
@@ -45,16 +46,14 @@ const TOOLS = [
     tagline: "Sécurité Discord",
     description: "Anti-raid, vérification captcha, modération avancée et logs en temps réel.",
     href: "/shardguard/server",
-    icon: Shield,
-    accent: "text-blue-400",
+    imageUrl: "/image/shardguard.png",
   },
   {
     label: "Shard",
     tagline: "Multi-fonctions premium",
     description: "Niveaux, économie, tickets, sondages, giveaways, embed builder et plus.",
     href: "/shard/server",
-    icon: Zap,
-    accent: "text-emerald-400",
+    imageUrl: "/image/shard.png",
   },
 ];
 
@@ -183,31 +182,20 @@ export function Index() {
             Les bots qu'on utilise sur nos missions, disponibles directement pour votre serveur.
           </p>
         </Reveal>
-        <RevealStagger className="grid md:grid-cols-2 gap-8 md:gap-10" staggerChildren={0.1} delayChildren={0.15}>
-          {TOOLS.map(t => {
-            const Icon = t.icon;
-            return (
-              <RevealItem key={t.label} direction="right" distance={70} className="relative hover:z-10">
-                <Link to={t.href} className="group block h-full relative">
-                  <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-8 hover:border-white/15 hover:bg-white/[0.04] transition-colors h-full flex items-start gap-6">
-                    <div className={`w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center ${t.accent} flex-shrink-0`}>
-                      <Icon className="w-6 h-6" strokeWidth={2} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h3 className="font-bold text-xl">{t.label}</h3>
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${t.accent}`}>{t.tagline}</span>
-                      </div>
-                      <p className="text-sm text-white/55 leading-relaxed mb-5">{t.description}</p>
-                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white/70 group-hover:text-white group-hover:gap-2 transition-all">
-                        Configurer sur mon serveur <ArrowRight className="w-3 h-3" />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </RevealItem>
-            );
-          })}
+        <RevealStagger className="grid md:grid-cols-2 gap-8 md:gap-10 justify-items-center" staggerChildren={0.1} delayChildren={0.15}>
+          {TOOLS.map(t => (
+            <RevealItem key={t.label} direction="right" distance={70} className="relative hover:z-10">
+              <Link to={t.href} className="group block">
+                <InteractiveProductCard
+                  imageUrl={t.imageUrl}
+                  logoUrl="/image/shardtown.jpeg"
+                  title={t.label}
+                  description={t.description}
+                  price={t.tagline}
+                />
+              </Link>
+            </RevealItem>
+          ))}
         </RevealStagger>
       </section>
 
