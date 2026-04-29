@@ -184,10 +184,10 @@ export function Header() {
                   </Link>
                 )}
                 <Link
-                  to={user ? "/account" : "/account/login"}
+                  to={user ? "/dashboard" : "/account/login"}
                   className="btn-liquid btn-liquid--primary group inline-flex items-center gap-1.5 rounded-full pl-5 pr-4 py-2.5 font-bold text-[13px] tracking-tight"
                 >
-                  <span className="relative">{user ? "Mon compte" : "Connexion"}</span>
+                  <span className="relative">{user ? "Dashboard" : "Connexion"}</span>
                   <svg
                     className="relative w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5"
                     viewBox="0 0 24 24"
