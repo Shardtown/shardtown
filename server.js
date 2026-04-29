@@ -4273,15 +4273,18 @@ app.post('/shardguard/api/guild/:guildID/bulk/:action', checkAuth, async (req, r
 });
 
 function checkAuth(req, res, next) {
-    if (req.isAuthenticated()) return next();
+    // Either the legacy passport-discord session OR a Shardtown account
+    // with a linked Discord (req.user is synthesized by the middleware
+    // mounted right after passport.session). Both populate `req.user`.
+    if (req.user || req.isAuthenticated()) return next();
     const isAjax = req.headers['content-type'] === 'application/json'
         || req.path.includes('/api/')
         || req.headers['x-requested-with'] === 'XMLHttpRequest';
     if (isAjax) {
-        return res.status(401).json({ error: 'Session expirée', redirect: '/login' });
+        return res.status(401).json({ error: 'Session expirée', redirect: '/account/login' });
     }
     req.session.returnTo = req.originalUrl;
-    res.redirect('/login');
+    res.redirect('/account/login');
 }
 
 const ADMIN_SESSION_TTL = 4 * 60 * 60 * 1000;
