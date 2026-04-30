@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Search, X, ArrowRight, Hash, Sparkles } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Admonition } from "@/components/ui/admonition";
 
@@ -595,6 +596,8 @@ const GROUPS: Section["group"][] = [
 export function Wiki() {
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<string>(SECTIONS[0].id);
+  const reduce = useReducedMotion();
+  const heroEase = [0.22, 1, 0.36, 1] as const;
 
   const filtered = useMemo(() => {
     if (!query.trim()) return SECTIONS;
@@ -633,22 +636,48 @@ export function Wiki() {
 
   return (
     <AppLayout>
-      <section className="container-dashboard pt-20 md:pt-28 pb-32">
-        {/* Hero — centered, editorial */}
-        <header className="text-center max-w-3xl mx-auto mb-16 md:mb-24">
-          <p className="text-[11px] font-medium tracking-[0.32em] text-white/35 uppercase mb-6">
+      <section className="container-wide pt-32 md:pt-40 pb-32 overflow-hidden">
+        {/* Hero — same editorial home pattern */}
+        <header className="text-center max-w-3xl mx-auto mb-16 md:mb-20">
+          <motion.p
+            className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
+            initial={{ opacity: 0, y: reduce ? 0 : 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.05, ease: heroEase }}
+          >
             Documentation
-          </p>
-          <h1 className="font-extrabold leading-[1.02] tracking-[-0.02em] mb-6 text-6xl md:text-7xl">
-            Wiki
-          </h1>
-          <p className="text-white/55 text-[17px] leading-relaxed">
-            La documentation complète de ShardGuard et Shard — guides pas à pas, référence des
-            paramètres, et les pièges à éviter pour configurer chaque module proprement.
-          </p>
+          </motion.p>
+          <motion.h1
+            className="font-extrabold leading-[0.9] tracking-tight uppercase mb-10"
+            style={{ fontSize: "clamp(3rem, 9vw, 7rem)" }}
+            initial={{
+              opacity: 0,
+              x: reduce ? 0 : -120,
+              filter: reduce ? "blur(0px)" : "blur(8px)",
+            }}
+            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+            transition={{ duration: 0.95, delay: 0.15, ease: heroEase }}
+          >
+            WIKI
+          </motion.h1>
+          <motion.p
+            className="text-xl md:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed"
+            initial={{ opacity: 0, x: reduce ? 0 : 80 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
+          >
+            La doc complète de <span className="text-white">ShardGuard et Shard</span> —
+            guides, paramètres, pièges à éviter pour configurer chaque module
+            proprement.
+          </motion.p>
 
           {/* Search */}
-          <div className="relative mt-10 max-w-lg mx-auto">
+          <motion.div
+            className="relative mt-12 max-w-lg mx-auto"
+            initial={{ opacity: 0, y: reduce ? 0 : 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.65, ease: heroEase }}
+          >
             <Search className="w-4 h-4 absolute left-5 top-1/2 -translate-y-1/2 text-white/35 pointer-events-none" />
             <input
               type="search"
@@ -667,7 +696,7 @@ export function Wiki() {
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
-          </div>
+          </motion.div>
 
           {/* Samia (AI assistant) CTA — same neutral DA as the rest of the site */}
           <Link

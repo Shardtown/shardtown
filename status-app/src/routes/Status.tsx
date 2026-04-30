@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Activity, Cpu, Search, Server, Users, Zap, RefreshCw, X } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Admonition } from "@/components/ui/admonition";
 import { BotSection } from "@/components/BotSection";
@@ -17,6 +18,8 @@ function timeSince(ms: number) {
 export function Status() {
   const stats = useStats();
   const [query, setQuery] = useState("");
+  const reduce = useReducedMotion();
+  const heroEase = [0.22, 1, 0.36, 1] as const;
 
   const canSearch = stats.bots.some(b => b.shards.some(s => (s.guilds_list || []).length > 0));
 
@@ -41,15 +44,40 @@ export function Status() {
         <div className="absolute -top-20 right-[18%] w-[500px] h-[500px] rounded-full blur-3xl bg-blue-500/10" />
       </div>
 
-      <section className="container-dashboard pt-20 md:pt-28 pb-32">
-        {/* Hero — centered, editorial */}
-        <header className="text-center max-w-3xl mx-auto mb-14">
-          <p className="text-[11px] font-medium tracking-[0.32em] text-white/35 uppercase mb-6">Surveillance</p>
-          <h1 className="font-extrabold leading-[1.02] tracking-[-0.02em] mb-6 text-6xl md:text-7xl">Statut</h1>
-          <p className="text-white/55 text-[17px] leading-relaxed">
-            État en temps réel de l'infrastructure Shardtown — clusters, shards, latence, charge.
-            Mis à jour automatiquement toutes les 30 secondes.
-          </p>
+      <section className="container-wide pt-32 md:pt-40 pb-32 overflow-hidden">
+        {/* Hero — same editorial home pattern */}
+        <header className="text-center max-w-3xl mx-auto mb-16">
+          <motion.p
+            className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
+            initial={{ opacity: 0, y: reduce ? 0 : 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.05, ease: heroEase }}
+          >
+            Surveillance
+          </motion.p>
+          <motion.h1
+            className="font-extrabold leading-[0.9] tracking-tight uppercase mb-10"
+            style={{ fontSize: "clamp(3rem, 9vw, 7rem)" }}
+            initial={{
+              opacity: 0,
+              x: reduce ? 0 : -120,
+              filter: reduce ? "blur(0px)" : "blur(8px)",
+            }}
+            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+            transition={{ duration: 0.95, delay: 0.15, ease: heroEase }}
+          >
+            STATUT
+          </motion.h1>
+          <motion.p
+            className="text-xl md:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed"
+            initial={{ opacity: 0, x: reduce ? 0 : 80 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
+          >
+            État <span className="text-white">temps réel</span> de l'infrastructure
+            Shardtown — clusters, shards, latence, charge. Mis à jour toutes les
+            30 secondes.
+          </motion.p>
         </header>
 
         <div className="h-px w-full bg-white/[0.06] mb-12" />

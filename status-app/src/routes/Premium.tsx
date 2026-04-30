@@ -4,6 +4,7 @@ import {
   Check, Crown, Lock, Star, ChevronDown, Shield, Zap, Sparkles,
   Headset, Infinity as InfinityIcon, Bolt, Heart,
 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/api/auth";
 import { apiGet, apiPost } from "@/api/client";
@@ -164,6 +165,8 @@ export function Premium() {
   const { user } = useAuth();
   const [params] = useSearchParams();
   const paymentResult = params.get("payment");
+  const reduce = useReducedMotion();
+  const heroEase = [0.22, 1, 0.36, 1] as const;
 
   const [data, setData] = useState<PremiumData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -213,26 +216,50 @@ export function Premium() {
         <div className="absolute top-32 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full blur-3xl bg-pink-500/8" />
       </div>
 
-      <section className="container-dashboard pt-20 md:pt-28 pb-32">
-        {/* Hero — centered, editorial */}
-        <header className="text-center max-w-3xl mx-auto mb-14">
-          <p className="text-[11px] font-medium tracking-[0.32em] text-white/35 uppercase mb-6 inline-flex items-center gap-2">
-            <Crown className="w-3 h-3 text-amber-300" /> Shardtown Premium
-          </p>
-          <h1 className="font-extrabold leading-[1.02] tracking-[-0.02em] mb-6 text-6xl md:text-7xl">
-            Tous les modules.<br />
-            <span className="bg-gradient-to-r from-amber-300 via-amber-400 to-amber-500 bg-clip-text text-transparent">Aucune limite.</span>
-          </h1>
-          <p className="text-white/55 text-[17px] leading-relaxed">
-            Une seule offre couvre ShardGuard et Shard. Mensuel sans engagement ou achat à vie —
-            les deux débloquent exactement les mêmes fonctionnalités.
-          </p>
+      <section className="container-wide pt-32 md:pt-40 pb-32 overflow-hidden">
+        {/* Hero — same editorial home pattern */}
+        <header className="text-center max-w-3xl mx-auto mb-16">
+          <motion.p
+            className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8 inline-flex items-center justify-center gap-2"
+            initial={{ opacity: 0, y: reduce ? 0 : 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.05, ease: heroEase }}
+          >
+            <Crown className="w-3.5 h-3.5 text-amber-300" /> Shardtown Premium
+          </motion.p>
+          <motion.h1
+            className="font-extrabold leading-[0.9] tracking-tight uppercase mb-10"
+            style={{ fontSize: "clamp(3rem, 9vw, 7rem)" }}
+            initial={{
+              opacity: 0,
+              x: reduce ? 0 : -120,
+              filter: reduce ? "blur(0px)" : "blur(8px)",
+            }}
+            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+            transition={{ duration: 0.95, delay: 0.15, ease: heroEase }}
+          >
+            PREMIUM
+          </motion.h1>
+          <motion.p
+            className="text-xl md:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed"
+            initial={{ opacity: 0, x: reduce ? 0 : 80 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
+          >
+            Tous les modules. <span className="text-white">Aucune limite.</span>{" "}
+            Une seule offre couvre ShardGuard et Shard, mensuel ou à vie.
+          </motion.p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-[12px] text-white/45">
+          <motion.div
+            className="mt-10 flex flex-wrap items-center justify-center gap-6 text-[12px] text-white/45"
+            initial={{ opacity: 0, y: reduce ? 0 : 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.65, ease: heroEase }}
+          >
             <span className="inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5" /> Paiement sécurisé Stripe</span>
             <span className="inline-flex items-center gap-1.5"><Heart className="w-3.5 h-3.5 text-pink-400" /> Annulation en 1 clic</span>
             <span className="inline-flex items-center gap-1.5"><Shield className="w-3.5 h-3.5 text-emerald-400" /> RGPD · Hébergement EU</span>
-          </div>
+          </motion.div>
         </header>
 
         <div className="h-px w-full bg-white/[0.06] mb-14" />
