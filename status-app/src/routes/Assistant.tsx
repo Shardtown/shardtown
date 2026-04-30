@@ -67,6 +67,7 @@ export function Assistant() {
 
   const idRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputWrapperRef = useRef<HTMLDivElement>(null);
   const { ref: textareaRef, adjust } = useAutoResize(40, 160);
   const reduce = useReducedMotion();
   const heroEase = [0.22, 1, 0.36, 1] as const;
@@ -82,10 +83,18 @@ export function Assistant() {
       .catch(() => {});
   }, []);
 
+  // À chaque changement de messages (nouveau message OU chunk pendant le
+  // streaming) : on cale l'input bar en bas du viewport. scrollIntoView
+  // remonte aussi tout parent scrollable, donc le conteneur interne suit.
+  // "auto" plutôt que "smooth" pour éviter les saccades pendant le streaming.
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
+    inputWrapperRef.current?.scrollIntoView({
+      block: "end",
+      behavior: "auto",
+    });
   }, [messages, sending]);
 
   const send = useCallback(
@@ -281,7 +290,7 @@ export function Assistant() {
         )}
 
         {/* Input — same glass aesthetic as the rest of the site */}
-        <div className="w-full max-w-3xl mx-auto">
+        <div ref={inputWrapperRef} className="w-full max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: reduce ? 0 : 30 }}
             animate={{ opacity: 1, y: 0 }}
