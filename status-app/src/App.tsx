@@ -17,7 +17,7 @@ import { ShardGuardGuild } from "@/routes/shardguard/Guild";
 import { AdminLogin } from "@/routes/admin/Login";
 import { Admin } from "@/routes/admin/Admin";
 import { AdminGuildDetail } from "@/routes/admin/GuildDetail";
-import { SupportBubble } from "@/components/SupportBubble";
+import { Assistant } from "@/routes/Assistant";
 import { AccountLogin } from "@/routes/account/Login";
 import { VerifyEmail } from "@/routes/account/VerifyEmail";
 import { Account } from "@/routes/account/Account";
@@ -48,6 +48,7 @@ export function App() {
           <Route path="/" element={<Index />} />
           <Route path="/status" element={<Status />} />
           <Route path="/wiki" element={<Wiki />} />
+          <Route path="/assistant" element={<Assistant />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/dashboard" element={<Dashboard />} />
@@ -66,7 +67,6 @@ export function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </ErrorBoundary>
-        <SupportBubble />
       </BrowserRouter>
     </AuthContext.Provider>
   );

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, X, ArrowRight, Hash } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Search, X, ArrowRight, Hash, Sparkles } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Admonition } from "@/components/ui/admonition";
 
@@ -667,6 +668,18 @@ export function Wiki() {
               </button>
             )}
           </div>
+
+          {/* AI Assistant CTA */}
+          <Link
+            to="/assistant"
+            className="group inline-flex items-center gap-2.5 mt-6 px-4 py-2.5 rounded-full bg-gradient-to-r from-violet-500/15 to-fuchsia-500/15 border border-violet-500/25 hover:border-violet-400/50 text-white/85 hover:text-white transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-violet-300" />
+            <span className="text-[13px] font-medium">
+              Pas envie de chercher ? Demande à l'assistant IA
+            </span>
+            <ArrowRight className="w-3.5 h-3.5 text-white/50 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+          </Link>
         </header>
 
         {/* Hairline divider before the docs */}
