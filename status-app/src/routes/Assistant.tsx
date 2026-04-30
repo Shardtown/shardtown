@@ -8,7 +8,7 @@ import {
   Crown,
   HelpCircle,
 } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,6 +64,7 @@ export function Assistant() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const idRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -193,9 +194,14 @@ export function Assistant() {
     [sending, textareaRef],
   );
 
-  async function reset() {
+  function askReset() {
     if (sending) return;
-    if (messages.length > 0 && !confirm("Effacer la conversation ?")) return;
+    if (messages.length === 0) return;
+    setConfirmReset(true);
+  }
+
+  async function doReset() {
+    setConfirmReset(false);
     try {
       await apiPost("/api/chatbot/reset");
     } catch {
@@ -263,7 +269,7 @@ export function Assistant() {
             <span className="flex-1 h-px bg-white/[0.06]" />
             <button
               type="button"
-              onClick={reset}
+              onClick={askReset}
               disabled={sending}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 text-[11px] font-bold uppercase tracking-widest text-white/60 hover:text-white disabled:opacity-30 transition-colors"
               title="Nouvelle conversation"
@@ -370,7 +376,103 @@ export function Assistant() {
           )}
         </div>
       </section>
+
+      <ConfirmResetCard
+        open={confirmReset}
+        onCancel={() => setConfirmReset(false)}
+        onConfirm={doReset}
+      />
     </AppLayout>
+  );
+}
+
+function ConfirmResetCard({
+  open,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  // Esc pour annuler quand la card est ouverte
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onCancel]);
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className="fixed inset-0 z-[200] flex items-center justify-center px-5"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+        >
+          {/* Backdrop */}
+          <button
+            type="button"
+            aria-label="Fermer"
+            onClick={onCancel}
+            className="absolute inset-0 bg-black/70 backdrop-blur-md"
+          />
+
+          {/* Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-reset-title"
+            className="relative w-full max-w-sm rounded-3xl bg-[#0a0a0f]/95 border border-white/[0.08] shadow-[0_32px_80px_-12px_rgba(0,0,0,0.85)] backdrop-blur-xl p-7"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-300 mb-5">
+              <RotateCcw className="w-5 h-5" />
+            </div>
+
+            <p className="text-[10.5px] font-bold tracking-[0.24em] uppercase text-white/35 mb-2">
+              Conversation
+            </p>
+            <h3
+              id="confirm-reset-title"
+              className="text-2xl font-extrabold tracking-tight mb-3"
+            >
+              Effacer la conversation&nbsp;?
+            </h3>
+            <p className="text-[14px] text-white/55 leading-relaxed mb-7">
+              Tous tes échanges avec Samia seront supprimés. Cette action est
+              irréversible.
+            </p>
+
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-4 py-2.5 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 text-[12.5px] font-bold text-white/75 hover:text-white transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={onConfirm}
+                autoFocus
+                className="px-4 py-2.5 rounded-full bg-red-500/15 border border-red-500/30 hover:bg-red-500/25 hover:border-red-500/45 text-[12.5px] font-bold text-red-200 hover:text-white transition-colors"
+              >
+                Effacer
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
