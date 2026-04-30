@@ -185,21 +185,9 @@ export function Header() {
                 )}
                 <Link
                   to={user ? "/dashboard" : "/account/login"}
-                  className="btn-liquid btn-liquid--primary group inline-flex items-center gap-1.5 rounded-full pl-5 pr-4 py-2.5 font-bold text-[13px] tracking-tight"
+                  className="btn-liquid btn-liquid--primary inline-flex items-center rounded-full px-5 py-2.5 font-bold text-[13px] tracking-tight"
                 >
                   <span className="relative">{user ? "Dashboard" : "Connexion"}</span>
-                  <svg
-                    className="relative w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M5 12h14" />
-                    <path d="M13 5l7 7-7 7" />
-                  </svg>
                 </Link>
               </>
             )}

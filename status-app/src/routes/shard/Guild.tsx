@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, MessageSquare, UserPlus, Cake, Calendar, Award, Coins,
   Gift, Vote, Volume2, Code2, Smile, MessageCircleHeart,
-  Sparkles, Layers, Heart,
+  Layers, Heart,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -200,7 +200,7 @@ export function ShardGuild() {
         <header className="mb-16 md:mb-20">
           <div className="flex items-center gap-6 flex-wrap mb-8">
             <motion.div
-              className="relative flex-shrink-0"
+              className="flex-shrink-0"
               initial={{ opacity: 0, scale: reduce ? 1 : 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.55, delay: 0.05, ease: heroEase }}
@@ -216,9 +216,6 @@ export function ShardGuild() {
                   {data.guild.name[0]?.toUpperCase()}
                 </div>
               )}
-              <span className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-black border border-white/15 flex items-center justify-center">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              </span>
             </motion.div>
             <motion.div
               className="min-w-0 flex-1"
@@ -226,10 +223,6 @@ export function ShardGuild() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7, delay: 0.1, ease: heroEase }}
             >
-              <p className="text-[11px] font-bold tracking-[0.28em] text-emerald-300/85 uppercase mb-3 inline-flex items-center gap-2">
-                <span className="live-dot live-dot-pink" />
-                Shard · live
-              </p>
               <h1 className="font-extrabold tracking-tight leading-[0.95] truncate text-4xl md:text-6xl lg:text-7xl">
                 {data.guild.name}
               </h1>
