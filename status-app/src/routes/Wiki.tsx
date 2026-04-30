@@ -669,14 +669,14 @@ export function Wiki() {
             )}
           </div>
 
-          {/* AI Assistant CTA */}
+          {/* Samia (AI assistant) CTA */}
           <Link
             to="/assistant"
-            className="group inline-flex items-center gap-2.5 mt-6 px-4 py-2.5 rounded-full bg-gradient-to-r from-violet-500/15 to-fuchsia-500/15 border border-violet-500/25 hover:border-violet-400/50 text-white/85 hover:text-white transition-colors"
+            className="group inline-flex items-center gap-2.5 mt-6 px-4 py-2.5 rounded-full bg-blue-500/10 border border-blue-400/25 hover:border-blue-400/55 hover:bg-blue-500/15 text-white/85 hover:text-white transition-colors shadow-[0_0_24px_-8px_rgba(59,130,246,0.5)]"
           >
-            <Sparkles className="w-3.5 h-3.5 text-violet-300" />
+            <Sparkles className="w-3.5 h-3.5 text-blue-300" />
             <span className="text-[13px] font-medium">
-              Pas envie de chercher ? Demande à l'assistant IA
+              Pas envie de chercher ? Demande à Samia, l'assistante IA
             </span>
             <ArrowRight className="w-3.5 h-3.5 text-white/50 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
           </Link>

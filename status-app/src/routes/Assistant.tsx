@@ -4,12 +4,12 @@ import {
   ArrowLeft,
   ArrowUpIcon,
   RotateCcw,
-  Sparkles,
   Loader2,
   Shield,
   Bot,
   Crown,
   HelpCircle,
+  Sparkles,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -24,23 +24,23 @@ interface ChatMessage {
 
 const SUGGESTIONS: { icon: React.ReactNode; label: string; prompt: string }[] = [
   {
-    icon: <Shield className="w-3.5 h-3.5" />,
+    icon: <Shield className="w-4 h-4" />,
     label: "Configurer le captcha",
     prompt: "Comment je configure le captcha ShardGuard de manière optimale ?",
   },
   {
-    icon: <Bot className="w-3.5 h-3.5" />,
+    icon: <Bot className="w-4 h-4" />,
     label: "Inviter les bots",
     prompt: "Comment j'invite ShardGuard et Shard sur mon serveur ?",
   },
   {
-    icon: <Crown className="w-3.5 h-3.5" />,
-    label: "Différences Premium",
+    icon: <Crown className="w-4 h-4" />,
+    label: "Premium vs gratuit",
     prompt: "Quelles sont les différences entre le plan gratuit et Premium ?",
   },
   {
-    icon: <HelpCircle className="w-3.5 h-3.5" />,
-    label: "Mon bot est offline",
+    icon: <HelpCircle className="w-4 h-4" />,
+    label: "Bot offline",
     prompt: "Mon bot ne répond plus, que faire ?",
   },
 ];
@@ -92,7 +92,6 @@ export function Assistant() {
       if (!content || sending) return;
       setError(null);
       setDraft("");
-      // reset textarea height
       if (textareaRef.current) textareaRef.current.style.height = "48px";
 
       const userMsg: ChatMessage = {
@@ -204,118 +203,124 @@ export function Assistant() {
 
   return (
     <div
-      className="relative w-full min-h-screen bg-cover bg-center bg-no-repeat flex flex-col text-white"
+      className="relative w-full min-h-screen bg-cover bg-center flex flex-col items-center text-white"
       style={{
         backgroundImage:
-          "radial-gradient(ellipse at top, rgba(139, 92, 246, 0.18), transparent 60%), radial-gradient(ellipse at bottom right, rgba(217, 70, 239, 0.15), transparent 55%), linear-gradient(180deg, #050507 0%, #0a0a12 100%)",
+          "url('https://pub-940ccf6255b54fa799a9b01050e6c227.r2.dev/ruixen_moon_2.png')",
         backgroundAttachment: "fixed",
       }}
     >
-      {/* Top bar */}
-      <header className="sticky top-0 z-20 backdrop-blur-md bg-black/30 border-b border-white/[0.06]">
-        <div className="max-w-5xl mx-auto px-5 h-14 flex items-center gap-3">
-          <Link
-            to="/wiki"
-            className="inline-flex items-center gap-2 text-[13px] text-white/70 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Wiki</span>
-          </Link>
-          <div className="flex-1 flex items-center justify-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 border border-violet-500/30 flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-violet-200" />
-            </div>
-            <span className="text-[12px] font-bold tracking-[0.22em] uppercase text-white/65">
-              Assistant Shardtown
-            </span>
-          </div>
-          {hasConversation && (
-            <button
-              type="button"
-              onClick={reset}
-              disabled={sending}
-              className="inline-flex items-center gap-1.5 text-[12px] text-white/50 hover:text-white/85 disabled:opacity-30 transition-colors"
-              title="Nouvelle conversation"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Nouvelle conv.</span>
-            </button>
-          )}
-        </div>
-      </header>
+      {/* Blue tint overlay — keeps the moon visible but shifts the
+          colorimetry to a deep night-blue feel. */}
+      <div
+        className="pointer-events-none fixed inset-0 z-0"
+        aria-hidden
+        style={{
+          background:
+            "radial-gradient(ellipse at top, rgba(37, 99, 235, 0.28), transparent 65%), linear-gradient(180deg, rgba(8, 15, 35, 0.55) 0%, rgba(2, 6, 23, 0.78) 100%)",
+        }}
+      />
 
-      <main className="flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 flex flex-col">
-        {/* Empty state — centered hero */}
-        {!hasConversation ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-16">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-fuchsia-500/20 border border-violet-500/25 flex items-center justify-center mb-6">
-              <Sparkles className="w-7 h-7 text-violet-200" />
+      {/* Floating top-left back link */}
+      <Link
+        to="/wiki"
+        className="fixed top-5 left-5 z-30 inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-[12.5px] text-white/75 hover:text-white hover:border-blue-400/40 hover:bg-black/60 transition-colors"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" />
+        <span>Wiki</span>
+      </Link>
+
+      {/* Floating top-right reset (only when conversation exists) */}
+      {hasConversation && (
+        <button
+          type="button"
+          onClick={reset}
+          disabled={sending}
+          className="fixed top-5 right-5 z-30 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-[12.5px] text-white/75 hover:text-white hover:border-blue-400/40 hover:bg-black/60 disabled:opacity-30 transition-colors"
+          title="Nouvelle conversation"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>Nouvelle</span>
+        </button>
+      )}
+
+      {!hasConversation ? (
+        /* Empty state — full-screen hero like the moon-chat reference */
+        <div className="relative z-10 flex-1 w-full flex flex-col items-center justify-center px-4">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-500/15 border border-blue-400/30 backdrop-blur-md mb-6 shadow-[0_0_40px_-8px_rgba(59,130,246,0.55)]">
+              <Sparkles className="w-6 h-6 text-blue-200" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-extrabold tracking-[-0.02em] text-center mb-3">
-              Salut, je suis l'assistant Shardtown.
+            <h1 className="text-5xl md:text-6xl font-semibold text-white drop-shadow-[0_2px_24px_rgba(59,130,246,0.35)] tracking-tight">
+              Samia
             </h1>
-            <p className="text-white/55 text-center max-w-lg leading-relaxed text-[15px]">
-              Pose-moi une question sur les bots, le dashboard, le Premium ou
-              ton compte — je connais le wiki par cœur.
+            <p className="mt-3 text-blue-100/70 text-[15px] max-w-md mx-auto leading-relaxed">
+              L'assistante IA de Shardtown. Pose-moi n'importe quelle question
+              sur les bots, le dashboard ou ton compte.
             </p>
           </div>
-        ) : (
-          <div ref={scrollRef} className="flex-1 overflow-y-auto py-8 space-y-5">
-            {messages
-              .filter(m => !(m.role === "assistant" && m.content === ""))
-              .map(m => (
-                <Message key={m.id} m={m} />
-              ))}
-            {showThinking && <ThinkingBubble />}
-          </div>
-        )}
-
-        {/* Input area */}
+        </div>
+      ) : (
+        /* Conversation view */
         <div
-          className={cn(
-            "sticky bottom-0 pt-4 pb-6 transition-all",
-            hasConversation
-              ? "bg-gradient-to-t from-black/80 via-black/60 to-transparent"
-              : "",
-          )}
+          ref={scrollRef}
+          className="relative z-10 flex-1 w-full max-w-3xl mx-auto px-4 sm:px-6 pt-20 pb-6 overflow-y-auto space-y-5"
         >
-          <div className="relative bg-black/55 backdrop-blur-xl rounded-2xl border border-white/10 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.7)]">
-            <Textarea
-              ref={textareaRef}
-              value={draft}
-              onChange={e => {
-                setDraft(e.target.value);
-                adjust();
-              }}
-              onKeyDown={e => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send(draft);
-                }
-              }}
-              placeholder="Pose ta question…"
-              maxLength={2000}
-              disabled={sending}
-              className={cn(
-                "w-full px-5 py-4 resize-none border-none",
-                "bg-transparent text-white text-[15px]",
-                "focus-visible:ring-0 focus-visible:ring-offset-0",
-                "placeholder:text-white/35 min-h-[48px]",
-              )}
-              style={{ overflow: "hidden" }}
-            />
-            <div className="flex items-center justify-between px-3 pb-3 gap-2">
-              <p className="text-[10.5px] text-white/30 font-medium tracking-wide ml-2">
-                Entrée pour envoyer · Shift+Entrée pour saut de ligne
-              </p>
+          {messages
+            .filter(m => !(m.role === "assistant" && m.content === ""))
+            .map(m => (
+              <Message key={m.id} m={m} />
+            ))}
+          {showThinking && <ThinkingBubble />}
+        </div>
+      )}
+
+      {/* Input area */}
+      <div
+        className={cn(
+          "relative z-10 w-full max-w-3xl px-4",
+          hasConversation ? "pb-6" : "mb-[18vh]",
+        )}
+      >
+        <div className="relative bg-black/60 backdrop-blur-xl rounded-2xl border border-blue-400/15 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.85),0_0_0_1px_rgba(59,130,246,0.08)]">
+          <Textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={e => {
+              setDraft(e.target.value);
+              adjust();
+            }}
+            onKeyDown={e => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send(draft);
+              }
+            }}
+            placeholder="Pose ta question à Samia…"
+            maxLength={2000}
+            disabled={sending}
+            className={cn(
+              "w-full px-5 py-4 resize-none border-none",
+              "bg-transparent text-white text-[15px]",
+              "focus-visible:ring-0 focus-visible:ring-offset-0",
+              "placeholder:text-blue-200/35 min-h-[48px]",
+            )}
+            style={{ overflow: "hidden" }}
+          />
+
+          <div className="flex items-center justify-between px-3 pb-3 gap-2">
+            <p className="text-[10.5px] text-white/30 font-medium tracking-wide ml-2 hidden sm:block">
+              Entrée pour envoyer · Shift+Entrée pour saut de ligne
+            </p>
+            <div className="flex items-center gap-2 ml-auto">
               <Button
                 onClick={() => send(draft)}
                 disabled={!draft.trim() || sending}
                 className={cn(
                   "h-9 w-9 rounded-xl p-0 transition-all",
                   draft.trim() && !sending
-                    ? "bg-gradient-to-br from-violet-500 to-fuchsia-600 hover:from-violet-400 hover:to-fuchsia-500 text-white"
-                    : "bg-white/[0.06] text-white/40",
+                    ? "bg-blue-500 hover:bg-blue-400 text-white shadow-[0_0_24px_-4px_rgba(59,130,246,0.7)]"
+                    : "bg-white/[0.06] text-white/40 hover:bg-white/[0.06]",
                 )}
               >
                 {sending ? (
@@ -323,33 +328,34 @@ export function Assistant() {
                 ) : (
                   <ArrowUpIcon className="w-4 h-4" />
                 )}
+                <span className="sr-only">Envoyer</span>
               </Button>
             </div>
           </div>
-
-          {/* Quick suggestions — only on empty state */}
-          {!hasConversation && (
-            <div className="flex items-center justify-center flex-wrap gap-2 mt-5">
-              {SUGGESTIONS.map(s => (
-                <button
-                  key={s.label}
-                  type="button"
-                  onClick={() => send(s.prompt)}
-                  disabled={sending}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 text-white/75 hover:text-white text-[12px] transition-colors disabled:opacity-40"
-                >
-                  {s.icon}
-                  <span>{s.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {error && (
-            <p className="mt-3 text-[12px] text-red-300 text-center">{error}</p>
-          )}
         </div>
-      </main>
+
+        {/* Quick suggestions — only on empty state, like the original */}
+        {!hasConversation && (
+          <div className="flex items-center justify-center flex-wrap gap-2.5 mt-6">
+            {SUGGESTIONS.map(s => (
+              <button
+                key={s.label}
+                type="button"
+                onClick={() => send(s.prompt)}
+                disabled={sending}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-400/20 bg-black/45 backdrop-blur-md text-blue-100/80 hover:text-white hover:border-blue-400/55 hover:bg-blue-500/10 transition-colors disabled:opacity-40"
+              >
+                <span className="text-blue-300">{s.icon}</span>
+                <span className="text-xs font-medium">{s.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {error && (
+          <p className="mt-3 text-[12px] text-red-300 text-center">{error}</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -364,16 +370,16 @@ function Message({ m }: { m: ChatMessage }) {
       )}
     >
       {!isUser && (
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 border border-violet-500/30 shrink-0 flex items-center justify-center text-violet-100">
+        <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 backdrop-blur-md shrink-0 flex items-center justify-center text-blue-200">
           <Sparkles className="w-4 h-4" />
         </div>
       )}
       <div
         className={cn(
-          "max-w-[85%] px-4 py-2.5 rounded-2xl text-[14.5px] leading-relaxed break-words whitespace-pre-wrap",
+          "max-w-[85%] px-4 py-2.5 rounded-2xl text-[14.5px] leading-relaxed break-words whitespace-pre-wrap backdrop-blur-md",
           isUser
-            ? "bg-violet-500/15 border border-violet-500/25 rounded-br-md text-violet-50"
-            : "bg-white/[0.05] border border-white/10 rounded-bl-md text-white/85",
+            ? "bg-blue-500/20 border border-blue-400/30 rounded-br-md text-blue-50"
+            : "bg-black/45 border border-white/10 rounded-bl-md text-white/90",
         )}
       >
         {m.content}
@@ -385,13 +391,13 @@ function Message({ m }: { m: ChatMessage }) {
 function ThinkingBubble() {
   return (
     <div className="flex items-start gap-3 justify-start">
-      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500/30 to-fuchsia-500/30 border border-violet-500/30 shrink-0 flex items-center justify-center text-violet-100">
+      <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 backdrop-blur-md shrink-0 flex items-center justify-center text-blue-200">
         <Sparkles className="w-4 h-4" />
       </div>
-      <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-white/[0.05] border border-white/10 inline-flex items-center gap-1.5">
-        <span className="w-1.5 h-1.5 rounded-full bg-white/55 animate-[bounce_1s_infinite] [animation-delay:-0.3s]" />
-        <span className="w-1.5 h-1.5 rounded-full bg-white/55 animate-[bounce_1s_infinite] [animation-delay:-0.15s]" />
-        <span className="w-1.5 h-1.5 rounded-full bg-white/55 animate-[bounce_1s_infinite]" />
+      <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-black/45 border border-white/10 backdrop-blur-md inline-flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-300/80 animate-[bounce_1s_infinite] [animation-delay:-0.3s]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-300/80 animate-[bounce_1s_infinite] [animation-delay:-0.15s]" />
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-300/80 animate-[bounce_1s_infinite]" />
       </div>
     </div>
   );
