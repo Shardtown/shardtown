@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { AssistantOrb, type OrbState } from "@/components/AssistantOrb";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPostStream } from "@/api/client";
 
@@ -64,6 +65,9 @@ export function Assistant() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Phase de la requête en cours : "thinking" tant que le 1er token n'est pas
+  // arrivé, puis "writing" pendant le streaming. Sinon dérivé de l'UI.
+  const [phase, setPhase] = useState<"thinking" | "writing" | null>(null);
 
   const idRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -107,6 +111,7 @@ export function Assistant() {
       };
       setMessages(prev => [...prev, userMsg, botMsg]);
       setSending(true);
+      setPhase("thinking");
 
       let receivedAny = false;
 
@@ -147,6 +152,7 @@ export function Assistant() {
             }
 
             if (eventName === "chunk" && parsed.text) {
+              if (!receivedAny) setPhase("writing");
               receivedAny = true;
               setMessages(prev =>
                 prev.map(m =>
@@ -177,6 +183,7 @@ export function Assistant() {
         );
       } finally {
         setSending(false);
+        setPhase(null);
       }
     },
     [sending, textareaRef],
@@ -201,25 +208,16 @@ export function Assistant() {
 
   const hasConversation = messages.length > 0;
 
+  // L'état de l'orbe :
+  // - phase prend la priorité quand une requête est en vol
+  // - sinon "listening" si l'utilisatrice est en train de taper
+  // - sinon "idle"
+  const orbState: OrbState =
+    phase ?? (draft.trim().length > 0 ? "listening" : "idle");
+
   return (
-    <div
-      className="relative w-full min-h-screen bg-cover bg-center flex flex-col items-center text-white"
-      style={{
-        backgroundImage:
-          "url('https://pub-940ccf6255b54fa799a9b01050e6c227.r2.dev/ruixen_moon_2.png')",
-        backgroundAttachment: "fixed",
-      }}
-    >
-      {/* Blue tint overlay — keeps the moon visible but shifts the
-          colorimetry to a deep night-blue feel. */}
-      <div
-        className="pointer-events-none fixed inset-0 z-0"
-        aria-hidden
-        style={{
-          background:
-            "radial-gradient(ellipse at top, rgba(37, 99, 235, 0.28), transparent 65%), linear-gradient(180deg, rgba(8, 15, 35, 0.55) 0%, rgba(2, 6, 23, 0.78) 100%)",
-        }}
-      />
+    <div className="relative w-full min-h-screen flex flex-col items-center text-white bg-[#020617]">
+      <AssistantOrb state={orbState} />
 
       {/* Floating top-left back link */}
       <Link
@@ -245,18 +243,16 @@ export function Assistant() {
       )}
 
       {!hasConversation ? (
-        /* Empty state — full-screen hero like the moon-chat reference */
+        /* Empty state — l'orbe géométrique sert d'identité visuelle ;
+           le titre + la description flottent par-dessus. */
         <div className="relative z-10 flex-1 w-full flex flex-col items-center justify-center px-4">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-500/15 border border-blue-400/30 backdrop-blur-md mb-6 shadow-[0_0_40px_-8px_rgba(59,130,246,0.55)]">
-              <Sparkles className="w-6 h-6 text-blue-200" />
-            </div>
-            <h1 className="text-5xl md:text-6xl font-semibold text-white drop-shadow-[0_2px_24px_rgba(59,130,246,0.35)] tracking-tight">
+            <h1 className="text-5xl md:text-7xl font-semibold text-white drop-shadow-[0_2px_24px_rgba(59,130,246,0.45)] tracking-tight">
               Samia
             </h1>
-            <p className="mt-3 text-blue-100/70 text-[15px] max-w-md mx-auto leading-relaxed">
-              L'assistante IA de Shardtown. Pose-moi n'importe quelle question
-              sur les bots, le dashboard ou ton compte.
+            <p className="mt-4 text-blue-100/75 text-[15px] max-w-md mx-auto leading-relaxed">
+              L'assistante IA de Shardtown — bots Discord, dashboard, services
+              sur mesure. Pose-moi ta question.
             </p>
           </div>
         </div>
