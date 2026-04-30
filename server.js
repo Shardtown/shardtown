@@ -792,7 +792,10 @@ app.get('/api/me', async (req, res) => {
 
 const OLLAMA_URL = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:3b-instruct';
-const OLLAMA_TIMEOUT_MS = parseInt(process.env.OLLAMA_TIMEOUT_MS, 10) || 60_000;
+const OLLAMA_TIMEOUT_MS = parseInt(process.env.OLLAMA_TIMEOUT_MS, 10) || 180_000;
+// Garde le modèle chargé en RAM. Sans ça, après 5 min d'inactivité Ollama
+// décharge le modèle et la requête suivante repaie un cold start de 30-60 s.
+const OLLAMA_KEEP_ALIVE = process.env.OLLAMA_KEEP_ALIVE || '30m';
 
 const CHATBOT_MAX_HISTORY = 20; // dernières paires user/assistant gardées
 const CHATBOT_MAX_USER_LEN = 2000;
@@ -823,7 +826,9 @@ const chatbotRateLimit = rateLimit({
 
 const CHATBOT_SYSTEM_PROMPT = SHARDTOWN_KNOWLEDGE;
 
-// Ping Ollama au démarrage pour avertir si rien n'écoute.
+// Ping Ollama au démarrage pour avertir si rien n'écoute, et déclenche
+// un warmup en arrière-plan : la première requête utilisateur n'a alors
+// pas à payer le cold start (30-60 s de chargement modèle en RAM).
 async function pingOllama() {
     try {
         const r = await fetch(`${OLLAMA_URL}/api/tags`);
@@ -832,8 +837,24 @@ async function pingOllama() {
         const names = (j.models || []).map(m => m.name);
         if (!names.includes(OLLAMA_MODEL)) {
             console.warn(`[chatbot] Ollama joignable mais le modèle "${OLLAMA_MODEL}" n'est pas pull. Lance: ollama pull ${OLLAMA_MODEL}`);
-        } else {
-            console.log(`[chatbot] Ollama OK — modèle "${OLLAMA_MODEL}" prêt`);
+            return;
+        }
+        console.log(`[chatbot] Ollama OK — modèle "${OLLAMA_MODEL}" prêt, warmup…`);
+        // Warmup : charge le modèle en RAM avec keep_alive long.
+        const t0 = Date.now();
+        const w = await fetch(`${OLLAMA_URL}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: OLLAMA_MODEL,
+                messages: [{ role: 'user', content: 'ok' }],
+                stream: false,
+                keep_alive: OLLAMA_KEEP_ALIVE,
+                options: { num_predict: 1 },
+            }),
+        }).catch(e => { console.warn('[chatbot] warmup KO:', e.message); return null; });
+        if (w && w.ok) {
+            console.log(`[chatbot] modèle chargé en RAM en ${((Date.now() - t0) / 1000).toFixed(1)}s`);
         }
     } catch (e) {
         console.warn(`[chatbot] Ollama injoignable sur ${OLLAMA_URL} (${e.message}). Le chatbot répondra "indisponible" tant qu'Ollama n'est pas lancé.`);
@@ -889,6 +910,7 @@ app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
                 model: OLLAMA_MODEL,
                 messages: ollamaMessages,
                 stream: false,
+                keep_alive: OLLAMA_KEEP_ALIVE,
                 options: {
                     temperature: 0.3,
                     num_predict: CHATBOT_MAX_TOKENS,
