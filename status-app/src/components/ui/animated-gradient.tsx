@@ -217,12 +217,17 @@ export default function AnimatedGradient({
     const container = containerRef.current;
     if (!canvas || !container || !isMounted) return;
 
-    const gl = canvas.getContext("webgl2", {
-      premultipliedAlpha: true,
-      alpha: true,
-      antialias: true,
-      powerPreference: "low-power",
-    });
+    let gl: WebGL2RenderingContext | null = null;
+    try {
+      gl = canvas.getContext("webgl2", {
+        premultipliedAlpha: true,
+        alpha: true,
+        antialias: true,
+        powerPreference: "low-power",
+      });
+    } catch {
+      gl = null;
+    }
     if (!gl) return;
 
     let contextLost = false;
@@ -242,15 +247,24 @@ export default function AnimatedGradient({
       gl_Position = a_position;
     }`;
 
-    const vertexShader = gl.createShader(gl.VERTEX_SHADER)!;
+    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    const program = gl.createProgram();
+    if (!vertexShader || !fragmentShader || !program) {
+      // Context can be created but shader/program allocation can still fail
+      // (lost context, exhausted resources). Bail quietly — the canvas just
+      // stays transparent rather than crashing the whole React tree.
+      canvas.removeEventListener("webglcontextlost", handleContextLost);
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      return;
+    }
+
     gl.shaderSource(vertexShader, vertexShaderSource);
     gl.compileShader(vertexShader);
 
-    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER)!;
     gl.shaderSource(fragmentShader, FRAGMENT_SHADER);
     gl.compileShader(fragmentShader);
 
-    const program = gl.createProgram()!;
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
     gl.linkProgram(program);
