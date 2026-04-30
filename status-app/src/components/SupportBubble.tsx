@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Sparkles, Send, X, Loader2, RotateCcw } from "lucide-react";
-import { apiGet, apiPost } from "@/api/client";
+import { apiGet, apiPost, apiPostStream } from "@/api/client";
 
 // L'ancienne bulle "Support" est devenue un chatbot IA branché sur Claude.
 // Le nom de fichier reste SupportBubble pour préserver l'import dans App.tsx.
@@ -65,29 +65,93 @@ export function SupportBubble() {
       if (!content || sending) return;
       setError(null);
       setDraft("");
+
       const userMsg: ChatMessage = {
         id: idRef.current++,
         role: "user",
         content,
       };
-      setMessages(prev => [...prev, userMsg]);
+      const botId = idRef.current++;
+      const botMsg: ChatMessage = {
+        id: botId,
+        role: "assistant",
+        content: "",
+      };
+      setMessages(prev => [...prev, userMsg, botMsg]);
       setSending(true);
+
+      let receivedAny = false;
+
       try {
-        const r = await apiPost<{ reply: string }>("/api/chatbot/message", {
-          content,
-        });
-        const botMsg: ChatMessage = {
-          id: idRef.current++,
-          role: "assistant",
-          content: r.reply,
-        };
-        setMessages(prev => [...prev, botMsg]);
+        const res = await apiPostStream("/api/chatbot/message", { content });
+        if (!res.ok || !res.body) {
+          const text = await res.text().catch(() => "");
+          throw new Error(text || `${res.status} ${res.statusText}`);
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        // Boucle SSE : on lit jusqu'à `\n\n` puis on parse event/data.
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || "";
+
+          for (const evt of events) {
+            if (!evt.trim()) continue;
+            let eventName = "message";
+            let dataLine = "";
+            for (const line of evt.split("\n")) {
+              if (line.startsWith("event: ")) eventName = line.slice(7).trim();
+              else if (line.startsWith("data: ")) dataLine = line.slice(6);
+            }
+            if (!dataLine) continue;
+
+            let parsed: { text?: string; reply?: string; error?: string };
+            try {
+              parsed = JSON.parse(dataLine);
+            } catch {
+              continue;
+            }
+
+            if (eventName === "chunk" && parsed.text) {
+              receivedAny = true;
+              setMessages(prev =>
+                prev.map(m =>
+                  m.id === botId
+                    ? { ...m, content: m.content + parsed.text }
+                    : m,
+                ),
+              );
+            } else if (eventName === "done" && parsed.reply) {
+              // Resync sur la réponse finale (au cas où on aurait raté un chunk)
+              setMessages(prev =>
+                prev.map(m =>
+                  m.id === botId ? { ...m, content: parsed.reply! } : m,
+                ),
+              );
+            } else if (eventName === "error") {
+              throw new Error(parsed.error || "Erreur");
+            }
+          }
+        }
+
+        if (!receivedAny) {
+          throw new Error("Réponse vide");
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Erreur";
         setError(msg);
-        // restore draft so the user can retry
         setDraft(content);
-        setMessages(prev => prev.filter(m => m.id !== userMsg.id));
+        // Retire les deux messages temporaires sur erreur
+        setMessages(prev =>
+          prev.filter(m => m.id !== userMsg.id && m.id !== botId),
+        );
       } finally {
         setSending(false);
       }
@@ -190,10 +254,18 @@ export function SupportBubble() {
               ref={scrollRef}
               className="flex-1 overflow-y-auto px-3 py-3 space-y-3"
             >
-              {messages.map(m => (
-                <Bubble key={m.id} m={m} />
-              ))}
-              {sending && <ThinkingDots />}
+              {/* On cache la bulle assistant tant qu'elle est vide ;
+                  les points "il réfléchit" prennent sa place. */}
+              {messages
+                .filter(m => !(m.role === "assistant" && m.content === ""))
+                .map(m => (
+                  <Bubble key={m.id} m={m} />
+                ))}
+              {sending &&
+                messages[messages.length - 1]?.role === "assistant" &&
+                messages[messages.length - 1]?.content === "" && (
+                  <ThinkingDots />
+                )}
             </div>
           )}
 

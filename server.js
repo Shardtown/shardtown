@@ -884,6 +884,10 @@ app.post('/api/chatbot/reset', (req, res) => {
     res.json({ success: true });
 });
 
+// Endpoint streaming. Renvoie du Server-Sent Events :
+//   event: chunk\ndata: {"text":"..."}\n\n         (un par token Ollama)
+//   event: done \ndata: {"reply":"..."}\n\n        (réponse complète)
+//   event: error\ndata: {"error":"..."}\n\n        (sur erreur)
 app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
     const content = String(req.body?.content || '').trim().slice(0, CHATBOT_MAX_USER_LEN);
     if (!content) return res.status(400).json({ error: 'Message vide' });
@@ -893,14 +897,29 @@ app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
     const userTurn = { role: 'user', content };
     const conversation = [...history, userTurn];
 
-    // Format Ollama /api/chat : un message system en tête + paires user/assistant.
     const ollamaMessages = [
         { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
         ...conversation.map(m => ({ role: m.role, content: m.content })),
     ];
 
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    // Indique à nginx de ne PAS bufferiser cette réponse
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders?.();
+
+    const sse = (event, data) => {
+        res.write(`event: ${event}\n`);
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), OLLAMA_TIMEOUT_MS);
+    // Si le client ferme la connexion avant la fin, on coupe Ollama aussi
+    req.on('close', () => ac.abort());
+
+    let fullReply = '';
 
     try {
         const r = await fetch(`${OLLAMA_URL}/api/chat`, {
@@ -909,53 +928,80 @@ app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
             body: JSON.stringify({
                 model: OLLAMA_MODEL,
                 messages: ollamaMessages,
-                stream: false,
+                stream: true,
                 keep_alive: OLLAMA_KEEP_ALIVE,
-                options: {
-                    temperature: 0.3,
-                    num_predict: CHATBOT_MAX_TOKENS,
-                },
+                options: { temperature: 0.3, num_predict: CHATBOT_MAX_TOKENS },
             }),
             signal: ac.signal,
         });
-        clearTimeout(timer);
 
         if (!r.ok) {
             const text = await r.text().catch(() => '');
             console.error(`[chatbot] Ollama HTTP ${r.status}: ${text.slice(0, 200)}`);
-            if (r.status === 404) {
-                return res.status(503).json({ error: `Modèle "${OLLAMA_MODEL}" pas chargé sur le serveur. Préviens l'admin.` });
-            }
-            return res.status(502).json({ error: 'Erreur de l\'assistant. Réessaie dans un instant.' });
+            sse('error', { error: r.status === 404
+                ? `Modèle "${OLLAMA_MODEL}" pas chargé sur le serveur.`
+                : "Erreur de l'assistant. Réessaie dans un instant." });
+            res.end();
+            clearTimeout(timer);
+            return;
         }
 
-        const data = await r.json();
-        const reply = String(data?.message?.content || '').trim()
-            || "Je n'ai pas réussi à formuler de réponse, peux-tu reformuler ?";
+        // Ollama envoie du NDJSON (une ligne JSON par chunk)
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-        const newHistory = [...conversation, { role: 'assistant', content: reply }];
-        const trimmed = newHistory.slice(-CHATBOT_MAX_HISTORY * 2);
-        chatbotHistories.set(sid, trimmed);
-        chatbotLastSeen.set(sid, Date.now());
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
 
-        res.json({
-            reply,
-            usage: {
-                prompt_tokens: data?.prompt_eval_count ?? 0,
-                completion_tokens: data?.eval_count ?? 0,
-                total_duration_ms: data?.total_duration ? Math.round(data.total_duration / 1e6) : 0,
-            },
-        });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                let obj;
+                try { obj = JSON.parse(trimmed); } catch { continue; }
+                const piece = obj?.message?.content;
+                if (piece) {
+                    fullReply += piece;
+                    sse('chunk', { text: piece });
+                }
+                if (obj.done) {
+                    const finalReply = fullReply.trim()
+                        || "Je n'ai pas réussi à formuler de réponse, peux-tu reformuler ?";
+                    const newHistory = [...conversation, { role: 'assistant', content: finalReply }];
+                    chatbotHistories.set(sid, newHistory.slice(-CHATBOT_MAX_HISTORY * 2));
+                    chatbotLastSeen.set(sid, Date.now());
+                    sse('done', {
+                        reply: finalReply,
+                        usage: {
+                            prompt_tokens: obj.prompt_eval_count ?? 0,
+                            completion_tokens: obj.eval_count ?? 0,
+                            total_duration_ms: obj.total_duration ? Math.round(obj.total_duration / 1e6) : 0,
+                        },
+                    });
+                }
+            }
+        }
+
+        clearTimeout(timer);
+        res.end();
     } catch (err) {
         clearTimeout(timer);
         if (err.name === 'AbortError') {
-            console.error(`[chatbot] Ollama timeout après ${OLLAMA_TIMEOUT_MS}ms`);
-            return res.status(504).json({ error: 'L\'IA met trop de temps à répondre. Réessaie.' });
+            // Soit timeout, soit client a fermé la connexion. Dans le 2e cas
+            // res est déjà fermé, write devient no-op.
+            console.error(`[chatbot] Ollama abort (timeout ou client fermé)`);
+            try { sse('error', { error: "L'IA met trop de temps à répondre. Réessaie." }); } catch {}
+        } else {
+            const msg = err?.cause?.code || err.message || 'unknown';
+            console.error('[chatbot] Ollama error:', msg);
+            try { sse('error', { error: "L'assistant est hors-ligne. Réessaie plus tard ou écris à contact@shardtwn.fr." }); } catch {}
         }
-        // ECONNREFUSED, fetch failed, etc. = Ollama down
-        const msg = err?.cause?.code || err.message || 'unknown';
-        console.error('[chatbot] Ollama error:', msg);
-        return res.status(503).json({ error: 'L\'assistant est hors-ligne pour le moment. Réessaie plus tard ou écris à contact@shardtwn.fr.' });
+        try { res.end(); } catch {}
     }
 });
 

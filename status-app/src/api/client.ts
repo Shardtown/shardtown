@@ -82,3 +82,30 @@ export const apiPost = <T>(path: string, body?: unknown) => send<T>("POST", path
 export const apiPut = <T>(path: string, body?: unknown) => send<T>("PUT", path, body);
 export const apiPatch = <T>(path: string, body?: unknown) => send<T>("PATCH", path, body);
 export const apiDelete = <T>(path: string, body?: unknown) => send<T>("DELETE", path, body);
+
+/**
+ * POST + return the raw streaming response (for SSE / NDJSON / chunked).
+ * Same CSRF + retry-on-403 dance as `send`. Caller is responsible for
+ * reading `response.body` themselves.
+ */
+export async function apiPostStream(path: string, body?: unknown): Promise<Response> {
+  const doFetch = async () => {
+    const token = await getCsrf();
+    return fetch(path, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": token,
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  };
+
+  let res = await doFetch();
+  if (res.status === 403) {
+    clearCsrf();
+    res = await doFetch();
+  }
+  return res;
+}
