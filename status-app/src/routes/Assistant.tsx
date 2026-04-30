@@ -65,7 +65,7 @@ export function Assistant() {
 
   const idRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { ref: textareaRef, adjust } = useAutoResize(56, 180);
+  const { ref: textareaRef, adjust } = useAutoResize(40, 160);
   const reduce = useReducedMotion();
   const heroEase = [0.22, 1, 0.36, 1] as const;
 
@@ -92,7 +92,7 @@ export function Assistant() {
       if (!content || sending) return;
       setError(null);
       setDraft("");
-      if (textareaRef.current) textareaRef.current.style.height = "56px";
+      if (textareaRef.current) textareaRef.current.style.height = "40px";
 
       const userMsg: ChatMessage = {
         id: idRef.current++,
@@ -278,7 +278,7 @@ export function Assistant() {
             initial={{ opacity: 0, y: reduce ? 0 : 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: hasConversation ? 0 : 0.65, ease: heroEase }}
-            className="relative rounded-3xl bg-white/[0.025] border border-white/[0.08] hover:border-white/15 focus-within:border-white/25 transition-colors backdrop-blur-md shadow-[0_24px_64px_-12px_rgba(0,0,0,0.45)]"
+            className="relative flex items-center gap-2 rounded-full bg-white/[0.025] border border-white/[0.08] hover:border-white/15 focus-within:border-white/25 transition-colors backdrop-blur-md shadow-[0_24px_64px_-12px_rgba(0,0,0,0.45)] pr-2"
           >
             <Textarea
               ref={textareaRef}
@@ -296,37 +296,33 @@ export function Assistant() {
               placeholder="Pose ta question à Samia…"
               maxLength={2000}
               disabled={sending}
+              rows={1}
               className={cn(
-                "w-full px-6 py-5 resize-none border-none",
-                "bg-transparent text-white text-[16px]",
+                "flex-1 px-5 py-2.5 resize-none border-none",
+                "bg-transparent text-white text-[15px] leading-tight",
                 "focus-visible:ring-0 focus-visible:ring-offset-0",
-                "placeholder:text-white/35 min-h-[56px]",
+                "placeholder:text-white/35 min-h-[40px]",
               )}
               style={{ overflow: "hidden" }}
             />
-            <div className="flex items-center justify-between px-4 pb-3 gap-2">
-              <p className="text-[11px] text-white/30 font-medium tracking-wide ml-1 hidden sm:block">
-                Entrée pour envoyer · Shift+Entrée pour saut de ligne
-              </p>
-              <button
-                type="button"
-                onClick={() => send(draft)}
-                disabled={!draft.trim() || sending}
-                aria-label="Envoyer"
-                className={cn(
-                  "ml-auto h-10 w-10 rounded-2xl flex items-center justify-center transition-all",
-                  draft.trim() && !sending
-                    ? "bg-white text-black hover:scale-105"
-                    : "bg-white/[0.06] text-white/40 cursor-not-allowed",
-                )}
-              >
-                {sending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <ArrowUpIcon className="w-4 h-4" strokeWidth={2.5} />
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => send(draft)}
+              disabled={!draft.trim() || sending}
+              aria-label="Envoyer"
+              className={cn(
+                "shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition-all",
+                draft.trim() && !sending
+                  ? "bg-white text-black hover:scale-105"
+                  : "bg-white/[0.06] text-white/40 cursor-not-allowed",
+              )}
+            >
+              {sending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <ArrowUpIcon className="w-4 h-4" strokeWidth={2.5} />
+              )}
+            </button>
           </motion.div>
 
           {/* Suggestions only when no conversation yet */}
