@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Shield, Zap, Code2, Bot, Users, MessageSquare, Mail } from "lucide-react";
-import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TiltCard } from "@/components/ui/tilt-card";
 import { LiquidButton } from "@/components/ui/liquid-glass-button";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
 import { HolographicCard } from "@/components/ui/holographic-card";
+import { CinematicTextHero } from "@/components/ui/cinematic-text-hero";
 
 const SERVICES = [
   {
@@ -60,65 +60,45 @@ const TOOLS = [
 ];
 
 export function Index() {
-  const reduce = useReducedMotion();
-  const heroEase = [0.22, 1, 0.36, 1] as const;
-
   return (
     <AppLayout>
-      {/* Hero — initial swipe-in on mount */}
-      <section className="container-wide text-center py-32 md:py-40 overflow-hidden">
-        <motion.p
-          className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
-          initial={{ opacity: 0, y: reduce ? 0 : 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.05, ease: heroEase }}
+      {/* Hero cinématique — silver matte tagline + brand name */}
+      <section className="container-wide py-32 md:py-40 overflow-hidden">
+        <CinematicTextHero
+          overline="Studio Shardtown"
+          taglineLine1="Studio de développement"
+          taglineLine2="web et Discord."
+          brandName="SHARDTOWN"
+          subtitle={
+            <>
+              On code vos outils,{" "}
+              <span className="text-white">on configure vos serveurs.</span>
+            </>
+          }
         >
-          Studio Shardtown
-        </motion.p>
-        <motion.h1
-          className="font-extrabold leading-[0.9] tracking-tight uppercase mb-12"
-          style={{ fontSize: "clamp(3.5rem, 10vw, 8rem)" }}
-          initial={{ opacity: 0, x: reduce ? 0 : -120, filter: reduce ? "blur(0px)" : "blur(8px)" }}
-          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-          transition={{ duration: 0.95, delay: 0.15, ease: heroEase }}
-        >
-          SHARDTOWN
-        </motion.h1>
-        <motion.p
-          className="text-xl md:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed"
-          initial={{ opacity: 0, x: reduce ? 0 : 80 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
-        >
-          Studio de développement <span className="text-white">web et Discord</span>.
-          <br className="hidden md:block" />
-          On code vos outils, on configure vos serveurs.
-        </motion.p>
-        <motion.div
-          className="flex items-center justify-center gap-3 flex-wrap mt-16"
-          initial={{ opacity: 0, y: reduce ? 0 : 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.65, ease: heroEase }}
-        >
-          <LiquidButton
-            size="xxl"
-            className="rounded-full text-base font-bold text-white"
-            onClick={() => {
-              document.getElementById("contact")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-          >
-            <span className="inline-flex items-center gap-3">
-              Discutons de votre projet
-              <ArrowRight className="w-4 h-4" />
-            </span>
-          </LiquidButton>
-          <a
-            href="#services"
-            className="btn-liquid rounded-full px-8 py-4 font-bold text-sm"
-          >
-            Nos métiers
-          </a>
-        </motion.div>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <LiquidButton
+              size="xxl"
+              className="rounded-full text-base font-bold text-white"
+              onClick={() => {
+                document
+                  .getElementById("contact")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            >
+              <span className="inline-flex items-center gap-3">
+                Discutons de votre projet
+                <ArrowRight className="w-4 h-4" />
+              </span>
+            </LiquidButton>
+            <a
+              href="#services"
+              className="btn-liquid rounded-full px-8 py-4 font-bold text-sm"
+            >
+              Nos métiers
+            </a>
+          </div>
+        </CinematicTextHero>
       </section>
 
       {/* Services / Métiers — slides in from the LEFT */}
