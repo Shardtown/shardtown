@@ -20,7 +20,6 @@ const {
     generateAuthenticationOptions,
     verifyAuthenticationResponse,
 } = require('@simplewebauthn/server');
-const Anthropic = require('@anthropic-ai/sdk').default;
 const { SHARDTOWN_KNOWLEDGE } = require('./chatbot-knowledge');
 
 // Fisher-Yates with crypto.randomInt — replaces the buggy
@@ -780,32 +779,27 @@ app.get('/api/me', async (req, res) => {
     });
 });
 
-// ─── Chatbot IA (assistant Shardtown alimenté par Claude) ─────────────
-// Remplace l'ancien système de tickets support. La base de connaissance
-// (wiki + extras) est dans chatbot-knowledge.js et arrive en tête du
-// system prompt avec un cache_control ephemeral pour bénéficier du
-// prompt caching Anthropic (~90% de réduction sur les requêtes suivantes).
+// ─── Chatbot IA (assistant Shardtown via Ollama auto-hébergé) ─────────
+// La base de connaissance (chatbot-knowledge.js) est injectée comme
+// message system Ollama. Ollama tourne sur le VPS — pas d'API tierce.
+//
+// Variables :
+//   OLLAMA_URL    (def. http://127.0.0.1:11434) — endpoint local
+//   OLLAMA_MODEL  (def. qwen2.5:3b-instruct)    — modèle pull au préalable
 //
 // L'historique de conversation est gardé en mémoire process, indexé par
-// req.sessionID. Pas de persistance — c'est volontaire : on ne veut pas
-// stocker les questions des utilisateurs en base.
+// req.sessionID. Pas de persistance — on ne stocke pas les questions.
 
-const anthropic = process.env.ANTHROPIC_API_KEY
-    ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    : null;
+const OLLAMA_URL = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:3b-instruct';
+const OLLAMA_TIMEOUT_MS = parseInt(process.env.OLLAMA_TIMEOUT_MS, 10) || 60_000;
 
-if (!anthropic) {
-    console.warn('[chatbot] ANTHROPIC_API_KEY non défini — le chatbot renverra une erreur');
-}
-
-const CHATBOT_MODEL = process.env.CHATBOT_MODEL || 'claude-opus-4-7';
-const CHATBOT_MAX_HISTORY = 30; // dernières paires user/assistant gardées
+const CHATBOT_MAX_HISTORY = 20; // dernières paires user/assistant gardées
 const CHATBOT_MAX_USER_LEN = 2000;
-const CHATBOT_MAX_TOKENS = 1024;
+const CHATBOT_MAX_TOKENS = 512;
 
 // Map<sessionID, { role: 'user' | 'assistant', content: string }[]>
 const chatbotHistories = new Map();
-// Tampon de 1 h pour éviter une fuite mémoire si la session est jetée
 const CHATBOT_SESSION_TTL = 60 * 60 * 1000;
 const chatbotLastSeen = new Map();
 
@@ -829,6 +823,24 @@ const chatbotRateLimit = rateLimit({
 
 const CHATBOT_SYSTEM_PROMPT = SHARDTOWN_KNOWLEDGE;
 
+// Ping Ollama au démarrage pour avertir si rien n'écoute.
+async function pingOllama() {
+    try {
+        const r = await fetch(`${OLLAMA_URL}/api/tags`);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const j = await r.json();
+        const names = (j.models || []).map(m => m.name);
+        if (!names.includes(OLLAMA_MODEL)) {
+            console.warn(`[chatbot] Ollama joignable mais le modèle "${OLLAMA_MODEL}" n'est pas pull. Lance: ollama pull ${OLLAMA_MODEL}`);
+        } else {
+            console.log(`[chatbot] Ollama OK — modèle "${OLLAMA_MODEL}" prêt`);
+        }
+    } catch (e) {
+        console.warn(`[chatbot] Ollama injoignable sur ${OLLAMA_URL} (${e.message}). Le chatbot répondra "indisponible" tant qu'Ollama n'est pas lancé.`);
+    }
+}
+pingOllama();
+
 function getChatbotHistory(sid) {
     return chatbotHistories.get(sid) || [];
 }
@@ -841,7 +853,7 @@ app.get('/api/chatbot/history', (req, res) => {
             role: m.role,
             content: m.content,
         })),
-        enabled: !!anthropic,
+        enabled: true,
     });
 });
 
@@ -852,41 +864,54 @@ app.post('/api/chatbot/reset', (req, res) => {
 });
 
 app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
-    if (!anthropic) {
-        return res.status(503).json({ error: 'Chatbot indisponible (clé API manquante côté serveur).' });
-    }
     const content = String(req.body?.content || '').trim().slice(0, CHATBOT_MAX_USER_LEN);
     if (!content) return res.status(400).json({ error: 'Message vide' });
 
     const sid = req.sessionID;
     const history = getChatbotHistory(sid);
     const userTurn = { role: 'user', content };
-    const messages = [...history, userTurn];
+    const conversation = [...history, userTurn];
+
+    // Format Ollama /api/chat : un message system en tête + paires user/assistant.
+    const ollamaMessages = [
+        { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
+        ...conversation.map(m => ({ role: m.role, content: m.content })),
+    ];
+
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), OLLAMA_TIMEOUT_MS);
 
     try {
-        // System prompt en bloc avec cache_control — l'énorme base de
-        // connaissance n'est facturée qu'une fois (puis ~10% du prix).
-        const response = await anthropic.messages.create({
-            model: CHATBOT_MODEL,
-            max_tokens: CHATBOT_MAX_TOKENS,
-            system: [
-                {
-                    type: 'text',
-                    text: CHATBOT_SYSTEM_PROMPT,
-                    cache_control: { type: 'ephemeral' },
+        const r = await fetch(`${OLLAMA_URL}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: OLLAMA_MODEL,
+                messages: ollamaMessages,
+                stream: false,
+                options: {
+                    temperature: 0.3,
+                    num_predict: CHATBOT_MAX_TOKENS,
                 },
-            ],
-            messages: messages.map(m => ({ role: m.role, content: m.content })),
+            }),
+            signal: ac.signal,
         });
+        clearTimeout(timer);
 
-        const reply = (response.content || [])
-            .filter(b => b.type === 'text')
-            .map(b => b.text)
-            .join('\n')
-            .trim() || "Je n'ai pas réussi à formuler de réponse, peux-tu reformuler ?";
+        if (!r.ok) {
+            const text = await r.text().catch(() => '');
+            console.error(`[chatbot] Ollama HTTP ${r.status}: ${text.slice(0, 200)}`);
+            if (r.status === 404) {
+                return res.status(503).json({ error: `Modèle "${OLLAMA_MODEL}" pas chargé sur le serveur. Préviens l'admin.` });
+            }
+            return res.status(502).json({ error: 'Erreur de l\'assistant. Réessaie dans un instant.' });
+        }
 
-        const newHistory = [...messages, { role: 'assistant', content: reply }];
-        // Tronque pour éviter une croissance illimitée
+        const data = await r.json();
+        const reply = String(data?.message?.content || '').trim()
+            || "Je n'ai pas réussi à formuler de réponse, peux-tu reformuler ?";
+
+        const newHistory = [...conversation, { role: 'assistant', content: reply }];
         const trimmed = newHistory.slice(-CHATBOT_MAX_HISTORY * 2);
         chatbotHistories.set(sid, trimmed);
         chatbotLastSeen.set(sid, Date.now());
@@ -894,21 +919,21 @@ app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
         res.json({
             reply,
             usage: {
-                input_tokens: response.usage?.input_tokens ?? 0,
-                output_tokens: response.usage?.output_tokens ?? 0,
-                cache_read_input_tokens: response.usage?.cache_read_input_tokens ?? 0,
-                cache_creation_input_tokens: response.usage?.cache_creation_input_tokens ?? 0,
+                prompt_tokens: data?.prompt_eval_count ?? 0,
+                completion_tokens: data?.eval_count ?? 0,
+                total_duration_ms: data?.total_duration ? Math.round(data.total_duration / 1e6) : 0,
             },
         });
     } catch (err) {
-        console.error('[chatbot] Anthropic error:', err.message);
-        if (err instanceof Anthropic.RateLimitError) {
-            return res.status(429).json({ error: 'L\'IA est saturée pour l\'instant, réessaie dans une minute.' });
+        clearTimeout(timer);
+        if (err.name === 'AbortError') {
+            console.error(`[chatbot] Ollama timeout après ${OLLAMA_TIMEOUT_MS}ms`);
+            return res.status(504).json({ error: 'L\'IA met trop de temps à répondre. Réessaie.' });
         }
-        if (err instanceof Anthropic.AuthenticationError) {
-            return res.status(503).json({ error: 'Configuration IA invalide (clé). Préviens l\'admin.' });
-        }
-        res.status(500).json({ error: 'Erreur de l\'assistant. Réessaie dans un instant.' });
+        // ECONNREFUSED, fetch failed, etc. = Ollama down
+        const msg = err?.cause?.code || err.message || 'unknown';
+        console.error('[chatbot] Ollama error:', msg);
+        return res.status(503).json({ error: 'L\'assistant est hors-ligne pour le moment. Réessaie plus tard ou écris à contact@shardtwn.fr.' });
     }
 });
 
