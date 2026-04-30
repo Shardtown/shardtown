@@ -793,9 +793,14 @@ app.get('/api/me', async (req, res) => {
 const OLLAMA_URL = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:3b-instruct';
 const OLLAMA_TIMEOUT_MS = parseInt(process.env.OLLAMA_TIMEOUT_MS, 10) || 180_000;
-// Garde le modèle chargé en RAM. Sans ça, après 5 min d'inactivité Ollama
-// décharge le modèle et la requête suivante repaie un cold start de 30-60 s.
-const OLLAMA_KEEP_ALIVE = process.env.OLLAMA_KEEP_ALIVE || '30m';
+// Garde le modèle chargé en RAM. -1 = indéfini (recommandé sur un VPS dédié,
+// le modèle ne se décharge jamais → pas de cold start sur le 1er message).
+// Override avec OLLAMA_KEEP_ALIVE=30m si tu veux libérer la RAM en idle.
+// Ollama accepte string ("30m") ou nombre (-1, 0, secondes). On normalise.
+const OLLAMA_KEEP_ALIVE_RAW = process.env.OLLAMA_KEEP_ALIVE || '-1';
+const OLLAMA_KEEP_ALIVE = /^-?\d+$/.test(OLLAMA_KEEP_ALIVE_RAW)
+    ? parseInt(OLLAMA_KEEP_ALIVE_RAW, 10)
+    : OLLAMA_KEEP_ALIVE_RAW;
 
 const CHATBOT_MAX_HISTORY = 20; // dernières paires user/assistant gardées
 const CHATBOT_MAX_USER_LEN = 2000;

@@ -9,6 +9,8 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Textarea } from "@/components/ui/textarea";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { cn } from "@/lib/utils";
@@ -202,10 +204,16 @@ export function Assistant() {
 
   return (
     <AppLayout>
-      <section className="container-wide pt-8 pb-24">
+      {/* La section remplit l'espace disponible entre le header (pt-32 dans
+          AppLayout.main) et le footer. Empty state = hero centré ; conversation
+          = colonne flex avec messages qui scrollent et input en bas. */}
+      <section
+        className="container-wide pt-8 pb-12 flex flex-col"
+        style={{ minHeight: "calc(100vh - 18rem)" }}
+      >
         {!hasConversation ? (
           // Empty state — hero in the same uppercase Inter-Black style as the home
-          <div className="text-center max-w-3xl mx-auto">
+          <div className="text-center max-w-3xl mx-auto flex-1 flex flex-col justify-center">
             <motion.p
               className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
               initial={{ opacity: 0, y: reduce ? 0 : 20 }}
@@ -257,11 +265,11 @@ export function Assistant() {
           </div>
         )}
 
-        {/* Messages */}
+        {/* Messages — flex-1 pour absorber l'espace dispo, scroll interne */}
         {hasConversation && (
           <div
             ref={scrollRef}
-            className="max-w-3xl mx-auto space-y-5 mb-8 max-h-[58vh] overflow-y-auto pr-1"
+            className="w-full max-w-3xl mx-auto flex-1 overflow-y-auto pr-1 space-y-5 mb-6"
           >
             {messages
               .filter(m => !(m.role === "assistant" && m.content === ""))
@@ -273,7 +281,7 @@ export function Assistant() {
         )}
 
         {/* Input — same glass aesthetic as the rest of the site */}
-        <div className="max-w-3xl mx-auto">
+        <div className="w-full max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: reduce ? 0 : 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -373,15 +381,88 @@ function Message({ m }: { m: ChatMessage }) {
       )}
       <div
         className={cn(
-          "max-w-[85%] px-4 py-3 rounded-2xl text-[14.5px] leading-relaxed break-words whitespace-pre-wrap",
+          "max-w-[85%] px-4 py-3 rounded-2xl text-[14.5px] leading-relaxed break-words",
           isUser
-            ? "bg-white text-black rounded-br-md"
-            : "bg-white/[0.04] border border-white/[0.08] rounded-bl-md text-white/85",
+            ? "bg-white text-black rounded-br-md whitespace-pre-wrap"
+            : "bg-white/[0.04] border border-white/[0.08] rounded-bl-md text-white/85 markdown-prose",
         )}
       >
-        {m.content}
+        {isUser ? m.content : <MarkdownReply content={m.content} />}
       </div>
     </div>
+  );
+}
+
+// Liens internes ouvrent dans la même fenêtre via react-router (pas de full
+// reload), liens externes (http(s):// non shardtwn) ouvrent dans un nouvel
+// onglet avec rel="noopener noreferrer".
+function MarkdownReply({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        a: ({ href, children, ...props }) => {
+          const url = href || "#";
+          const isExternal = /^https?:\/\//i.test(url);
+          const isInternal =
+            !isExternal && (url.startsWith("/") || url.startsWith("#"));
+          if (isInternal) {
+            return (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener"
+                className="text-blue-300 underline decoration-blue-300/40 underline-offset-2 hover:decoration-blue-300 hover:text-blue-200 transition-colors"
+                {...props}
+              >
+                {children}
+              </a>
+            );
+          }
+          return (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-300 underline decoration-blue-300/40 underline-offset-2 hover:decoration-blue-300 hover:text-blue-200 transition-colors"
+              {...props}
+            >
+              {children}
+            </a>
+          );
+        },
+        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+        ul: ({ children }) => (
+          <ul className="list-disc pl-5 mb-2 last:mb-0 space-y-1">{children}</ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="list-decimal pl-5 mb-2 last:mb-0 space-y-1">
+            {children}
+          </ol>
+        ),
+        li: ({ children }) => <li>{children}</li>,
+        strong: ({ children }) => (
+          <strong className="font-semibold text-white">{children}</strong>
+        ),
+        em: ({ children }) => <em className="italic">{children}</em>,
+        code: ({ children }) => (
+          <code className="px-1 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[12.5px] font-mono">
+            {children}
+          </code>
+        ),
+        h1: ({ children }) => (
+          <h3 className="text-[15px] font-bold mb-2">{children}</h3>
+        ),
+        h2: ({ children }) => (
+          <h3 className="text-[14.5px] font-bold mb-2">{children}</h3>
+        ),
+        h3: ({ children }) => (
+          <h4 className="text-[14px] font-semibold mb-1.5">{children}</h4>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
   );
 }
 
