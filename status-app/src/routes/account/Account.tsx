@@ -7,10 +7,12 @@ import {
 import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@/api/passkey";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost } from "@/api/client";
+import { useAuth } from "@/api/auth";
 import type { Account as AccountT } from "@/api/account";
 
 export function Account() {
   const nav = useNavigate();
+  const { refresh: refreshAuth } = useAuth();
   const [params, setParams] = useSearchParams();
   const [account, setAccount] = useState<AccountT | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,7 +102,14 @@ export function Account() {
 
   async function logout() {
     await apiPost("/api/account/logout").catch(() => {});
-    nav("/account/login", { replace: true });
+    // Le backend détruit la session ; on synchronise le AuthContext top-level
+    // pour que le Header (et tout le reste de l'app) reflète l'état déconnecté
+    // sans recharger la page.
+    refreshAuth();
+    // Retour à l'accueil plutôt que la page de connexion : c'est moins
+    // ambigu pour l'utilisateur ("Bon retour." sur /account/login donnait
+    // l'impression d'être encore connecté).
+    nav("/", { replace: true });
   }
 
   async function unlink() {

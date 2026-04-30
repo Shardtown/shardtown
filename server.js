@@ -1263,8 +1263,27 @@ app.post('/api/account/login', accountAuthLimiter, async (req, res) => {
 });
 
 app.post('/api/account/logout', (req, res) => {
-    if (req.session) req.session.account = null;
-    req.session.destroy(() => res.json({ success: true }));
+    // Coupe aussi la session Passport (login Discord legacy) si présente,
+    // sinon req.user reste hydraté à la prochaine requête via passport.session().
+    const finalize = () => {
+        if (req.session) req.session.account = null;
+        req.session.destroy(() => {
+            // express-session ne supprime pas le cookie côté client par défaut.
+            // On l'efface explicitement (mêmes options que celles utilisées à
+            // la création — voir app.use(session({...})) plus haut).
+            res.clearCookie('sgid', { path: '/', httpOnly: true, sameSite: 'lax' });
+            res.json({ success: true });
+        });
+    };
+    if (typeof req.logout === 'function') {
+        // passport >= 0.6 : req.logout est asynchrone et prend un callback
+        req.logout(err => {
+            if (err) console.warn('[logout] passport req.logout:', err.message);
+            finalize();
+        });
+    } else {
+        finalize();
+    }
 });
 
 app.get('/api/account/me', async (req, res) => {
