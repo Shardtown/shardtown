@@ -935,7 +935,14 @@ app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
                 messages: ollamaMessages,
                 stream: true,
                 keep_alive: OLLAMA_KEEP_ALIVE,
-                options: { temperature: 0.3, num_predict: CHATBOT_MAX_TOKENS },
+                options: {
+                    // Très basse temperature : on veut que Samia suive
+                    // strictement les règles du system prompt (notamment
+                    // les refus hors-scope) plutôt que de "créer" librement.
+                    temperature: 0.15,
+                    top_p: 0.85,
+                    num_predict: CHATBOT_MAX_TOKENS,
+                },
             }),
             signal: ac.signal,
         });
