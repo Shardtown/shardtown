@@ -83,7 +83,7 @@ export function Signup() {
               Crée ton compte
             </h1>
             <p className="text-white/45 text-[15px] leading-relaxed">
-              Tu pourras lier Discord ensuite pour accéder aux dashboards.
+              Tu pourras lier Discord ensuite pour accéder à tes outils.
             </p>
           </div>
 

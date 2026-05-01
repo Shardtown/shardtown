@@ -381,10 +381,10 @@ export function Account() {
         {/* Mon espace — quick nav */}
         <div className="mt-12 flex items-center justify-center">
           <Link
-            to="/dashboard"
+            to="/outils"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-black text-[13px] font-bold hover:opacity-90 transition-opacity"
           >
-            <Server className="w-3.5 h-3.5" /> Aller à mes dashboards
+            <Server className="w-3.5 h-3.5" /> Aller à mes outils
           </Link>
         </div>
       </section>

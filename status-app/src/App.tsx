@@ -8,7 +8,7 @@ import { Index } from "@/routes/Index";
 import { Wiki } from "@/routes/Wiki";
 import { Terms } from "@/routes/Terms";
 import { Privacy } from "@/routes/Privacy";
-import { Dashboard } from "@/routes/Dashboard";
+import { Outils } from "@/routes/Outils";
 import { Premium } from "@/routes/Premium";
 import { ShardServer } from "@/routes/shard/Server";
 import { ShardGuild } from "@/routes/shard/Guild";
@@ -51,7 +51,9 @@ export function App() {
           <Route path="/assistant" element={<Assistant />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/outils" element={<Outils />} />
+          {/* Ancien chemin — redirige vers /outils pour ne rien casser */}
+          <Route path="/dashboard" element={<Navigate to="/outils" replace />} />
           <Route path="/premium" element={<Premium />} />
           <Route path="/shard/server" element={<ShardServer />} />
           <Route path="/shard/guild/:guildId" element={<ShardGuild />} />

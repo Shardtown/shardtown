@@ -184,10 +184,10 @@ export function Header() {
                   </Link>
                 )}
                 <Link
-                  to={user ? "/dashboard" : "/account/login"}
+                  to={user ? "/outils" : "/account/login"}
                   className="btn-liquid btn-liquid--primary inline-flex items-center rounded-full px-5 py-2.5 font-bold text-[13px] tracking-tight"
                 >
-                  <span className="relative">{user ? "Dashboard" : "Connexion"}</span>
+                  <span className="relative">{user ? "Outils" : "Connexion"}</span>
                 </Link>
               </>
             )}
