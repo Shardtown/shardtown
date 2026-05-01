@@ -4,6 +4,7 @@ import {
   User, Mail, AtSign, LogOut, ShieldCheck, ShieldAlert, Calendar,
   Link2, RefreshCw, Server, ArrowRight, Unplug, Fingerprint, Plus, Trash2, Loader2, X,
 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@/api/passkey";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost } from "@/api/client";
@@ -13,6 +14,8 @@ import type { Account as AccountT } from "@/api/account";
 export function Account() {
   const nav = useNavigate();
   const { refresh: refreshAuth } = useAuth();
+  const reduce = useReducedMotion();
+  const heroEase = [0.22, 1, 0.36, 1] as const;
   const [params, setParams] = useSearchParams();
   const [account, setAccount] = useState<AccountT | null>(null);
   const [loading, setLoading] = useState(true);
@@ -149,7 +152,13 @@ export function Account() {
     return (
       <AppLayout>
         <section className="container-wide pt-32 md:pt-40">
-          <div className="h-12 w-64 bg-white/5 rounded animate-pulse" />
+          <div className="h-4 w-32 bg-white/5 rounded-full animate-pulse mb-6" />
+          <div className="h-20 w-3/4 bg-white/5 rounded animate-pulse mb-12" />
+          <div className="grid md:grid-cols-2 gap-4 mb-10">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-24 bg-white/[0.03] rounded-3xl animate-pulse" />
+            ))}
+          </div>
         </section>
       </AppLayout>
     );
@@ -157,23 +166,51 @@ export function Account() {
 
   return (
     <AppLayout>
-      <section className="container-wide pt-20 md:pt-28 pb-32">
-        <header className="flex items-center gap-4 flex-wrap justify-between mb-10">
-          <div>
-            <p className="text-[11px] font-bold tracking-[0.32em] text-blue-300/70 uppercase mb-3">
+      <section className="container-wide pt-32 md:pt-40 pb-32 overflow-hidden">
+        {/* Hero — same DA tokens as the home / dashboard pages */}
+        <header className="flex items-start gap-4 flex-wrap justify-between mb-16">
+          <div className="min-w-0">
+            <motion.p
+              className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
+              initial={{ opacity: 0, y: reduce ? 0 : 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.05, ease: heroEase }}
+            >
               Mon compte
-            </p>
-            <h1 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-6xl">
+            </motion.p>
+            <motion.h1
+              className="font-extrabold tracking-tight leading-[0.95] truncate text-4xl md:text-6xl lg:text-7xl"
+              initial={{
+                opacity: 0,
+                x: reduce ? 0 : -120,
+                filter: reduce ? "blur(0px)" : "blur(8px)",
+              }}
+              animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+              transition={{ duration: 0.95, delay: 0.15, ease: heroEase }}
+            >
               {account.pseudo}
-            </h1>
+            </motion.h1>
+            <motion.p
+              className="text-base md:text-lg text-white/55 mt-4 leading-relaxed"
+              initial={{ opacity: 0, x: reduce ? 0 : 80 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
+            >
+              <span className="text-white">{account.email}</span>
+              <span className="text-white/30 mx-2">·</span>
+              <span>Inscrit le {new Date(account.created_at).toLocaleDateString("fr-FR")}</span>
+            </motion.p>
           </div>
-          <button
+          <motion.button
             type="button"
             onClick={logout}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/[0.04] border border-white/10 text-white/60 hover:text-white hover:bg-white/[0.07] text-[11px] font-bold uppercase tracking-[0.18em]"
+            className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/[0.04] border border-white/10 text-white/60 hover:text-white hover:bg-white/[0.07] text-[11px] font-bold uppercase tracking-[0.18em]"
+            initial={{ opacity: 0, y: reduce ? 0 : 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.55, ease: heroEase }}
           >
             <LogOut className="w-3.5 h-3.5" /> Déconnexion
-          </button>
+          </motion.button>
         </header>
 
         {banner && (
