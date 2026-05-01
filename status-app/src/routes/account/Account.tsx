@@ -251,13 +251,13 @@ export function Account() {
         </div>
 
         {/* Shardtown linking (main Discord app — also covers ShardGuard) */}
-        <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-6 md:p-8">
+        <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-300">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
               <Link2 className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] font-bold tracking-[0.22em] text-blue-300/70 uppercase">Intégration</p>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">Intégration</p>
               <h2 className="text-xl font-extrabold tracking-tight">ShardGuard</h2>
             </div>
           </div>
@@ -293,8 +293,8 @@ export function Account() {
                   <p className="font-bold text-base">{account.discord_username}</p>
                   <p className="text-[11px] text-white/35 font-mono-num">{account.discord_id}</p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[11px] font-bold uppercase tracking-widest">
-                  <ShieldCheck className="w-3 h-3" /> Lié
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/70 text-[11px] font-bold uppercase tracking-widest">
+                  <ShieldCheck className="w-3 h-3 text-emerald-300" /> Lié
                 </span>
               </div>
 
@@ -311,7 +311,7 @@ export function Account() {
                 </button>
                 <Link
                   to="/dashboard"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-200 text-[12px] font-bold hover:bg-blue-500/20"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold hover:opacity-90"
                 >
                   <Server className="w-3.5 h-3.5" /> Mes dashboards
                 </Link>
@@ -328,13 +328,13 @@ export function Account() {
         </div>
 
         {/* Shard linking (separate Discord application) */}
-        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-6 md:p-8">
+        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-300">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
               <Link2 className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] font-bold tracking-[0.22em] text-emerald-300/70 uppercase">Intégration</p>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">Intégration</p>
               <h2 className="text-xl font-extrabold tracking-tight">Shard</h2>
             </div>
           </div>
@@ -369,8 +369,8 @@ export function Account() {
                   <p className="font-bold text-base">{account.shard_username}</p>
                   <p className="text-[11px] text-white/35 font-mono-num">{account.shard_id}</p>
                 </div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[11px] font-bold uppercase tracking-widest">
-                  <ShieldCheck className="w-3 h-3" /> Lié
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/70 text-[11px] font-bold uppercase tracking-widest">
+                  <ShieldCheck className="w-3 h-3 text-emerald-300" /> Lié
                 </span>
               </div>
               <button
@@ -385,13 +385,13 @@ export function Account() {
         </div>
 
         {/* External logins (Google + GitHub) */}
-        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-6 md:p-8">
+        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-300">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
               <Link2 className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] font-bold tracking-[0.22em] text-violet-300/70 uppercase">Identifiants externes</p>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">Identifiants externes</p>
               <h2 className="text-xl font-extrabold tracking-tight">Connexions tierces</h2>
             </div>
           </div>
@@ -425,20 +425,20 @@ export function Account() {
         </div>
 
         {/* Passkeys */}
-        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-6 md:p-8">
+        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-300">
+            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
               <Fingerprint className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] font-bold tracking-[0.22em] text-emerald-300/70 uppercase">Sécurité</p>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">Sécurité</p>
               <h2 className="text-xl font-extrabold tracking-tight">Clés de sécurité (passkeys)</h2>
             </div>
             <button
               type="button"
               onClick={openAddPasskey}
               disabled={passkeyBusy}
-              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[12px] font-bold hover:bg-emerald-500/20 disabled:opacity-50"
+              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
             >
               {passkeyBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
               Ajouter
@@ -500,10 +500,10 @@ export function Account() {
             >
               <X className="w-3.5 h-3.5" />
             </button>
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 mb-5">
+            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white/70 mb-5">
               <Fingerprint className="w-5 h-5" />
             </div>
-            <p className="text-[10px] font-bold tracking-[0.28em] text-emerald-300/80 uppercase mb-2">
+            <p className="text-[10px] font-bold tracking-[0.28em] text-white/35 uppercase mb-2">
               Nouvelle clé
             </p>
             <h3 className="text-xl font-extrabold tracking-tight mb-2">
@@ -535,7 +535,7 @@ export function Account() {
               <button
                 type="button"
                 onClick={confirmAddPasskey}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-emerald-500 text-white transition-opacity hover:opacity-90"
+                className="flex-1 py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
               >
                 Continuer
               </button>
@@ -603,11 +603,19 @@ function ExternalLogin({
   name, linked, label, hrefLink, onUnlink,
 }: { name: string; linked: boolean; label: string | null; hrefLink: string; onUnlink: () => void }) {
   return (
-    <div className={`rounded-2xl border p-4 ${linked ? "bg-emerald-500/[0.04] border-emerald-500/20" : "bg-white/[0.02] border-white/[0.06]"}`}>
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm">{name}</p>
-          <p className={`text-[11px] truncate ${linked ? "text-emerald-300/80" : "text-white/35"}`}>
+          <p className="font-bold text-sm flex items-center gap-1.5">
+            {name}
+            {linked && (
+              <ShieldCheck
+                className="w-3.5 h-3.5 text-emerald-300"
+                aria-label="Lié"
+              />
+            )}
+          </p>
+          <p className="text-[11px] truncate text-white/45">
             {linked ? (label || "Lié") : "Non lié"}
           </p>
         </div>
@@ -615,14 +623,14 @@ function ExternalLogin({
           <button
             type="button"
             onClick={onUnlink}
-            className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-[11px] font-bold hover:bg-red-500/15"
+            className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-white/55 hover:text-red-300 hover:border-red-500/30 hover:bg-red-500/10 text-[11px] font-bold transition-colors"
           >
             Délier
           </button>
         ) : (
           <a
             href={hrefLink}
-            className="px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] font-bold hover:bg-white/[0.1]"
+            className="px-3 py-1.5 rounded-lg bg-white text-black text-[11px] font-bold hover:opacity-90"
           >
             Lier
           </a>
