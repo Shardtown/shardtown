@@ -20,7 +20,6 @@ const {
     generateAuthenticationOptions,
     verifyAuthenticationResponse,
 } = require('@simplewebauthn/server');
-const Anthropic = require('@anthropic-ai/sdk').default;
 const { SHARDTOWN_KNOWLEDGE } = require('./chatbot-knowledge');
 
 // Fisher-Yates with crypto.randomInt — replaces the buggy
@@ -780,38 +779,35 @@ app.get('/api/me', async (req, res) => {
     });
 });
 
-// ─── Chatbot IA (Samia) — propulsé par l'API Anthropic / Claude ───────
+// ─── Chatbot IA (assistant Shardtown via Ollama auto-hébergé) ─────────
+// La base de connaissance (chatbot-knowledge.js) est injectée comme
+// message system Ollama. Ollama tourne sur le VPS — pas d'API tierce.
 //
-// On utilise Claude (cloud, payant) plutôt qu'un modèle local : qualité
-// nettement supérieure, latence ~2-4s, respect strict du system prompt.
-// Le system prompt (chatbot-knowledge.js) est injecté avec cache_control
-// "ephemeral" → la 1re requête écrit le cache (1.25× le prix d'entrée),
-// les requêtes suivantes dans les 5 min lisent le cache (0.1× le prix
-// d'entrée). Le coût marginal est dominé par la sortie générée.
+// Variables :
+//   OLLAMA_URL    (def. http://127.0.0.1:11434) — endpoint local
+//   OLLAMA_MODEL  (def. qwen2.5:3b-instruct)    — modèle pull au préalable
 //
-// Variables d'env :
-//   ANTHROPIC_API_KEY  — obligatoire (sk-ant-…)
-//   CHATBOT_MODEL      — défaut: claude-haiku-4-5 (rapide, économique).
-//                         Pour plus de qualité : claude-opus-4-7 ou
-//                         claude-sonnet-4-6.
-//
-// L'historique conversationnel reste en mémoire process, indexé par
-// req.sessionID. Pas de persistance — les questions ne sont jamais en DB.
+// L'historique de conversation est gardé en mémoire process, indexé par
+// req.sessionID. Pas de persistance — on ne stocke pas les questions.
 
-const anthropic = process.env.ANTHROPIC_API_KEY
-    ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    : null;
+const OLLAMA_URL = (process.env.OLLAMA_URL || 'http://127.0.0.1:11434').replace(/\/+$/, '');
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:3b-instruct';
+const OLLAMA_TIMEOUT_MS = parseInt(process.env.OLLAMA_TIMEOUT_MS, 10) || 180_000;
+// Garde le modèle chargé en RAM. -1 = indéfini (recommandé sur un VPS dédié,
+// le modèle ne se décharge jamais → pas de cold start sur le 1er message).
+// Override avec OLLAMA_KEEP_ALIVE=30m si tu veux libérer la RAM en idle.
+// Ollama accepte string ("30m") ou nombre (-1, 0, secondes). On normalise.
+const OLLAMA_KEEP_ALIVE_RAW = process.env.OLLAMA_KEEP_ALIVE || '-1';
+const OLLAMA_KEEP_ALIVE = /^-?\d+$/.test(OLLAMA_KEEP_ALIVE_RAW)
+    ? parseInt(OLLAMA_KEEP_ALIVE_RAW, 10)
+    : OLLAMA_KEEP_ALIVE_RAW;
 
-if (!anthropic) {
-    console.warn('[chatbot] ANTHROPIC_API_KEY non défini — Samia renverra une erreur tant que la clé n\'est pas dans .env');
-} else {
-    console.log(`[chatbot] Samia prête — modèle "${process.env.CHATBOT_MODEL || 'claude-haiku-4-5'}" via Anthropic API.`);
-}
-
-const CHATBOT_MODEL = process.env.CHATBOT_MODEL || 'claude-haiku-4-5';
-const CHATBOT_MAX_HISTORY = 10; // dernières paires user/assistant gardées
+// Très court : avec un petit modèle (3b), un historique long le pousse à
+// répéter le pattern de sa dernière réponse au lieu de traiter le NOUVEAU
+// message. 4 paires user/assistant suffisent pour garder le fil.
+const CHATBOT_MAX_HISTORY = 4;
 const CHATBOT_MAX_USER_LEN = 2000;
-const CHATBOT_MAX_TOKENS = 1024;
+const CHATBOT_MAX_TOKENS = 512;
 
 // Map<sessionID, { role: 'user' | 'assistant', content: string }[]>
 const chatbotHistories = new Map();
@@ -838,6 +834,66 @@ const chatbotRateLimit = rateLimit({
 
 const CHATBOT_SYSTEM_PROMPT = SHARDTOWN_KNOWLEDGE;
 
+// Ping Ollama au démarrage et déclenche un warmup en arrière-plan.
+//
+// Le warmup fait DEUX choses :
+//   1. charge le modèle en RAM (sinon cold start de 30-60 s sur 1re requête)
+//   2. **ingère le system prompt complet** pour le mettre dans le KV-cache
+//      d'Ollama. Toutes les requêtes utilisateur suivantes envoyant le MÊME
+//      system prompt en tête réutilisent ce cache et n'ingèrent que les
+//      nouveaux tokens (le message user). Ça transforme une 1re requête
+//      utilisateur de ~28 s en ~2-5 s.
+//
+// La pénalité du long prompt est donc payée UNE FOIS au boot du serveur,
+// pas à chaque utilisateur.
+async function pingOllama() {
+    try {
+        const r = await fetch(`${OLLAMA_URL}/api/tags`);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const j = await r.json();
+        const names = (j.models || []).map(m => m.name);
+        if (!names.includes(OLLAMA_MODEL)) {
+            console.warn(`[chatbot] Ollama joignable mais le modèle "${OLLAMA_MODEL}" n'est pas pull. Lance: ollama pull ${OLLAMA_MODEL}`);
+            return;
+        }
+        console.log(`[chatbot] Ollama OK — modèle "${OLLAMA_MODEL}" prêt, warmup + ingestion system prompt…`);
+        const t0 = Date.now();
+        const w = await fetch(`${OLLAMA_URL}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: OLLAMA_MODEL,
+                // Strict prefix MATCH avec ce qu'on enverra dans /api/chatbot/message
+                // → Ollama réutilise le KV-cache du system prompt sur les requêtes
+                // suivantes. Si on changeait l'ordre ou le contenu du system,
+                // le cache serait invalidé. C'est intentionnel.
+                messages: [
+                    { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
+                    { role: 'user', content: 'ping' },
+                ],
+                stream: false,
+                keep_alive: OLLAMA_KEEP_ALIVE,
+                options: {
+                    temperature: 0.4,
+                    top_p: 0.9,
+                    num_predict: 1, // une seule sortie : on veut JUSTE faire ingérer le prefix
+                },
+            }),
+        }).catch(e => { console.warn('[chatbot] warmup KO:', e.message); return null; });
+        if (w && w.ok) {
+            const data = await w.json().catch(() => ({}));
+            const tokens = data?.prompt_eval_count ?? 0;
+            console.log(
+                `[chatbot] system prompt ingéré (${tokens} tokens) en ${((Date.now() - t0) / 1000).toFixed(1)}s — ` +
+                `les requêtes user suivantes ne paieront que la nouvelle question.`,
+            );
+        }
+    } catch (e) {
+        console.warn(`[chatbot] Ollama injoignable sur ${OLLAMA_URL} (${e.message}). Le chatbot répondra "indisponible" tant qu'Ollama n'est pas lancé.`);
+    }
+}
+pingOllama();
+
 function getChatbotHistory(sid) {
     return chatbotHistories.get(sid) || [];
 }
@@ -850,7 +906,7 @@ app.get('/api/chatbot/history', (req, res) => {
             role: m.role,
             content: m.content,
         })),
-        enabled: !!anthropic,
+        enabled: true,
     });
 });
 
@@ -860,15 +916,11 @@ app.post('/api/chatbot/reset', (req, res) => {
     res.json({ success: true });
 });
 
-// Endpoint streaming SSE. Format identique à l'ancienne implémentation
-// Ollama (le frontend ne change pas) :
-//   event: chunk\ndata: {"text":"..."}\n\n         (un par delta texte)
-//   event: done \ndata: {"reply":"...","usage":...}\n\n
-//   event: error\ndata: {"error":"..."}\n\n
+// Endpoint streaming. Renvoie du Server-Sent Events :
+//   event: chunk\ndata: {"text":"..."}\n\n         (un par token Ollama)
+//   event: done \ndata: {"reply":"..."}\n\n        (réponse complète)
+//   event: error\ndata: {"error":"..."}\n\n        (sur erreur)
 app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
-    if (!anthropic) {
-        return res.status(503).json({ error: 'Chatbot indisponible (clé API manquante côté serveur).' });
-    }
     const content = String(req.body?.content || '').trim().slice(0, CHATBOT_MAX_USER_LEN);
     if (!content) return res.status(400).json({ error: 'Message vide' });
 
@@ -877,10 +929,16 @@ app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
     const userTurn = { role: 'user', content };
     const conversation = [...history, userTurn];
 
+    const ollamaMessages = [
+        { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
+        ...conversation.map(m => ({ role: m.role, content: m.content })),
+    ];
+
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
-    res.setHeader('X-Accel-Buffering', 'no'); // hint nginx : pas de buffering
+    // Indique à nginx de ne PAS bufferiser cette réponse
+    res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders?.();
 
     const sse = (event, data) => {
@@ -888,73 +946,103 @@ app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
         res.write(`data: ${JSON.stringify(data)}\n\n`);
     };
 
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), OLLAMA_TIMEOUT_MS);
+    // Si le client ferme la connexion avant la fin, on coupe Ollama aussi
+    req.on('close', () => ac.abort());
+
     let fullReply = '';
-    let usage = null;
-    let aborted = false;
-    req.on('close', () => { aborted = true; });
 
     try {
-        const stream = anthropic.messages.stream({
-            model: CHATBOT_MODEL,
-            max_tokens: CHATBOT_MAX_TOKENS,
-            // Le system prompt est statique — cache_control ephemeral
-            // permet à Anthropic de mettre les ~2500 tokens de KNOWLEDGE
-            // en cache. Lectures suivantes (5 min) ≈ 10× moins chères.
-            system: [
-                {
-                    type: 'text',
-                    text: CHATBOT_SYSTEM_PROMPT,
-                    cache_control: { type: 'ephemeral' },
+        const r = await fetch(`${OLLAMA_URL}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: OLLAMA_MODEL,
+                messages: ollamaMessages,
+                stream: true,
+                keep_alive: OLLAMA_KEEP_ALIVE,
+                options: {
+                    // 0.4 = compromis : suffisamment bas pour rester sur les
+                    // rails du system prompt, mais assez haut pour que le
+                    // modèle ne reste pas COLLÉ sur le pattern de sa dernière
+                    // réponse quand le user change de sujet.
+                    temperature: 0.4,
+                    top_p: 0.9,
+                    num_predict: CHATBOT_MAX_TOKENS,
+                    // Pénalise la répétition exacte des phrases déjà dites.
+                    // qwen2.5 répond bien à ce signal.
+                    repeat_penalty: 1.15,
                 },
-            ],
-            messages: conversation.map(m => ({ role: m.role, content: m.content })),
+            }),
+            signal: ac.signal,
         });
 
-        // Stream chaque delta texte au navigateur sous forme SSE.
-        stream.on('text', text => {
-            if (aborted) return;
-            fullReply += text;
-            try { sse('chunk', { text }); } catch { /* res closed */ }
-        });
-
-        const finalMsg = await stream.finalMessage();
-        usage = finalMsg.usage; // { input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens }
-
-        if (aborted) {
-            try { res.end(); } catch {}
+        if (!r.ok) {
+            const text = await r.text().catch(() => '');
+            console.error(`[chatbot] Ollama HTTP ${r.status}: ${text.slice(0, 200)}`);
+            sse('error', { error: r.status === 404
+                ? `Modèle "${OLLAMA_MODEL}" pas chargé sur le serveur.`
+                : "Erreur de l'assistant. Réessaie dans un instant." });
+            res.end();
+            clearTimeout(timer);
             return;
         }
 
-        const finalReply = fullReply.trim()
-            || "Je n'ai pas réussi à formuler de réponse, peux-tu reformuler ?";
-        const newHistory = [...conversation, { role: 'assistant', content: finalReply }];
-        chatbotHistories.set(sid, newHistory.slice(-CHATBOT_MAX_HISTORY * 2));
-        chatbotLastSeen.set(sid, Date.now());
+        // Ollama envoie du NDJSON (une ligne JSON par chunk)
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-        sse('done', {
-            reply: finalReply,
-            usage: {
-                input_tokens: usage?.input_tokens ?? 0,
-                output_tokens: usage?.output_tokens ?? 0,
-                cache_read_input_tokens: usage?.cache_read_input_tokens ?? 0,
-                cache_creation_input_tokens: usage?.cache_creation_input_tokens ?? 0,
-            },
-        });
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                let obj;
+                try { obj = JSON.parse(trimmed); } catch { continue; }
+                const piece = obj?.message?.content;
+                if (piece) {
+                    fullReply += piece;
+                    sse('chunk', { text: piece });
+                }
+                if (obj.done) {
+                    const finalReply = fullReply.trim()
+                        || "Je n'ai pas réussi à formuler de réponse, peux-tu reformuler ?";
+                    const newHistory = [...conversation, { role: 'assistant', content: finalReply }];
+                    chatbotHistories.set(sid, newHistory.slice(-CHATBOT_MAX_HISTORY * 2));
+                    chatbotLastSeen.set(sid, Date.now());
+                    sse('done', {
+                        reply: finalReply,
+                        usage: {
+                            prompt_tokens: obj.prompt_eval_count ?? 0,
+                            completion_tokens: obj.eval_count ?? 0,
+                            total_duration_ms: obj.total_duration ? Math.round(obj.total_duration / 1e6) : 0,
+                        },
+                    });
+                }
+            }
+        }
+
+        clearTimeout(timer);
         res.end();
     } catch (err) {
-        // Erreurs typées Anthropic
-        if (err instanceof Anthropic.RateLimitError) {
-            console.warn('[chatbot] Anthropic rate-limit:', err.message);
-            try { sse('error', { error: "L'assistant est saturé pour l'instant, réessaie dans une minute." }); } catch {}
-        } else if (err instanceof Anthropic.AuthenticationError) {
-            console.error('[chatbot] Anthropic auth invalid:', err.message);
-            try { sse('error', { error: "Configuration IA invalide côté serveur. Préviens l'admin." }); } catch {}
-        } else if (err instanceof Anthropic.APIError) {
-            console.error(`[chatbot] Anthropic API error ${err.status}:`, err.message);
-            try { sse('error', { error: "Erreur de l'assistant. Réessaie dans un instant." }); } catch {}
+        clearTimeout(timer);
+        if (err.name === 'AbortError') {
+            // Soit timeout, soit client a fermé la connexion. Dans le 2e cas
+            // res est déjà fermé, write devient no-op.
+            console.error(`[chatbot] Ollama abort (timeout ou client fermé)`);
+            try { sse('error', { error: "L'IA met trop de temps à répondre. Réessaie." }); } catch {}
         } else {
-            console.error('[chatbot] Erreur inattendue:', err.message || err);
-            try { sse('error', { error: "Erreur inattendue. Réessaie plus tard ou écris à contact@shardtwn.fr." }); } catch {}
+            const msg = err?.cause?.code || err.message || 'unknown';
+            console.error('[chatbot] Ollama error:', msg);
+            try { sse('error', { error: "L'assistant est hors-ligne. Réessaie plus tard ou écris à contact@shardtwn.fr." }); } catch {}
         }
         try { res.end(); } catch {}
     }
