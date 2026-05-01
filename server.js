@@ -834,9 +834,18 @@ const chatbotRateLimit = rateLimit({
 
 const CHATBOT_SYSTEM_PROMPT = SHARDTOWN_KNOWLEDGE;
 
-// Ping Ollama au démarrage pour avertir si rien n'écoute, et déclenche
-// un warmup en arrière-plan : la première requête utilisateur n'a alors
-// pas à payer le cold start (30-60 s de chargement modèle en RAM).
+// Ping Ollama au démarrage et déclenche un warmup en arrière-plan.
+//
+// Le warmup fait DEUX choses :
+//   1. charge le modèle en RAM (sinon cold start de 30-60 s sur 1re requête)
+//   2. **ingère le system prompt complet** pour le mettre dans le KV-cache
+//      d'Ollama. Toutes les requêtes utilisateur suivantes envoyant le MÊME
+//      system prompt en tête réutilisent ce cache et n'ingèrent que les
+//      nouveaux tokens (le message user). Ça transforme une 1re requête
+//      utilisateur de ~28 s en ~2-5 s.
+//
+// La pénalité du long prompt est donc payée UNE FOIS au boot du serveur,
+// pas à chaque utilisateur.
 async function pingOllama() {
     try {
         const r = await fetch(`${OLLAMA_URL}/api/tags`);
@@ -847,22 +856,37 @@ async function pingOllama() {
             console.warn(`[chatbot] Ollama joignable mais le modèle "${OLLAMA_MODEL}" n'est pas pull. Lance: ollama pull ${OLLAMA_MODEL}`);
             return;
         }
-        console.log(`[chatbot] Ollama OK — modèle "${OLLAMA_MODEL}" prêt, warmup…`);
-        // Warmup : charge le modèle en RAM avec keep_alive long.
+        console.log(`[chatbot] Ollama OK — modèle "${OLLAMA_MODEL}" prêt, warmup + ingestion system prompt…`);
         const t0 = Date.now();
         const w = await fetch(`${OLLAMA_URL}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 model: OLLAMA_MODEL,
-                messages: [{ role: 'user', content: 'ok' }],
+                // Strict prefix MATCH avec ce qu'on enverra dans /api/chatbot/message
+                // → Ollama réutilise le KV-cache du system prompt sur les requêtes
+                // suivantes. Si on changeait l'ordre ou le contenu du system,
+                // le cache serait invalidé. C'est intentionnel.
+                messages: [
+                    { role: 'system', content: CHATBOT_SYSTEM_PROMPT },
+                    { role: 'user', content: 'ping' },
+                ],
                 stream: false,
                 keep_alive: OLLAMA_KEEP_ALIVE,
-                options: { num_predict: 1 },
+                options: {
+                    temperature: 0.4,
+                    top_p: 0.9,
+                    num_predict: 1, // une seule sortie : on veut JUSTE faire ingérer le prefix
+                },
             }),
         }).catch(e => { console.warn('[chatbot] warmup KO:', e.message); return null; });
         if (w && w.ok) {
-            console.log(`[chatbot] modèle chargé en RAM en ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+            const data = await w.json().catch(() => ({}));
+            const tokens = data?.prompt_eval_count ?? 0;
+            console.log(
+                `[chatbot] system prompt ingéré (${tokens} tokens) en ${((Date.now() - t0) / 1000).toFixed(1)}s — ` +
+                `les requêtes user suivantes ne paieront que la nouvelle question.`,
+            );
         }
     } catch (e) {
         console.warn(`[chatbot] Ollama injoignable sur ${OLLAMA_URL} (${e.message}). Le chatbot répondra "indisponible" tant qu'Ollama n'est pas lancé.`);
