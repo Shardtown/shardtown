@@ -17,6 +17,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.92.0",
     "@simplewebauthn/server": "^11.0.0",
     "axios": "^1.15.0",
     "canvas": "^3.2.3",
