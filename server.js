@@ -802,7 +802,10 @@ const OLLAMA_KEEP_ALIVE = /^-?\d+$/.test(OLLAMA_KEEP_ALIVE_RAW)
     ? parseInt(OLLAMA_KEEP_ALIVE_RAW, 10)
     : OLLAMA_KEEP_ALIVE_RAW;
 
-const CHATBOT_MAX_HISTORY = 20; // dernières paires user/assistant gardées
+// Très court : avec un petit modèle (3b), un historique long le pousse à
+// répéter le pattern de sa dernière réponse au lieu de traiter le NOUVEAU
+// message. 4 paires user/assistant suffisent pour garder le fil.
+const CHATBOT_MAX_HISTORY = 4;
 const CHATBOT_MAX_USER_LEN = 2000;
 const CHATBOT_MAX_TOKENS = 512;
 
@@ -936,12 +939,16 @@ app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
                 stream: true,
                 keep_alive: OLLAMA_KEEP_ALIVE,
                 options: {
-                    // Très basse temperature : on veut que Samia suive
-                    // strictement les règles du system prompt (notamment
-                    // les refus hors-scope) plutôt que de "créer" librement.
-                    temperature: 0.15,
-                    top_p: 0.85,
+                    // 0.4 = compromis : suffisamment bas pour rester sur les
+                    // rails du system prompt, mais assez haut pour que le
+                    // modèle ne reste pas COLLÉ sur le pattern de sa dernière
+                    // réponse quand le user change de sujet.
+                    temperature: 0.4,
+                    top_p: 0.9,
                     num_predict: CHATBOT_MAX_TOKENS,
+                    // Pénalise la répétition exacte des phrases déjà dites.
+                    // qwen2.5 répond bien à ce signal.
+                    repeat_penalty: 1.15,
                 },
             }),
             signal: ac.signal,
