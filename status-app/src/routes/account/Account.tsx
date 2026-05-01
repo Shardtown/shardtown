@@ -318,7 +318,7 @@ export function Account() {
                 <button
                   type="button"
                   onClick={unlink}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/25 text-red-300 text-[12px] font-bold hover:bg-red-500/20"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/10 text-white/60 hover:bg-white/[0.07] hover:text-white text-[12px] font-bold transition-colors"
                 >
                   <Unplug className="w-3.5 h-3.5" /> Délier
                 </button>
@@ -376,7 +376,7 @@ export function Account() {
               <button
                 type="button"
                 onClick={unlinkShard}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/25 text-red-300 text-[12px] font-bold hover:bg-red-500/20"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/10 text-white/60 hover:bg-white/[0.07] hover:text-white text-[12px] font-bold transition-colors"
               >
                 <Unplug className="w-3.5 h-3.5" /> Délier
               </button>
