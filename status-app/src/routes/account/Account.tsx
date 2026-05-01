@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  User, Mail, AtSign, LogOut, ShieldCheck, ShieldAlert, Calendar,
-  Link2, RefreshCw, Server, ArrowRight, Unplug, Fingerprint, Plus, Trash2, Loader2, X,
+  LogOut, ShieldCheck, ShieldAlert,
+  RefreshCw, Server, Fingerprint, Plus, Trash2, Loader2, X,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@/api/passkey";
@@ -226,183 +226,78 @@ export function Account() {
           </div>
         )}
 
+        {/* Email non vérifié — pill compacte au lieu d'un gros bloc */}
         {!account.email_verified && (
-          <div className="mb-8 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-200 text-sm flex items-start gap-3">
-            <ShieldAlert className="w-5 h-5 mt-0.5 shrink-0" />
-            <div>
-              <p className="font-bold mb-1">Email non vérifié</p>
-              <p className="text-amber-200/80">
-                Clique le lien envoyé à {account.email}. Tu peux aussi le redemander depuis le login.
-              </p>
-            </div>
+          <div className="mb-10 inline-flex items-start gap-2 px-3.5 py-2 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-200 text-[12.5px]">
+            <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span>
+              Email non vérifié — vérifie le lien envoyé à <strong>{account.email}</strong>.
+            </span>
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-4 mb-10">
-          <Tile icon={Mail} label="Email" value={account.email} verified={account.email_verified} />
-          <Tile icon={AtSign} label="Pseudo" value={account.pseudo} />
-          <Tile icon={Calendar} label="Inscrit le" value={new Date(account.created_at).toLocaleDateString("fr-FR")} />
-          <Tile
-            icon={User}
-            label="ShardGuard"
-            value={account.discord_username ? `${account.discord_username}` : "Non lié"}
-            muted={!account.discord_username}
-          />
-        </div>
-
-        {/* Shardtown linking (main Discord app — also covers ShardGuard) */}
-        <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
-              <Link2 className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">Intégration</p>
-              <h2 className="text-xl font-extrabold tracking-tight">ShardGuard</h2>
-            </div>
+        {/* CONNEXIONS — une seule carte avec les 4 intégrations en lignes */}
+        <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] overflow-hidden mb-6">
+          <div className="px-6 md:px-8 pt-6 md:pt-7 pb-5 border-b border-white/[0.05]">
+            <p className="text-[10.5px] font-bold tracking-[0.22em] text-white/35 uppercase mb-2">
+              Connexions
+            </p>
+            <h2 className="text-xl font-extrabold tracking-tight">Comptes liés</h2>
+            <p className="text-[13px] text-white/50 mt-2 max-w-xl leading-relaxed">
+              Discord est nécessaire pour configurer les bots. Google et GitHub
+              sont optionnels — utiles pour te reconnecter en un clic.
+            </p>
           </div>
 
-          {!account.discord_id ? (
-            <>
-              <p className="text-white/55 text-sm mb-5 max-w-xl">
-                Lie ton compte à ShardGuard pour qu'on récupère la liste des serveurs où tu es admin
-                et que tu puisses configurer le bot.
-              </p>
-              <a
-                href="/api/account/discord/link"
-                className="btn-liquid btn-liquid--discord rounded-full px-5 py-3 font-bold text-sm inline-flex items-center gap-2"
-              >
-                Lier mon compte à ShardGuard <ArrowRight className="w-4 h-4" />
-              </a>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-3 mb-5 flex-wrap">
-                {account.discord_avatar ? (
-                  <img
-                    src={`https://cdn.discordapp.com/avatars/${account.discord_id}/${account.discord_avatar}.png?size=128`}
-                    alt=""
-                    className="w-12 h-12 rounded-2xl border border-white/10"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-2xl bg-white/[0.05] border border-white/10 flex items-center justify-center font-bold text-white/40">
-                    {account.discord_username?.[0]?.toUpperCase()}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-base">{account.discord_username}</p>
-                  <p className="text-[11px] text-white/35 font-mono-num">{account.discord_id}</p>
-                </div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/70 text-[11px] font-bold uppercase tracking-widest">
-                  <ShieldCheck className="w-3 h-3 text-emerald-300" /> Lié
-                </span>
-              </div>
+          <div className="divide-y divide-white/[0.05]">
+            {/* Discord (Shardtown / ShardGuard) */}
+            <ConnectionRow
+              kind="discord"
+              title="Discord"
+              caption="Compte principal — bot ShardGuard, dashboards"
+              linkedId={account.discord_id}
+              linkedName={account.discord_username}
+              linkedAvatar={account.discord_avatar}
+              hrefLink="/api/account/discord/link"
+              onUnlink={unlink}
+              extraAction={
+                account.discord_id ? (
+                  <button
+                    type="button"
+                    onClick={refreshGuilds}
+                    disabled={refreshing}
+                    aria-label="Actualiser mes serveurs"
+                    title="Actualiser mes serveurs"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/55 hover:text-white hover:bg-white/[0.07] text-[11px] font-bold transition-colors disabled:opacity-40"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
+                    {guildsCount !== null && (
+                      <span className="font-mono-num">{guildsCount}</span>
+                    )}
+                  </button>
+                ) : null
+              }
+            />
 
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={refreshGuilds}
-                  disabled={refreshing}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/10 text-[12px] font-bold hover:bg-white/[0.07] disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-                  Actualiser mes serveurs
-                  {guildsCount !== null && <span className="text-white/40 font-mono-num">· {guildsCount}</span>}
-                </button>
-                <Link
-                  to="/dashboard"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold hover:opacity-90"
-                >
-                  <Server className="w-3.5 h-3.5" /> Mes dashboards
-                </Link>
-                <button
-                  type="button"
-                  onClick={unlink}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/10 text-white/60 hover:bg-white/[0.07] hover:text-white text-[12px] font-bold transition-colors"
-                >
-                  <Unplug className="w-3.5 h-3.5" /> Délier
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+            {/* Discord (Shard bot) */}
+            <ConnectionRow
+              kind="discord"
+              title="Discord — Shard"
+              caption="Compte distinct pour le bot Shard (optionnel)"
+              linkedId={account.shard_id}
+              linkedName={account.shard_username}
+              linkedAvatar={account.shard_avatar}
+              hrefLink="/api/account/shard/link"
+              onUnlink={unlinkShard}
+            />
 
-        {/* Shard linking (separate Discord application) */}
-        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
-              <Link2 className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">Intégration</p>
-              <h2 className="text-xl font-extrabold tracking-tight">Shard</h2>
-            </div>
-          </div>
-
-          {!account.shard_id ? (
-            <>
-              <p className="text-white/55 text-sm mb-5 max-w-xl">
-                Lie ton compte à Shard pour configurer le bot sur tes serveurs.
-              </p>
-              <a
-                href="/api/account/shard/link"
-                className="btn-liquid btn-liquid--discord rounded-full px-5 py-3 font-bold text-sm inline-flex items-center gap-2"
-              >
-                Lier mon compte à Shard <ArrowRight className="w-4 h-4" />
-              </a>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-3 mb-5 flex-wrap">
-                {account.shard_avatar ? (
-                  <img
-                    src={`https://cdn.discordapp.com/avatars/${account.shard_id}/${account.shard_avatar}.png?size=128`}
-                    alt=""
-                    className="w-12 h-12 rounded-2xl border border-white/10"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-2xl bg-white/[0.05] border border-white/10 flex items-center justify-center font-bold text-white/40">
-                    {account.shard_username?.[0]?.toUpperCase()}
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-base">{account.shard_username}</p>
-                  <p className="text-[11px] text-white/35 font-mono-num">{account.shard_id}</p>
-                </div>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/70 text-[11px] font-bold uppercase tracking-widest">
-                  <ShieldCheck className="w-3 h-3 text-emerald-300" /> Lié
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={unlinkShard}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/10 text-white/60 hover:bg-white/[0.07] hover:text-white text-[12px] font-bold transition-colors"
-              >
-                <Unplug className="w-3.5 h-3.5" /> Délier
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* External logins (Google + GitHub) */}
-        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
-              <Link2 className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">Identifiants externes</p>
-              <h2 className="text-xl font-extrabold tracking-tight">Connexions tierces</h2>
-            </div>
-          </div>
-          <p className="text-white/55 text-sm mb-5 max-w-xl">
-            Lie un compte Google ou GitHub pour te connecter en un clic.
-          </p>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <ExternalLogin
-              name="Google"
-              linked={!!account.oauth_google_id}
-              label={account.oauth_google_email}
+            {/* Google */}
+            <ConnectionRow
+              kind="google"
+              title="Google"
+              caption="Connexion en un clic via Google"
+              linkedId={account.oauth_google_id}
+              linkedName={account.oauth_google_email}
               hrefLink="/api/account/oauth/google"
               onUnlink={async () => {
                 if (!confirm("Délier Google ?")) return;
@@ -410,10 +305,14 @@ export function Account() {
                 refresh();
               }}
             />
-            <ExternalLogin
-              name="GitHub"
-              linked={!!account.oauth_github_id}
-              label={account.oauth_github_username}
+
+            {/* GitHub */}
+            <ConnectionRow
+              kind="github"
+              title="GitHub"
+              caption="Connexion en un clic via GitHub"
+              linkedId={account.oauth_github_id}
+              linkedName={account.oauth_github_username}
               hrefLink="/api/account/oauth/github"
               onUnlink={async () => {
                 if (!confirm("Délier GitHub ?")) return;
@@ -477,6 +376,16 @@ export function Account() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Mon espace — quick nav */}
+        <div className="mt-12 flex items-center justify-center">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-black text-[13px] font-bold hover:opacity-90 transition-opacity"
+          >
+            <Server className="w-3.5 h-3.5" /> Aller à mes dashboards
+          </Link>
         </div>
       </section>
 
@@ -599,31 +508,73 @@ export function Account() {
   );
 }
 
-function ExternalLogin({
-  name, linked, label, hrefLink, onUnlink,
-}: { name: string; linked: boolean; label: string | null; hrefLink: string; onUnlink: () => void }) {
+/**
+ * Une rangée de la carte "Connexions" — provider + état + action.
+ * Utilisée pour Discord (×2), Google et GitHub.
+ */
+function ConnectionRow({
+  kind,
+  title,
+  caption,
+  linkedId,
+  linkedName,
+  linkedAvatar,
+  hrefLink,
+  onUnlink,
+  extraAction,
+}: {
+  kind: "discord" | "google" | "github";
+  title: string;
+  caption: string;
+  linkedId: string | null;
+  linkedName: string | null;
+  linkedAvatar?: string | null;
+  hrefLink: string;
+  onUnlink: () => void;
+  extraAction?: React.ReactNode;
+}) {
+  const linked = !!linkedId;
+  const avatarUrl = linkedAvatar && kind === "discord" && linkedId
+    ? `https://cdn.discordapp.com/avatars/${linkedId}/${linkedAvatar}.png?size=64`
+    : null;
+
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4">
-      <div className="flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm flex items-center gap-1.5">
-            {name}
-            {linked && (
-              <ShieldCheck
-                className="w-3.5 h-3.5 text-emerald-300"
-                aria-label="Lié"
-              />
-            )}
-          </p>
-          <p className="text-[11px] truncate text-white/45">
-            {linked ? (label || "Lié") : "Non lié"}
-          </p>
-        </div>
+    <div className="flex items-center gap-4 px-6 md:px-8 py-4">
+      {/* Icône / avatar */}
+      <div className="shrink-0">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="w-10 h-10 rounded-xl border border-white/10" />
+        ) : (
+          <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/65">
+            <ProviderIcon kind={kind} />
+          </div>
+        )}
+      </div>
+
+      {/* Title + caption + linked meta */}
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-[14.5px] flex items-center gap-1.5">
+          {title}
+          {linked && (
+            <ShieldCheck
+              className="w-3.5 h-3.5 text-emerald-300"
+              aria-label="Lié"
+            />
+          )}
+        </p>
+        <p className="text-[12px] text-white/45 truncate">
+          {linked ? (linkedName || caption) : caption}
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 shrink-0">
+        {extraAction}
         {linked ? (
           <button
             type="button"
             onClick={onUnlink}
-            className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-white/55 hover:text-red-300 hover:border-red-500/30 hover:bg-red-500/10 text-[11px] font-bold transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-white/55 hover:bg-white/[0.08] hover:text-white text-[11px] font-bold transition-colors"
           >
             Délier
           </button>
@@ -640,17 +591,24 @@ function ExternalLogin({
   );
 }
 
-function Tile({
-  icon: Icon, label, value, verified, muted,
-}: { icon: typeof Mail; label: string; value: string; verified?: boolean; muted?: boolean }) {
+function ProviderIcon({ kind }: { kind: "discord" | "google" | "github" }) {
+  if (kind === "discord") {
+    return (
+      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden>
+        <path d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.974 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z" />
+      </svg>
+    );
+  }
+  if (kind === "google") {
+    return (
+      <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden>
+        <path fill="#EA4335" d="M12 10.2v3.6h5.06c-.22 1.16-1.43 3.4-5.06 3.4-3.05 0-5.54-2.52-5.54-5.62S8.95 5.96 12 5.96c1.74 0 2.9.74 3.56 1.38l2.43-2.34C16.46 3.6 14.43 2.7 12 2.7 6.93 2.7 2.83 6.8 2.83 11.88s4.1 9.18 9.17 9.18c5.3 0 8.8-3.72 8.8-8.96 0-.6-.07-1.06-.15-1.5H12z" />
+      </svg>
+    );
+  }
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5">
-      <div className="flex items-center gap-1.5 text-white/40 mb-3">
-        <Icon className="w-3.5 h-3.5" />
-        <span className="text-[10px] font-bold uppercase tracking-[0.18em]">{label}</span>
-        {verified && <ShieldCheck className="w-3 h-3 text-emerald-300 ml-auto" />}
-      </div>
-      <p className={`text-base font-bold tracking-tight break-all ${muted ? "text-white/40 italic" : "text-white"}`}>{value}</p>
-    </div>
+    <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor" aria-hidden>
+      <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.55v-1.96c-3.2.7-3.87-1.54-3.87-1.54-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.68 1.24 3.33.95.1-.74.4-1.24.72-1.53-2.55-.29-5.24-1.27-5.24-5.65 0-1.25.45-2.27 1.18-3.07-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.17.91-.25 1.89-.38 2.86-.38.97 0 1.95.13 2.86.38 2.18-1.48 3.14-1.17 3.14-1.17.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.07 0 4.39-2.69 5.36-5.25 5.64.41.36.78 1.06.78 2.13v3.16c0 .31.21.66.8.55C20.21 21.39 23.5 17.07 23.5 12 23.5 5.65 18.35.5 12 .5z" />
+    </svg>
   );
 }
