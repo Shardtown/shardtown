@@ -739,20 +739,23 @@ app.use((req, res, next) => {
     // it doesn't need 'unsafe-inline'. The legacy EJS templates rendered
     // under /_legacy/ still contain inline <script> blocks and onclick="..."
     // handlers AND pull Tailwind from a CDN, so for those paths we keep
-    // the looser policy. cdnjs/jsdelivr were allowed historically but
-    // aren't referenced anywhere in the current code — dropped.
+    // the looser policy. The /heart easter egg loads the Unicorn Studio
+    // engine from jsdelivr at runtime → script-src needs to allow it.
     const isLegacy = req.path.startsWith('/_legacy/');
     const scriptSrc = isLegacy
-        ? "'self' 'unsafe-inline' https://cdn.tailwindcss.com"
-        : "'self'";
+        ? "'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net"
+        : "'self' https://cdn.jsdelivr.net";
 
     res.setHeader('Content-Security-Policy',
         "default-src 'self'; " +
         `script-src ${scriptSrc}; ` +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com; " +
-        "img-src 'self' https://cdn.discordapp.com data:; " +
-        "connect-src 'self'; " +
+        // Unicorn Studio fetches scene/asset bundles from its own CDN
+        // and embeds rasterized previews — let the heart page render.
+        "img-src 'self' https://cdn.discordapp.com https://*.unicorn.studio data: blob:; " +
+        "connect-src 'self' https://*.unicorn.studio https://cdn.jsdelivr.net; " +
+        "worker-src 'self' blob:; " +
         "frame-src 'none'; " +
         "frame-ancestors 'none'; " +
         "object-src 'none'; " +

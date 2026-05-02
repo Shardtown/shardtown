@@ -20,7 +20,17 @@ export function Footer() {
             <Link to="/admin" className="text-xs font-bold text-white/30 hover:text-white transition-colors">Administrateur</Link>
           </div>
           <p className="text-xs font-bold text-white/30 text-center">
-            Copyright © 2026 Shardtown. Tous droits réservés.
+            Copyright © 2026{" "}
+            {/* Easter egg — clicking "Shardtown" reveals /heart, the
+                animated core of the project. No visual hint: by design. */}
+            <Link
+              to="/heart"
+              className="hover:text-white/80 transition-colors"
+              aria-label="Le cœur de Shardtown"
+            >
+              Shardtown
+            </Link>
+            . Tous droits réservés.
           </p>
         </div>
       </div>

@@ -18,6 +18,7 @@ import { AdminLogin } from "@/routes/admin/Login";
 import { Admin } from "@/routes/admin/Admin";
 import { AdminGuildDetail } from "@/routes/admin/GuildDetail";
 import { Assistant } from "@/routes/Assistant";
+import { Heart } from "@/routes/Heart";
 import { AccountLogin } from "@/routes/account/Login";
 import { VerifyEmail } from "@/routes/account/VerifyEmail";
 import { Account } from "@/routes/account/Account";
@@ -49,6 +50,8 @@ export function App() {
           <Route path="/status" element={<Status />} />
           <Route path="/wiki" element={<Wiki />} />
           <Route path="/assistant" element={<Assistant />} />
+          {/* Easter egg — reachable by clicking "Shardtown" in the footer copyright. */}
+          <Route path="/heart" element={<Heart />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/outils" element={<Outils />} />
