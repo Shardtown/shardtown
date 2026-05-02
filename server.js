@@ -751,10 +751,12 @@ app.use((req, res, next) => {
         `script-src ${scriptSrc}; ` +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com; " +
-        // Unicorn Studio fetches scene/asset bundles from its own CDN
-        // and embeds rasterized previews — let the heart page render.
-        "img-src 'self' https://cdn.discordapp.com https://*.unicorn.studio data: blob:; " +
-        "connect-src 'self' https://*.unicorn.studio https://cdn.jsdelivr.net; " +
+        // Unicorn Studio fetches scene bundles from Google Cloud Storage
+        // (storage.googleapis.com/unicornstudio-production/...) and may
+        // also pull from its own domain. Embed previews can be raster
+        // textures returned as images. Let the heart page render.
+        "img-src 'self' https://cdn.discordapp.com https://*.unicorn.studio https://storage.googleapis.com data: blob:; " +
+        "connect-src 'self' https://*.unicorn.studio https://storage.googleapis.com https://cdn.jsdelivr.net; " +
         "worker-src 'self' blob:; " +
         "frame-src 'none'; " +
         "frame-ancestors 'none'; " +
