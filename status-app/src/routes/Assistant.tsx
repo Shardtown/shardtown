@@ -15,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { cn } from "@/lib/utils";
 import { apiGet, apiPost, apiPostStream, isApiError } from "@/api/client";
-import { Wrench } from "lucide-react";
 
 interface ChatMessage {
   id: number;
@@ -255,19 +254,11 @@ export function Assistant() {
           style={{ minHeight: "calc(100vh - 18rem)" }}
         >
           <div className="text-center max-w-xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: reduce ? 1 : 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, ease: heroEase }}
-              className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-amber-500/10 border border-amber-500/25 text-amber-300 mb-8 shadow-[0_0_40px_-12px_rgba(245,158,11,0.6)]"
-            >
-              <Wrench className="w-9 h-9" />
-            </motion.div>
             <motion.p
               initial={{ opacity: 0, y: reduce ? 0 : 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.1, ease: heroEase }}
-              className="text-[11px] font-bold tracking-[0.32em] text-amber-300/70 uppercase mb-4"
+              className="text-[11px] font-bold tracking-[0.32em] text-white uppercase mb-4"
             >
               Maintenance
             </motion.p>
