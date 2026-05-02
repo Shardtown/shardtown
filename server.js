@@ -1219,13 +1219,18 @@ if (CHATBOT_MAINTENANCE) {
     console.warn('[chatbot] MAINTENANCE active — toutes les requêtes /api/chatbot/* renvoient un message statique.');
 }
 
+// Réponse 503 standardisée pour tous les /api/chatbot/* en maintenance.
+// Le SPA détecte `maintenance: true` côté client et bascule en page
+// "en maintenance" plein écran (pas de chat, pas de input, rien).
+function maintenanceResponse(res) {
+    return res.status(503).json({
+        error: CHATBOT_MAINTENANCE_MESSAGE,
+        maintenance: true,
+    });
+}
+
 app.get('/api/chatbot/history', (req, res) => {
-    if (CHATBOT_MAINTENANCE) {
-        return res.json({
-            messages: [{ id: 0, role: 'assistant', content: CHATBOT_MAINTENANCE_MESSAGE }],
-            enabled: false,
-        });
-    }
+    if (CHATBOT_MAINTENANCE) return maintenanceResponse(res);
     const messages = getChatbotHistory(req.sessionID);
     res.json({
         messages: messages.map((m, i) => ({
@@ -1238,6 +1243,7 @@ app.get('/api/chatbot/history', (req, res) => {
 });
 
 app.post('/api/chatbot/reset', (req, res) => {
+    if (CHATBOT_MAINTENANCE) return maintenanceResponse(res);
     chatbotHistories.delete(req.sessionID);
     chatbotLastSeen.delete(req.sessionID);
     res.json({ success: true });
@@ -1248,14 +1254,7 @@ app.post('/api/chatbot/reset', (req, res) => {
 //   event: done \ndata: {"reply":"..."}\n\n        (réponse complète)
 //   event: error\ndata: {"error":"..."}\n\n        (sur erreur)
 app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
-    if (CHATBOT_MAINTENANCE) {
-        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-        res.setHeader('Cache-Control', 'no-cache, no-transform');
-        res.setHeader('X-Accel-Buffering', 'no');
-        res.flushHeaders?.();
-        res.write(`event: error\ndata: ${JSON.stringify({ error: CHATBOT_MAINTENANCE_MESSAGE })}\n\n`);
-        return res.end();
-    }
+    if (CHATBOT_MAINTENANCE) return maintenanceResponse(res);
     const content = String(req.body?.content || '').trim().slice(0, CHATBOT_MAX_USER_LEN);
     if (!content) return res.status(400).json({ error: 'Message vide' });
 

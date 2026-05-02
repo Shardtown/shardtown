@@ -14,7 +14,8 @@ import remarkGfm from "remark-gfm";
 import { Textarea } from "@/components/ui/textarea";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { cn } from "@/lib/utils";
-import { apiGet, apiPost, apiPostStream } from "@/api/client";
+import { apiGet, apiPost, apiPostStream, isApiError } from "@/api/client";
+import { Wrench } from "lucide-react";
 
 interface ChatMessage {
   id: number;
@@ -65,6 +66,12 @@ export function Assistant() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  // Maintenance state — fetched from /api/chatbot/history; when the
+  // backend returns 503 with `maintenance: true`, we render a full-page
+  // "en maintenance" screen instead of the chat. Hooks must run before
+  // any conditional return so we don't break Rules of Hooks.
+  const [maintenance, setMaintenance] = useState<{ message: string } | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   const idRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -81,7 +88,15 @@ export function Assistant() {
           idRef.current = r.messages.length;
         }
       })
-      .catch(() => {});
+      .catch(err => {
+        if (isApiError(err) && err.status === 503) {
+          const data = err.data as { maintenance?: boolean; error?: string } | undefined;
+          if (data?.maintenance) {
+            setMaintenance({ message: data.error || "L'assistant est en maintenance." });
+          }
+        }
+      })
+      .finally(() => setHistoryLoaded(true));
   }, []);
 
   // À chaque changement de messages (nouveau message OU chunk pendant le
@@ -124,6 +139,19 @@ export function Assistant() {
 
       try {
         const res = await apiPostStream("/api/chatbot/message", { content });
+        // Maintenance landed mid-session → bail to the maintenance screen
+        // immediately so the user doesn't see a half-broken chat.
+        if (res.status === 503) {
+          const text = await res.text().catch(() => "");
+          try {
+            const j = JSON.parse(text);
+            if (j?.maintenance) {
+              setMaintenance({ message: j.error || "L'assistant est en maintenance." });
+              return;
+            }
+          } catch { /* fall through */ }
+          throw new Error(text || `${res.status} ${res.statusText}`);
+        }
         if (!res.ok || !res.body) {
           const text = await res.text().catch(() => "");
           throw new Error(text || `${res.status} ${res.statusText}`);
@@ -216,6 +244,69 @@ export function Assistant() {
   const showThinking =
     sending && lastMsg?.role === "assistant" && lastMsg.content === "";
   const hasConversation = messages.length > 0;
+
+  // Maintenance — full-page block, no chat, no input, no suggestions.
+  // Rendered as soon as /history reports 503 + maintenance:true.
+  if (maintenance) {
+    return (
+      <AppLayout>
+        <section
+          className="container-wide pt-8 pb-12 flex items-center justify-center"
+          style={{ minHeight: "calc(100vh - 18rem)" }}
+        >
+          <div className="text-center max-w-xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: reduce ? 1 : 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, ease: heroEase }}
+              className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-amber-500/10 border border-amber-500/25 text-amber-300 mb-8 shadow-[0_0_40px_-12px_rgba(245,158,11,0.6)]"
+            >
+              <Wrench className="w-9 h-9" />
+            </motion.div>
+            <motion.p
+              initial={{ opacity: 0, y: reduce ? 0 : 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1, ease: heroEase }}
+              className="text-[11px] font-bold tracking-[0.32em] text-amber-300/70 uppercase mb-4"
+            >
+              Maintenance
+            </motion.p>
+            <motion.h1
+              initial={{ opacity: 0, y: reduce ? 0 : 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.15, ease: heroEase }}
+              className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl mb-5"
+            >
+              Samia est hors-ligne
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: reduce ? 0 : 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.25, ease: heroEase }}
+              className="text-white/60 leading-relaxed"
+            >
+              {maintenance.message}
+            </motion.p>
+          </div>
+        </section>
+      </AppLayout>
+    );
+  }
+
+  // Tant que /history n'a pas répondu, on rend rien (évite un flash de UI
+  // chat avant la bascule en page maintenance si le serveur renvoie 503).
+  if (!historyLoaded) {
+    return (
+      <AppLayout>
+        <section
+          className="container-wide pt-8 pb-12 flex items-center justify-center"
+          style={{ minHeight: "calc(100vh - 18rem)" }}
+        >
+          <Loader2 className="w-6 h-6 animate-spin text-white/30" />
+        </section>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
