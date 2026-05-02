@@ -53,8 +53,11 @@ export function Signup() {
             <h1 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl mb-4">
               Vérifie ton mail.
             </h1>
-            <p className="text-white/55 mb-8">
-              On vient de t'envoyer un lien à <b className="text-white">{email}</b>. Clique-le pour activer ton compte.
+            <p className="text-white/55 mb-3">
+              Si l'adresse <b className="text-white">{email}</b> n'est pas déjà utilisée, on vient de t'y envoyer un code à 6 chiffres.
+            </p>
+            <p className="text-white/40 text-sm mb-8">
+              Tu as déjà un compte avec cet email ? Va te <Link to="/account/login" className="underline hover:text-white/70">connecter</Link> directement.
             </p>
             <Link
               to="/account/login"

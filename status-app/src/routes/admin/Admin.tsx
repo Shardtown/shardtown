@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { apiGet, apiPost } from "@/api/client";
+import { apiGet, apiPost, isApiError } from "@/api/client";
 
 interface Bot {
   id: string;
@@ -105,11 +105,11 @@ export function Admin() {
       setData(d);
       setError(null);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes("401") || msg.includes("403")) {
+      if (isApiError(e) && (e.status === 401 || e.status === 403)) {
         nav("/admin/login", { replace: true });
         return;
       }
+      const msg = e instanceof Error ? e.message : String(e);
       setError(msg || "Erreur de chargement");
     } finally {
       setLoading(false);
@@ -152,11 +152,11 @@ export function Admin() {
       const r = await apiPost<{ success?: boolean; error?: string }>(path, body);
       return { success: !!r?.success, error: r?.error };
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Erreur réseau";
-      if (msg.includes("401") || msg.includes("403") || msg.includes("Non authentifié")) {
+      if (isApiError(e) && (e.status === 401 || e.status === 403)) {
         nav("/admin/login", { replace: true });
         return { success: false, error: "Session expirée" };
       }
+      const msg = e instanceof Error ? e.message : "Erreur réseau";
       return { success: false, error: msg };
     }
   }

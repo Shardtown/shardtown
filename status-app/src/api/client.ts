@@ -6,6 +6,27 @@
  * refreshed and the request retried once.
  */
 
+/**
+ * Error thrown by the API client. Exposes the HTTP status code and the
+ * parsed JSON body so callers can branch on `err.status === 429` and
+ * read structured fields like `err.data.lockedUntil` instead of doing
+ * fragile `err.message.includes("401")` string matching.
+ */
+export class ApiError extends Error {
+  status: number;
+  data: unknown;
+  constructor(status: number, message: string, data?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
+
+export function isApiError(e: unknown): e is ApiError {
+  return e instanceof ApiError;
+}
+
 let csrfToken: string | null = null;
 let csrfPromise: Promise<string> | null = null;
 
@@ -32,9 +53,25 @@ function clearCsrf() {
   csrfToken = null;
 }
 
+async function parseError(res: Response): Promise<ApiError> {
+  const text = await res.text().catch(() => "");
+  let data: unknown = undefined;
+  let message = `${res.status} ${res.statusText}`;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+      const errField = (data as { error?: unknown })?.error;
+      if (typeof errField === "string" && errField) message = errField;
+    } catch {
+      message = text;
+    }
+  }
+  return new ApiError(res.status, message, data);
+}
+
 export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(path, { credentials: "include" });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) throw await parseError(res);
   return res.json();
 }
 
@@ -61,10 +98,7 @@ async function send<T>(method: string, path: string, body?: unknown): Promise<T>
     res = await doFetch();
   }
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `${res.status} ${res.statusText}`);
-  }
+  if (!res.ok) throw await parseError(res);
 
   // Some endpoints return 204 No Content
   if (res.status === 204) return undefined as T;

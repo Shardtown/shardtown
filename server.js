@@ -253,6 +253,16 @@ async function connectDB() {
                     locked_until DATETIME DEFAULT NULL
                 )
             `);
+            // Same idea for user accounts — defeats distributed brute
+            // force where the IP rate limiter alone wouldn't help.
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS account_login_attempts (
+                    account_id INT PRIMARY KEY,
+                    failed_attempts INT NOT NULL DEFAULT 0,
+                    last_failed_at DATETIME DEFAULT NULL,
+                    locked_until DATETIME DEFAULT NULL
+                )
+            `);
             // Forensic audit trail of every admin action.
             await db.execute(`
                 CREATE TABLE IF NOT EXISTS admin_audit_log (
@@ -359,6 +369,229 @@ async function connectDB() {
                     INDEX idx_revoked (revoked)
                 )
             `);
+            // Shard-bot tables + columns (formerly migrated lazily on every
+            // GET /api/shard/guild/:id, which spammed 50+ ALTERs per page
+            // load and masked real schema errors via .catch).
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_settings (
+                    guildId VARCHAR(255) PRIMARY KEY,
+                    welcomeChannelId VARCHAR(255) DEFAULT '',
+                    welcomeTitle TEXT,
+                    welcomeMessage TEXT,
+                    welcomeFooter TEXT,
+                    welcomeColor VARCHAR(7) DEFAULT '#3b82f6',
+                    leaveChannelId VARCHAR(255) DEFAULT '',
+                    leaveTitle TEXT,
+                    leaveMessage TEXT,
+                    leaveFooter TEXT,
+                    leaveColor VARCHAR(7) DEFAULT '#6b7280',
+                    autoRoleId VARCHAR(255) DEFAULT '',
+                    tempVoiceTrigger VARCHAR(255) DEFAULT '',
+                    tempVoiceCategory VARCHAR(255) DEFAULT '',
+                    tempVoiceName VARCHAR(255) DEFAULT ''
+                )
+            `);
+            const shardSettingsAlters = [
+                `ALTER TABLE shard_settings ADD COLUMN welcomeTitle TEXT`,
+                `ALTER TABLE shard_settings ADD COLUMN welcomeFooter TEXT`,
+                `ALTER TABLE shard_settings ADD COLUMN welcomeColor VARCHAR(7) DEFAULT '#3b82f6'`,
+                `ALTER TABLE shard_settings ADD COLUMN leaveTitle TEXT`,
+                `ALTER TABLE shard_settings ADD COLUMN leaveFooter TEXT`,
+                `ALTER TABLE shard_settings ADD COLUMN leaveColor VARCHAR(7) DEFAULT '#6b7280'`,
+                `ALTER TABLE shard_settings ADD COLUMN autoRoleId VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN tempVoiceTrigger VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN tempVoiceCategory VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN tempVoiceName VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN autoReactions JSON`,
+                `ALTER TABLE shard_settings ADD COLUMN levelsEnabled TINYINT(1) DEFAULT 0`,
+                `ALTER TABLE shard_settings ADD COLUMN xpMin INT DEFAULT 15`,
+                `ALTER TABLE shard_settings ADD COLUMN xpMax INT DEFAULT 25`,
+                `ALTER TABLE shard_settings ADD COLUMN xpCooldown INT DEFAULT 60`,
+                `ALTER TABLE shard_settings ADD COLUMN levelUpChannelId VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN levelRewards JSON`,
+                `ALTER TABLE shard_settings ADD COLUMN levelUpMessage VARCHAR(500) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN levelUpColor VARCHAR(7) DEFAULT '#3b82f6'`,
+                `ALTER TABLE shard_settings ADD COLUMN levelThresholds JSON`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketEnabled TINYINT(1) DEFAULT 0`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketCategoryId VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketSupportRoleId VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketLogChannelId VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketMaxPerUser INT DEFAULT 1`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketPanelChannelId VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketPanelTitle VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketPanelDescription TEXT`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketPanelColor VARCHAR(7) DEFAULT '#3b82f6'`,
+                `ALTER TABLE shard_settings ADD COLUMN birthdayChannelId VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN birthdayMessage VARCHAR(500) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN birthdayRoleId VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN economyEnabled TINYINT(1) DEFAULT 0`,
+                `ALTER TABLE shard_settings ADD COLUMN economyCurrencyName VARCHAR(50) DEFAULT 'coins'`,
+                `ALTER TABLE shard_settings ADD COLUMN economyDailyMin INT DEFAULT 50`,
+                `ALTER TABLE shard_settings ADD COLUMN economyDailyMax INT DEFAULT 200`,
+                `ALTER TABLE shard_settings ADD COLUMN isPremium TINYINT(1) DEFAULT 0`,
+                `ALTER TABLE shard_settings ADD COLUMN xpRoleMultipliers JSON`,
+                `ALTER TABLE shard_settings ADD COLUMN referralEnabled TINYINT(1) DEFAULT 0`,
+                `ALTER TABLE shard_settings ADD COLUMN referralReward INT DEFAULT 100`,
+                `ALTER TABLE shard_settings ADD COLUMN twitchAlerts JSON`,
+                `ALTER TABLE shard_settings ADD COLUMN youtubeAlerts JSON`,
+            ];
+            for (const ddl of shardSettingsAlters) {
+                try { await db.execute(ddl); } catch { /* already exists */ }
+            }
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_giveaways (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    guildId VARCHAR(255) NOT NULL,
+                    channelId VARCHAR(255) NOT NULL,
+                    messageId VARCHAR(255) DEFAULT '',
+                    prize TEXT NOT NULL,
+                    winnersCount INT DEFAULT 1,
+                    endsAt DATETIME NOT NULL,
+                    ended TINYINT(1) DEFAULT 0,
+                    createdBy VARCHAR(255) DEFAULT ''
+                )
+            `);
+            for (const ddl of [
+                `ALTER TABLE shard_giveaways ADD COLUMN minRole VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_giveaways ADD COLUMN minLevel INT DEFAULT 0`,
+            ]) { try { await db.execute(ddl); } catch {} }
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_giveaway_entries (
+                    giveawayId INT NOT NULL,
+                    userId VARCHAR(255) NOT NULL,
+                    PRIMARY KEY (giveawayId, userId)
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_birthdays (
+                    userId VARCHAR(255) NOT NULL,
+                    guildId VARCHAR(255) NOT NULL,
+                    day INT NOT NULL,
+                    month INT NOT NULL,
+                    PRIMARY KEY (guildId, userId)
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_scheduled (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    guildId VARCHAR(255) NOT NULL,
+                    channelId VARCHAR(255) NOT NULL,
+                    message TEXT NOT NULL,
+                    intervalHours INT NOT NULL DEFAULT 24,
+                    nextRun DATETIME NOT NULL
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_economy (
+                    guildId VARCHAR(255) NOT NULL,
+                    userId VARCHAR(255) NOT NULL,
+                    balance BIGINT DEFAULT 0,
+                    lastDaily DATETIME DEFAULT NULL,
+                    PRIMARY KEY (guildId, userId)
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_shop (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    guildId VARCHAR(255) NOT NULL,
+                    roleId VARCHAR(255) NOT NULL,
+                    price INT NOT NULL,
+                    name VARCHAR(255) DEFAULT ''
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_polls (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    guildId VARCHAR(255) NOT NULL,
+                    channelId VARCHAR(255) NOT NULL,
+                    messageId VARCHAR(255) DEFAULT '',
+                    question TEXT NOT NULL,
+                    choices JSON NOT NULL,
+                    endsAt DATETIME DEFAULT NULL,
+                    ended TINYINT(1) DEFAULT 0
+                )
+            `);
+            try { await db.execute(`ALTER TABLE shard_polls ADD COLUMN anonymous TINYINT(1) DEFAULT 0`); } catch {}
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_poll_votes (
+                    pollId INT NOT NULL,
+                    userId VARCHAR(255) NOT NULL,
+                    choiceIndex INT NOT NULL,
+                    PRIMARY KEY (pollId, userId)
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_tickets (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    guildId VARCHAR(255) NOT NULL,
+                    userId VARCHAR(255) NOT NULL,
+                    channelId VARCHAR(255) NOT NULL,
+                    status ENUM('open','closed') DEFAULT 'open',
+                    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_levels (
+                    guildId VARCHAR(255) NOT NULL,
+                    userId VARCHAR(255) NOT NULL,
+                    xp BIGINT DEFAULT 0,
+                    level INT DEFAULT 0,
+                    PRIMARY KEY (guildId, userId)
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS global_blacklist (
+                    userId VARCHAR(255) NOT NULL PRIMARY KEY,
+                    reason TEXT,
+                    addedBy VARCHAR(255),
+                    addedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS config_backups (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    guildId VARCHAR(255) NOT NULL,
+                    botLabel VARCHAR(50) NOT NULL,
+                    configJson LONGTEXT NOT NULL,
+                    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_reminders (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    guildId VARCHAR(255) NOT NULL,
+                    userId VARCHAR(255) NOT NULL,
+                    channelId VARCHAR(255) NOT NULL,
+                    message TEXT NOT NULL,
+                    remindAt DATETIME NOT NULL,
+                    done TINYINT(1) DEFAULT 0
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_referrals (
+                    guildId VARCHAR(255) NOT NULL,
+                    inviterId VARCHAR(255) NOT NULL,
+                    inviteeId VARCHAR(255) NOT NULL,
+                    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (guildId, inviteeId)
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_invite_cache (
+                    guildId VARCHAR(255) NOT NULL,
+                    inviteCode VARCHAR(50) NOT NULL,
+                    uses INT DEFAULT 0,
+                    PRIMARY KEY (guildId, inviteCode)
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS blocked_guilds (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    guild_id VARCHAR(255) UNIQUE NOT NULL,
+                    guild_name VARCHAR(255),
+                    blocked_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
         } catch (e) { console.error('Erreur migration:', e.message); }
     } catch (err) {
         console.error('❌ Erreur MySQL Dashboard:', err.message);
@@ -406,6 +639,48 @@ function isSafeColumnName(s) {
         && /^[A-Za-z_][A-Za-z0-9_]*$/.test(s);
 }
 
+// ─── Token-at-rest encryption ─────────────────────────────────────────
+// OAuth access/refresh tokens are persisted in MySQL. Without
+// encryption, a DB dump leaks live credentials for every linked user
+// (Discord identify+guilds, Google, GitHub). We use AES-256-GCM with a
+// key derived from SESSION_SECRET (HKDF-style), so no extra .env entry
+// is required. Format on disk: "v1:<iv-hex>:<authTag-hex>:<ct-hex>".
+// Decrypt is forward-compatible: legacy plaintext rows pass through
+// unchanged (handy during the gradual migration). Re-encryption happens
+// on the next write.
+const TOKEN_ENC_KEY = crypto.createHash('sha256')
+    .update(`token-enc:${process.env.SESSION_SECRET || ''}`)
+    .digest();
+
+function encryptToken(plain) {
+    if (plain == null) return null;
+    if (typeof plain !== 'string') plain = String(plain);
+    if (plain === '') return '';
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', TOKEN_ENC_KEY, iv);
+    const ct = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return `v1:${iv.toString('hex')}:${tag.toString('hex')}:${ct.toString('hex')}`;
+}
+
+function decryptToken(stored) {
+    if (stored == null || stored === '') return stored;
+    if (typeof stored !== 'string') return stored;
+    if (!stored.startsWith('v1:')) return stored; // legacy plaintext
+    try {
+        const [, ivHex, tagHex, ctHex] = stored.split(':');
+        if (!ivHex || !tagHex || !ctHex) return null;
+        const iv = Buffer.from(ivHex, 'hex');
+        const tag = Buffer.from(tagHex, 'hex');
+        const ct = Buffer.from(ctHex, 'hex');
+        const decipher = crypto.createDecipheriv('aes-256-gcm', TOKEN_ENC_KEY, iv);
+        decipher.setAuthTag(tag);
+        return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
+    } catch {
+        return null;
+    }
+}
+
 function isSafeRedirect(url) {
     if (!url || typeof url !== 'string') return false;
     if (!url.startsWith('/') || url.startsWith('//') || url.startsWith('/\\')) return false;
@@ -417,6 +692,20 @@ function isSafeRedirect(url) {
 
 function isValidSnowflake(id) {
     return typeof id === 'string' && /^\d{17,20}$/.test(id);
+}
+
+// Discord returns guild.permissions as a stringified 64-bit integer.
+// `g.permissions & 0x8` happens to work for the ADMINISTRATOR bit (it's
+// in the low 32 bits) but breaks the moment anyone checks a higher bit
+// since JS bitwise ops coerce to 32-bit signed int. Use BigInt as
+// recommended by Discord's docs.
+const PERM_ADMIN = 0x8n;
+function hasGuildAdmin(guild) {
+    if (!guild) return false;
+    if (guild.owner) return true;
+    try {
+        return (BigInt(guild.permissions || 0) & PERM_ADMIN) === PERM_ADMIN;
+    } catch { return false; }
 }
 
 app.locals.safeJson = (data) =>
@@ -449,18 +738,20 @@ app.use((req, res, next) => {
     // Vite-built React SPA emits only external <script src="..."> tags so
     // it doesn't need 'unsafe-inline'. The legacy EJS templates rendered
     // under /_legacy/ still contain inline <script> blocks and onclick="..."
-    // handlers, so for those paths we keep the loose policy.
+    // handlers AND pull Tailwind from a CDN, so for those paths we keep
+    // the looser policy. cdnjs/jsdelivr were allowed historically but
+    // aren't referenced anywhere in the current code — dropped.
     const isLegacy = req.path.startsWith('/_legacy/');
     const scriptSrc = isLegacy
-        ? "'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net"
-        : "'self' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net";
+        ? "'self' 'unsafe-inline' https://cdn.tailwindcss.com"
+        : "'self'";
 
     res.setHeader('Content-Security-Policy',
         "default-src 'self'; " +
         `script-src ${scriptSrc}; ` +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com; " +
-        "img-src 'self' https://cdn.discordapp.com https://cdn.tailwindcss.com data:; " +
+        "img-src 'self' https://cdn.discordapp.com data:; " +
         "connect-src 'self'; " +
         "frame-src 'none'; " +
         "frame-ancestors 'none'; " +
@@ -512,6 +803,12 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
+    // Atomic idempotency: only the row that wins the unique-key insert
+    // proceeds with side effects. The previous check-then-insert pattern
+    // had a TOCTOU race where two concurrent webhooks for the same
+    // event.id could both pass the check and double-execute. INSERT
+    // IGNORE returns affectedRows = 0 on conflict.
+    let alreadyProcessed = false;
     try {
         await db.execute(`
             CREATE TABLE IF NOT EXISTS stripe_events_processed (
@@ -520,13 +817,16 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
                 processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        const [existing] = await db.execute('SELECT event_id FROM stripe_events_processed WHERE event_id = ?', [event.id]);
-        if (existing.length > 0) {
-            return res.json({ received: true, duplicate: true });
-        }
-        await db.execute('INSERT IGNORE INTO stripe_events_processed (event_id, event_type) VALUES (?, ?)', [event.id, event.type]);
+        const [r] = await db.execute(
+            'INSERT IGNORE INTO stripe_events_processed (event_id, event_type) VALUES (?, ?)',
+            [event.id, event.type],
+        );
+        if (r.affectedRows === 0) alreadyProcessed = true;
     } catch (err) {
         console.error('Erreur idempotence Stripe:', err.message);
+    }
+    if (alreadyProcessed) {
+        return res.json({ received: true, duplicate: true });
     }
 
     if (event.type === 'checkout.session.completed' || event.type === 'invoice.paid') {
@@ -713,6 +1013,12 @@ function liveGuildAdminGuard(getUserId, getBotToken) {
 
 app.use('/shardguard', liveGuildAdminGuard(req => req.user?.id, () => process.env.DISCORD_TOKEN));
 app.use('/shard', liveGuildAdminGuard(req => req.session?.shardUser?.id, () => process.env.SHARD_TOKEN));
+// Same guard on the /api/* read endpoints. The session-cached
+// req.user.guilds is a 24h snapshot, so without this an admin who lost
+// their permissions still gets read access (config, members, audit
+// logs, warnings) until session expiry.
+app.use('/api/shardguard', liveGuildAdminGuard(req => req.user?.id, () => process.env.DISCORD_TOKEN));
+app.use('/api/shard', liveGuildAdminGuard(req => req.session?.shardUser?.id || req.user?.id, () => process.env.SHARD_TOKEN));
 
 // Migrated to React SPA — kept only as legacy fallback for the EJS template (unused once SPA catch-all is registered)
 app.get('/_legacy/', async (req, res) => {
@@ -723,7 +1029,7 @@ app.get('/_legacy/', async (req, res) => {
         });
         const botGuildIds = botGuildsResponse.data.map(g => g.id);
         const adminGuilds = req.user.guilds
-            .filter(g => (g.permissions & 0x8) === 0x8 || g.owner)
+            .filter(g => hasGuildAdmin(g))
             .sort((a, b) => {
                 const aIn = botGuildIds.includes(a.id);
                 const bIn = botGuildIds.includes(b.id);
@@ -733,7 +1039,7 @@ app.get('/_legacy/', async (req, res) => {
             });
         res.render('index', { user: req.user, botGuildIds, adminGuilds });
     } catch {
-        res.render('index', { user: req.user, botGuildIds: [], adminGuilds: req.user.guilds.filter(g => (g.permissions & 0x8) === 0x8 || g.owner) });
+        res.render('index', { user: req.user, botGuildIds: [], adminGuilds: req.user.guilds.filter(g => hasGuildAdmin(g)) });
     }
 });
 
@@ -1084,8 +1390,11 @@ async function sendVerificationEmail(account, code) {
   <p style="text-align:center;margin:24px 0 0;color:rgba(255,255,255,0.3);font-size:11px">— L'équipe Shardtown</p>
 </div>`;
     if (!m) {
-        console.warn('[mailer] SMTP non configuré — code loggé en console');
-        console.warn(`[mailer] Pour ${account.email}: ${code}`);
+        // SMTP non configuré : on NE log PAS le code (les logs PM2/journalctl
+        // sont souvent monde-lisibles ou archivés — n'importe qui avec un
+        // accès lecture aux logs pourrait prendre le compte). En dev,
+        // configure SMTP_HOST=localhost avec un MailHog/MailCatcher.
+        console.warn(`[mailer] SMTP non configuré — vérif email impossible pour ${account.email}`);
         return;
     }
     try {
@@ -1095,8 +1404,7 @@ async function sendVerificationEmail(account, code) {
             subject, text, html,
         });
     } catch (e) {
-        console.error('[mailer]', e.message);
-        console.warn(`[mailer] Fallback log — ${account.email}: ${code}`);
+        console.error('[mailer] envoi échoué pour', account.email, '—', e.message);
     }
 }
 
@@ -1144,10 +1452,19 @@ function publicAccount(a) {
     };
 }
 
+// Captcha generation is canvas-bound (CPU-intensive). Without a limit
+// an attacker can spam this endpoint to spike CPU on a small VPS.
+const captchaRateLimiter = rateLimit({
+    windowMs: 60_000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // Captcha — issues an image + an opaque ID; the answer is stashed in
 // the session and consumed once on signup/login. New call replaces any
 // previous captcha for this session.
-app.get('/api/account/captcha', (req, res) => {
+app.get('/api/account/captcha', captchaRateLimiter, (req, res) => {
     const c = newCaptcha();
     req.session.captcha = {
         answer: c.answer,
@@ -1214,10 +1531,19 @@ app.post('/api/account/signup', accountSignupLimiter, async (req, res) => {
         return res.status(400).json({ error: 'Vérification ShardSecure expirée ou invalide' });
 
     try {
-        const [byEmail] = await db.execute('SELECT id FROM accounts WHERE email = ? LIMIT 1', [email]);
-        if (byEmail.length) return res.status(409).json({ error: 'Email déjà utilisé' });
+        // Anti-enumeration: distinct error messages for email vs pseudo
+        // collision used to leak which one already exists. Pseudo is
+        // public (visible on profiles) so we keep its error specific;
+        // email is sensitive so we mask it behind a generic "compte
+        // déjà existant" and return the same 200 + pendingVerification
+        // shape as a real signup (the verification email won't actually
+        // arrive — but an attacker can't tell that from the response).
         const [byPseudo] = await db.execute('SELECT id FROM accounts WHERE pseudo = ? LIMIT 1', [pseudo]);
         if (byPseudo.length) return res.status(409).json({ error: 'Pseudo déjà pris' });
+        const [byEmail] = await db.execute('SELECT id FROM accounts WHERE email = ? LIMIT 1', [email]);
+        if (byEmail.length) {
+            return res.json({ success: true, pendingVerification: true, email });
+        }
 
         const salt = crypto.randomBytes(16).toString('hex');
         const hash = hashPassword(password, salt);
@@ -1243,6 +1569,57 @@ app.post('/api/account/signup', accountSignupLimiter, async (req, res) => {
     }
 });
 
+// Per-account lockout for /api/account/login. Same escalation curve as
+// admin login so a distributed brute force across many IPs (which would
+// slip past the IP-keyed accountAuthLimiter) still gets stopped.
+const ACCOUNT_LOCKOUT_SCHEDULE = [
+    { attempts: 5,  ms: 5 * 60 * 1000 },
+    { attempts: 10, ms: 30 * 60 * 1000 },
+    { attempts: 15, ms: 24 * 60 * 60 * 1000 },
+];
+
+async function checkAccountLockout(accountId) {
+    if (!accountId) return { locked: false };
+    try {
+        const [rows] = await db.execute(
+            'SELECT locked_until FROM account_login_attempts WHERE account_id = ?',
+            [accountId],
+        );
+        const r = rows[0];
+        if (r && r.locked_until && new Date(r.locked_until) > new Date()) {
+            return { locked: true, until: r.locked_until };
+        }
+        return { locked: false };
+    } catch { return { locked: false }; }
+}
+
+async function recordFailedAccountLogin(accountId) {
+    if (!accountId) return;
+    try {
+        const [rows] = await db.execute(
+            'SELECT failed_attempts FROM account_login_attempts WHERE account_id = ?',
+            [accountId],
+        );
+        const next = (rows[0]?.failed_attempts || 0) + 1;
+        const tier = [...ACCOUNT_LOCKOUT_SCHEDULE].reverse().find(t => next >= t.attempts);
+        const lockedUntil = tier ? new Date(Date.now() + tier.ms) : null;
+        await db.execute(
+            `INSERT INTO account_login_attempts (account_id, failed_attempts, last_failed_at, locked_until)
+             VALUES (?, ?, NOW(), ?)
+             ON DUPLICATE KEY UPDATE failed_attempts = VALUES(failed_attempts),
+                 last_failed_at = VALUES(last_failed_at), locked_until = VALUES(locked_until)`,
+            [accountId, next, lockedUntil],
+        );
+    } catch (e) { console.error('recordFailedAccountLogin:', e.message); }
+}
+
+async function clearAccountLockout(accountId) {
+    if (!accountId) return;
+    try {
+        await db.execute('DELETE FROM account_login_attempts WHERE account_id = ?', [accountId]);
+    } catch { /* swallow */ }
+}
+
 // Login
 app.post('/api/account/login', accountAuthLimiter, async (req, res) => {
     const identifier = String(req.body?.identifier || '').trim().toLowerCase(); // email or pseudo
@@ -1260,12 +1637,25 @@ app.post('/api/account/login', accountAuthLimiter, async (req, res) => {
         );
         const a = rows[0];
         if (!a) return res.status(401).json({ error: 'Identifiants invalides' });
+
+        // Lockout check before password verification: an attacker spamming a
+        // valid identifier shouldn't be able to time the scrypt computation.
+        const lockout = await checkAccountLockout(a.id);
+        if (lockout.locked) {
+            return res.status(429).json({
+                error: 'Trop de tentatives échouées. Réessaie plus tard.',
+                lockedUntil: lockout.until,
+            });
+        }
+
         const test = hashPassword(password, a.password_salt);
         const stored = Buffer.from(a.password_hash, 'hex');
         const computed = Buffer.from(test, 'hex');
         if (stored.length !== computed.length || !crypto.timingSafeEqual(stored, computed)) {
+            await recordFailedAccountLogin(a.id);
             return res.status(401).json({ error: 'Identifiants invalides' });
         }
+        await clearAccountLockout(a.id);
         if (!a.email_verified) {
             // Générer + envoyer un nouveau code à la volée
             await db.execute(
@@ -1442,11 +1832,11 @@ async function fetchDiscordGuildsFor(accessToken) {
 app.get('/api/account/discord/callback', async (req, res) => {
     if (!req.session?.account?.id) return res.redirect('/account/login');
     const state = String(req.query.state || '');
-    if (!state || state !== req.session.discordLinkState) {
-        req.session.discordLinkState = null;
+    const expectedState = req.session.discordLinkState;
+    req.session.discordLinkState = null;
+    if (!state || !expectedState || !timingSafeEqual(state, expectedState)) {
         return res.redirect('/account?linked=error&reason=state');
     }
-    req.session.discordLinkState = null;
     const code = String(req.query.code || '');
     if (!code) return res.redirect('/account?linked=error&reason=code');
 
@@ -1497,8 +1887,8 @@ app.get('/api/account/discord/callback', async (req, res) => {
                 me.id,
                 me.username,
                 me.avatar || null,
-                access_token,
-                refresh_token,
+                encryptToken(access_token),
+                encryptToken(refresh_token),
                 Math.max(60, parseInt(expires_in, 10) || 0),
                 JSON.stringify(guilds),
                 req.session.account.id,
@@ -1534,11 +1924,11 @@ app.get('/api/account/shard/link', requireAccount, (req, res) => {
 app.get('/api/account/shard/callback', async (req, res) => {
     if (!req.session?.account?.id) return res.redirect('/account/login');
     const state = String(req.query.state || '');
-    if (!state || state !== req.session.shardLinkState) {
-        req.session.shardLinkState = null;
+    const expectedState = req.session.shardLinkState;
+    req.session.shardLinkState = null;
+    if (!state || !expectedState || !timingSafeEqual(state, expectedState)) {
         return res.redirect('/account?shardLinked=error&reason=state');
     }
-    req.session.shardLinkState = null;
     const code = String(req.query.code || '');
     if (!code) return res.redirect('/account?shardLinked=error&reason=code');
 
@@ -1583,8 +1973,8 @@ app.get('/api/account/shard/callback', async (req, res) => {
                 me.id,
                 me.username,
                 me.avatar || null,
-                access_token,
-                refresh_token,
+                encryptToken(access_token),
+                encryptToken(refresh_token),
                 Math.max(60, parseInt(expires_in, 10) || 0),
                 req.session.account.id,
             ],
@@ -1714,11 +2104,12 @@ app.get('/api/account/oauth/:provider/callback', async (req, res) => {
 
     // Verify state
     const expected = req.session.oauthState;
-    if (!expected || expected.provider !== provider || expected.state !== req.query.state) {
-        req.session.oauthState = null;
+    req.session.oauthState = null;
+    const incomingState = String(req.query.state || '');
+    if (!expected || expected.provider !== provider || !expected.state
+        || !timingSafeEqual(incomingState, expected.state)) {
         return res.redirect('/account/login?oauth=error&reason=state');
     }
-    req.session.oauthState = null;
     const code = String(req.query.code || '');
     if (!code) return res.redirect('/account/login?oauth=error&reason=code');
 
@@ -1895,7 +2286,12 @@ app.post('/api/account/passkey/register-begin', requireAccount, async (req, res)
                 transports: c.transports ? c.transports.split(',') : undefined,
             })),
         });
-        req.session.passkeyRegChallenge = options.challenge;
+        // 5 min TTL — without this, a session could keep an unused
+        // challenge alive for the entire 24h cookie life.
+        req.session.passkeyRegChallenge = {
+            challenge: options.challenge,
+            expiresAt: Date.now() + 5 * 60 * 1000,
+        };
         res.json(options);
     } catch (err) {
         console.error('passkey register begin:', err.message);
@@ -1904,9 +2300,13 @@ app.post('/api/account/passkey/register-begin', requireAccount, async (req, res)
 });
 
 app.post('/api/account/passkey/register-complete', requireAccount, async (req, res) => {
-    const expectedChallenge = req.session.passkeyRegChallenge;
-    if (!expectedChallenge) return res.status(400).json({ error: 'Pas de challenge en cours' });
+    const stored = req.session.passkeyRegChallenge;
     req.session.passkeyRegChallenge = null;
+    if (!stored?.challenge) return res.status(400).json({ error: 'Pas de challenge en cours' });
+    if (stored.expiresAt && Date.now() > stored.expiresAt) {
+        return res.status(400).json({ error: 'Challenge expiré' });
+    }
+    const expectedChallenge = stored.challenge;
 
     const name = String(req.body?.name || '').trim().slice(0, 64) || 'Clé sans nom';
     const response = req.body?.response;
@@ -1961,7 +2361,12 @@ app.post('/api/account/passkey/auth-begin', accountAuthLimiter, async (req, res)
             [identifier, identifier],
         );
         const a = accs[0];
-        // Always 200 with a generic challenge to avoid user enumeration
+        // Always 200 with a generic challenge to avoid user enumeration.
+        // For unknown identifiers we fabricate a deterministic-looking
+        // dummy `allowCredentials` derived from a hash of the identifier
+        // so the response shape (and roughly the size) matches what a
+        // real account would return — defeats the trivial timing/size
+        // distinguisher that "empty allowCredentials = unknown user".
         const { rpID } = rpInfo();
         let allowCredentials = [];
         if (a) {
@@ -1973,13 +2378,28 @@ app.post('/api/account/passkey/auth-begin', accountAuthLimiter, async (req, res)
                 id: c.credential_id,
                 transports: c.transports ? c.transports.split(',') : undefined,
             }));
+        } else {
+            const seed = crypto.createHmac('sha256', process.env.SESSION_SECRET || 'shardtown')
+                .update(`passkey-decoy:${identifier}`).digest();
+            const decoyCount = (seed[0] % 2) + 1; // 1 or 2 dummy creds
+            for (let i = 0; i < decoyCount; i++) {
+                const buf = crypto.createHash('sha256').update(seed).update(Buffer.from([i])).digest();
+                allowCredentials.push({
+                    id: bufferToB64u(buf),
+                    transports: ['internal', 'hybrid'],
+                });
+            }
         }
         const options = await generateAuthenticationOptions({
             rpID,
             allowCredentials,
             userVerification: 'preferred',
         });
-        req.session.passkeyAuthChallenge = { challenge: options.challenge, accountId: a?.id || null };
+        req.session.passkeyAuthChallenge = {
+            challenge: options.challenge,
+            accountId: a?.id || null,
+            expiresAt: Date.now() + 5 * 60 * 1000,
+        };
         res.json(options);
     } catch (err) {
         console.error('passkey auth begin:', err.message);
@@ -1989,8 +2409,11 @@ app.post('/api/account/passkey/auth-begin', accountAuthLimiter, async (req, res)
 
 app.post('/api/account/passkey/auth-complete', accountAuthLimiter, async (req, res) => {
     const stored = req.session.passkeyAuthChallenge;
-    if (!stored?.challenge) return res.status(400).json({ error: 'Pas de challenge en cours' });
     req.session.passkeyAuthChallenge = null;
+    if (!stored?.challenge) return res.status(400).json({ error: 'Pas de challenge en cours' });
+    if (stored.expiresAt && Date.now() > stored.expiresAt) {
+        return res.status(400).json({ error: 'Challenge expiré' });
+    }
 
     const response = req.body?.response;
     if (!response?.id) return res.status(400).json({ error: 'Réponse manquante' });
@@ -2075,16 +2498,17 @@ app.post('/api/account/discord/refresh-guilds', requireAccount, async (req, res)
         );
         const a = rows[0];
         if (!a || !a.discord_access_token) return res.status(400).json({ error: 'Aucun Discord lié' });
-        let token = a.discord_access_token;
+        let token = decryptToken(a.discord_access_token);
+        const refreshTokenPlain = decryptToken(a.discord_refresh_token);
         const expired = a.discord_token_expires_at && new Date(a.discord_token_expires_at) < new Date();
-        if (expired && a.discord_refresh_token) {
+        if (expired && refreshTokenPlain) {
             const refreshed = await axios.post(
                 'https://discord.com/api/v10/oauth2/token',
                 new URLSearchParams({
                     client_id: process.env.CLIENT_ID,
                     client_secret: process.env.CLIENT_SECRET,
                     grant_type: 'refresh_token',
-                    refresh_token: a.discord_refresh_token,
+                    refresh_token: refreshTokenPlain,
                 }),
                 { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 8000 },
             );
@@ -2093,8 +2517,8 @@ app.post('/api/account/discord/refresh-guilds', requireAccount, async (req, res)
                 `UPDATE accounts SET discord_access_token = ?, discord_refresh_token = ?,
                   discord_token_expires_at = DATE_ADD(NOW(), INTERVAL ? SECOND) WHERE id = ?`,
                 [
-                    refreshed.data.access_token,
-                    refreshed.data.refresh_token,
+                    encryptToken(refreshed.data.access_token),
+                    encryptToken(refreshed.data.refresh_token),
                     Math.max(60, parseInt(refreshed.data.expires_in, 10) || 0),
                     a.id,
                 ],
@@ -2168,7 +2592,7 @@ app.get('/api/premium', async (req, res) => {
         });
         const botGuildIds = botGuildsResponse.data.map(g => g.id);
         const adminGuilds = req.user.guilds
-            .filter(g => (g.permissions & 0x8) === 0x8 || g.owner)
+            .filter(g => hasGuildAdmin(g))
             .map(g => ({ id: g.id, name: g.name }))
             .sort((a, b) => {
                 const aIn = botGuildIds.includes(a.id);
@@ -2180,7 +2604,7 @@ app.get('/api/premium', async (req, res) => {
         res.json({ adminGuilds });
     } catch {
         const adminGuilds = req.user.guilds
-            .filter(g => (g.permissions & 0x8) === 0x8 || g.owner)
+            .filter(g => hasGuildAdmin(g))
             .map(g => ({ id: g.id, name: g.name }));
         res.json({ adminGuilds });
     }
@@ -2207,8 +2631,14 @@ app.post('/api/create-checkout', checkoutRateLimiter, async (req, res) => {
     const { guildId, plan } = req.body;
     if (!guildId || !isValidSnowflake(String(guildId))) return res.status(400).json({ success: false, error: 'Serveur requis.' });
     const planChoice = plan === 'monthly' ? 'monthly' : 'lifetime';
-    const userGuild = req.user.guilds.find(g => g.id === guildId && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildId && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Vous n\'êtes pas administrateur de ce serveur.' });
+    // Re-verify admin live with Discord — the session-cached guild list
+    // is a 24h OAuth snapshot, so without this a deposed admin can still
+    // buy Premium for a server they no longer manage.
+    if (!(await isGuildAdminLive(req.user.id, guildId, process.env.DISCORD_TOKEN))) {
+        return res.status(403).json({ success: false, error: 'Vous n\'êtes plus administrateur de ce serveur.' });
+    }
     try {
         const appUrl = process.env.APP_URL || 'http://localhost:3000';
         const currency = process.env.STRIPE_CURRENCY || 'eur';
@@ -2259,28 +2689,14 @@ app.post('/api/redeem-code', redeemRateLimiter, async (req, res) => {
     if (!code || !guildId) return res.status(400).json({ success: false, error: 'Code et serveur requis.' });
     if (typeof code !== 'string' || code.length > 64) return res.status(400).json({ success: false, error: 'Code invalide.' });
     if (!isValidSnowflake(String(guildId))) return res.status(400).json({ success: false, error: 'Serveur invalide.' });
-    const userGuild = req.user.guilds.find(g => g.id === guildId && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildId && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Vous n\'êtes pas administrateur de ce serveur.' });
+    if (!(await isGuildAdminLive(req.user.id, guildId, process.env.DISCORD_TOKEN))) {
+        return res.status(403).json({ success: false, error: 'Vous n\'êtes plus administrateur de ce serveur.' });
+    }
     const normalized = code.trim().toUpperCase();
     try {
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS redeem_codes (
-                code VARCHAR(64) PRIMARY KEY,
-                max_uses INT DEFAULT 1,
-                used_count INT DEFAULT 0,
-                expires_at DATETIME DEFAULT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS redeem_code_uses (
-                code VARCHAR(64) NOT NULL,
-                guildId VARCHAR(255) NOT NULL,
-                userId VARCHAR(255) NOT NULL,
-                used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (code, guildId)
-            )
-        `);
+        // Tables already created at boot in connectDB()
         const [codeRows] = await db.execute('SELECT * FROM redeem_codes WHERE code = ?', [normalized]);
         if (!codeRows[0]) return res.status(400).json({ success: false, error: 'Code invalide.' });
         const c = codeRows[0];
@@ -2421,7 +2837,7 @@ app.get('/api/shard/server', checkAuthShard, async (req, res) => {
     const shardUser = req.session.shardUser;
     const userPayload = { id: shardUser.id, username: shardUser.username, avatar: shardUser.avatar || null };
     const adminGuilds = shardUser.guilds
-        .filter(guild => (guild.permissions & 0x8) === 0x8 || guild.owner)
+        .filter(guild => hasGuildAdmin(guild))
         .map(g => ({ id: g.id, name: g.name, icon: g.icon || null }));
     try {
         const botGuildsResponse = await axios.get('https://discord.com/api/v10/users/@me/guilds', {
@@ -2446,7 +2862,7 @@ app.get('/api/shard/server', checkAuthShard, async (req, res) => {
 app.get('/api/shard/guild/:guildID', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ error: 'Accès refusé' });
     try {
         const [channelsRes, rolesRes, emojisRes] = await Promise.all([
@@ -2463,211 +2879,10 @@ app.get('/api/shard/guild/:guildID', checkAuthShard, async (req, res) => {
             .sort((a, b) => b.position - a.position);
         const guildEmojis = emojisRes.data || [];
 
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_settings (
-                guildId VARCHAR(255) PRIMARY KEY,
-                welcomeChannelId VARCHAR(255) DEFAULT '',
-                welcomeTitle TEXT,
-                welcomeMessage TEXT,
-                welcomeFooter TEXT,
-                welcomeColor VARCHAR(7) DEFAULT '#3b82f6',
-                leaveChannelId VARCHAR(255) DEFAULT '',
-                leaveTitle TEXT,
-                leaveMessage TEXT,
-                leaveFooter TEXT,
-                leaveColor VARCHAR(7) DEFAULT '#6b7280',
-                autoRoleId VARCHAR(255) DEFAULT '',
-                tempVoiceTrigger VARCHAR(255) DEFAULT '',
-                tempVoiceCategory VARCHAR(255) DEFAULT '',
-                tempVoiceName VARCHAR(255) DEFAULT ''
-            )
-        `);
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN welcomeTitle TEXT`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN welcomeFooter TEXT`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN welcomeColor VARCHAR(7) DEFAULT '#3b82f6'`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN leaveTitle TEXT`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN leaveFooter TEXT`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN leaveColor VARCHAR(7) DEFAULT '#6b7280'`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN autoRoleId VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN tempVoiceTrigger VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN tempVoiceCategory VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN tempVoiceName VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN autoReactions JSON`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN levelsEnabled TINYINT(1) DEFAULT 0`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN xpMin INT DEFAULT 15`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN xpMax INT DEFAULT 25`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN xpCooldown INT DEFAULT 60`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN levelUpChannelId VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN levelRewards JSON`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN levelUpMessage VARCHAR(500) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN levelUpColor VARCHAR(7) DEFAULT '#3b82f6'`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN levelThresholds JSON`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN ticketEnabled TINYINT(1) DEFAULT 0`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN ticketCategoryId VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN ticketSupportRoleId VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN ticketLogChannelId VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN ticketMaxPerUser INT DEFAULT 1`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN ticketPanelChannelId VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN ticketPanelTitle VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN ticketPanelDescription TEXT`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN ticketPanelColor VARCHAR(7) DEFAULT '#3b82f6'`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN birthdayChannelId VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN birthdayMessage VARCHAR(500) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN birthdayRoleId VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN economyEnabled TINYINT(1) DEFAULT 0`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN economyCurrencyName VARCHAR(50) DEFAULT 'coins'`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN economyDailyMin INT DEFAULT 50`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN economyDailyMax INT DEFAULT 200`).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_giveaways (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                guildId VARCHAR(255) NOT NULL,
-                channelId VARCHAR(255) NOT NULL,
-                messageId VARCHAR(255) DEFAULT '',
-                prize TEXT NOT NULL,
-                winnersCount INT DEFAULT 1,
-                endsAt DATETIME NOT NULL,
-                ended TINYINT(1) DEFAULT 0,
-                createdBy VARCHAR(255) DEFAULT ''
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_giveaway_entries (
-                giveawayId INT NOT NULL,
-                userId VARCHAR(255) NOT NULL,
-                PRIMARY KEY (giveawayId, userId)
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_birthdays (
-                userId VARCHAR(255) NOT NULL,
-                guildId VARCHAR(255) NOT NULL,
-                day INT NOT NULL,
-                month INT NOT NULL,
-                PRIMARY KEY (guildId, userId)
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_scheduled (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                guildId VARCHAR(255) NOT NULL,
-                channelId VARCHAR(255) NOT NULL,
-                message TEXT NOT NULL,
-                intervalHours INT NOT NULL DEFAULT 24,
-                nextRun DATETIME NOT NULL
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_economy (
-                guildId VARCHAR(255) NOT NULL,
-                userId VARCHAR(255) NOT NULL,
-                balance BIGINT DEFAULT 0,
-                lastDaily DATETIME DEFAULT NULL,
-                PRIMARY KEY (guildId, userId)
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_shop (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                guildId VARCHAR(255) NOT NULL,
-                roleId VARCHAR(255) NOT NULL,
-                price INT NOT NULL,
-                name VARCHAR(255) DEFAULT ''
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_polls (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                guildId VARCHAR(255) NOT NULL,
-                channelId VARCHAR(255) NOT NULL,
-                messageId VARCHAR(255) DEFAULT '',
-                question TEXT NOT NULL,
-                choices JSON NOT NULL,
-                endsAt DATETIME DEFAULT NULL,
-                ended TINYINT(1) DEFAULT 0
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_poll_votes (
-                pollId INT NOT NULL,
-                userId VARCHAR(255) NOT NULL,
-                choiceIndex INT NOT NULL,
-                PRIMARY KEY (pollId, userId)
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_tickets (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                guildId VARCHAR(255) NOT NULL,
-                userId VARCHAR(255) NOT NULL,
-                channelId VARCHAR(255) NOT NULL,
-                status ENUM('open','closed') DEFAULT 'open',
-                createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_levels (
-                guildId VARCHAR(255) NOT NULL,
-                userId VARCHAR(255) NOT NULL,
-                xp BIGINT DEFAULT 0,
-                level INT DEFAULT 0,
-                PRIMARY KEY (guildId, userId)
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS global_blacklist (
-                userId VARCHAR(255) NOT NULL PRIMARY KEY,
-                reason TEXT,
-                addedBy VARCHAR(255),
-                addedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS config_backups (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                guildId VARCHAR(255) NOT NULL,
-                botLabel VARCHAR(50) NOT NULL,
-                configJson LONGTEXT NOT NULL,
-                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_reminders (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                guildId VARCHAR(255) NOT NULL,
-                userId VARCHAR(255) NOT NULL,
-                channelId VARCHAR(255) NOT NULL,
-                message TEXT NOT NULL,
-                remindAt DATETIME NOT NULL,
-                done TINYINT(1) DEFAULT 0
-            )
-        `).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_referrals (
-                guildId VARCHAR(255) NOT NULL,
-                inviterId VARCHAR(255) NOT NULL,
-                inviteeId VARCHAR(255) NOT NULL,
-                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (guildId, inviteeId)
-            )
-        `).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN isPremium TINYINT(1) DEFAULT 0`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN xpRoleMultipliers JSON`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN referralEnabled TINYINT(1) DEFAULT 0`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN referralReward INT DEFAULT 100`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN twitchAlerts JSON`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_settings ADD COLUMN youtubeAlerts JSON`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_giveaways ADD COLUMN minRole VARCHAR(255) DEFAULT ''`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_giveaways ADD COLUMN minLevel INT DEFAULT 0`).catch(() => {});
-        await db.execute(`ALTER TABLE shard_polls ADD COLUMN anonymous TINYINT(1) DEFAULT 0`).catch(() => {});
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS shard_invite_cache (
-                guildId VARCHAR(255) NOT NULL,
-                inviteCode VARCHAR(50) NOT NULL,
-                uses INT DEFAULT 0,
-                PRIMARY KEY (guildId, inviteCode)
-            )
-        `).catch(() => {});
+        // Schema migrations now run once at boot in connectDB() — see
+        // shardSettingsAlters and the CREATE TABLE block there. This used
+        // to spam ~50 DDLs per page load and silently swallowed real
+        // schema errors via `.catch(() => {})`.
         const [rows] = await db.execute('SELECT * FROM shard_settings WHERE guildId = ?', [guildID]);
         const settings = rows[0] || {
             welcomeChannelId: '', welcomeTitle: '', welcomeMessage: 'Bienvenue {user} sur **{server}** !', welcomeFooter: '', welcomeColor: '#3b82f6',
@@ -2720,7 +2935,7 @@ app.get('/api/shard/guild/:guildID', checkAuthShard, async (req, res) => {
 app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const {
         welcomeChannelId = '', welcomeTitle = '', welcomeMessage = '', welcomeFooter = '', welcomeColor = '#3b82f6',
@@ -2789,7 +3004,7 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
 app.post('/shard/guild/:guildID/ticket-panel', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const { channelId, title, description, color } = req.body;
     if (!channelId || !/^\d{17,20}$/.test(String(channelId))) return res.status(400).json({ success: false, error: 'Salon invalide' });
@@ -2823,7 +3038,7 @@ app.post('/shard/guild/:guildID/ticket-panel', checkAuthShard, async (req, res) 
 app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const { channelId, question, choices, endsAt, pollAnonymous = '0' } = req.body;
     if (!channelId || !question || !Array.isArray(choices) || choices.length < 2) return res.status(400).json({ success: false, error: 'Données manquantes' });
@@ -2851,7 +3066,7 @@ app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
 app.post('/shard/guild/:guildID/poll/:pollId/end', checkAuthShard, async (req, res) => {
     const { guildID, pollId } = req.params;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const [rows] = await db.execute(`SELECT * FROM shard_polls WHERE id = ? AND guildId = ?`, [pollId, guildID]);
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Sondage introuvable' });
@@ -2879,7 +3094,7 @@ app.post('/shard/guild/:guildID/poll/:pollId/end', checkAuthShard, async (req, r
 app.post('/shard/guild/:guildID/giveaway', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const { channelId, prize, winnersCount = 1, endsAt, gwMinRole = '', gwMinLevel = 0 } = req.body;
     if (!channelId || !prize || !endsAt) return res.status(400).json({ success: false, error: 'Données manquantes' });
@@ -2909,7 +3124,7 @@ app.post('/shard/guild/:guildID/giveaway', checkAuthShard, async (req, res) => {
 app.post('/shard/guild/:guildID/giveaway/:gwId/end', checkAuthShard, async (req, res) => {
     const { guildID, gwId } = req.params;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const [rows] = await db.execute(`SELECT * FROM shard_giveaways WHERE id = ? AND guildId = ?`, [gwId, guildID]);
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Giveaway introuvable' });
@@ -2936,7 +3151,7 @@ app.post('/shard/guild/:guildID/giveaway/:gwId/end', checkAuthShard, async (req,
 app.post('/shard/guild/:guildID/scheduled', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const { channelId, message, intervalHours, nextRun } = req.body;
     if (!channelId || !message || !intervalHours || !nextRun) return res.status(400).json({ success: false, error: 'Données manquantes' });
@@ -2952,7 +3167,7 @@ app.post('/shard/guild/:guildID/scheduled', checkAuthShard, async (req, res) => 
 app.delete('/shard/guild/:guildID/scheduled/:id', checkAuthShard, async (req, res) => {
     const { guildID, id } = req.params;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     try {
         await db.execute(`DELETE FROM shard_scheduled WHERE id = ? AND guildId = ?`, [id, guildID]);
@@ -2963,7 +3178,7 @@ app.delete('/shard/guild/:guildID/scheduled/:id', checkAuthShard, async (req, re
 app.post('/guild/:guildID/backup', checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const user = req.user;
-    const userGuild = user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     try {
         const [rows] = await db.execute('SELECT * FROM settings WHERE guildId = ?', [guildID]);
@@ -2977,7 +3192,7 @@ app.post('/guild/:guildID/backup', checkAuth, async (req, res) => {
 app.post('/guild/:guildID/restore', checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const user = req.user;
-    const userGuild = user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     try {
         const [rows] = await db.execute('SELECT * FROM settings WHERE guildId = ?', [guildID]);
@@ -2998,7 +3213,7 @@ app.post('/guild/:guildID/restore', checkAuth, async (req, res) => {
 app.post('/shard/guild/:guildID/backup', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     try {
         const [rows] = await db.execute('SELECT * FROM shard_settings WHERE guildId = ?', [guildID]);
@@ -3012,7 +3227,7 @@ app.post('/shard/guild/:guildID/backup', checkAuthShard, async (req, res) => {
 app.post('/shard/guild/:guildID/restore', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     try {
         const [rows] = await db.execute('SELECT * FROM shard_settings WHERE guildId = ?', [guildID]);
@@ -3033,7 +3248,7 @@ app.post('/shard/guild/:guildID/restore', checkAuthShard, async (req, res) => {
 app.post('/shard/guild/:guildID/shop', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const { roleId, price } = req.body;
     if (!roleId || !price) return res.status(400).json({ success: false, error: 'Données manquantes' });
@@ -3046,7 +3261,7 @@ app.post('/shard/guild/:guildID/shop', checkAuthShard, async (req, res) => {
 app.delete('/shard/guild/:guildID/shop/:id', checkAuthShard, async (req, res) => {
     const { guildID, id } = req.params;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     try {
         await db.execute(`DELETE FROM shard_shop WHERE id = ? AND guildId = ?`, [id, guildID]);
@@ -3057,7 +3272,7 @@ app.delete('/shard/guild/:guildID/shop/:id', checkAuthShard, async (req, res) =>
 app.post('/shard/guild/:guildID/send-embed', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const { channelId, title, description, footer, color, image } = req.body;
     if (!channelId || !/^\d{17,20}$/.test(String(channelId))) return res.status(400).json({ success: false, error: 'Salon invalide' });
@@ -3076,7 +3291,7 @@ app.post('/shard/guild/:guildID/send-embed', checkAuthShard, async (req, res) =>
 app.post('/shard/guild/:guildID/reactions', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const { autoReactions } = req.body;
     try {
@@ -3089,7 +3304,7 @@ app.post('/shard/guild/:guildID/reactions', checkAuthShard, async (req, res) => 
 app.post('/shard/guild/:guildID/rewards', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const { levelRewards } = req.body;
     try {
@@ -3102,7 +3317,7 @@ app.post('/shard/guild/:guildID/rewards', checkAuthShard, async (req, res) => {
 app.post('/shard/guild/:guildID/test', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     const { type, channelId, message, title, footer, color } = req.body;
     const cleanChannelId = String(channelId || '').trim();
@@ -3151,7 +3366,7 @@ app.post('/shard/guild/:guildID/test', checkAuthShard, async (req, res) => {
 app.get('/api/shardguard/server', checkAuth, async (req, res) => {
     const userPayload = { id: req.user.id, username: req.user.username, avatar: req.user.avatar || null };
     const adminGuilds = req.user.guilds
-        .filter(guild => (guild.permissions & 0x8) === 0x8 || guild.owner)
+        .filter(guild => hasGuildAdmin(guild))
         .map(g => ({ id: g.id, name: g.name, icon: g.icon || null }));
     try {
         const botGuildsResponse = await axios.get('https://discord.com/api/v10/users/@me/guilds', {
@@ -3177,7 +3392,7 @@ app.get('/guild/:guildID', (req, res) => res.redirect(301, `/shardguard/guild/${
 // ShardGuard guild config — consumed by React /shardguard/guild/:id
 app.get('/api/shardguard/guild/:guildID', checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
-    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ error: 'Accès refusé' });
 
     try {
@@ -3370,7 +3585,7 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
     let modRolesJson;
     try { modRolesJson = JSON.stringify(JSON.parse(modRoles)); } catch { modRolesJson = '[]'; }
 
-    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
 
     try {
@@ -3568,7 +3783,7 @@ app.use('/shard/guild', apiLimiter);
 
 app.get('/shardguard/api/guild/:guildID/members', checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
-    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
 
     try {
@@ -3634,7 +3849,7 @@ app.get('/shardguard/api/guild/:guildID/members', checkAuth, async (req, res) =>
 
 app.post('/shardguard/api/guild/:guildID/member/:userId/action', checkAuth, async (req, res) => {
     const { guildID, userId } = req.params;
-    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
 
     const { action, reason, duration, username } = req.body;
@@ -3729,7 +3944,7 @@ app.post('/shardguard/api/guild/:guildID/member/:userId/action', checkAuth, asyn
 
 app.get('/shardguard/api/guild/:guildID/member/:userId/warns', checkAuth, async (req, res) => {
     const { guildID, userId } = req.params;
-    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     try {
         const [warns] = await db.execute(
@@ -3744,7 +3959,7 @@ app.get('/shardguard/api/guild/:guildID/member/:userId/warns', checkAuth, async 
 
 app.get('/shardguard/api/guild/:guildID/member/:userId/sanctions', checkAuth, async (req, res) => {
     const { guildID, userId } = req.params;
-    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
     try {
         const [sanctions] = await db.execute(
@@ -3759,7 +3974,7 @@ app.get('/shardguard/api/guild/:guildID/member/:userId/sanctions', checkAuth, as
 
 app.get('/shardguard/api/guild/:guildID/logs', checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
-    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
 
     try {
@@ -3778,7 +3993,7 @@ app.get('/shardguard/api/guild/:guildID/logs', checkAuth, async (req, res) => {
 
 app.get('/shardguard/api/guild/:guildID/audit', checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
-    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
 
     try {
@@ -3789,7 +4004,7 @@ app.get('/shardguard/api/guild/:guildID/audit', checkAuth, async (req, res) => {
 
 app.post('/shardguard/api/guild/:guildID/panic', checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
-    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
 
     const { activate } = req.body;
@@ -3842,7 +4057,7 @@ app.post('/shardguard/api/guild/:guildID/deploy', checkAuth, async (req, res) =>
 
     console.log(`[Deploy] Guild: ${guildID}, Type: ${deployType}`);
 
-    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
 
     try {
@@ -3946,7 +4161,7 @@ app.post('/shardguard/api/guild/:guildID/bulk/:action', checkAuth, async (req, r
     const { guildID, action } = req.params;
     const VALID_BULK_ACTIONS = ['verify', 'kick'];
     if (!VALID_BULK_ACTIONS.includes(action)) return res.status(400).json({ success: false, error: 'Action invalide' });
-    const userGuild = req.user.guilds.find(g => g.id === guildID && ((g.permissions & 0x8) === 0x8 || g.owner));
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
 
     try {
@@ -3955,10 +4170,24 @@ app.post('/shardguard/api/guild/:guildID/bulk/:action', checkAuth, async (req, r
         const roleId = settings.verifiedRole;
 
         const headers = { Authorization: `Bot ${process.env.DISCORD_TOKEN}` };
-        
-        // Récupérer les membres du serveur
-        const response = await axios.get(`https://discord.com/api/v10/guilds/${guildID}/members?limit=1000`, { headers });
-        const members = response.data;
+
+        // Paginate through ALL members. Without this, only the first 1000
+        // are processed — on a server >1000 members, "kick all unverified"
+        // would silently leave a chunk untouched.
+        const allMembers = [];
+        let after = '0';
+        for (let safety = 0; safety < 200; safety++) {
+            const response = await axios.get(
+                `https://discord.com/api/v10/guilds/${guildID}/members?limit=1000&after=${after}`,
+                { headers },
+            );
+            const batch = response.data || [];
+            if (batch.length === 0) break;
+            allMembers.push(...batch);
+            if (batch.length < 1000) break;
+            after = batch[batch.length - 1].user.id;
+        }
+        const members = allMembers;
         let count = 0;
 
         for (const member of members) {
@@ -4039,9 +4268,12 @@ async function isAdminSessionValid(sid) {
         }
         return valid;
     } catch {
-        // DB hiccup — fall back to cached value if any, otherwise let the
-        // session through (fail open) since the cookie itself is still valid.
-        return cached ? cached.valid : true;
+        // DB hiccup — fall back to the last cached value if available.
+        // Without a cache entry we fail CLOSED: an admin endpoint should
+        // never grant access while we can't verify the session hasn't
+        // been revoked. Operator just has to log in again once the DB
+        // is back.
+        return cached ? cached.valid : false;
     }
 }
 
@@ -4468,6 +4700,27 @@ setInterval(() => {
     ).catch(() => {});
 }, 30 * 60 * 1000).unref?.();
 
+// Log retention. Without this the audit/log tables grow unbounded —
+// over months that's GBs of MySQL storage and slow LIKE queries on the
+// `logs` filter endpoint. Runs once shortly after boot and every 24h.
+// Override via LOG_RETENTION_DAYS in env (default 90 days).
+const LOG_RETENTION_DAYS = parseInt(process.env.LOG_RETENTION_DAYS, 10) || 90;
+async function purgeOldLogs() {
+    const days = LOG_RETENTION_DAYS;
+    if (!Number.isFinite(days) || days <= 0) return;
+    for (const tbl of ['audit_logs', 'logs', 'admin_audit_log']) {
+        try {
+            const col = tbl === 'admin_audit_log' ? 'created_at' : 'timestamp';
+            await db.execute(
+                `DELETE FROM ${tbl} WHERE ${col} < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+                [days],
+            );
+        } catch { /* table or column missing — non-fatal */ }
+    }
+}
+setTimeout(purgeOldLogs, 30_000).unref?.();
+setInterval(purgeOldLogs, 24 * 60 * 60 * 1000).unref?.();
+
 // Admin audit log — last N entries
 app.get('/api/admin/audit', checkAdmin, async (req, res) => {
     try {
@@ -4486,15 +4739,6 @@ app.get('/api/admin/audit', checkAdmin, async (req, res) => {
 // Admin panel data — consumed by React /admin
 app.get('/api/admin', checkAdmin, async (req, res) => {
     try {
-        await db.execute(`
-            CREATE TABLE IF NOT EXISTS blocked_guilds (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                guild_id VARCHAR(255) UNIQUE NOT NULL,
-                guild_name VARCHAR(255),
-                blocked_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
         const botsData = (await Promise.all(BOTS.map(b => fetchBotInfo(b.token)))).filter(Boolean);
         const [blockedRows] = await db.execute('SELECT * FROM blocked_guilds ORDER BY blocked_at DESC');
 
@@ -4660,9 +4904,9 @@ async function collectStats() {
 }
 
 // Collecte toutes les heures
-setInterval(collectStats, 60 * 60 * 1000);
+setInterval(collectStats, 60 * 60 * 1000).unref?.();
 // Et au démarrage après un court délai pour laisser la DB se connecter
-setTimeout(collectStats, 5000);
+setTimeout(collectStats, 5000).unref?.();
 
 // SPA catch-all — must be last. Anything that didn't match an Express route
 // (and isn't an API/webhook/OAuth path) gets the React build.

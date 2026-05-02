@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Lock, ArrowRight } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { apiGet } from "@/api/client";
+import { apiGet, isApiError } from "@/api/client";
 
 interface Guild {
   id: string;
@@ -49,7 +49,7 @@ export function BotServerPage({
     apiGet<BotServerData>(`/api/${botKey}/server`)
       .then(setData)
       .catch(err => {
-        if (String(err).includes("401") || String(err).includes("403")) {
+        if (isApiError(err) && (err.status === 401 || err.status === 403)) {
           setUnauthorized(true);
         }
       })

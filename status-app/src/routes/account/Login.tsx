@@ -5,7 +5,7 @@ import {
   AtSign, KeyRound, ArrowRight, ShieldAlert, Eye, EyeOff, Mail, UserPlus,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { apiPost } from "@/api/client";
+import { apiPost, isApiError } from "@/api/client";
 import { OAuthIcons } from "@/components/auth/OAuthButtons";
 import { ShardSecure } from "@/components/auth/ShardSecure";
 import { ProgressIndicator } from "@/components/ui/progress-indicator";
@@ -17,15 +17,20 @@ interface AuthErrorPayload {
   error?: string;
   pendingVerification?: boolean;
   email?: string;
+  lockedUntil?: string;
+  retryAfter?: number;
 }
 
-function extractAuthError(raw: string): AuthErrorPayload {
-  // Try direct JSON
+function extractAuthError(err: unknown): AuthErrorPayload {
+  if (isApiError(err)) {
+    const data = (err.data && typeof err.data === "object") ? err.data as AuthErrorPayload : {};
+    return { ...data, error: data.error || err.message };
+  }
+  const raw = err instanceof Error ? err.message : String(err);
   try {
     const j = JSON.parse(raw);
     if (j && typeof j === "object") return j as AuthErrorPayload;
   } catch {}
-  // Match "<status> <body>" form thrown by apiPost
   const m = raw.match(/^\d{3}\s+(.+)$/);
   if (m) {
     try {
@@ -35,6 +40,20 @@ function extractAuthError(raw: string): AuthErrorPayload {
     return { error: m[1] };
   }
   return { error: raw.length > 200 ? "Erreur serveur" : raw };
+}
+
+function formatLockoutMessage(lockedUntil?: string): string | null {
+  if (!lockedUntil) return null;
+  const until = new Date(lockedUntil);
+  if (Number.isNaN(until.getTime())) return null;
+  const remainingMs = until.getTime() - Date.now();
+  if (remainingMs <= 0) return null;
+  const totalSec = Math.ceil(remainingMs / 1000);
+  if (totalSec < 60) return `Compte temporairement bloqué — réessaie dans ${totalSec} s.`;
+  const min = Math.ceil(totalSec / 60);
+  if (min < 60) return `Compte temporairement bloqué — réessaie dans ${min} min.`;
+  const h = Math.ceil(min / 60);
+  return `Compte temporairement bloqué — réessaie dans ${h} h.`;
 }
 
 export function AccountLogin() {
@@ -159,7 +178,7 @@ export function AccountLogin() {
       if (/NotAllowedError|AbortError|not allowed/i.test(msg)) {
         setError("Authentification annulée.");
       } else {
-        setError(extractAuthError(msg).error || "Erreur passkey");
+        setError(extractAuthError(err).error || "Erreur passkey");
       }
     } finally {
       setPasskeyBusy(false);
@@ -177,12 +196,19 @@ export function AccountLogin() {
           await apiPost("/api/account/login", { identifier, password, shardSecure });
           nav("/account", { replace: true });
         } catch (err) {
-          const parsed = extractAuthError(err instanceof Error ? err.message : String(err));
+          const parsed = extractAuthError(err);
           if (parsed.pendingVerification && parsed.email) {
             goToVerify(parsed.email, "Cet email n'est pas vérifié. Un nouveau code vient d'être envoyé.");
             return;
           }
-          setError(parsed.error || "Erreur");
+          // 429 with lockedUntil → render a clear countdown message
+          // instead of the generic backend "Identifiants invalides".
+          const lockoutMsg = formatLockoutMessage(parsed.lockedUntil);
+          if (lockoutMsg) {
+            setError(lockoutMsg);
+          } else {
+            setError(parsed.error || "Erreur");
+          }
           resetShardSecure();
         }
       } else if (mode === "register") {
@@ -190,9 +216,16 @@ export function AccountLogin() {
           await apiPost<{ success: true; email: string }>("/api/account/signup", {
             email, pseudo, password, shardSecure,
           });
-          goToVerify(email, `Code envoyé à ${email}. Vérifie ta boîte mail.`);
+          // The backend returns success even when the email is already
+          // registered (anti-enumeration). The verify screen surfaces a
+          // hint pointing back to login so the user isn't stuck waiting
+          // for an email that may never arrive.
+          goToVerify(
+            email,
+            `Si l'adresse n'est pas déjà utilisée, un code vient d'être envoyé à ${email}. Si tu as déjà un compte, connecte-toi.`,
+          );
         } catch (err) {
-          const parsed = extractAuthError(err instanceof Error ? err.message : String(err));
+          const parsed = extractAuthError(err);
           setError(parsed.error || "Erreur");
           resetShardSecure();
         }
@@ -209,7 +242,7 @@ export function AccountLogin() {
           });
           nav("/account", { replace: true });
         } catch (err) {
-          const parsed = extractAuthError(err instanceof Error ? err.message : String(err));
+          const parsed = extractAuthError(err);
           setError(parsed.error || "Code incorrect");
         }
       }
@@ -240,11 +273,9 @@ export function AccountLogin() {
       codeRefs.current[0]?.focus();
       setResendCooldown(RESEND_COOLDOWN_S);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const parsed = extractAuthError(msg);
-      const retryAfter = (parsed as { retryAfter?: number }).retryAfter;
-      if (typeof retryAfter === "number") {
-        setResendCooldown(retryAfter);
+      const parsed = extractAuthError(err);
+      if (typeof parsed.retryAfter === "number") {
+        setResendCooldown(parsed.retryAfter);
       }
       setError(parsed.error || "Impossible de renvoyer le code.");
     }
