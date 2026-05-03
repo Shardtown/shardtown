@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Shield, Zap, Code2, Bot, Users, MessageSquare, Mail } from "lucide-react";
+import { ArrowRight, Shield, Zap, MessageSquare, Mail } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TiltCard } from "@/components/ui/tilt-card";
@@ -14,9 +14,7 @@ const SERVICES = [
     description:
       "Conception et développement d'interfaces modernes — landings, dashboards, panels admin, intégrations API. Stack React / Next.js / TypeScript.",
     href: "#contact",
-    icon: Code2,
     accent: "text-blue-400",
-    iconBg: "bg-blue-500/10 border-blue-500/20",
   },
   {
     label: "Développement Discord",
@@ -24,9 +22,7 @@ const SERVICES = [
     description:
       "Bots Discord custom, automatisations, intégrations OAuth, webhooks, slash commands. Écosystème complet déjà éprouvé en production.",
     href: "#contact",
-    icon: Bot,
     accent: "text-purple-400",
-    iconBg: "bg-purple-500/10 border-purple-500/20",
   },
   {
     label: "Configuration de serveurs",
@@ -34,9 +30,7 @@ const SERVICES = [
     description:
       "Architecture des salons, rôles, sécurité, modération, vérification, niveaux, économie. On structure votre Discord pour qu'il scale.",
     href: "#contact",
-    icon: Users,
     accent: "text-emerald-400",
-    iconBg: "bg-emerald-500/10 border-emerald-500/20",
   },
 ];
 
@@ -138,31 +132,25 @@ export function Index() {
           </p>
         </Reveal>
         <RevealStagger className="grid md:grid-cols-3 gap-8 md:gap-10" staggerChildren={0.1} delayChildren={0.15}>
-          {SERVICES.map(s => {
-            const Icon = s.icon;
-            return (
-              <RevealItem key={s.label} direction="left" distance={70} className="relative hover:z-10">
-                <a href={s.href} className="group block h-full relative">
-                  <TiltCard
-                    effect="gravitate"
-                    tiltLimit={6}
-                    scale={1.02}
-                    className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-10 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full"
-                  >
-                    <div className={`w-14 h-14 rounded-2xl border ${s.iconBg} flex items-center justify-center ${s.accent} mb-8`}>
-                      <Icon className="w-6 h-6" strokeWidth={2} />
-                    </div>
-                    <h3 className="text-2xl font-bold mb-3">{s.label}</h3>
-                    <p className={`text-xs font-bold uppercase tracking-widest ${s.accent} mb-6`}>{s.tagline}</p>
-                    <p className="text-white/55 leading-relaxed mb-10">{s.description}</p>
-                    <span className="inline-flex items-center gap-2 text-sm font-bold text-white group-hover:gap-3 transition-all">
-                      En discuter <ArrowRight className="w-4 h-4" />
-                    </span>
-                  </TiltCard>
-                </a>
-              </RevealItem>
-            );
-          })}
+          {SERVICES.map(s => (
+            <RevealItem key={s.label} direction="left" distance={70} className="relative hover:z-10">
+              <a href={s.href} className="group block h-full relative">
+                <TiltCard
+                  effect="gravitate"
+                  tiltLimit={6}
+                  scale={1.02}
+                  className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-10 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full"
+                >
+                  <h3 className="text-2xl font-bold mb-3">{s.label}</h3>
+                  <p className={`text-xs font-bold uppercase tracking-widest ${s.accent} mb-6`}>{s.tagline}</p>
+                  <p className="text-white/55 leading-relaxed mb-10">{s.description}</p>
+                  <span className="inline-flex items-center gap-2 text-sm font-bold text-white group-hover:gap-3 transition-all">
+                    En discuter <ArrowRight className="w-4 h-4" />
+                  </span>
+                </TiltCard>
+              </a>
+            </RevealItem>
+          ))}
         </RevealStagger>
       </section>
 
