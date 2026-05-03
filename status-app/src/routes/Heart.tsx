@@ -22,23 +22,34 @@ const HEALTH_LABEL: Record<Health, string> = {
   critical: "arythmie — cœur en stress",
 };
 
-// CSS filter applied to the EnergyBeam wrapper. The beam's native palette
-// is cool/white; we shift hue + saturation to express mood without touching
-// the underlying WebGL scene.
+// CSS filter applied to the EnergyBeam wrapper. The beam is mostly bright
+// white/cyan on black — pure hue-rotate barely affects achromatic pixels,
+// so we run sepia() first to inject a chroma dominant, then rotate it to
+// the target color and crank saturation to keep it vivid.
 const HEALTH_FILTER: Record<Health, string> = {
-  loading: "brightness(0.85) saturate(0.9)",
+  loading: "brightness(0.45) saturate(0.5)",
   nominal: "none",
-  overheat: "saturate(1.45) hue-rotate(-15deg) brightness(1.06)",
-  degraded: "saturate(0.85) hue-rotate(25deg) brightness(0.95)",
-  critical: "saturate(1.6) hue-rotate(-45deg) brightness(0.95)",
+  overheat: "sepia(0.85) saturate(2.4) hue-rotate(-25deg) brightness(1.05)",
+  degraded: "sepia(0.65) saturate(1.6) hue-rotate(-5deg) brightness(0.85)",
+  critical: "sepia(1) saturate(3.2) hue-rotate(325deg) brightness(0.95)",
 };
 
 const HEALTH_VIGNETTE: Record<Health, string> = {
   loading: "transparent",
   nominal: "transparent",
-  overheat: "rgba(255,140,0,0.20)",
-  degraded: "rgba(255,200,0,0.14)",
-  critical: "rgba(255,40,40,0.30)",
+  overheat: "rgba(255,140,0,0.28)",
+  degraded: "rgba(255,200,0,0.18)",
+  critical: "rgba(255,30,30,0.42)",
+};
+
+// Status dot color — small but unambiguous indicator next to the whisper
+// so the user can verify the live data is flowing.
+const HEALTH_DOT: Record<Health, string> = {
+  loading: "#888",
+  nominal: "#7CFFB4",
+  overheat: "#FFA63C",
+  degraded: "#FFD250",
+  critical: "#FF4848",
 };
 
 function deriveHealth(s: StatsSnapshot): Health {
@@ -97,15 +108,25 @@ export function Heart() {
         <p className="text-[10px] font-bold tracking-[0.32em] text-white/40 uppercase">
           Le cœur de Shardtown
         </p>
-        <motion.p
+        <motion.div
           key={health}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="mt-1 text-[10px] tracking-[0.22em] text-white/35"
+          className="mt-1.5 flex items-center gap-2"
         >
-          {HEALTH_LABEL[health]}
-        </motion.p>
+          <motion.span
+            className="inline-block h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: HEALTH_DOT[health], boxShadow: `0 0 8px ${HEALTH_DOT[health]}` }}
+            animate={!reduce && (health === "critical" || health === "overheat")
+              ? { opacity: [1, 0.35, 1] }
+              : { opacity: 1 }}
+            transition={{ duration: pulseDur, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <p className="text-[10px] tracking-[0.22em] text-white/55">
+            {HEALTH_LABEL[health]}
+          </p>
+        </motion.div>
       </motion.div>
 
       <motion.div
