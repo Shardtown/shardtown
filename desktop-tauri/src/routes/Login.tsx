@@ -34,7 +34,7 @@ export function Login({ reason, onLoggedIn }: Props) {
     } catch (err) {
       const msg = err instanceof ApiError
         ? (err.status === 401 ? "Token invalide ou révoqué." : err.message)
-        : "Connexion impossible. Vérifie ta connexion internet.";
+        : "Connexion impossible.";
       setError(msg);
     } finally {
       setBusy(false);
@@ -43,50 +43,38 @@ export function Login({ reason, onLoggedIn }: Props) {
 
   return (
     <div className="login">
-      <div className="login-card">
-        <p className="overline">Connexion</p>
-        <h1>Token d'accès personnel</h1>
-        <p>
-          Génère un token sur ton compte Shardtown puis colle-le ici. Il sera
-          stocké dans le trousseau macOS, jamais en clair sur le disque.
-        </p>
+      <div className="login-brand">
+        <img src="/logo.png" alt="" />
+        <p>Shardtown</p>
+      </div>
+      <h1>Connexion</h1>
+      <p className="sub">Colle ton token d'accès personnel.</p>
+      <form
+        className="login-form"
+        onSubmit={e => { e.preventDefault(); submit(); }}
+      >
         <input
           autoFocus
           type="password"
           value={token}
           placeholder="st_…"
           onChange={e => setToken(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") submit(); }}
           spellCheck={false}
           autoCapitalize="off"
           autoCorrect="off"
         />
         {error && <div className="err">{error}</div>}
-        <div className="actions">
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => shellOpen("https://shardtwn.fr/account").catch(() => {})}
-          >
-            Générer un token
-          </button>
-          <button type="button" onClick={submit} disabled={busy || !token.trim()}>
-            {busy ? "Vérification…" : "Continuer"}
-          </button>
-        </div>
-        <p className="hint">
-          Tu n'as pas encore de compte ?{" "}
-          <a
-            href="#"
-            onClick={e => {
-              e.preventDefault();
-              shellOpen("https://shardtwn.fr/account/login").catch(() => {});
-            }}
-          >
-            Créer un compte
-          </a>
-        </p>
-      </div>
+        <button type="submit" className="primary" disabled={busy || !token.trim()}>
+          {busy ? "Vérification…" : "Continuer"}
+        </button>
+        <button
+          type="button"
+          className="link"
+          onClick={() => shellOpen("https://shardtwn.fr/account").catch(() => {})}
+        >
+          Générer un token
+        </button>
+      </form>
     </div>
   );
 }

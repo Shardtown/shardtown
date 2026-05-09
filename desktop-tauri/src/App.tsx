@@ -10,59 +10,71 @@ type State =
   | { kind: "dashboard"; token: string; me: AccountMe };
 
 /**
- * Top-level state machine: boot reads the Keychain, validates the token by
- * hitting /api/account/me, and either drops to login or to the dashboard.
- * Re-validating on boot means a revoked token doesn't leave the user stuck
- * on a dashboard that's silently broken.
+ * Top-level state machine: read the Keychain on boot, validate the token by
+ * hitting /api/account/me, then drop to login or dashboard. Re-validating on
+ * every boot means a revoked token never leaves the user on a dashboard
+ * that's silently broken.
+ *
+ * The boot screen is held for at least 600ms so the logo pulse reads as a
+ * deliberate brand moment instead of a flash.
  */
 export function App() {
   const [state, setState] = useState<State>({ kind: "boot" });
 
   useEffect(() => {
     let cancelled = false;
+    const minBoot = new Promise<void>(r => setTimeout(r, 600));
     (async () => {
       const token = await tokenGet().catch(() => null);
+      let next: State;
       if (!token) {
-        if (!cancelled) setState({ kind: "login" });
-        return;
-      }
-      try {
-        const me = await fetchMe(token);
-        if (cancelled) return;
-        if (!me) {
-          setState({ kind: "login", reason: "Token invalide. Régénère-en un sur shardtwn.fr/account." });
-        } else {
-          setState({ kind: "dashboard", token, me });
+        next = { kind: "login" };
+      } else {
+        try {
+          const me = await fetchMe(token);
+          next = me
+            ? { kind: "dashboard", token, me }
+            : { kind: "login", reason: "Token invalide. Régénère-en un sur shardtwn.fr/account." };
+        } catch (err) {
+          const reason = err instanceof ApiError && err.status === 401
+            ? "Token expiré ou révoqué."
+            : "Connexion impossible. Vérifie ton réseau.";
+          next = { kind: "login", reason };
         }
-      } catch (err) {
-        if (cancelled) return;
-        const reason = err instanceof ApiError && err.status === 401
-          ? "Token expiré ou révoqué. Régénère-en un."
-          : "Connexion impossible. Vérifie ta connexion internet.";
-        setState({ kind: "login", reason });
       }
+      await minBoot;
+      if (!cancelled) setState(next);
     })();
     return () => { cancelled = true; };
   }, []);
 
-  function handleLoggedIn(token: string, me: AccountMe) {
-    setState({ kind: "dashboard", token, me });
-  }
-
-  function handleLogout() {
-    setState({ kind: "login" });
-  }
-
   return (
-    <div className="app">
-      <div className="titlebar" data-tauri-drag-region>Shardtown</div>
-      <div className="content">
-        {state.kind === "boot" && <div className="loading">Chargement…</div>}
-        {state.kind === "login" && <Login reason={state.reason} onLoggedIn={handleLoggedIn} />}
+    <>
+      {/* Invisible drag handle on top so the chromeless window stays draggable */}
+      <div className="dragbar" data-tauri-drag-region />
+
+      <div className="app">
+        {state.kind === "boot" && (
+          <div className="boot">
+            <div className="boot-logo">
+              <img src="/logo.png" alt="" />
+            </div>
+          </div>
+        )}
+        {state.kind === "login" && (
+          <Login
+            reason={state.reason}
+            onLoggedIn={(token, me) => setState({ kind: "dashboard", token, me })}
+          />
+        )}
         {state.kind === "dashboard" && (
-          <Dashboard token={state.token} me={state.me} onLogout={handleLogout} />
+          <Dashboard
+            token={state.token}
+            me={state.me}
+            onLogout={() => setState({ kind: "login" })}
+          />
         )}
       </div>
-    </div>
+    </>
   );
 }
