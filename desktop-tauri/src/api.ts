@@ -82,3 +82,37 @@ export async function fetchMe(token: string): Promise<AccountMe | null> {
   const r = await apiGet<{ account: AccountMe | null }>("/api/account/me", token);
   return r.account;
 }
+
+export interface GuildSummary {
+  id: string;
+  name: string;
+  icon: string | null;
+  owner: boolean;
+  bot_present: boolean;
+}
+
+export interface GuildsResponse {
+  bot: "shardguard" | "shard";
+  guilds: GuildSummary[];
+  fetched_at: string | null;
+  stale: boolean;
+}
+
+export async function fetchGuilds(
+  token: string,
+  bot: "shardguard" | "shard",
+): Promise<GuildsResponse> {
+  return apiGet<GuildsResponse>(`/api/account/guilds?bot=${bot}`, token);
+}
+
+export async function refreshGuilds(
+  token: string,
+  bot: "shardguard" | "shard",
+): Promise<{ guilds_count: number }> {
+  return apiPost<{ guilds_count: number }>(
+    bot === "shardguard"
+      ? "/api/account/discord/refresh-guilds"
+      : "/api/account/shard/refresh-guilds",
+    token,
+  );
+}

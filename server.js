@@ -1840,6 +1840,79 @@ app.get('/api/account/tokens', requireAccount, async (req, res) => {
     }
 });
 
+// Cache the bot guild list (Discord API call) — used by /api/account/guilds
+// to avoid hitting Discord on every dashboard load. 60s TTL is short enough
+// to reflect new joins quickly, long enough to absorb refresh spam.
+const BOT_GUILDS_TTL_MS = 60_000;
+const botGuildsCache = new Map(); // bot key -> { ids: Set<string>, expires: number }
+
+async function fetchBotGuildIds(botKey) {
+    const cached = botGuildsCache.get(botKey);
+    if (cached && cached.expires > Date.now()) return cached.ids;
+    const token = botKey === 'shardguard' ? process.env.DISCORD_TOKEN : process.env.SHARD_TOKEN;
+    if (!token) return new Set();
+    try {
+        const r = await axios.get('https://discord.com/api/v10/users/@me/guilds', {
+            headers: { Authorization: `Bot ${token}` },
+            timeout: 6000,
+        });
+        const ids = new Set(r.data.map(g => g.id));
+        botGuildsCache.set(botKey, { ids, expires: Date.now() + BOT_GUILDS_TTL_MS });
+        return ids;
+    } catch (err) {
+        console.error(`fetchBotGuildIds(${botKey}):`, err.response?.data || err.message);
+        // Don't cache failures — let the next request retry.
+        return cached?.ids ?? new Set();
+    }
+}
+
+// List the user's admin guilds for a given bot. The user's guild list comes
+// from the cached `accounts.{discord|shard}_guilds_json` (refreshed via the
+// existing /api/account/{discord|shard}/refresh-guilds endpoints). We filter
+// to admin-only and annotate each guild with `bot_present` so the desktop
+// app can mark guilds where the bot still needs to be invited.
+app.get('/api/account/guilds', requireAccount, async (req, res) => {
+    const bot = String(req.query.bot || '').toLowerCase();
+    if (bot !== 'shardguard' && bot !== 'shard') {
+        return res.status(400).json({ error: 'bot=shardguard|shard requis' });
+    }
+    const col = bot === 'shardguard' ? 'discord_guilds_json' : 'shard_guilds_json';
+    const fetchedCol = bot === 'shardguard' ? 'discord_guilds_fetched_at' : 'shard_guilds_fetched_at';
+    try {
+        const [rows] = await db.execute(
+            `SELECT ${col} AS guilds_json, ${fetchedCol} AS fetched_at FROM accounts WHERE id = ? LIMIT 1`,
+            [req.session.account.id],
+        );
+        const a = rows[0];
+        if (!a) return res.status(401).json({ error: 'Compte introuvable' });
+        let guilds = [];
+        try { guilds = a.guilds_json ? JSON.parse(a.guilds_json) : []; } catch { /* corrupt JSON, treat as empty */ }
+        const botGuildIds = await fetchBotGuildIds(bot);
+        const adminGuilds = guilds
+            .filter(g => hasGuildAdmin(g))
+            .map(g => ({
+                id: g.id,
+                name: g.name,
+                icon: g.icon || null,
+                owner: !!g.owner,
+                bot_present: botGuildIds.has(g.id),
+            }))
+            .sort((x, y) => {
+                if (x.bot_present !== y.bot_present) return x.bot_present ? -1 : 1;
+                return x.name.localeCompare(y.name, 'fr');
+            });
+        res.json({
+            bot,
+            guilds: adminGuilds,
+            fetched_at: a.fetched_at,
+            stale: !a.fetched_at,
+        });
+    } catch (err) {
+        console.error('/api/account/guilds:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
 app.delete('/api/account/tokens/:id', requireAccount, async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
