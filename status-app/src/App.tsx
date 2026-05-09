@@ -12,6 +12,7 @@ import { Terms } from "@/routes/Terms";
 import { Privacy } from "@/routes/Privacy";
 import { Outils } from "@/routes/Outils";
 import { DesktopOverview } from "@/routes/desktop/Overview";
+import { DesktopRpc } from "@/routes/desktop/Rpc";
 import { Premium } from "@/routes/Premium";
 import { ShardServer } from "@/routes/shard/Server";
 import { ShardGuild } from "@/routes/shard/Guild";
@@ -78,6 +79,7 @@ export function App() {
                 </>
               )}
               <Route path="/outils" element={IS_DESKTOP ? <DesktopOverview /> : <Outils />} />
+              {IS_DESKTOP && <Route path="/rpc" element={<DesktopRpc />} />}
               {/* Ancien chemin — redirige vers /outils pour ne rien casser */}
               <Route path="/dashboard" element={<Navigate to="/outils" replace />} />
               <Route path="/shard/server" element={<ShardServer />} />

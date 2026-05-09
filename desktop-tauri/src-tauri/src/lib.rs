@@ -1,4 +1,8 @@
+use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 use keyring::Entry;
+use serde::Deserialize;
+use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::menu::{AboutMetadataBuilder, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::Manager;
@@ -35,6 +39,123 @@ fn token_clear() -> Result<(), String> {
         Err(keyring::Error::NoEntry) => Ok(()),
         Err(e) => Err(e.to_string()),
     }
+}
+
+/// ─── Discord Rich Presence ───────────────────────────────────────────────
+/// Opens an IPC connection to the local Discord client (Unix socket on
+/// macOS) and pushes activity payloads. Discord must be running; if not,
+/// `connect()` errors out and we surface the message back to the UI.
+
+struct RpcState(Mutex<RpcInner>);
+struct RpcInner {
+    client: Option<DiscordIpcClient>,
+    /// Application ID currently connected with — if it changes we reconnect.
+    app_id: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct RpcActivityPayload {
+    details: Option<String>,
+    state: Option<String>,
+    large_image: Option<String>,
+    large_text: Option<String>,
+    small_image: Option<String>,
+    small_text: Option<String>,
+    button_label: Option<String>,
+    button_url: Option<String>,
+    show_elapsed: Option<bool>,
+}
+
+fn empty_to_none(s: Option<&str>) -> Option<&str> {
+    s.filter(|v| !v.trim().is_empty())
+}
+
+#[tauri::command]
+fn rpc_set(state: tauri::State<'_, RpcState>, app_id: String, activity: RpcActivityPayload) -> Result<(), String> {
+    if app_id.trim().is_empty() {
+        return Err("Application ID Discord requis".into());
+    }
+    let mut inner = state.0.lock().map_err(|e| e.to_string())?;
+
+    // Reconnect if the app ID changed (or we never connected).
+    let needs_connect = inner.client.is_none() || inner.app_id.as_deref() != Some(&app_id);
+    if needs_connect {
+        if let Some(mut prev) = inner.client.take() {
+            let _ = prev.close();
+        }
+        let mut client = DiscordIpcClient::new(&app_id).map_err(|e| format!("Init RPC: {e}"))?;
+        client.connect().map_err(|e| format!("Connexion à Discord impossible (Discord doit être ouvert) : {e}"))?;
+        inner.client = Some(client);
+        inner.app_id = Some(app_id);
+    }
+
+    let client = inner.client.as_mut().expect("connected above");
+    let mut payload = activity::Activity::new();
+
+    if let Some(s) = empty_to_none(activity.details.as_deref()) {
+        payload = payload.details(s);
+    }
+    if let Some(s) = empty_to_none(activity.state.as_deref()) {
+        payload = payload.state(s);
+    }
+
+    let mut assets = activity::Assets::new();
+    let mut has_assets = false;
+    if let Some(s) = empty_to_none(activity.large_image.as_deref()) {
+        assets = assets.large_image(s); has_assets = true;
+    }
+    if let Some(s) = empty_to_none(activity.large_text.as_deref()) {
+        assets = assets.large_text(s); has_assets = true;
+    }
+    if let Some(s) = empty_to_none(activity.small_image.as_deref()) {
+        assets = assets.small_image(s); has_assets = true;
+    }
+    if let Some(s) = empty_to_none(activity.small_text.as_deref()) {
+        assets = assets.small_text(s); has_assets = true;
+    }
+    if has_assets {
+        payload = payload.assets(assets);
+    }
+
+    if activity.show_elapsed.unwrap_or(false) {
+        let now = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
+        payload = payload.timestamps(activity::Timestamps::new().start(now));
+    }
+
+    if let (Some(label), Some(url)) = (
+        empty_to_none(activity.button_label.as_deref()),
+        empty_to_none(activity.button_url.as_deref()),
+    ) {
+        payload = payload.buttons(vec![activity::Button::new(label, url)]);
+    }
+
+    client.set_activity(payload).map_err(|e| format!("Envoi RPC: {e}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn rpc_clear(state: tauri::State<'_, RpcState>) -> Result<(), String> {
+    let mut inner = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(client) = inner.client.as_mut() {
+        client.clear_activity().map_err(|e| format!("Clear RPC: {e}"))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn rpc_disconnect(state: tauri::State<'_, RpcState>) -> Result<(), String> {
+    let mut inner = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(mut client) = inner.client.take() {
+        let _ = client.close();
+    }
+    inner.app_id = None;
+    Ok(())
+}
+
+#[tauri::command]
+fn rpc_status(state: tauri::State<'_, RpcState>) -> Result<bool, String> {
+    let inner = state.0.lock().map_err(|e| e.to_string())?;
+    Ok(inner.client.is_some())
 }
 
 /// Build the standard macOS menu bar: app submenu (Shardtown) → Edition →
@@ -160,7 +281,11 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![token_get, token_set, token_clear])
+        .manage(RpcState(Mutex::new(RpcInner { client: None, app_id: None })))
+        .invoke_handler(tauri::generate_handler![
+            token_get, token_set, token_clear,
+            rpc_set, rpc_clear, rpc_disconnect, rpc_status,
+        ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
             {

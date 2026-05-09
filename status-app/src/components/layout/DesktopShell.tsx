@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutGrid, Shield, Zap, User, LogOut,
+  LayoutGrid, Shield, Zap, User, LogOut, Sparkles,
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
 import { tokenClear, IS_DESKTOP } from "@/lib/desktop";
@@ -61,6 +61,13 @@ export function DesktopShell({ children }: { children: ReactNode }) {
         <nav className="flex flex-col gap-px">
           <NavItem to="/shardguard/server" active={isActive("/shardguard")} icon={<Shield size={15} strokeWidth={1.8} />} label="ShardGuard" />
           <NavItem to="/shard/server" active={isActive("/shard")} icon={<Zap size={15} strokeWidth={1.8} />} label="Shard" />
+        </nav>
+
+        <p className="text-[9.5px] font-bold tracking-[0.22em] uppercase text-white/[0.18] px-3 pt-4 pb-2">
+          Discord
+        </p>
+        <nav className="flex flex-col gap-px">
+          <NavItem to="/rpc" active={isActive("/rpc")} icon={<Sparkles size={15} strokeWidth={1.8} />} label="Rich Presence" />
         </nav>
 
         <p className="text-[9.5px] font-bold tracking-[0.22em] uppercase text-white/[0.18] px-3 pt-4 pb-2">
