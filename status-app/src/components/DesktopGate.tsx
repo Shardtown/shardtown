@@ -8,6 +8,12 @@ type State =
   | { kind: "login"; reason?: string }
   | { kind: "ready" };
 
+// Total intro length, including the staggered entrance of the logo,
+// wordmark and dots. The app always waits at least this long before
+// swapping the boot screen out — even when /api/account/me answers
+// instantly — so the splash feels deliberate, like a software intro.
+const INTRO_MS = 2800;
+
 // Crossfade duration when leaving the boot screen — needs to match the
 // leaving CSS animation in BootScreen / entering animation on the next view.
 const TRANSITION_MS = 480;
@@ -29,8 +35,9 @@ export function DesktopGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!IS_DESKTOP) return;
     let cancelled = false;
-    // Forced 2.4s minimum boot so the brand moment reads as deliberate.
-    const minBoot = new Promise<void>(r => setTimeout(r, 2400));
+    // The intro plays in full, regardless of how fast the auth check
+    // resolves. Treat it as a brand moment, not a load indicator.
+    const introDone = new Promise<void>(r => setTimeout(r, INTRO_MS));
     (async () => {
       const token = await tokenGet().catch(() => null);
       let next: State;
@@ -49,7 +56,7 @@ export function DesktopGate({ children }: { children: ReactNode }) {
           next = { kind: "login", reason };
         }
       }
-      await minBoot;
+      await introDone;
       if (cancelled) return;
 
       // Begin the crossfade: swap the underlying screen now (so it can mount
@@ -125,13 +132,10 @@ function BootScreen({ leaving = false }: { leaving?: boolean }) {
             flex-direction: column;
             align-items: center;
             gap: 0;
-            animation: boot-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1);
-          }
-          @keyframes boot-rise {
-            from { opacity: 0; transform: translateY(14px); }
-            to   { opacity: 1; transform: translateY(0); }
           }
 
+          /* ── 1. Logo enters first (0 → 700ms): scale up from 0.6 with
+                a slight overshoot, plus a subtle Y rise. ─────────── */
           .boot-logo {
             position: relative;
             width: 116px; height: 116px;
@@ -139,6 +143,13 @@ function BootScreen({ leaving = false }: { leaving?: boolean }) {
             align-items: center;
             justify-content: center;
             margin-bottom: 26px;
+            opacity: 0;
+            animation: boot-logo-in 700ms cubic-bezier(0.22, 1.2, 0.4, 1) forwards;
+          }
+          @keyframes boot-logo-in {
+            0%   { opacity: 0; transform: scale(0.6) translateY(20px); }
+            60%  { opacity: 1; }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
           }
           .boot-logo-card {
             position: relative;
@@ -146,45 +157,76 @@ function BootScreen({ leaving = false }: { leaving?: boolean }) {
             border-radius: 26px;
             background: #0e0f14;
             box-shadow:
-              0 0 0 1px rgba(255, 255, 255, 0.06),
+              0 0 0 1px rgba(255, 255, 255, 0.08),
               0 30px 80px -10px rgba(0, 0, 0, 0.7),
-              inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+              inset 0 0 0 1px rgba(255, 255, 255, 0.05);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            animation: boot-card-pulse 2.4s ease-in-out infinite;
+            /* Slow breathing pulse once it's settled in */
+            animation: boot-card-pulse 3s 1s ease-in-out infinite;
           }
           @keyframes boot-card-pulse {
             0%, 100% { transform: scale(1); }
-            50%      { transform: scale(1.035); }
+            50%      { transform: scale(1.025); }
           }
           .boot-logo-card img {
             width: 100%;
             height: 100%;
             object-fit: contain;
           }
+          /* Scan light bar that sweeps across the logo once during the
+             intro, mimicking the reflection on a polished app icon. */
+          .boot-logo-card::after {
+            content: "";
+            position: absolute;
+            top: 0; left: -120%;
+            width: 60%; height: 100%;
+            background: linear-gradient(
+              105deg,
+              transparent 30%,
+              rgba(255, 255, 255, 0.18) 50%,
+              transparent 70%
+            );
+            transform: skewX(-12deg);
+            animation: boot-sweep 1400ms 800ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          }
+          @keyframes boot-sweep {
+            0%   { left: -120%; }
+            100% { left: 220%; }
+          }
 
+          /* ── 2. Wordmark fades up (650ms in, 600ms duration) ─────── */
           .boot-wordmark {
             margin: 0 0 30px;
             font-size: 22px;
             font-weight: 800;
             letter-spacing: -0.02em;
             color: #fff;
+            opacity: 0;
+            animation: boot-fade-up 600ms 650ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          }
+          @keyframes boot-fade-up {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
           }
 
+          /* ── 3. Dots fade in (1100ms in, 500ms duration), then loop. ── */
           .boot-dots {
             display: flex;
             gap: 6px;
+            opacity: 0;
+            animation: boot-fade-up 500ms 1100ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
           }
           .boot-dots span {
             width: 5px; height: 5px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.45);
-            animation: boot-dot 1.2s ease-in-out infinite;
+            animation: boot-dot 1.2s 1300ms ease-in-out infinite;
           }
-          .boot-dots span:nth-child(2) { animation-delay: 0.15s; }
-          .boot-dots span:nth-child(3) { animation-delay: 0.3s; }
+          .boot-dots span:nth-child(2) { animation-delay: 1450ms; }
+          .boot-dots span:nth-child(3) { animation-delay: 1600ms; }
           @keyframes boot-dot {
             0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
             40%           { opacity: 1;    transform: scale(1.1); }
