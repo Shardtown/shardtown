@@ -1,6 +1,5 @@
 use keyring::Entry;
 use tauri::menu::{AboutMetadataBuilder, MenuBuilder, PredefinedMenuItem, SubmenuBuilder};
-use tauri::Manager;
 
 // Service identifier appears in Keychain Access as the "Where" column.
 // Account is constant — there's exactly one logged-in user per app instance.
