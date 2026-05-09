@@ -64,7 +64,7 @@ function BootScreen() {
       <div className="fixed inset-x-0 top-0 h-7 z-50" data-tauri-drag-region />
       <div className="h-screen w-screen flex items-center justify-center bg-black">
         <div className="w-20 h-20 rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden flex items-center justify-center animate-pulse">
-          <img src="/image/favicon.png" alt="" className="w-3/5 h-3/5 object-contain" />
+          <img src="/logo.png" alt="" className="w-3/5 h-3/5 object-contain" />
         </div>
       </div>
     </>
@@ -115,7 +115,7 @@ function DesktopLogin({
       <div className="h-screen w-screen flex flex-col items-center justify-center px-9 bg-black">
         <div className="flex flex-col items-center mb-9">
           <img
-            src="/image/favicon.png"
+            src="/logo.png"
             alt=""
             className="w-14 h-14 rounded-2xl border border-white/10 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)]"
           />

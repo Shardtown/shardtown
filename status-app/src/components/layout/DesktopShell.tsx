@@ -44,7 +44,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside className="w-[232px] flex-shrink-0 bg-[#101115] border-r border-white/[0.06] flex flex-col px-3 pt-9 pb-3 select-none">
         <div className="flex items-center gap-2.5 px-2.5 pb-5">
-          <img src="/image/favicon.png" alt="" className="w-[22px] h-[22px] rounded-md" />
+          <img src="/logo.png" alt="" className="w-[22px] h-[22px] rounded-md" />
           <span className="font-extrabold text-[13.5px] tracking-tight">Shardtown</span>
         </div>
 
