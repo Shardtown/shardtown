@@ -4,7 +4,7 @@ import {
 } from "react";
 import {
   LayoutGrid, Shield, Zap, ChevronRight, LogOut,
-  BookOpen, RefreshCw, AlertCircle,
+  BookOpen, RefreshCw, AlertCircle, Search,
 } from "lucide-react";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
 import { tokenClear } from "../token-store";
@@ -388,6 +388,11 @@ function BotTab({
 }
 
 function GuildList({ state, kind }: { state: LoadState; kind: "shardguard" | "shard" }) {
+  const [query, setQuery] = useState("");
+  const filtered = state.kind === "ok"
+    ? state.guilds.filter(g => g.name.toLowerCase().includes(query.toLowerCase()))
+    : [];
+
   if (state.kind === "loading") {
     return (
       <div className="list">
@@ -420,9 +425,25 @@ function GuildList({ state, kind }: { state: LoadState; kind: "shardguard" | "sh
     );
   }
   return (
-    <div className="list">
-      {state.guilds.map(g => <GuildRow key={g.id} g={g} kind={kind} />)}
-    </div>
+    <>
+      {state.guilds.length > 5 && (
+        <div className="search">
+          <Search size={13} strokeWidth={2} />
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder={`Filtrer parmi ${state.guilds.length} serveur${state.guilds.length > 1 ? "s" : ""}…`}
+            spellCheck={false}
+          />
+        </div>
+      )}
+      <div className="list">
+        {filtered.length > 0
+          ? filtered.map(g => <GuildRow key={g.id} g={g} kind={kind} />)
+          : <p className="empty-search">Aucun serveur ne correspond à « {query} ».</p>}
+      </div>
+    </>
   );
 }
 
