@@ -86,7 +86,6 @@ function BootScreen({ leaving = false }: { leaving?: boolean }) {
       <div className={`boot-stage ${leaving ? "boot-stage-leaving" : ""}`}>
         <div className="boot-stack">
           <div className="boot-logo">
-            <div className="boot-logo-ring" />
             <div className="boot-logo-card">
               <img src="/logo.png" alt="" />
             </div>
@@ -140,24 +139,6 @@ function BootScreen({ leaving = false }: { leaving?: boolean }) {
             align-items: center;
             justify-content: center;
             margin-bottom: 26px;
-          }
-          .boot-logo-ring {
-            position: absolute;
-            inset: -8px;
-            border-radius: 32px;
-            background: conic-gradient(
-              from 0deg,
-              rgba(91, 141, 255, 0.6),
-              rgba(168, 85, 247, 0.4),
-              rgba(91, 141, 255, 0),
-              rgba(91, 141, 255, 0.6)
-            );
-            opacity: 0.55;
-            filter: blur(8px);
-            animation: boot-ring-spin 4s linear infinite;
-          }
-          @keyframes boot-ring-spin {
-            to { transform: rotate(360deg); }
           }
           .boot-logo-card {
             position: relative;
