@@ -1,5 +1,5 @@
 use keyring::Entry;
-use tauri::menu::{MenuBuilder, PredefinedMenuItem, SubmenuBuilder};
+use tauri::menu::{AboutMetadataBuilder, MenuBuilder, PredefinedMenuItem, SubmenuBuilder};
 use tauri::Manager;
 
 // Service identifier appears in Keychain Access as the "Where" column.
@@ -41,8 +41,16 @@ fn token_clear() -> Result<(), String> {
 /// app doesn't feel native.
 #[cfg(target_os = "macos")]
 fn build_menu(app: &tauri::AppHandle) -> tauri::Result<()> {
+    let about_metadata = AboutMetadataBuilder::new()
+        .name(Some("Shardtown"))
+        .version(Some(env!("CARGO_PKG_VERSION")))
+        .copyright(Some("© Shardtown"))
+        .website(Some("https://shardtwn.fr"))
+        .website_label(Some("shardtwn.fr"))
+        .build();
+
     let app_submenu = SubmenuBuilder::new(app, "Shardtown")
-        .item(&PredefinedMenuItem::about(app, Some("À propos de Shardtown"), None)?)
+        .item(&PredefinedMenuItem::about(app, Some("À propos de Shardtown"), Some(about_metadata))?)
         .separator()
         .item(&PredefinedMenuItem::services(app, Some("Services"))?)
         .separator()
