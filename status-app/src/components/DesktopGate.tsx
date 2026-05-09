@@ -64,10 +64,6 @@ function BootScreen() {
     <>
       <div className="fixed inset-x-0 top-0 h-7 z-50" data-tauri-drag-region />
       <div className="boot-stage">
-        {/* Soft blue/purple radial halo, NordVPN-style ambient depth */}
-        <div className="boot-halo boot-halo-1" />
-        <div className="boot-halo boot-halo-2" />
-
         <div className="boot-stack">
           <div className="boot-logo">
             <div className="boot-logo-ring" />
@@ -96,33 +92,6 @@ function BootScreen() {
             overflow: hidden;
             color: #fff;
           }
-          .boot-halo {
-            position: absolute;
-            border-radius: 50%;
-            filter: blur(80px);
-            pointer-events: none;
-            opacity: 0;
-            animation: boot-halo-fade 2.4s ease-out forwards;
-          }
-          .boot-halo-1 {
-            width: 520px; height: 520px;
-            top: -120px; left: 50%;
-            transform: translateX(-50%);
-            background: radial-gradient(circle, rgba(91, 141, 255, 0.32), transparent 65%);
-          }
-          .boot-halo-2 {
-            width: 420px; height: 420px;
-            bottom: -150px; left: 50%;
-            transform: translateX(-50%);
-            background: radial-gradient(circle, rgba(168, 85, 247, 0.20), transparent 65%);
-            animation-delay: 0.2s;
-          }
-          @keyframes boot-halo-fade {
-            0%   { opacity: 0; }
-            40%  { opacity: 1; }
-            100% { opacity: 0.7; }
-          }
-
           .boot-stack {
             position: relative;
             display: flex;
