@@ -78,6 +78,16 @@ Le token vit dans le trousseau macOS, service `fr.shardtwn.dashboard`, account `
 
 - ⌘1 / ⌘2 / ⌘3 — switch d'onglet (Tableau de bord / ShardGuard / Shard)
 - ⌘R — recharge les données de l'onglet actif
+- ⌘C / ⌘V / ⌘X — couper / copier / coller (via le menu Édition natif)
+- ⌘W — fermer la fenêtre · ⌘M — minimiser · ⌘Q — quitter
+
+## Menu macOS natif
+
+L'app installe un menu bar standard (Shardtown / Édition / Présentation / Fenêtre) avec les items prédéfinis macOS — masquer, afficher, plein écran, copier, coller, etc. Localisés en français.
+
+## Window state persistence
+
+`tauri-plugin-window-state` mémorise la taille et position de la fenêtre entre lancements (stocké dans `~/Library/Application Support/fr.shardtwn.dashboard/`).
 
 ## Endpoints API utilisés
 
