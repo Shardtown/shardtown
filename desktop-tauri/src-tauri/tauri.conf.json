@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "identifier": "fr.shardtwn.dashboard",
   "build": {
-    "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist"
+    "beforeDevCommand": "cd ../../status-app && npm run dev",
+    "devUrl": "http://localhost:5174",
+    "beforeBuildCommand": "cd ../../status-app && npm run build",
+    "frontendDist": "../../status-app/dist"
   },
   "app": {
     "windows": [
@@ -26,7 +26,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://shardtwn.fr; img-src 'self' data: https://cdn.discordapp.com; style-src 'self' 'unsafe-inline'; script-src 'self'"
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost https://shardtwn.fr; img-src 'self' data: https://cdn.discordapp.com https://shardtwn.fr; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self'"
     }
   },
   "bundle": {

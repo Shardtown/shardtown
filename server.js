@@ -930,6 +930,12 @@ app.use(async (req, res, next) => {
 // Personal-access-token auth — runs before CSRF so bearer-authed requests
 // can skip the cookie-based CSRF check (CSRF only protects against ambient
 // session cookies; explicit Authorization headers are not subject to it).
+//
+// Beyond setting `req.session.account`, we also hydrate `req.user` (the
+// shape the passport-Discord routes expect) and `req.session.shardUser`
+// (the Shard OAuth shape) from the account's stored Discord data. This
+// way every existing endpoint that checks one of those works with bearer
+// auth — no per-route refactor needed.
 const BEARER_RE = /^Bearer\s+(.+)$/i;
 app.use(async (req, res, next) => {
     if (req.session?.account?.id) return next();
@@ -942,14 +948,46 @@ app.use(async (req, res, next) => {
             'SELECT id, account_id FROM account_personal_tokens WHERE token_hash = ? LIMIT 1',
             [tokenHash],
         );
-        if (rows[0]) {
-            req.session.account = { id: rows[0].account_id, viaToken: true };
-            req.bearerAuthed = true;
-            // Fire-and-forget last_used_at update; don't block the request.
-            db.execute(
-                'UPDATE account_personal_tokens SET last_used_at = NOW() WHERE id = ?',
-                [rows[0].id],
-            ).catch(() => {});
+        if (!rows[0]) return next();
+
+        const accountId = rows[0].account_id;
+        req.session.account = { id: accountId, viaToken: true };
+        req.bearerAuthed = true;
+        // Fire-and-forget last_used_at update; don't block the request.
+        db.execute(
+            'UPDATE account_personal_tokens SET last_used_at = NOW() WHERE id = ?',
+            [rows[0].id],
+        ).catch(() => {});
+
+        // Hydrate req.user / req.session.shardUser from the account record so
+        // existing dashboard endpoints (/api/me, /api/shard/server, etc.) work
+        // out of the box for bearer requests.
+        const [accountRows] = await db.execute(
+            `SELECT discord_id, discord_username, discord_avatar, discord_guilds_json,
+                    shard_id, shard_username, shard_avatar, shard_guilds_json
+             FROM accounts WHERE id = ? LIMIT 1`,
+            [accountId],
+        );
+        const a = accountRows[0];
+        if (a?.discord_id) {
+            let guilds = [];
+            try { guilds = a.discord_guilds_json ? JSON.parse(a.discord_guilds_json) : []; } catch { /* */ }
+            req.user = {
+                id: a.discord_id,
+                username: a.discord_username,
+                avatar: a.discord_avatar,
+                guilds,
+            };
+        }
+        if (a?.shard_id) {
+            let guilds = [];
+            try { guilds = a.shard_guilds_json ? JSON.parse(a.shard_guilds_json) : []; } catch { /* */ }
+            req.session.shardUser = {
+                id: a.shard_id,
+                username: a.shard_username,
+                avatar: a.shard_avatar,
+                guilds,
+            };
         }
     } catch { /* swallow, treat as unauth */ }
     next();

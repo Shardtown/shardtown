@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Bot, StatsResponse } from "@/lib/types";
+import { apiGet } from "@/api/client";
 
 const SPARK_MAX = 24;
 
@@ -77,8 +78,7 @@ export function useStats(intervalMs = 30_000): StatsSnapshot {
 
     const tick = async () => {
       try {
-        const res = await fetch("/api/stats");
-        const data: StatsResponse = await res.json();
+        const data = await apiGet<StatsResponse>("/api/stats");
         if (cancelled) return;
 
         const live = liveHistoryRef.current;

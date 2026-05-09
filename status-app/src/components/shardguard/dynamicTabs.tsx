@@ -6,7 +6,7 @@ import {
 import { Field, NumberInput, Select, SectionCard, TextInput } from "./Field";
 import { Admonition } from "@/components/ui/admonition";
 import { ScreenTimeCard } from "@/components/ui/screen-time-card";
-import { apiPost } from "@/api/client";
+import { apiPost, apiGet } from "@/api/client";
 
 interface ChartData { join: number; leave: number; success: number; failed: number }
 
@@ -142,9 +142,9 @@ export function LogsTab({ guildId }: { guildId: string }) {
     if (search) params.set("search", search);
     const t = setTimeout(async () => {
       try {
-        const r = await fetch(`/shardguard/api/guild/${guildId}/logs?${params}`, { credentials: "include", signal: ctrl.signal });
-        const d = await r.json();
-        setLogs(Array.isArray(d) ? d : (d.logs || []));
+        const d = await apiGet<unknown>(`/shardguard/api/guild/${guildId}/logs?${params}`);
+        if (ctrl.signal.aborted) return;
+        setLogs(Array.isArray(d) ? d : ((d as { logs?: unknown[] })?.logs || []));
       } catch { /* aborted or error */ }
       finally { setLoading(false); }
     }, 250);
@@ -234,9 +234,8 @@ export function MembersTab({ guildId }: { guildId: string }) {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/shardguard/api/guild/${guildId}/members`, { credentials: "include" })
-      .then(r => r.json())
-      .then(d => setMembers(Array.isArray(d) ? d : (d.members || [])))
+    apiGet<unknown>(`/shardguard/api/guild/${guildId}/members`)
+      .then(d => setMembers(Array.isArray(d) ? d : ((d as { members?: unknown[] })?.members || [])))
       .catch(() => setMembers([]))
       .finally(() => setLoading(false));
   }, [guildId]);

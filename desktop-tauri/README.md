@@ -1,8 +1,8 @@
 # Shardtown — Desktop (Tauri)
 
-App macOS native pour le dashboard Shardtown. Tauri 2 + React + Vite. Auth par token personnel stocké dans le trousseau macOS, communication exclusive avec `https://shardtwn.fr/api/...`.
+Coquille Tauri 2 qui empaquette la SPA `status-app/` en application macOS native, authentifiée par token personnel (Bearer) stocké dans le trousseau macOS.
 
-Successeur du shell Electron de `desktop/` (à supprimer une fois cette version validée).
+**Architecture unifiée** : un seul code source frontend (`status-app/`) alimente le site web (cookies + CSRF) et l'app desktop (Bearer + Keychain). Le module `status-app/src/lib/desktop.ts` détecte le runtime via `window.__TAURI_INTERNALS__` et `api/client.ts` route les requêtes en conséquence.
 
 ## Pré-requis
 
@@ -18,92 +18,73 @@ xcode-select --install
 ## Build
 
 ```bash
-cd desktop-tauri
-npm install
-npm run tauri:build
+cd status-app && npm install   # déps SPA + tauri-apps clients
+cd ../desktop-tauri
+npm install                    # @tauri-apps/cli
+npm run tauri:build            # build SPA puis bundle DMG
 ```
 
 → DMG produit dans `src-tauri/target/release/bundle/dmg/Shardtown_<version>_<arch>.dmg`.
 Première compile Rust : 3-8 min. Ensuite c'est instantané.
 
-Le DMG est non-signé. Au premier lancement : clic-droit → *Ouvrir* (ou `xattr -dr com.apple.quarantine "/Applications/Shardtown.app"`).
+DMG non-signé. Premier lancement : clic-droit → *Ouvrir*.
 
 ## Dev
 
 ```bash
+cd desktop-tauri
 npm run tauri:dev
 ```
 
-Pour pointer vers un serveur local :
-```bash
-VITE_API_BASE=http://localhost:3000 npm run tauri:dev
-```
+Tauri lance Vite (port 5174) sur la SPA puis ouvre une fenêtre native qui pointe dessus avec hot-reload.
 
-## Architecture
+Pour un dev contre un serveur local :
+- lance `node server.js` sur le port habituel
+- `VITE_API_BASE=http://localhost:3000 npm run tauri:dev` (à ajouter dans status-app/vite.config.ts si nécessaire)
 
-```
-desktop-tauri/
-├── public/logo.png          # logo in-app (boot, login, sidebar)
-├── src/                     # React app
-│   ├── App.tsx              # state machine boot → login → dashboard
-│   ├── api.ts               # Bearer fetch (via tauri-plugin-http)
-│   ├── token-store.ts       # invoke() wrappers vers les commandes Rust
-│   ├── routes/
-│   │   ├── Login.tsx        # paste token, valide via /api/account/me
-│   │   └── Dashboard.tsx    # sidebar nav + main panel + statusbar
-│   └── styles.css
-└── src-tauri/               # Rust + Tauri
-    ├── src/lib.rs           # commandes token_get / token_set / token_clear (keyring)
-    ├── Cargo.toml           # tauri 2, plugin-http, plugin-shell, keyring
-    ├── tauri.conf.json      # window config, CSP, bundle DMG
-    ├── icons/icon.icns      # icon généré via iconutil
-    └── capabilities/        # permissions http (shardtwn.fr only) + shell open
-```
+## Comment ça marche
+
+1. La SPA détecte Tauri via `IS_DESKTOP` (`window.__TAURI_INTERNALS__`).
+2. Le composant `<DesktopGate>` enveloppe l'app : lit le keychain au boot, valide le token via `/api/account/me`, puis monte la SPA. Sans token : écran "Colle ton token".
+3. `api/client.ts` :
+   - Web → `fetch` avec `credentials: include` et CSRF header.
+   - Tauri → `tauri-plugin-http` côté Rust avec `Authorization: Bearer st_…`.
+4. Côté serveur, le middleware bearer (dans `server.js`) :
+   - reconnaît `Authorization: Bearer st_…` et hydrate `req.session.account`, `req.user`, `req.session.shardUser` depuis les colonnes `accounts.*`. Tous les endpoints existants fonctionnent sans modif.
+   - skip CSRF pour les requêtes bearer (pas de cookie ambient → pas de risque CSRF).
+5. Routes marketing (`/`, `/wiki`, `/premium`, `/terms`, `/privacy`, `/status`, `/assistant`) : redirigées vers `/outils` en mode Tauri.
 
 ## Auth
 
-Le token vit dans le trousseau macOS, service `fr.shardtwn.dashboard`, account `default`. Visible dans Keychain Access pour audit. Jamais persisté en clair sur disque.
+Token au format `st_<64 hex chars>` généré sur shardtwn.fr/account → section "Tokens d'accès personnel" (limite 20 par compte).
 
-À la première ouverture : écran "colle un token". Le bouton *Générer un token* ouvre `shardtwn.fr/account` dans Safari (depuis cette page tu crées un PAT, puis tu le colles dans l'app).
+Stocké dans le trousseau macOS, service `fr.shardtwn.dashboard`, account `default`. Visible dans Keychain Access pour audit. Jamais persisté en clair sur disque.
 
-À chaque boot : on relit le trousseau, on hit `/api/account/me`. Si 401 → retour à l'écran login avec message "Token expiré ou révoqué".
+À chaque boot de l'app : on relit le trousseau, on hit `/api/account/me`. Si 401 → retour à l'écran login avec le motif affiché.
 
-## Onglets dashboard
+## Endpoints utilisés
 
-- **Tableau de bord** : hero status (n° de bots liés), 3 quick-actions (ShardGuard, Shard, Wiki), grid de cartes compte (email, Discord ShardGuard, Discord Shard, créé le).
-- **ShardGuard** : liste live des serveurs où le user est admin, badge "Bot configuré" / "À inviter" selon présence du bot dans la guilde, bouton "Synchroniser" (rafraîchit le cache des guildes Discord côté serveur).
-- **Shard** : pareil pour le bot Shard.
+Tous derrière `Authorization: Bearer st_…` :
 
-## Raccourcis clavier
+- `GET /api/account/me` — profil (validation au boot)
+- `GET /api/me` — Discord user (hydraté par le middleware bearer)
+- `GET /api/account/guilds?bot=…` — guildes admin annotées avec `bot_present`
+- `POST /api/account/{discord|shard}/refresh-guilds` — re-sync depuis Discord
+- `GET /api/shardguard/server`, `/api/shard/server` — dashboard data
+- `GET/POST /api/shardguard/guild/:id`, `/api/shard/guild/:id` — config bot
+- `/shardguard/api/guild/:id/logs`, `/shardguard/api/guild/:id/members` — logs et membres
+- Auth bypass CSRF pour bearer.
 
-- ⌘1 / ⌘2 / ⌘3 — switch d'onglet (Tableau de bord / ShardGuard / Shard)
-- ⌘R — recharge les données de l'onglet actif
-- ⌘C / ⌘V / ⌘X — couper / copier / coller (via le menu Édition natif)
-- ⌘W — fermer la fenêtre · ⌘M — minimiser · ⌘Q — quitter
+## macOS native niceties
 
-## Menu macOS natif
-
-L'app installe un menu bar standard (Shardtown / Édition / Présentation / Fenêtre) avec les items prédéfinis macOS — masquer, afficher, plein écran, copier, coller, etc. Localisés en français.
-
-## Window state persistence
-
-`tauri-plugin-window-state` mémorise la taille et position de la fenêtre entre lancements (stocké dans `~/Library/Application Support/fr.shardtwn.dashboard/`).
-
-## Endpoints API utilisés
-
-Tous derrière `Authorization: Bearer st_…`. Liste consommée par l'app :
-
-- `GET /api/account/me` — profil de base + comptes Discord liés
-- `GET /api/account/guilds?bot=shardguard|shard` — guildes admin du user, annotées avec `bot_present` selon que le bot est déjà dans la guilde
-- `POST /api/account/discord/refresh-guilds` / `POST /api/account/shard/refresh-guilds` — re-fetch la liste depuis Discord et update le cache DB
-
-Ces endpoints sont protégés par le middleware bearer ajouté à `server.js` (skip CSRF si bearer-auth, voir [Personal access tokens](../../obsidian/Securite/Personal%20access%20tokens.md) côté Obsidian).
+- Menu bar localisé en français (Shardtown / Édition / Présentation / Fenêtre)
+- About dialog avec version (depuis Cargo.toml), copyright, lien vers shardtwn.fr
+- Window state persisté entre lancements (`tauri-plugin-window-state`)
+- Raccourcis natifs : ⌘C / ⌘V / ⌘X · ⌘W / ⌘M / ⌘Q · plein écran
 
 ## Distribution
 
-DMG privé : tu envoies le bundle, le destinataire fait clic-droit → Ouvrir une fois.
-
-Pour signer/notariser (distribution publique sans warning Gatekeeper) :
+DMG privé. Pour signer/notariser publiquement :
 - Apple Developer ID ($99/an)
 - `tauri.conf.json > bundle.macOS.signingIdentity` = nom du certificat
 - `bundle.macOS.entitlements` + workflow notarytool

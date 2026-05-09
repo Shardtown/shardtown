@@ -1,10 +1,17 @@
 /**
- * API client with automatic CSRF token handling.
+ * API client — works in two modes:
  *
- * Every non-GET request fetches /api/csrf once (cached for the page lifetime)
- * and sends the token as the X-CSRF-Token header. On a 403, the token is
- * refreshed and the request retried once.
+ *   Web   : cookie-based session auth + CSRF token (current behavior).
+ *   Tauri : Bearer-token auth via `tauri-plugin-http` (Rust-side fetch, so
+ *           it bypasses WebView CORS). No CSRF needed because the bearer
+ *           middleware on the server skips the CSRF guard for explicit
+ *           Authorization headers.
+ *
+ * The mode is decided at module load by `IS_DESKTOP` from `lib/desktop.ts`.
+ * Callers don't change — `apiGet`/`apiPost` etc. dispatch transparently.
  */
+
+import { IS_DESKTOP, API_BASE } from "../lib/desktop";
 
 /**
  * Error thrown by the API client. Exposes the HTTP status code and the
@@ -27,11 +34,28 @@ export function isApiError(e: unknown): e is ApiError {
   return e instanceof ApiError;
 }
 
+/* ─── Bearer-token state (desktop only) ───────────────────────────────── */
+
+let bearerToken: string | null = null;
+const bearerListeners = new Set<(token: string | null) => void>();
+
+export function setBearerToken(token: string | null) {
+  bearerToken = token;
+  bearerListeners.forEach(fn => fn(token));
+}
+export function getBearerToken(): string | null { return bearerToken; }
+export function onBearerTokenChange(fn: (token: string | null) => void): () => void {
+  bearerListeners.add(fn);
+  return () => bearerListeners.delete(fn);
+}
+
+/* ─── CSRF (web only) ─────────────────────────────────────────────────── */
+
 let csrfToken: string | null = null;
 let csrfPromise: Promise<string> | null = null;
 
 async function fetchCsrf(): Promise<string> {
-  const res = await fetch("/api/csrf", { credentials: "include" });
+  const res = await fetch(`${API_BASE}/api/csrf`, { credentials: "include" });
   if (!res.ok) return "";
   const data = (await res.json()) as { csrfToken?: string };
   return data.csrfToken || "";
@@ -53,6 +77,8 @@ function clearCsrf() {
   csrfToken = null;
 }
 
+/* ─── Response parsing ────────────────────────────────────────────────── */
+
 async function parseError(res: Response): Promise<ApiError> {
   const text = await res.text().catch(() => "");
   let data: unknown = undefined;
@@ -69,40 +95,63 @@ async function parseError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, message, data);
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(path, { credentials: "include" });
-  if (!res.ok) throw await parseError(res);
-  return res.json();
+/* ─── Transport ───────────────────────────────────────────────────────── */
+
+interface TransportOptions {
+  method: string;
+  path: string;
+  body?: unknown;
+  /** Streaming responses (SSE / NDJSON). Defaults to false. */
+  stream?: boolean;
 }
 
-async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const doFetch = async () => {
-    const token = await getCsrf();
-    return fetch(path, {
-      method,
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": token,
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
-  };
+/**
+ * Routes the request through either the desktop Bearer transport or the
+ * web cookie transport. Returns the raw Response so callers (including the
+ * streaming wrapper) can decide how to consume the body.
+ */
+async function rawSend({ method, path, body, stream }: TransportOptions): Promise<Response> {
+  const url = `${API_BASE}${path}`;
 
-  let res = await doFetch();
+  if (IS_DESKTOP) {
+    const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (bearerToken) headers.Authorization = `Bearer ${bearerToken}`;
+    return tauriFetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    }) as unknown as Response;
+  }
+
+  const init: RequestInit = {
+    method,
+    credentials: "include",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  };
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (method !== "GET" && method !== "HEAD") {
+    headers["X-CSRF-Token"] = await getCsrf();
+  }
+  init.headers = headers;
+  const res = await fetch(url, init);
 
   // CSRF token may be stale (session regenerated, server restarted, ...).
   // Refresh once and retry — surfacing the original 403 if the retry also fails.
-  if (res.status === 403) {
+  // Streaming requests can't be retried after the body's been consumed, so
+  // we only retry non-stream requests.
+  if (res.status === 403 && !stream && (method !== "GET" && method !== "HEAD")) {
     clearCsrf();
-    res = await doFetch();
+    const retryHeaders = { ...headers, "X-CSRF-Token": await getCsrf() };
+    return fetch(url, { ...init, headers: retryHeaders });
   }
+  return res;
+}
 
+async function send<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const res = await rawSend({ method, path, body });
   if (!res.ok) throw await parseError(res);
-
-  // Some endpoints return 204 No Content
   if (res.status === 204) return undefined as T;
-
   const text = await res.text();
   if (!text) return undefined as T;
   try {
@@ -112,6 +161,10 @@ async function send<T>(method: string, path: string, body?: unknown): Promise<T>
   }
 }
 
+export async function apiGet<T>(path: string): Promise<T> {
+  return send<T>("GET", path);
+}
+
 export const apiPost = <T>(path: string, body?: unknown) => send<T>("POST", path, body);
 export const apiPut = <T>(path: string, body?: unknown) => send<T>("PUT", path, body);
 export const apiPatch = <T>(path: string, body?: unknown) => send<T>("PATCH", path, body);
@@ -119,27 +172,13 @@ export const apiDelete = <T>(path: string, body?: unknown) => send<T>("DELETE", 
 
 /**
  * POST + return the raw streaming response (for SSE / NDJSON / chunked).
- * Same CSRF + retry-on-403 dance as `send`. Caller is responsible for
- * reading `response.body` themselves.
+ * Caller is responsible for reading `response.body` themselves.
+ *
+ * Note: in desktop mode, tauri-plugin-http doesn't surface a streaming body
+ * the same way browser fetch does. The Assistant route (the only current
+ * stream consumer) is a marketing page that's already redirected away from
+ * in desktop mode, so this stays browser-only for now.
  */
 export async function apiPostStream(path: string, body?: unknown): Promise<Response> {
-  const doFetch = async () => {
-    const token = await getCsrf();
-    return fetch(path, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-        "X-CSRF-Token": token,
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
-  };
-
-  let res = await doFetch();
-  if (res.status === 403) {
-    clearCsrf();
-    res = await doFetch();
-  }
-  return res;
+  return rawSend({ method: "POST", path, body, stream: true });
 }
