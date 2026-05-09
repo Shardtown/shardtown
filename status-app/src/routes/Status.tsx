@@ -30,7 +30,7 @@ export function Status() {
     return () => clearInterval(id);
   }, []);
 
-  const lastUpdateText = stats.lastFetch ? timeSince(stats.lastFetch) : "—";
+  const lastUpdateText = stats.lastFetch ? timeSince(stats.lastFetch) : "-";
 
   const incident = !stats.allOnline && !stats.loading;
 
@@ -75,7 +75,7 @@ export function Status() {
             transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
           >
             État <span className="text-white">temps réel</span> de l'infrastructure
-            Shardtown — clusters, shards, latence, charge. Mis à jour toutes les
+            Shardtown : clusters, shards, latence, charge. Mis à jour toutes les
             30 secondes.
           </motion.p>
         </header>
@@ -159,8 +159,8 @@ export function Status() {
               />
               <KpiTile
                 icon={Activity}
-                label={`Latence (${stats.avgPing || "—"} ms)`}
-                total={stats.avgPing > 0 ? `${stats.avgPing}` : "—"}
+                label={`Latence (${stats.avgPing || "-"} ms)`}
+                total={stats.avgPing > 0 ? `${stats.avgPing}` : "-"}
                 sub={
                   stats.avgPing > 250 ? "Latence élevée"
                   : stats.avgPing > 100 ? "Normal"

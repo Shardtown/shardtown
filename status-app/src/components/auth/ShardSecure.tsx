@@ -88,7 +88,7 @@ export function ShardSecure({ token, onChange }: Props) {
         type="button"
         onClick={status === "verified" ? reset : verify}
         disabled={status === "loading"}
-        aria-label={status === "verified" ? "Vérifié — cliquer pour réinitialiser" : "Cliquer pour vérifier"}
+        aria-label={status === "verified" ? "Vérifié, cliquer pour réinitialiser" : "Cliquer pour vérifier"}
         className={`relative w-7 h-7 rounded-md border transition-all flex items-center justify-center shrink-0 ${
           status === "verified"
             ? "bg-emerald-500 border-emerald-400"
@@ -109,7 +109,7 @@ export function ShardSecure({ token, onChange }: Props) {
             : status === "loading"
             ? "Vérification…"
             : status === "error"
-            ? "Échec — réessaye"
+            ? "Échec, réessaye"
             : "Je ne suis pas un robot"}
         </div>
         {status === "error" && errorMsg && (

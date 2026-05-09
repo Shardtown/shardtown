@@ -18,11 +18,11 @@ interface TabProps {
 }
 
 const channelOpts = (channels: DiscordChannel[]) => [
-  { value: "", label: "—" },
+  { value: "", label: "Aucun" },
   ...channels.map(c => ({ value: c.id, label: `# ${c.name}` })),
 ];
 const roleOpts = (roles: DiscordRole[], excludeEveryone = true) => [
-  { value: "", label: "—" },
+  { value: "", label: "Aucun" },
   ...roles.filter(r => !excludeEveryone || r.name !== "@everyone").map(r => ({ value: r.id, label: `@${r.name}` })),
 ];
 

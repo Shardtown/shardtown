@@ -22,19 +22,19 @@ interface TabBase {
 }
 
 const channelOpts = (channels: DChannel[]) => [
-  { value: "", label: "—" },
+  { value: "", label: "Aucun" },
   ...channels.map(c => ({ value: c.id, label: `# ${c.name}` })),
 ];
 const voiceOpts = (vc: DChannel[]) => [
-  { value: "", label: "—" },
+  { value: "", label: "Aucun" },
   ...vc.map(c => ({ value: c.id, label: `🔊 ${c.name}` })),
 ];
 const categoryOpts = (cats: DChannel[]) => [
-  { value: "", label: "—" },
+  { value: "", label: "Aucun" },
   ...cats.map(c => ({ value: c.id, label: `📁 ${c.name}` })),
 ];
 const roleOpts = (roles: DRole[]) => [
-  { value: "", label: "—" },
+  { value: "", label: "Aucun" },
   ...roles.map(r => ({ value: r.id, label: `@${r.name}` })),
 ];
 

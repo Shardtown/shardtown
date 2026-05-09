@@ -336,6 +336,8 @@ async function connectDB() {
                 `ALTER TABLE accounts ADD COLUMN shard_refresh_token TEXT DEFAULT NULL`,
                 `ALTER TABLE accounts ADD COLUMN shard_token_expires_at DATETIME DEFAULT NULL`,
                 `ALTER TABLE accounts ADD COLUMN shard_linked_at DATETIME DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN shard_guilds_json MEDIUMTEXT DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN shard_guilds_fetched_at DATETIME DEFAULT NULL`,
                 `ALTER TABLE accounts ADD UNIQUE KEY uniq_shard (shard_id)`,
             ]) {
                 try { await db.execute(ddl); } catch { /* already exists */ }
@@ -1942,7 +1944,7 @@ app.get('/api/account/shard/link', requireAccount, (req, res) => {
         client_id: process.env.SHARD_CLIENT_ID,
         redirect_uri: SHARD_LINK_REDIRECT,
         response_type: 'code',
-        scope: 'identify',
+        scope: 'identify guilds',
         state,
         prompt: 'consent',
     });
@@ -1978,6 +1980,8 @@ app.get('/api/account/shard/callback', async (req, res) => {
             timeout: 5000,
         });
         const me = meRes.data;
+        let guilds = [];
+        try { guilds = await fetchDiscordGuildsFor(access_token); } catch { /* will retry from /account */ }
 
         const [otherRows] = await db.execute(
             'SELECT id FROM accounts WHERE shard_id = ? AND id <> ? LIMIT 1',
@@ -1995,7 +1999,9 @@ app.get('/api/account/shard/callback', async (req, res) => {
                 shard_linked_at = NOW(),
                 shard_access_token = ?,
                 shard_refresh_token = ?,
-                shard_token_expires_at = DATE_ADD(NOW(), INTERVAL ? SECOND)
+                shard_token_expires_at = DATE_ADD(NOW(), INTERVAL ? SECOND),
+                shard_guilds_json = ?,
+                shard_guilds_fetched_at = NOW()
              WHERE id = ?`,
             [
                 me.id,
@@ -2004,6 +2010,7 @@ app.get('/api/account/shard/callback', async (req, res) => {
                 encryptToken(access_token),
                 encryptToken(refresh_token),
                 Math.max(60, parseInt(expires_in, 10) || 0),
+                JSON.stringify(guilds),
                 req.session.account.id,
             ],
         );
@@ -2021,7 +2028,8 @@ app.post('/api/account/shard/unlink', requireAccount, async (req, res) => {
                 shard_id = NULL, shard_username = NULL, shard_avatar = NULL,
                 shard_linked_at = NULL,
                 shard_access_token = NULL, shard_refresh_token = NULL,
-                shard_token_expires_at = NULL
+                shard_token_expires_at = NULL,
+                shard_guilds_json = NULL, shard_guilds_fetched_at = NULL
              WHERE id = ?`,
             [req.session.account.id],
         );
@@ -2560,6 +2568,60 @@ app.post('/api/account/discord/refresh-guilds', requireAccount, async (req, res)
         res.json({ success: true, guilds_count: guilds.length });
     } catch (err) {
         console.error('refresh-guilds:', err.response?.data || err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Same but for the Shard bot's separate Discord OAuth.
+app.post('/api/account/shard/refresh-guilds', requireAccount, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, shard_access_token, shard_refresh_token, shard_token_expires_at
+             FROM accounts WHERE id = ? LIMIT 1`,
+            [req.session.account.id],
+        );
+        const a = rows[0];
+        if (!a || !a.shard_access_token) return res.status(400).json({ error: 'Aucun Shard lié' });
+        let token = decryptToken(a.shard_access_token);
+        const refreshTokenPlain = decryptToken(a.shard_refresh_token);
+        const expired = a.shard_token_expires_at && new Date(a.shard_token_expires_at) < new Date();
+        if (expired && refreshTokenPlain) {
+            const refreshed = await axios.post(
+                'https://discord.com/api/v10/oauth2/token',
+                new URLSearchParams({
+                    client_id: process.env.SHARD_CLIENT_ID,
+                    client_secret: process.env.SHARD_CLIENT_SECRET,
+                    grant_type: 'refresh_token',
+                    refresh_token: refreshTokenPlain,
+                }),
+                { headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, timeout: 8000 },
+            );
+            token = refreshed.data.access_token;
+            await db.execute(
+                `UPDATE accounts SET shard_access_token = ?, shard_refresh_token = ?,
+                  shard_token_expires_at = DATE_ADD(NOW(), INTERVAL ? SECOND) WHERE id = ?`,
+                [
+                    encryptToken(refreshed.data.access_token),
+                    encryptToken(refreshed.data.refresh_token),
+                    Math.max(60, parseInt(refreshed.data.expires_in, 10) || 0),
+                    a.id,
+                ],
+            );
+        }
+        const guilds = await fetchDiscordGuildsFor(token);
+        await db.execute(
+            'UPDATE accounts SET shard_guilds_json = ?, shard_guilds_fetched_at = NOW() WHERE id = ?',
+            [JSON.stringify(guilds), a.id],
+        );
+        res.json({ success: true, guilds_count: guilds.length });
+    } catch (err) {
+        // Token issued before the `guilds` scope was added returns 401 here.
+        // Surface a hint so the UI can suggest re-linking.
+        const status = err.response?.status;
+        if (status === 401 || status === 403) {
+            return res.status(403).json({ error: 'Re-liaison requise', reason: 'scope' });
+        }
+        console.error('shard refresh-guilds:', err.response?.data || err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

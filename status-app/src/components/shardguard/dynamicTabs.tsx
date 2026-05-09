@@ -152,7 +152,7 @@ export function LogsTab({ guildId }: { guildId: string }) {
   }, [guildId, search, eventFilter, statusFilter]);
 
   return (
-    <SectionCard title="Logs du serveur" description="Jointures, vérifications, sanctions — 50 derniers événements.">
+    <SectionCard title="Logs du serveur" description="Jointures, vérifications, sanctions. 50 derniers événements.">
       <div className="grid md:grid-cols-3 gap-2 mb-4">
         <div className="md:col-span-1">
           <div className="relative">

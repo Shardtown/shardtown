@@ -7,7 +7,7 @@ import {
 import { motion, useReducedMotion } from "framer-motion";
 import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@/api/passkey";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { apiGet, apiPost } from "@/api/client";
+import { apiGet, apiPost, isApiError } from "@/api/client";
 import { useAuth } from "@/api/auth";
 import type { Account as AccountT } from "@/api/account";
 
@@ -20,7 +20,9 @@ export function Account() {
   const [account, setAccount] = useState<AccountT | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [shardRefreshing, setShardRefreshing] = useState(false);
   const [guildsCount, setGuildsCount] = useState<number | null>(null);
+  const [shardGuildsCount, setShardGuildsCount] = useState<number | null>(null);
   const [banner, setBanner] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [passkeys, setPasskeys] = useState<PasskeyRow[] | null>(null);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
@@ -148,6 +150,22 @@ export function Account() {
     } finally { setRefreshing(false); }
   }
 
+  async function refreshShardGuilds() {
+    setShardRefreshing(true);
+    try {
+      const r = await apiPost<{ guilds_count: number }>("/api/account/shard/refresh-guilds");
+      setShardGuildsCount(r.guilds_count);
+      setBanner({ kind: "ok", text: `${r.guilds_count} serveurs synchronisés (Shard).` });
+    } catch (err: unknown) {
+      const reason = isApiError(err) && (err.data as { reason?: string } | undefined)?.reason;
+      if (reason === "scope") {
+        setBanner({ kind: "error", text: "Re-liaison Shard requise pour la liste des serveurs." });
+      } else {
+        setBanner({ kind: "error", text: "Échec du refresh Shard." });
+      }
+    } finally { setShardRefreshing(false); }
+  }
+
   if (loading || !account) {
     return (
       <AppLayout>
@@ -231,7 +249,7 @@ export function Account() {
           <div className="mb-10 inline-flex items-start gap-2 px-3.5 py-2 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-200 text-[12.5px]">
             <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>
-              Email non vérifié — vérifie le lien envoyé à <strong>{account.email}</strong>.
+              Email non vérifié, vérifie le lien envoyé à <strong>{account.email}</strong>.
             </span>
           </div>
         )}
@@ -245,7 +263,7 @@ export function Account() {
             <h2 className="text-xl font-extrabold tracking-tight">Comptes liés</h2>
             <p className="text-[13px] text-white/50 mt-2 max-w-xl leading-relaxed">
               Discord est nécessaire pour configurer les bots. Google et GitHub
-              sont optionnels — utiles pour te reconnecter en un clic.
+              sont optionnels, utiles pour te reconnecter en un clic.
             </p>
           </div>
 
@@ -254,7 +272,7 @@ export function Account() {
             <ConnectionRow
               kind="discord"
               title="ShardGuard"
-              caption="Compte principal — bot ShardGuard, dashboards"
+              caption="Compte principal pour ShardGuard et les dashboards"
               linkedId={account.discord_id}
               linkedName={account.discord_username}
               linkedAvatar={account.discord_avatar}
@@ -289,6 +307,23 @@ export function Account() {
               linkedAvatar={account.shard_avatar}
               hrefLink="/api/account/shard/link"
               onUnlink={unlinkShard}
+              extraAction={
+                account.shard_id ? (
+                  <button
+                    type="button"
+                    onClick={refreshShardGuilds}
+                    disabled={shardRefreshing}
+                    aria-label="Actualiser mes serveurs"
+                    title="Actualiser mes serveurs"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/55 hover:text-white hover:bg-white/[0.07] text-[11px] font-bold transition-colors disabled:opacity-40"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${shardRefreshing ? "animate-spin" : ""}`} />
+                    {shardGuildsCount !== null && (
+                      <span className="font-mono-num">{shardGuildsCount}</span>
+                    )}
+                  </button>
+                ) : null
+              }
             />
 
             {/* Google */}
@@ -360,7 +395,7 @@ export function Account() {
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm truncate">{p.name}</p>
                     <p className="text-[11px] text-white/35 font-mono-num">
-                      {p.transports || "—"} · ajoutée {new Date(p.created_at).toLocaleDateString("fr-FR")}
+                      {p.transports || "-"} · ajoutée {new Date(p.created_at).toLocaleDateString("fr-FR")}
                       {p.last_used_at && <> · utilisée {new Date(p.last_used_at).toLocaleDateString("fr-FR")}</>}
                     </p>
                   </div>
