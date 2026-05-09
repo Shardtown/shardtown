@@ -313,6 +313,18 @@ async function connectDB() {
                     INDEX idx_token (token_hash)
                 )
             `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS account_personal_tokens (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    account_id INT NOT NULL,
+                    name VARCHAR(64) NOT NULL,
+                    token_hash CHAR(64) NOT NULL UNIQUE,
+                    last_used_at DATETIME DEFAULT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_account (account_id),
+                    INDEX idx_token (token_hash)
+                )
+            `);
             // Phase 2 — Discord linking columns
             for (const ddl of [
                 `ALTER TABLE accounts ADD COLUMN discord_access_token TEXT DEFAULT NULL`,
@@ -915,14 +927,43 @@ app.use(async (req, res, next) => {
     next();
 });
 
+// Personal-access-token auth — runs before CSRF so bearer-authed requests
+// can skip the cookie-based CSRF check (CSRF only protects against ambient
+// session cookies; explicit Authorization headers are not subject to it).
+const BEARER_RE = /^Bearer\s+(.+)$/i;
+app.use(async (req, res, next) => {
+    if (req.session?.account?.id) return next();
+    const auth = req.headers.authorization || '';
+    const m = BEARER_RE.exec(auth);
+    if (!m) return next();
+    const tokenHash = crypto.createHash('sha256').update(m[1].trim()).digest('hex');
+    try {
+        const [rows] = await db.execute(
+            'SELECT id, account_id FROM account_personal_tokens WHERE token_hash = ? LIMIT 1',
+            [tokenHash],
+        );
+        if (rows[0]) {
+            req.session.account = { id: rows[0].account_id, viaToken: true };
+            req.bearerAuthed = true;
+            // Fire-and-forget last_used_at update; don't block the request.
+            db.execute(
+                'UPDATE account_personal_tokens SET last_used_at = NOW() WHERE id = ?',
+                [rows[0].id],
+            ).catch(() => {});
+        }
+    } catch { /* swallow, treat as unauth */ }
+    next();
+});
+
 // Global CSRF guard — applies to every state-changing request that carries a
 // session cookie. Skipped for safe methods, the Stripe webhook (signature-
-// verified, no session), and the OAuth callback (passport state-protected).
-// Individual routes used to opt in via `verifyCsrf`; this catches the ones
-// that didn't.
+// verified, no session), bearer-authed requests, and the OAuth callback
+// (passport state-protected). Individual routes used to opt in via
+// `verifyCsrf`; this catches the ones that didn't.
 app.use((req, res, next) => {
     if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
     if (req.path === '/webhook/stripe') return next();
+    if (req.bearerAuthed) return next();
     return verifyCsrf(req, res, next);
 });
 
@@ -1741,6 +1782,76 @@ app.post('/api/account/logout', (req, res) => {
         });
     } else {
         finalize();
+    }
+});
+
+// ─── Personal access tokens ──────────────────────────────────────────────
+// Used by desktop / CLI / third-party tools to authenticate without a session
+// cookie. The plaintext is shown ONCE at creation; only a SHA-256 hash is
+// stored. Bearer auth skips CSRF (see middleware above).
+const TOKEN_PREFIX = 'st_';
+const TOKEN_BYTES = 32;
+
+app.post('/api/account/tokens', requireAccount, async (req, res) => {
+    const name = String(req.body?.name || '').trim().slice(0, 64);
+    if (!name) return res.status(400).json({ error: 'Nom requis' });
+    if (req.session.account.viaToken) {
+        return res.status(403).json({ error: 'Création de token interdite via une auth par token' });
+    }
+    try {
+        const [existing] = await db.execute(
+            'SELECT COUNT(*) AS n FROM account_personal_tokens WHERE account_id = ?',
+            [req.session.account.id],
+        );
+        if (existing[0].n >= 20) {
+            return res.status(400).json({ error: 'Maximum 20 tokens par compte. Révoque-en avant d\'en créer un nouveau.' });
+        }
+        const token = TOKEN_PREFIX + crypto.randomBytes(TOKEN_BYTES).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const [r] = await db.execute(
+            'INSERT INTO account_personal_tokens (account_id, name, token_hash) VALUES (?, ?, ?)',
+            [req.session.account.id, name, tokenHash],
+        );
+        res.json({
+            id: r.insertId,
+            name,
+            token,
+            created_at: new Date().toISOString(),
+        });
+    } catch (err) {
+        console.error('create token:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.get('/api/account/tokens', requireAccount, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, name, last_used_at, created_at
+             FROM account_personal_tokens
+             WHERE account_id = ?
+             ORDER BY id DESC`,
+            [req.session.account.id],
+        );
+        res.json({ tokens: rows });
+    } catch (err) {
+        console.error('list tokens:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.delete('/api/account/tokens/:id', requireAccount, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
+    try {
+        await db.execute(
+            'DELETE FROM account_personal_tokens WHERE id = ? AND account_id = ?',
+            [id, req.session.account.id],
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error('delete token:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
