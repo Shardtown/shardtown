@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "fr.shardtwn.dashboard",
   "build": {
-    "beforeDevCommand": "cd ../../status-app && npm run dev",
+    "beforeDevCommand": "cd ../status-app && npm run dev",
     "devUrl": "http://localhost:5174",
-    "beforeBuildCommand": "cd ../../status-app && npm run build",
+    "beforeBuildCommand": "cd ../status-app && npm run build",
     "frontendDist": "../../status-app/dist"
   },
   "app": {
