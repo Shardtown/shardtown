@@ -253,7 +253,7 @@ export function Account() {
             {/* Discord (Shardtown / ShardGuard) */}
             <ConnectionRow
               kind="discord"
-              title="Discord"
+              title="ShardGuard"
               caption="Compte principal — bot ShardGuard, dashboards"
               linkedId={account.discord_id}
               linkedName={account.discord_username}
@@ -282,7 +282,7 @@ export function Account() {
             {/* Discord (Shard bot) */}
             <ConnectionRow
               kind="discord"
-              title="Discord — Shard"
+              title="Shard"
               caption="Compte distinct pour le bot Shard (optionnel)"
               linkedId={account.shard_id}
               linkedName={account.shard_username}

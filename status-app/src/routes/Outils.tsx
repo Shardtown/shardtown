@@ -85,7 +85,7 @@ export function Outils() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="h-56 bg-white/[0.03] rounded-3xl animate-pulse"
+                className="h-44 bg-white/[0.03] rounded-2xl animate-pulse"
               />
             ))}
           </div>
@@ -289,20 +289,20 @@ function ToolCard({
         effect="gravitate"
         tiltLimit={6}
         scale={1.02}
-        className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-8 md:p-10 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full"
+        className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 md:p-7 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full"
       >
-        <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70 mb-8">
-          <Icon className="w-6 h-6" strokeWidth={2} />
+        <div className="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70 mb-5">
+          <Icon className="w-5 h-5" strokeWidth={2} />
         </div>
-        <h3 className="text-2xl font-bold mb-2">{label}</h3>
-        <p className="text-xs font-bold uppercase tracking-widest text-white/35 mb-5">
+        <h3 className="text-xl font-bold mb-1.5">{label}</h3>
+        <p className="text-[10.5px] font-bold uppercase tracking-widest text-white/35 mb-4">
           {tagline}
         </p>
-        <p className="text-white/55 leading-relaxed mb-8 text-[14.5px]">
+        <p className="text-white/55 leading-relaxed mb-6 text-[13.5px]">
           {description}
         </p>
-        <span className="inline-flex items-center gap-2 text-sm font-bold text-white group-hover:gap-3 transition-all">
-          {cta} <ArrowRight className="w-4 h-4" />
+        <span className="inline-flex items-center gap-2 text-[13px] font-bold text-white group-hover:gap-3 transition-all">
+          {cta} <ArrowRight className="w-3.5 h-3.5" />
         </span>
       </TiltCard>
     </Link>
