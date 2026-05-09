@@ -1,7 +1,7 @@
 use keyring::Entry;
 use tauri::menu::{AboutMetadataBuilder, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{Manager, image::Image};
+use tauri::Manager;
 
 // Service identifier appears in Keychain Access as the "Where" column.
 // Account is constant — there's exactly one logged-in user per app instance.
@@ -90,20 +90,21 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::Result<()> {
 }
 
 /// macOS-style status-bar tray icon: click reveals/focuses the main window,
-/// right-click (or click on the menu indicator) opens a small menu with
-/// quick actions. Mirrors what NordVPN, Slack and other native apps do.
+/// right-click opens a small menu with quick actions. Mirrors NordVPN /
+/// Slack behavior. Reuses the bundle's default window icon so we don't have
+/// to decode PNG bytes ourselves at runtime.
 #[cfg(target_os = "macos")]
 fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
+    let about_metadata = AboutMetadataBuilder::new()
+        .name(Some("Shardtown"))
+        .version(Some(env!("CARGO_PKG_VERSION")))
+        .copyright(Some("© Shardtown"))
+        .website(Some("https://shardtwn.fr"))
+        .website_label(Some("shardtwn.fr"))
+        .build();
+
     let show = MenuItemBuilder::with_id("show", "Ouvrir Shardtown").build(app)?;
-    let about = PredefinedMenuItem::about(app, Some("À propos"), Some(
-        AboutMetadataBuilder::new()
-            .name(Some("Shardtown"))
-            .version(Some(env!("CARGO_PKG_VERSION")))
-            .copyright(Some("© Shardtown"))
-            .website(Some("https://shardtwn.fr"))
-            .website_label(Some("shardtwn.fr"))
-            .build(),
-    )?);
+    let about = PredefinedMenuItem::about(app, Some("À propos"), Some(about_metadata))?;
     let quit = PredefinedMenuItem::quit(app, Some("Quitter Shardtown"))?;
 
     let menu = MenuBuilder::new(app)
@@ -114,9 +115,10 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
         .item(&quit)
         .build()?;
 
-    // Embed a 22pt icon — Tauri scales it to the menu-bar height. Loaded
-    // from disk at compile time via include_bytes so the bundle ships it.
-    let icon = Image::from_bytes(include_bytes!("../icons/tray.png"))?;
+    let icon = app
+        .default_window_icon()
+        .cloned()
+        .expect("bundle ships a default window icon");
 
     TrayIconBuilder::with_id("main")
         .icon(icon)
@@ -133,8 +135,13 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
             }
         })
         .on_tray_icon_event(|tray, event| {
-            // Left click on the icon (without modifier) → reveal window.
-            if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+            // Left click on the icon → reveal window (NordVPN-style).
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
                 if let Some(win) = tray.app_handle().get_webview_window("main") {
                     let _ = win.show();
                     let _ = win.set_focus();
