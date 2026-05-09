@@ -120,12 +120,14 @@ export function Dashboard({ token, me, onLogout }: Props) {
         </div>
       </aside>
 
-      <main className="main">
-        <div key={tab} className="main-inner tab-fade">
-          {tab === "overview" && <OverviewTab me={me} onOpenTab={setTab} />}
-          {tab === "shardguard" && <BotTab kind="shardguard" token={token} reloadRef={reloadRef} />}
-          {tab === "shard" && <BotTab kind="shard" token={token} reloadRef={reloadRef} />}
-        </div>
+      <div className="right-pane">
+        <main className="main">
+          <div key={tab} className="main-inner tab-fade">
+            {tab === "overview" && <OverviewTab me={me} onOpenTab={setTab} />}
+            {tab === "shardguard" && <BotTab kind="shardguard" token={token} reloadRef={reloadRef} />}
+            {tab === "shard" && <BotTab kind="shard" token={token} reloadRef={reloadRef} />}
+          </div>
+        </main>
 
         <div className="statusbar">
           <span className="pill">
@@ -138,7 +140,7 @@ export function Dashboard({ token, me, onLogout }: Props) {
           <span className="sep">·</span>
           <span className="version">v{APP_VERSION}</span>
         </div>
-      </main>
+      </div>
     </div>
   );
 }
