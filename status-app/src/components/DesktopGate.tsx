@@ -8,6 +8,10 @@ type State =
   | { kind: "login"; reason?: string }
   | { kind: "ready" };
 
+// Crossfade duration when leaving the boot screen — needs to match the
+// leaving CSS animation in BootScreen / entering animation on the next view.
+const TRANSITION_MS = 480;
+
 /**
  * Wraps the SPA when running inside Tauri. Reads the keychain on boot,
  * validates the token by hitting /api/account/me, then either renders the
@@ -17,6 +21,10 @@ type State =
  */
 export function DesktopGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>(IS_DESKTOP ? { kind: "boot" } : { kind: "ready" });
+  // Tracks the boot-screen leave animation. While true we keep BootScreen
+  // mounted with the `boot-leaving` class so it can fade out gracefully on
+  // top of the incoming login/dashboard.
+  const [bootLeaving, setBootLeaving] = useState(false);
 
   useEffect(() => {
     if (!IS_DESKTOP) return;
@@ -42,28 +50,40 @@ export function DesktopGate({ children }: { children: ReactNode }) {
         }
       }
       await minBoot;
-      if (!cancelled) setState(next);
+      if (cancelled) return;
+
+      // Begin the crossfade: swap the underlying screen now (so it can mount
+      // and play its enter animation), but keep BootScreen layered on top
+      // with the leaving class for TRANSITION_MS, then unmount it.
+      setState(next);
+      setBootLeaving(true);
+      setTimeout(() => { if (!cancelled) setBootLeaving(false); }, TRANSITION_MS);
     })();
     return () => { cancelled = true; };
   }, []);
 
-  if (state.kind === "boot") return <BootScreen />;
-  if (state.kind === "login") {
-    return (
-      <DesktopLogin
-        reason={state.reason}
-        onSuccess={() => setState({ kind: "ready" })}
-      />
-    );
-  }
-  return <>{children}</>;
+  return (
+    <>
+      {state.kind === "boot" && <BootScreen />}
+      {state.kind === "login" && (
+        <DesktopLogin
+          reason={state.reason}
+          onSuccess={() => setState({ kind: "ready" })}
+        />
+      )}
+      {state.kind === "ready" && <>{children}</>}
+      {/* Boot leaves on top with a fade/scale-out so the swap reads as one
+          fluid motion instead of a hard cut. */}
+      {bootLeaving && <BootScreen leaving />}
+    </>
+  );
 }
 
-function BootScreen() {
+function BootScreen({ leaving = false }: { leaving?: boolean }) {
   return (
     <>
       <div className="fixed inset-x-0 top-0 h-7 z-50" data-tauri-drag-region />
-      <div className="boot-stage">
+      <div className={`boot-stage ${leaving ? "boot-stage-leaving" : ""}`}>
         <div className="boot-stack">
           <div className="boot-logo">
             <div className="boot-logo-ring" />
@@ -73,7 +93,6 @@ function BootScreen() {
           </div>
 
           <p className="boot-wordmark">Shardtown</p>
-          <p className="boot-tagline">Plateforme de bots Discord</p>
 
           <div className="boot-dots" aria-label="Chargement">
             <span /><span /><span />
@@ -82,15 +101,24 @@ function BootScreen() {
 
         <style>{`
           .boot-stage {
-            position: relative;
-            height: 100vh;
-            width: 100vw;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
             background: radial-gradient(ellipse at 50% 30%, #11131a 0%, #0a0b0e 60%, #050507 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
             color: #fff;
+            transition: opacity 480ms ease-out;
+          }
+          .boot-stage-leaving {
+            pointer-events: none;
+            animation: boot-leave 480ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          }
+          @keyframes boot-leave {
+            0%   { opacity: 1; transform: scale(1); filter: blur(0px); }
+            100% { opacity: 0; transform: scale(1.04); filter: blur(8px); }
           }
           .boot-stack {
             position: relative;
@@ -157,19 +185,11 @@ function BootScreen() {
           }
 
           .boot-wordmark {
-            margin: 0 0 6px;
+            margin: 0 0 30px;
             font-size: 22px;
             font-weight: 800;
             letter-spacing: -0.02em;
             color: #fff;
-          }
-          .boot-tagline {
-            margin: 0 0 30px;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.28em;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.35);
           }
 
           .boot-dots {
@@ -235,7 +255,7 @@ function DesktopLogin({
   return (
     <>
       <div className="fixed inset-x-0 top-0 h-7 z-50" data-tauri-drag-region />
-      <div className="h-screen w-screen flex flex-col items-center justify-center px-9 bg-black">
+      <div className="login-stage h-screen w-screen flex flex-col items-center justify-center px-9 bg-black">
         <div className="flex flex-col items-center mb-9">
           <img
             src="/logo.png"
@@ -284,6 +304,17 @@ function DesktopLogin({
             Générer un token <ExternalLink size={11} strokeWidth={2} />
           </button>
         </form>
+
+        <style>{`
+          .login-stage {
+            animation: login-enter 700ms cubic-bezier(0.22, 1, 0.36, 1);
+          }
+          @keyframes login-enter {
+            0%   { opacity: 0; transform: scale(0.985) translateY(8px); filter: blur(6px); }
+            60%  { filter: blur(0px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
+          }
+        `}</style>
       </div>
     </>
   );
