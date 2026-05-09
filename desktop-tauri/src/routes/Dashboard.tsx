@@ -15,6 +15,11 @@ import {
 
 type Tab = "overview" | "shardguard" | "shard";
 
+// Read once at module load — Vite injects PACKAGE_VERSION via define in
+// vite.config.ts so the app always shows the package.json version without
+// hardcoding it in two places.
+const APP_VERSION = (import.meta.env.VITE_APP_VERSION as string | undefined) ?? "0.1.0";
+
 interface Props {
   token: string;
   me: AccountMe;
@@ -130,6 +135,8 @@ export function Dashboard({ token, me, onLogout }: Props) {
           <span>{me.email}</span>
           <span className="sep">·</span>
           <span>shardtwn.fr</span>
+          <span className="sep">·</span>
+          <span className="version">v{APP_VERSION}</span>
         </div>
       </main>
     </div>
@@ -296,6 +303,14 @@ function BotTab({
 
   useEffect(() => { load(); }, [load]);
 
+  // Reload when the window regains focus so the user doesn't stare at stale
+  // data after coming back to the app from a long break.
+  useEffect(() => {
+    function onFocus() { load(); }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [load]);
+
   async function doRefresh() {
     setRefreshing(true);
     try {
@@ -392,13 +407,14 @@ function GuildList({ state, kind }: { state: LoadState; kind: "shardguard" | "sh
     );
   }
   if (state.guilds.length === 0) {
+    const neverSynced = state.fetchedAt === null;
     return (
       <div className="empty">
-        <p className="label">Aucun serveur admin</p>
+        <p className="label">{neverSynced ? "Pas encore synchronisé" : "Aucun serveur admin"}</p>
         <p>
-          Tu n'as les permissions admin sur aucun serveur Discord, ou ta liste
-          de serveurs n'a pas encore été synchronisée. Clique sur Synchroniser
-          ci-dessus pour rafraîchir.
+          {neverSynced
+            ? `Clique sur Synchroniser ci-dessus pour récupérer la liste des serveurs où tu es admin et où ${kind === "shardguard" ? "ShardGuard" : "Shard"} peut être ajouté.`
+            : "Tu n'as les permissions admin sur aucun serveur Discord. Si tu en as récemment rejoint un, clique sur Synchroniser pour rafraîchir."}
         </p>
       </div>
     );

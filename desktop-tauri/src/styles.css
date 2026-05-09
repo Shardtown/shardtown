@@ -502,7 +502,7 @@ button { font-family: inherit; }
 }
 .hero-cta-secondary:hover { background: var(--panel); }
 .hero-cta-secondary:disabled { opacity: 0.45; cursor: not-allowed; }
-.hero-cta-secondary .spin { animation: spin 0.9s linear infinite; }
+.spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Section head meta (right side, e.g. "Sync : il y a 2 min") */
@@ -657,3 +657,9 @@ button { font-family: inherit; }
   box-shadow: 0 0 8px var(--status-ok);
 }
 .statusbar .sep { color: var(--text-faint); }
+.statusbar .version {
+  margin-left: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}

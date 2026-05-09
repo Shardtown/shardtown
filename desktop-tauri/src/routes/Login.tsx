@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { tokenSet } from "../token-store";
 import { fetchMe, ApiError, type AccountMe } from "../api";
 import { open as shellOpen } from "@tauri-apps/plugin-shell";
@@ -65,7 +66,12 @@ export function Login({ reason, onLoggedIn }: Props) {
         />
         {error && <div className="err">{error}</div>}
         <button type="submit" className="primary" disabled={busy || !token.trim()}>
-          {busy ? "Vérification…" : "Continuer"}
+          {busy
+            ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Loader2 size={13} strokeWidth={2.4} className="spin" />
+                Vérification…
+              </span>
+            : "Continuer"}
         </button>
         <button
           type="button"
