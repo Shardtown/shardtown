@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   LayoutGrid, Shield, Zap, User, LogOut,
 } from "lucide-react";
@@ -15,7 +15,6 @@ import { setBearerToken, apiPost } from "@/api/client";
  */
 export function DesktopShell({ children }: { children: ReactNode }) {
   const { user, refresh } = useAuth();
-  const nav = useNavigate();
   const location = useLocation();
 
   const displayName = user?.global_name || user?.username || "Compte";
