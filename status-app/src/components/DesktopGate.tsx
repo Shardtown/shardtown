@@ -21,7 +21,8 @@ export function DesktopGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!IS_DESKTOP) return;
     let cancelled = false;
-    const minBoot = new Promise<void>(r => setTimeout(r, 500));
+    // Forced 2.4s minimum boot so the brand moment reads as deliberate.
+    const minBoot = new Promise<void>(r => setTimeout(r, 2400));
     (async () => {
       const token = await tokenGet().catch(() => null);
       let next: State;
@@ -62,10 +63,163 @@ function BootScreen() {
   return (
     <>
       <div className="fixed inset-x-0 top-0 h-7 z-50" data-tauri-drag-region />
-      <div className="h-screen w-screen flex items-center justify-center bg-black">
-        <div className="w-20 h-20 rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden flex items-center justify-center animate-pulse">
-          <img src="/logo.png" alt="" className="w-3/5 h-3/5 object-contain" />
+      <div className="boot-stage">
+        {/* Soft blue/purple radial halo, NordVPN-style ambient depth */}
+        <div className="boot-halo boot-halo-1" />
+        <div className="boot-halo boot-halo-2" />
+
+        <div className="boot-stack">
+          <div className="boot-logo">
+            <div className="boot-logo-ring" />
+            <div className="boot-logo-card">
+              <img src="/logo.png" alt="" />
+            </div>
+          </div>
+
+          <p className="boot-wordmark">Shardtown</p>
+          <p className="boot-tagline">Plateforme de bots Discord</p>
+
+          <div className="boot-dots" aria-label="Chargement">
+            <span /><span /><span />
+          </div>
         </div>
+
+        <style>{`
+          .boot-stage {
+            position: relative;
+            height: 100vh;
+            width: 100vw;
+            background: radial-gradient(ellipse at 50% 30%, #11131a 0%, #0a0b0e 60%, #050507 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            color: #fff;
+          }
+          .boot-halo {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            opacity: 0;
+            animation: boot-halo-fade 2.4s ease-out forwards;
+          }
+          .boot-halo-1 {
+            width: 520px; height: 520px;
+            top: -120px; left: 50%;
+            transform: translateX(-50%);
+            background: radial-gradient(circle, rgba(91, 141, 255, 0.32), transparent 65%);
+          }
+          .boot-halo-2 {
+            width: 420px; height: 420px;
+            bottom: -150px; left: 50%;
+            transform: translateX(-50%);
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.20), transparent 65%);
+            animation-delay: 0.2s;
+          }
+          @keyframes boot-halo-fade {
+            0%   { opacity: 0; }
+            40%  { opacity: 1; }
+            100% { opacity: 0.7; }
+          }
+
+          .boot-stack {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            animation: boot-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+          }
+          @keyframes boot-rise {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+
+          .boot-logo {
+            position: relative;
+            width: 116px; height: 116px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 26px;
+          }
+          .boot-logo-ring {
+            position: absolute;
+            inset: -8px;
+            border-radius: 32px;
+            background: conic-gradient(
+              from 0deg,
+              rgba(91, 141, 255, 0.6),
+              rgba(168, 85, 247, 0.4),
+              rgba(91, 141, 255, 0),
+              rgba(91, 141, 255, 0.6)
+            );
+            opacity: 0.55;
+            filter: blur(8px);
+            animation: boot-ring-spin 4s linear infinite;
+          }
+          @keyframes boot-ring-spin {
+            to { transform: rotate(360deg); }
+          }
+          .boot-logo-card {
+            position: relative;
+            width: 96px; height: 96px;
+            border-radius: 26px;
+            background: #0e0f14;
+            box-shadow:
+              0 0 0 1px rgba(255, 255, 255, 0.06),
+              0 30px 80px -10px rgba(0, 0, 0, 0.7),
+              inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            animation: boot-card-pulse 2.4s ease-in-out infinite;
+          }
+          @keyframes boot-card-pulse {
+            0%, 100% { transform: scale(1); }
+            50%      { transform: scale(1.035); }
+          }
+          .boot-logo-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+          }
+
+          .boot-wordmark {
+            margin: 0 0 6px;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #fff;
+          }
+          .boot-tagline {
+            margin: 0 0 30px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.28em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.35);
+          }
+
+          .boot-dots {
+            display: flex;
+            gap: 6px;
+          }
+          .boot-dots span {
+            width: 5px; height: 5px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.45);
+            animation: boot-dot 1.2s ease-in-out infinite;
+          }
+          .boot-dots span:nth-child(2) { animation-delay: 0.15s; }
+          .boot-dots span:nth-child(3) { animation-delay: 0.3s; }
+          @keyframes boot-dot {
+            0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+            40%           { opacity: 1;    transform: scale(1.1); }
+          }
+        `}</style>
       </div>
     </>
   );
