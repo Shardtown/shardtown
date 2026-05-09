@@ -11,6 +11,7 @@ import { Wiki } from "@/routes/Wiki";
 import { Terms } from "@/routes/Terms";
 import { Privacy } from "@/routes/Privacy";
 import { Outils } from "@/routes/Outils";
+import { DesktopOverview } from "@/routes/desktop/Overview";
 import { Premium } from "@/routes/Premium";
 import { ShardServer } from "@/routes/shard/Server";
 import { ShardGuild } from "@/routes/shard/Guild";
@@ -76,7 +77,7 @@ export function App() {
                   <Route path="/premium" element={<Premium />} />
                 </>
               )}
-              <Route path="/outils" element={<Outils />} />
+              <Route path="/outils" element={IS_DESKTOP ? <DesktopOverview /> : <Outils />} />
               {/* Ancien chemin — redirige vers /outils pour ne rien casser */}
               <Route path="/dashboard" element={<Navigate to="/outils" replace />} />
               <Route path="/shard/server" element={<ShardServer />} />
