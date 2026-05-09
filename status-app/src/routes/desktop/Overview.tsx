@@ -125,7 +125,7 @@ export function DesktopOverview() {
       </div>
 
       {/* Per-bot quick row */}
-      <div className="grid md:grid-cols-2 gap-3 max-w-[760px]">
+      <div className="grid md:grid-cols-2 gap-3 mb-8 max-w-[760px]">
         <BotQuickCard
           to="/shardguard/server"
           icon={<Shield size={18} strokeWidth={1.8} />}
@@ -143,7 +143,110 @@ export function DesktopOverview() {
           total={sTotal}
         />
       </div>
+
+      {/* Live guild list — bots configured first, "À inviter" below */}
+      <GuildSection
+        title="Mes serveurs configurés"
+        empty="Aucun bot configuré pour l'instant. Lance « Configurer mes serveurs » ci-dessus."
+        guilds={[
+          ...g.shardguard.filter(x => x.bot_present).map(x => ({ ...x, bot: "shardguard" as const })),
+          ...g.shard.filter(x => x.bot_present).map(x => ({ ...x, bot: "shard" as const })),
+        ]}
+        loading={g.loading}
+      />
+
+      <GuildSection
+        title="Serveurs à configurer"
+        empty="Aucun serveur en attente."
+        guilds={[
+          ...g.shardguard.filter(x => !x.bot_present).map(x => ({ ...x, bot: "shardguard" as const })),
+          ...g.shard.filter(x => !x.bot_present).map(x => ({ ...x, bot: "shard" as const })),
+        ]}
+        loading={g.loading}
+        muted
+      />
     </AppLayout>
+  );
+}
+
+interface GuildRowItem extends GuildSummary {
+  bot: "shardguard" | "shard";
+}
+
+function GuildSection({
+  title, empty, guilds, loading, muted,
+}: {
+  title: string;
+  empty: string;
+  guilds: GuildRowItem[];
+  loading: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <div className="mb-7 max-w-[760px]">
+      <div className="flex items-baseline justify-between mb-2.5">
+        <p className="text-[12px] font-bold tracking-[0.16em] uppercase text-white/[0.38]">{title}</p>
+        {!loading && <span className="text-[11px] text-white/[0.18] tabular-nums">{guilds.length}</span>}
+      </div>
+      {loading ? (
+        <div className="space-y-1.5">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="h-[58px] rounded-[14px] bg-white/[0.025] border border-white/[0.06] animate-pulse" />
+          ))}
+        </div>
+      ) : guilds.length === 0 ? (
+        <p className="px-4 py-3.5 rounded-[14px] bg-white/[0.025] border border-dashed border-white/[0.06] text-[12.5px] text-white/[0.38]">
+          {empty}
+        </p>
+      ) : (
+        <div className="space-y-1.5">
+          {guilds.map(g => <GuildRow key={`${g.bot}:${g.id}`} g={g} muted={muted} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GuildRow({ g, muted }: { g: GuildRowItem; muted?: boolean }) {
+  const iconUrl = g.icon
+    ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64`
+    : null;
+  const initials = g.name.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase().slice(0, 2);
+  const target = g.bot_present ? `/${g.bot}/guild/${g.id}` : `/${g.bot}/server`;
+  const BotIcon = g.bot === "shardguard" ? Shield : Zap;
+
+  return (
+    <Link
+      to={target}
+      className="group flex items-center gap-3 p-2.5 pr-3.5 rounded-[14px] bg-white/[0.025] border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.18] transition-colors"
+    >
+      {iconUrl ? (
+        <img src={iconUrl} alt="" className="w-9 h-9 rounded-[10px] object-cover border border-white/[0.06] flex-shrink-0" />
+      ) : (
+        <div className="w-9 h-9 rounded-[10px] bg-white/[0.05] border border-white/[0.06] flex items-center justify-center text-[12.5px] font-bold text-white/[0.62] flex-shrink-0">
+          {initials || "?"}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-[13.5px] font-semibold flex items-center gap-2 truncate">
+          {g.name}
+          {g.owner && (
+            <span className="text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full bg-amber-500/[0.06] border border-amber-500/25 text-amber-400">
+              Owner
+            </span>
+          )}
+        </p>
+        <p className="text-[11.5px] text-white/[0.38] flex items-center gap-1.5 mt-0.5">
+          <BotIcon size={11} strokeWidth={1.8} />
+          {g.bot === "shardguard" ? "ShardGuard" : "Shard"}
+          <span className="text-white/[0.18]">·</span>
+          <span className={muted ? "text-white/[0.38]" : "text-emerald-400"}>
+            {g.bot_present ? "Configuré" : "À inviter"}
+          </span>
+        </p>
+      </div>
+      <ArrowUpRight size={13} strokeWidth={2} className="text-white/[0.18] group-hover:text-white/[0.62] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+    </Link>
   );
 }
 
