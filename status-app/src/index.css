@@ -26,7 +26,52 @@
     --input: 0 0% 10%;
     --ring: 0 0% 60%;
     --radius: 1rem;
+
+    /* Desktop-shell variables — what DesktopShell / DesktopOverview /
+       DesktopRpc / DesktopPreferences read. Overridden in light mode
+       below. The web SPA keeps its current dark Tailwind styling. */
+    --ds-bg: #0c0d10;
+    --ds-bg-1: #101115;
+    --ds-bg-2: #15161b;
+    --ds-text: #f5f5f7;
+    --ds-text-mut: rgba(245, 245, 247, 0.62);
+    --ds-text-dim: rgba(245, 245, 247, 0.38);
+    --ds-text-faint: rgba(245, 245, 247, 0.18);
+    --ds-border: rgba(255, 255, 255, 0.06);
+    --ds-border-strong: rgba(255, 255, 255, 0.18);
+    --ds-panel: rgba(255, 255, 255, 0.025);
+    --ds-panel-2: rgba(255, 255, 255, 0.05);
+    --ds-accent-bg: #ffffff;
+    --ds-accent-fg: #000000;
   }
+
+  [data-theme="light"] {
+    --ds-bg: #f5f5f7;
+    --ds-bg-1: #ffffff;
+    --ds-bg-2: #ffffff;
+    --ds-text: #0c0d10;
+    --ds-text-mut: rgba(12, 13, 16, 0.62);
+    --ds-text-dim: rgba(12, 13, 16, 0.42);
+    --ds-text-faint: rgba(12, 13, 16, 0.22);
+    --ds-border: rgba(0, 0, 0, 0.08);
+    --ds-border-strong: rgba(0, 0, 0, 0.22);
+    --ds-panel: rgba(0, 0, 0, 0.02);
+    --ds-panel-2: rgba(0, 0, 0, 0.05);
+    --ds-accent-bg: #0c0d10;
+    --ds-accent-fg: #ffffff;
+  }
+
+  /* Sidebar nav-item hover (theme-aware, replaces the prior Tailwind
+     hover classes that had hardcoded white opacity). */
+  .nav-item:hover:not(.nav-item-active) {
+    background: var(--ds-panel);
+    color: var(--ds-text) !important;
+  }
+  .nav-item:hover:not(.nav-item-active) svg {
+    color: var(--ds-text-mut) !important;
+  }
+  .nav-item.nav-item-active svg { color: var(--ds-text) !important; }
+  .nav-item:not(.nav-item-active) svg { color: var(--ds-text-faint); }
 
   * { border-color: hsl(var(--border)); }
   html, body, #root { height: 100%; min-height: 100%; margin: 0; }

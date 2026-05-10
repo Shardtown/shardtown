@@ -1135,23 +1135,37 @@ app.use('/assets', express.static(path.join(SPA_DIST, 'assets'), { maxAge: '1y',
 
 // Lightweight session info for the React app
 app.get('/api/me', async (req, res) => {
-    // Prefer the new accounts session (email/password / OAuth)
+    // Prefer the new accounts session (email/password / OAuth). When a
+    // Discord is linked we surface its id/username/avatar so the SPA's
+    // avatar helper can build the right cdn.discordapp.com URL — without
+    // this the avatar shows blank for users who signed up with GitHub
+    // (or email) and only later linked Discord.
     if (req.session?.account?.id && db) {
         try {
             const [rows] = await db.execute(
-                'SELECT id, email, pseudo FROM accounts WHERE id = ? LIMIT 1',
+                `SELECT id, email, pseudo,
+                        discord_id, discord_username, discord_avatar
+                 FROM accounts WHERE id = ? LIMIT 1`,
                 [req.session.account.id]
             );
             const a = rows[0];
             if (a) {
                 return res.json({
-                    user: {
-                        id: a.id,
-                        username: a.pseudo,
-                        global_name: a.pseudo,
-                        avatar: null,
-                        discriminator: null,
-                    }
+                    user: a.discord_id
+                        ? {
+                            id: a.discord_id,
+                            username: a.discord_username || a.pseudo,
+                            global_name: a.discord_username || a.pseudo,
+                            avatar: a.discord_avatar || null,
+                            discriminator: null,
+                        }
+                        : {
+                            id: a.id,
+                            username: a.pseudo,
+                            global_name: a.pseudo,
+                            avatar: null,
+                            discriminator: null,
+                        },
                 });
             }
             // Stale session pointing to deleted account
