@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  LayoutGrid, Shield, Zap, User, LogOut, Sparkles,
+  LayoutGrid, Shield, Zap, User, LogOut, Sparkles, Settings,
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
-import { tokenClear, IS_DESKTOP } from "@/lib/desktop";
+import { tokenClear, biometricConfirm, IS_DESKTOP } from "@/lib/desktop";
 import { setBearerToken, apiPost } from "@/api/client";
 
 /**
@@ -24,6 +24,12 @@ export function DesktopShell({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    // Touch ID gate on the desktop — destructive enough that we don't
+    // want a stray click to lock the user out.
+    if (IS_DESKTOP) {
+      const ok = await biometricConfirm("Confirme avec Touch ID pour te déconnecter");
+      if (!ok) return;
+    }
     // Web logout endpoint clears the server session; for desktop we also
     // wipe the local Keychain so the next launch shows the PAT screen.
     await apiPost("/api/account/logout").catch(() => {});
@@ -75,6 +81,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
         </p>
         <nav className="flex flex-col gap-px">
           <NavItem to="/account" active={isActive("/account")} icon={<User size={15} strokeWidth={1.8} />} label="Mon compte" />
+          <NavItem to="/preferences" active={isActive("/preferences")} icon={<Settings size={15} strokeWidth={1.8} />} label="Préférences" />
         </nav>
 
         {/* Sidebar footer — user row + logout */}

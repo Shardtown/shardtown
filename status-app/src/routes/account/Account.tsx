@@ -9,6 +9,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@/api/passkey";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost, apiDelete, isApiError } from "@/api/client";
+import { biometricConfirm } from "@/lib/desktop";
 import { useAuth } from "@/api/auth";
 import type { Account as AccountT } from "@/api/account";
 
@@ -147,6 +148,10 @@ export function Account() {
     const target = tokenToDelete;
     if (!target) return;
     setTokenToDelete(null);
+    // Touch ID prompt on desktop — token revocation can lock the user out
+    // of any app that's currently using it.
+    const ok = await biometricConfirm(`Révoquer le token « ${target.name} »`);
+    if (!ok) return;
     try {
       await apiDelete(`/api/account/tokens/${target.id}`);
       setBanner({ kind: "ok", text: `Token « ${target.name} » révoqué.` });

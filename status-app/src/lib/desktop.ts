@@ -46,6 +46,26 @@ export async function tokenClear(): Promise<void> {
   await invoke<void>("token_clear");
 }
 
+/* ─── Biometric confirmation ──────────────────────────────────────────── */
+
+/**
+ * Prompts the user with the macOS Touch ID system dialog. Returns true if
+ * the user authenticated successfully, false if they cancelled or biometry
+ * isn't available. In web mode the prompt is bypassed (returns true) — the
+ * caller stays in charge of any web-side confirm() they need.
+ */
+export async function biometricConfirm(reason: string): Promise<boolean> {
+  if (!IS_DESKTOP) return true;
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return await invoke<boolean>("biometric_confirm", { reason });
+  } catch {
+    // No biometry hardware / not enrolled — fail open so the user can still
+    // operate the app on a Mac without Touch ID.
+    return true;
+  }
+}
+
 /* ─── External link opener ────────────────────────────────────────────── */
 
 /**

@@ -158,6 +158,40 @@ fn rpc_status(state: tauri::State<'_, RpcState>) -> Result<bool, String> {
     Ok(inner.client.is_some())
 }
 
+/// ─── Touch ID / biometric confirmation ───────────────────────────────────
+/// Wraps macOS LocalAuthentication so the JS side can prompt for Touch ID
+/// before destructive actions. Returns Ok(true) if the user authenticated,
+/// Ok(false) if they cancelled, Err otherwise (no biometrics available,
+/// Touch ID disabled, etc.).
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn biometric_confirm(reason: String) -> Result<bool, String> {
+    use localauthentication_rs::{LAPolicy, LocalAuthentication};
+    // Off the main thread so the UI stays responsive while the system
+    // dialog is up.
+    tauri::async_runtime::spawn_blocking(move || {
+        let auth = LocalAuthentication::new();
+        let label = if reason.trim().is_empty() {
+            "Confirmer cette action".to_string()
+        } else {
+            reason
+        };
+        Ok(auth.evaluate_policy(
+            LAPolicy::DeviceOwnerAuthenticationWithBiometrics,
+            &label,
+        ))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+async fn biometric_confirm(_reason: String) -> Result<bool, String> {
+    // No biometrics on non-mac targets — fall through.
+    Ok(true)
+}
+
 /// Build the standard macOS menu bar: app submenu (Shardtown) → Edition →
 /// Window → Help. Without this, Cmd+Q, Cmd+W, Cmd+C/V/X don't fire and the
 /// app doesn't feel native.
@@ -285,6 +319,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             token_get, token_set, token_clear,
             rpc_set, rpc_clear, rpc_disconnect, rpc_status,
+            biometric_confirm,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
