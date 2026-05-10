@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::menu::{AboutMetadataBuilder, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::Manager;
+use tauri::{LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
 
 // Service identifier appears in Keychain Access as the "Where" column.
 // Account is constant — there's exactly one logged-in user per app instance.
@@ -244,10 +244,98 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// macOS-style status-bar tray icon: click reveals/focuses the main window,
-/// right-click opens a small menu with quick actions. Mirrors NordVPN /
-/// Slack behavior. Reuses the bundle's default window icon so we don't have
-/// to decode PNG bytes ourselves at runtime.
+const TRAY_PANEL_LABEL: &str = "tray-panel";
+const TRAY_PANEL_WIDTH: f64 = 340.0;
+const TRAY_PANEL_HEIGHT: f64 = 440.0;
+
+/// Show / toggle the small popover that sits just under the menu-bar tray
+/// icon — NordVPN / Claude style. Created lazily on first click; subsequent
+/// clicks toggle visibility. Hides on blur so it disappears when the user
+/// clicks elsewhere.
+#[cfg(target_os = "macos")]
+fn toggle_tray_panel(app: &tauri::AppHandle, click_x: f64, monitor_scale: f64) -> tauri::Result<()> {
+    if let Some(existing) = app.get_webview_window(TRAY_PANEL_LABEL) {
+        let visible = existing.is_visible().unwrap_or(false);
+        if visible {
+            let _ = existing.hide();
+        } else {
+            // Re-position before showing in case the user moved displays
+            if let Ok(()) = position_tray_panel(&existing, click_x, monitor_scale) {
+                let _ = existing.show();
+                let _ = existing.set_focus();
+            }
+        }
+        return Ok(());
+    }
+
+    // Same SPA, but a ?panel=tray query so App.tsx renders the compact view.
+    let window = WebviewWindowBuilder::new(
+        app,
+        TRAY_PANEL_LABEL,
+        WebviewUrl::App("index.html?panel=tray".into()),
+    )
+    .title("Shardtown")
+    .inner_size(TRAY_PANEL_WIDTH, TRAY_PANEL_HEIGHT)
+    .resizable(false)
+    .decorations(false)
+    .transparent(true)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .visible(false)
+    .focused(true)
+    .build()?;
+
+    position_tray_panel(&window, click_x, monitor_scale)?;
+    let _ = window.show();
+    let _ = window.set_focus();
+
+    // Hide-on-blur: when the user clicks anywhere outside the popover the
+    // window loses focus → we tuck it away. They can re-open by clicking
+    // the tray icon again.
+    let panel_handle = window.clone();
+    window.on_window_event(move |event| {
+        if let WindowEvent::Focused(false) = event {
+            let _ = panel_handle.hide();
+        }
+    });
+
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn position_tray_panel(window: &tauri::WebviewWindow, click_x: f64, scale: f64) -> tauri::Result<()> {
+    // click_x is a physical pixel value from the tray event; convert to
+    // logical points so the position aligns regardless of retina vs
+    // non-retina screens.
+    let logical_x = click_x / scale;
+    // Center the popover under the click point, clamp so it doesn't run
+    // off the right edge of the screen.
+    let monitor = window.current_monitor()?.unwrap_or_else(|| {
+        // Fallback: try primary monitor; if even that fails we just bail.
+        window
+            .primary_monitor()
+            .ok()
+            .flatten()
+            .expect("at least one monitor")
+    });
+    let monitor_size = monitor.size();
+    let monitor_logical_w = monitor_size.width as f64 / scale;
+    let mut x = logical_x - TRAY_PANEL_WIDTH / 2.0;
+    if x + TRAY_PANEL_WIDTH > monitor_logical_w - 8.0 {
+        x = monitor_logical_w - TRAY_PANEL_WIDTH - 8.0;
+    }
+    if x < 8.0 { x = 8.0; }
+    // y = just below the menu bar (~22pt on macOS) + small gap.
+    let y = 28.0;
+    window.set_size(LogicalSize::new(TRAY_PANEL_WIDTH, TRAY_PANEL_HEIGHT))?;
+    window.set_position(LogicalPosition::new(x, y))?;
+    Ok(())
+}
+
+/// macOS-style status-bar tray icon: click opens a small popover panel
+/// with bot status + quick actions (NordVPN / Claude style). Right-click
+/// keeps the predefined menu (about / quit). Reuses the bundle's default
+/// window icon for the tray.
 #[cfg(target_os = "macos")]
 fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
     let about_metadata = AboutMetadataBuilder::new()
@@ -258,7 +346,7 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
         .website_label(Some("shardtwn.fr"))
         .build();
 
-    let show = MenuItemBuilder::with_id("show", "Ouvrir Shardtown").build(app)?;
+    let show = MenuItemBuilder::with_id("show-main", "Ouvrir Shardtown").build(app)?;
     let about = PredefinedMenuItem::about(app, Some("À propos"), Some(about_metadata))?;
     let quit = PredefinedMenuItem::quit(app, Some("Quitter Shardtown"))?;
 
@@ -281,7 +369,7 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| {
-            if event.id().as_ref() == "show" {
+            if event.id().as_ref() == "show-main" {
                 if let Some(win) = app.get_webview_window("main") {
                     let _ = win.show();
                     let _ = win.set_focus();
@@ -290,18 +378,30 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
             }
         })
         .on_tray_icon_event(|tray, event| {
-            // Left click on the icon → reveal window (NordVPN-style).
+            // Left click on the icon → open the popover panel just below
+            // the menu bar, NordVPN / Claude style. The popover hides on
+            // blur so a click anywhere else tucks it away.
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
+                position,
+                rect,
                 ..
             } = event
             {
-                if let Some(win) = tray.app_handle().get_webview_window("main") {
-                    let _ = win.show();
-                    let _ = win.set_focus();
-                    let _ = win.unminimize();
-                }
+                let app = tray.app_handle();
+                // Prefer the icon rect midpoint (more stable than the cursor
+                // position); fall back to the cursor x if rect isn't usable.
+                let icon_x = (rect.position.x + rect.size.width / 2.0) as f64;
+                let cursor_x = position.x;
+                let click_x = if icon_x > 0.0 { icon_x } else { cursor_x };
+                // Best-effort monitor scale; default to 2.0 on retina if
+                // we can't query it (macOS).
+                let scale = app
+                    .get_webview_window("main")
+                    .and_then(|w| w.scale_factor().ok())
+                    .unwrap_or(2.0);
+                let _ = toggle_tray_panel(app, click_x, scale);
             }
         })
         .build(app)?;

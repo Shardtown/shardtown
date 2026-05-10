@@ -15,6 +15,7 @@ import { DesktopOverview } from "@/routes/desktop/Overview";
 import { DesktopRpc } from "@/routes/desktop/Rpc";
 import { DesktopPreferences } from "@/routes/desktop/Preferences";
 import { DesktopBotServer } from "@/routes/desktop/BotServer";
+import { TrayPanel } from "@/routes/desktop/TrayPanel";
 import { Premium } from "@/routes/Premium";
 import { ShardServer } from "@/routes/shard/Server";
 import { ShardGuild } from "@/routes/shard/Guild";
@@ -33,7 +34,14 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 // desktop app — they redirect to the tools hub when running in Tauri.
 const HOME_ROUTE = IS_DESKTOP ? "/outils" : "/";
 
+// Tauri opens a secondary window with ?panel=tray for the menu-bar
+// popover. That window mounts the same SPA but should render only the
+// compact TrayPanel — no router, no shell, no main dashboard.
+const IS_TRAY_PANEL = typeof window !== "undefined"
+  && new URLSearchParams(window.location.search).get("panel") === "tray";
+
 export function App() {
+  if (IS_TRAY_PANEL) return <TrayPanel />;
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [loading, setLoading] = useState(true);
 
