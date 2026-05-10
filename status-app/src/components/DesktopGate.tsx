@@ -35,6 +35,17 @@ export function DesktopGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!IS_DESKTOP) return;
     let cancelled = false;
+    // Soft launch chime (~120ms in to align with the logo settling). One
+    // shot, fire-and-forget; if autoplay is blocked by WebView policy we
+    // just stay silent instead of erroring out.
+    setTimeout(() => {
+      if (cancelled) return;
+      try {
+        const audio = new Audio("/sounds/Glass.aiff");
+        audio.volume = 0.45;
+        audio.play().catch(() => {});
+      } catch { /* */ }
+    }, 120);
     // The intro plays in full, regardless of how fast the auth check
     // resolves. Treat it as a brand moment, not a load indicator.
     const introDone = new Promise<void>(r => setTimeout(r, INTRO_MS));
