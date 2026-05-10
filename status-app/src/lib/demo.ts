@@ -199,6 +199,23 @@ export function mockApiCall(method: string, path: string, _body?: unknown): Mock
   return ok({ guilds: [], user: null, success: true });
 }
 
+function buildChartData(): Record<string, { join: number; leave: number; success: number; failed: number }> {
+  // 14 days of fake activity so the live-stats cards render charts.
+  const out: Record<string, { join: number; leave: number; success: number; failed: number }> = {};
+  const today = new Date();
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const join = 5 + Math.floor(Math.random() * 18);
+    const leave = Math.floor(Math.random() * 4);
+    const success = Math.max(0, join - Math.floor(Math.random() * 3));
+    const failed = join - success;
+    out[key] = { join, leave, success, failed };
+  }
+  return out;
+}
+
 function mockShardGuardGuild(guildId: string) {
   const guild = DEMO_GUILDS_SG.find(g => g.id === guildId) ?? DEMO_GUILDS_SG[0];
   return {
@@ -214,22 +231,56 @@ function mockShardGuardGuild(guildId: string) {
       accessCode: "",
       verificationChannelId: "300000000000000005",
       accessCodeChannelId: "",
+      captchaDigits: 5,
+      captchaNoise: "medium",
+      captchaAttempts: 3,
+      verificationTimeout: 5,
+      autoKickUnverified: "false",
       modRoles: JSON.stringify(["400000000000000004", "400000000000000005"]),
       bannedWords: JSON.stringify(["spam", "raid"]),
-      antiRaidThreshold: "5",
-      antiRaidWindow: "10",
-      logChannelId: "300000000000000004",
-      panicMode: "off",
+      bannedWordsEnabled: "true",
+      bannedWordsAction: "warn",
+      automodAntiSpam: "true",
+      automodSpamThreshold: 5,
+      automodSpamInterval: 10,
+      automodSpamAction: "mute",
+      automodAntiLinks: "false",
+      automodLinksAction: "delete",
+      automodAntiRaid: "true",
+      automodRaidThreshold: 5,
+      automodRaidAction: "lockdown",
+      warnMessage: "Tu as reçu un avertissement.",
+      muteMessage: "Tu es mute pour {duration}.",
+      kickMessage: "Tu as été kick.",
+      banMessage: "Tu as été ban.",
+      notifAutoDelete: "true",
+      notifDeleteDelay: 30,
+      automodAntiCaps: "false",
+      automodCapsThreshold: 70,
+      automodCapsAction: "delete",
+      automodSlowmodeEnabled: "false",
+      automodSlowmodeDuration: 10,
+      automodSlowmodeExpiry: 5,
+      warnThresholdMute: 3,
+      warnThresholdKick: 5,
+      warnThresholdBan: 7,
+      warnMuteDuration: 10,
+      isPremium: "0",
+      antiRaidEnabled: "true",
+      antiRaidThreshold: 5,
+      antiRaidWindow: 10,
+      quarantineEnabled: "false",
+      quarantineRoleId: "",
+      quarantineDuration: 30,
+      modAlertUserId: "",
+      webhookAlertEnabled: "false",
+      webhookAlertChannelId: "",
     },
     stats: {
       totalMembers: 1247,
       verifiedCount: 1098,
-      joins7d: [12, 8, 15, 22, 18, 11, 14],
-      success7d: [10, 7, 14, 20, 16, 11, 13],
-      warns7d: 4,
-      bans7d: 1,
     },
-    days: ["2026-05-04", "2026-05-05", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-09", "2026-05-10"],
+    chartData: buildChartData(),
   };
 }
 
@@ -238,8 +289,13 @@ function mockShardGuild(guildId: string) {
   return {
     guild: { id: guild.id, name: guild.name, icon: guild.icon },
     channels: DEMO_CHANNELS,
-    categories: [{ id: "500000000000000001", name: "Tickets", type: 4 }],
+    voiceChannels: [
+      { id: "600000000000000001", name: "Vocal général" },
+      { id: "600000000000000002", name: "Création vocal" },
+    ],
+    categories: [{ id: "500000000000000001", name: "Tickets" }],
     roles: DEMO_ROLES,
+    guildEmojis: [],
     settings: {
       welcomeChannelId: "300000000000000005",
       welcomeTitle: "Bienvenue !",
@@ -251,15 +307,44 @@ function mockShardGuild(guildId: string) {
       leaveMessage: "{username} a quitté le serveur.",
       leaveFooter: "",
       leaveColor: "#ed4245",
+      autoRoleId: "400000000000000002",
+      tempVoiceTrigger: "600000000000000002",
+      tempVoiceCategory: "500000000000000001",
+      tempVoiceName: "Salon de {user}",
+      levelsEnabled: "true",
+      xpMin: 15,
+      xpMax: 25,
+      xpCooldown: 60,
+      levelUpChannelId: "300000000000000001",
+      levelUpMessage: "{user} vient de passer niveau {level} !",
+      levelUpColor: "#5865f2",
+      levelThresholds: JSON.stringify([100, 250, 500, 1000, 2500]),
+      levelRewards: JSON.stringify([]),
+      xpRoleMultipliers: JSON.stringify([]),
+      ticketEnabled: "true",
+      ticketCategoryId: "500000000000000001",
+      ticketSupportRoleId: "400000000000000004",
+      ticketLogChannelId: "300000000000000004",
+      ticketMaxPerUser: 1,
+      ticketPanelChannelId: "300000000000000001",
+      ticketPanelTitle: "Support",
+      ticketPanelDescription: "Clique pour ouvrir un ticket",
+      ticketPanelColor: "#5865f2",
       birthdayChannelId: "300000000000000002",
       birthdayRoleId: "400000000000000003",
       birthdayMessage: "🎂 Joyeux anniversaire {user} !",
-      levelsEnabled: "true",
-      levelThresholds: "100,250,500,1000,2500",
-      levelRewards: "[]",
-      xpRoleMultipliers: "[]",
-      autoRoleId: "400000000000000002",
+      economyEnabled: "true",
+      economyCurrencyName: "Pièces",
+      economyDailyMin: 50,
+      economyDailyMax: 150,
+      isPremium: "0",
+      referralEnabled: "false",
+      referralReward: 100,
       autoReactions: [],
     },
+    giveaways: [],
+    scheduledAnnouncements: [],
+    shopItems: [],
+    polls: [],
   };
 }

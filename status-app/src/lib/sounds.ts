@@ -31,12 +31,25 @@ export interface SoundPreset {
 
 export const PRESETS: SoundPreset[] = [
   { id: "none",       label: "Silencieux",   url: "" },
+  // Aigus / précis
   { id: "ping",       label: "Ping",         url: "/sounds/Tink.aiff" },
   { id: "pop",        label: "Pop",          url: "/sounds/Pop.aiff" },
+  { id: "bottle",     label: "Bouteille",    url: "/sounds/Bottle.aiff" },
+  { id: "blow",       label: "Souffle",      url: "/sounds/Blow.aiff" },
+  // Mid / chimes
   { id: "chime",      label: "Carillon",     url: "/sounds/Glass.aiff" },
-  { id: "alert",      label: "Alerte",       url: "/sounds/Funk.aiff" },
-  { id: "siren",      label: "Sirène",       url: "/sounds/Submarine.aiff" },
   { id: "bell",       label: "Cloche",       url: "/sounds/Hero.aiff" },
+  { id: "purr",       label: "Ronron",       url: "/sounds/Purr.aiff" },
+  // Alertes
+  { id: "alert",      label: "Alerte",       url: "/sounds/Funk.aiff" },
+  { id: "sosumi",     label: "Sosumi",       url: "/sounds/Sosumi.aiff" },
+  { id: "frog",       label: "Crapaud",      url: "/sounds/Frog.aiff" },
+  // Graves / lourds
+  { id: "basso",      label: "Basso",        url: "/sounds/Basso.aiff" },
+  { id: "siren",      label: "Sirène",       url: "/sounds/Submarine.aiff" },
+  { id: "morse",      label: "Morse",        url: "/sounds/Morse.aiff" },
+  // Signature Shardtown
+  { id: "shardtown",  label: "Shardtown",    url: "/sounds/shardtown-launch.wav" },
 ];
 
 export interface SoundEventMeta {

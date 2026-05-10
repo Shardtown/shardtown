@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Volume2, VolumeX, Play, Bell, Fingerprint, Sparkles, PlayCircle } from "lucide-react";
+import { Volume2, VolumeX, Bell, Fingerprint, Sparkles, PlayCircle } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
-  EVENTS, PRESETS,
-  loadSoundsConfig, saveSoundsConfig, playPreset,
+  EVENTS,
+  loadSoundsConfig, saveSoundsConfig,
   type SoundsConfig, type SoundEvent,
 } from "@/lib/sounds";
+import { SoundPicker } from "@/components/SoundPicker";
 import { OnboardingTour } from "@/components/OnboardingTour";
 
 /**
@@ -154,31 +155,15 @@ function EventRow({
   volume: number;
 }) {
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-[12px] bg-white/[0.025] border border-white/[0.06] transition-opacity ${disabled ? "opacity-50" : ""}`}>
+    <div
+      className={`flex items-center gap-3 p-3 rounded-[12px] border transition-opacity ${disabled ? "opacity-50" : ""}`}
+      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+    >
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-semibold leading-tight">{label}</p>
-        <p className="text-[11.5px] text-white/[0.38] mt-0.5">{description}</p>
+        <p className="text-[11.5px] mt-0.5" style={{ color: "var(--ds-text-dim)" }}>{description}</p>
       </div>
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        disabled={disabled}
-        className="px-3 py-1.5 rounded-[10px] bg-black/40 border border-white/[0.06] focus:border-white/[0.18] focus:bg-black/60 outline-none text-white text-[12px] transition-colors disabled:opacity-50"
-      >
-        {PRESETS.map(p => (
-          <option key={p.id} value={p.id}>{p.label}</option>
-        ))}
-      </select>
-      <button
-        type="button"
-        onClick={() => playPreset(value, volume)}
-        disabled={disabled || value === "none"}
-        aria-label="Tester"
-        title="Tester"
-        className="w-8 h-8 rounded-[10px] bg-white/[0.025] border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.18] flex items-center justify-center text-white/[0.62] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-      >
-        <Play size={11} strokeWidth={2} />
-      </button>
+      <SoundPicker value={value} onChange={onChange} disabled={disabled} volume={volume} />
     </div>
   );
 }
