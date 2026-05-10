@@ -12,6 +12,7 @@
  */
 
 import { IS_DESKTOP, API_BASE } from "../lib/desktop";
+import { isDemoMode, mockApiCall } from "../lib/demo";
 
 /**
  * Error thrown by the API client. Exposes the HTTP status code and the
@@ -112,6 +113,20 @@ interface TransportOptions {
  */
 async function rawSend({ method, path, body, stream }: TransportOptions): Promise<Response> {
   const url = `${API_BASE}${path}`;
+
+  // Demo mode short-circuits all network. We return a synthetic Response
+  // built from the mock module so the rest of the pipeline (apiGet / send
+  // / parseError) keeps working unchanged. Fully offline-capable.
+  if (isDemoMode()) {
+    const mock = mockApiCall(method, path, body);
+    if (mock) {
+      const text = typeof mock.body === "string" ? mock.body : JSON.stringify(mock.body);
+      return new Response(text, {
+        status: mock.status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+  }
 
   if (IS_DESKTOP) {
     const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");

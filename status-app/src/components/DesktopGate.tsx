@@ -3,6 +3,7 @@ import { Loader2, KeyRound, ExternalLink } from "lucide-react";
 import { IS_DESKTOP, tokenGet, tokenSet, openExternal } from "@/lib/desktop";
 import { apiGet, ApiError, setBearerToken } from "@/api/client";
 import { OnboardingTour, shouldShowOnboarding } from "@/components/OnboardingTour";
+import { DEMO_TOKEN, isDemoToken, enableDemoMode, disableDemoMode, isDemoMode } from "@/lib/demo";
 
 type State =
   | { kind: "boot" }
@@ -287,6 +288,19 @@ function DesktopLogin({
     }
     setBusy(true);
     setError(null);
+    // Demo mode bypasses the backend entirely — mock responses are served
+    // by lib/demo.ts. Lets users try the app fully offline.
+    if (isDemoToken(trimmed)) {
+      enableDemoMode();
+      setBearerToken(trimmed);
+      await tokenSet(trimmed);
+      setBusy(false);
+      onSuccess();
+      return;
+    }
+    // Anyone running with a previously enabled demo flag who now types a
+    // real token should fall out of demo mode.
+    disableDemoMode();
     try {
       setBearerToken(trimmed);
       // Validate before persisting — never write a bad token to the keychain.
@@ -354,6 +368,17 @@ function DesktopLogin({
             className="text-[12px] text-white/55 hover:text-white underline underline-offset-[3px] inline-flex items-center justify-center gap-1.5 mt-2 mx-auto"
           >
             Générer un token <ExternalLink size={11} strokeWidth={2} />
+          </button>
+
+          {/* Demo hint — easy to overlook for real users, easy to find for
+              the curious. Click pre-fills the magic offline token. */}
+          <button
+            type="button"
+            onClick={() => setToken(DEMO_TOKEN)}
+            className="text-[10.5px] text-white/30 hover:text-white/65 mx-auto mt-1 transition-colors"
+            title="Mode démo offline — pré-remplit la clé de test"
+          >
+            Pas de compte ? Essayer en mode démo
           </button>
         </form>
 

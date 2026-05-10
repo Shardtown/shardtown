@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
 import { tokenClear, biometricConfirm, IS_DESKTOP } from "@/lib/desktop";
+import { disableDemoMode, isDemoMode } from "@/lib/demo";
 import { setBearerToken, apiPost } from "@/api/client";
 import { getStoredTheme, setTheme, type Theme } from "@/lib/theme";
 
@@ -33,8 +34,9 @@ export function DesktopShell({ children }: { children: ReactNode }) {
 
   async function logout() {
     // Touch ID gate on the desktop — destructive enough that we don't
-    // want a stray click to lock the user out.
-    if (IS_DESKTOP) {
+    // want a stray click to lock the user out. Skip in demo mode where
+    // there's nothing critical to protect.
+    if (IS_DESKTOP && !isDemoMode()) {
       const ok = await biometricConfirm("Confirme avec Touch ID pour te déconnecter");
       if (!ok) return;
     }
@@ -44,6 +46,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
     if (IS_DESKTOP) {
       setBearerToken(null);
       await tokenClear().catch(() => {});
+      disableDemoMode();
     }
     refresh();
     // Hard reload so the DesktopGate runs again and lands on the PAT login.
@@ -173,6 +176,7 @@ function NavItem({
 
 function StatusBar() {
   const { user } = useAuth();
+  const demo = isDemoMode();
   return (
     <div
       className="flex-shrink-0 px-12 py-3 border-t flex items-center gap-3.5 text-[11.5px]"
@@ -180,14 +184,24 @@ function StatusBar() {
     >
       <span
         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border"
-        style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+        style={{
+          background: demo ? "rgba(251, 191, 36, 0.08)" : "var(--ds-panel)",
+          borderColor: demo ? "rgba(251, 191, 36, 0.25)" : "var(--ds-border)",
+        }}
       >
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgb(74,222,128)]" />
-        Connecté
+        <span
+          className="w-1.5 h-1.5 rounded-full"
+          style={demo
+            ? { background: "rgb(251, 191, 36)", boxShadow: "0 0 8px rgb(251, 191, 36)" }
+            : { background: "rgb(74, 222, 128)", boxShadow: "0 0 8px rgb(74, 222, 128)" }}
+        />
+        <span style={demo ? { color: "rgb(251, 191, 36)" } : undefined}>
+          {demo ? "Mode démo" : "Connecté"}
+        </span>
       </span>
       <span>{user?.username || "—"}</span>
       <span style={{ color: "var(--ds-text-faint)" }}>·</span>
-      <span>shardtwn.fr</span>
+      <span>{demo ? "données simulées" : "shardtwn.fr"}</span>
       <span className="ml-auto font-mono text-[10.5px]" style={{ color: "var(--ds-text-faint)" }}>v0.1.1</span>
     </div>
   );
