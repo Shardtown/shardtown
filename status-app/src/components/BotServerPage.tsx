@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Lock, ArrowRight } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, isApiError } from "@/api/client";
@@ -88,12 +89,12 @@ export function BotServerPage({
           <p className="text-white/50 text-lg mb-10 leading-relaxed">
             Connectez-vous à votre compte Shardtown (avec Discord lié) pour gérer vos serveurs.
           </p>
-          <a
-            href="/account/login"
+          <Link
+            to="/account/login"
             className="btn-liquid btn-liquid--primary rounded-full px-8 py-4 font-bold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2"
           >
             Se connecter <ArrowRight className="w-4 h-4" />
-          </a>
+          </Link>
         </section>
       </AppLayout>
     );
@@ -156,9 +157,9 @@ export function BotServerPage({
         {guildsWithBot.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-20">
             {guildsWithBot.map(g => (
-              <a
+              <Link
                 key={g.id}
-                href={`${configRoutePrefix}/${g.id}`}
+                to={`${configRoutePrefix}/${g.id}`}
                 className="group bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 flex items-center gap-5 hover:border-white/20 hover:bg-white/[0.04] hover:-translate-y-0.5 transition-all"
               >
                 <div className="relative flex-shrink-0">
@@ -182,7 +183,7 @@ export function BotServerPage({
                   </span>
                 </div>
                 <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" strokeWidth={2.5} />
-              </a>
+              </Link>
             ))}
           </div>
         ) : (
