@@ -103,7 +103,7 @@ function ok<T>(body: T): MockResponse<T> {
   return { status: 200, body };
 }
 
-export function mockApiCall(method: string, path: string, body?: unknown): MockResponse | null {
+export function mockApiCall(method: string, path: string, _body?: unknown): MockResponse | null {
   // Strip leading host prefix when set (desktop adds https://shardtwn.fr).
   const cleanPath = path.replace(/^https?:\/\/[^/]+/, "");
   const url = new URL(cleanPath, "http://demo");

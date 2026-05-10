@@ -3,7 +3,7 @@ import { Loader2, KeyRound, ExternalLink } from "lucide-react";
 import { IS_DESKTOP, tokenGet, tokenSet, openExternal } from "@/lib/desktop";
 import { apiGet, ApiError, setBearerToken } from "@/api/client";
 import { OnboardingTour, shouldShowOnboarding } from "@/components/OnboardingTour";
-import { DEMO_TOKEN, isDemoToken, enableDemoMode, disableDemoMode, isDemoMode } from "@/lib/demo";
+import { DEMO_TOKEN, isDemoToken, enableDemoMode, disableDemoMode } from "@/lib/demo";
 
 type State =
   | { kind: "boot" }
