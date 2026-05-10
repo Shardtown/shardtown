@@ -254,16 +254,16 @@ function TrayActionRow({
 function TrayStyles() {
   return (
     <style>{`
-      html, body, #root { background: transparent; overflow: hidden; }
+      html, body, #root {
+        background: #0e0f14;
+        overflow: hidden;
+        height: 100%;
+        margin: 0;
+      }
       .tray-panel {
         position: relative;
-        width: 340px; height: 440px;
-        background: rgba(14, 15, 20, 0.92);
-        backdrop-filter: blur(40px) saturate(180%);
-        -webkit-backdrop-filter: blur(40px) saturate(180%);
-        border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.7);
+        width: 100%; height: 100%;
+        background: #0e0f14;
         color: #f5f5f7;
         font-family: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
         font-size: 13px;

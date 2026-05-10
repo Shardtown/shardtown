@@ -269,6 +269,9 @@ fn toggle_tray_panel(app: &tauri::AppHandle, click_x: f64, monitor_scale: f64) -
     }
 
     // Same SPA, but a ?panel=tray query so App.tsx renders the compact view.
+    // `transparent(true)` requires the macos-private-api feature, which we
+    // don't enable to keep the build vanilla. The popover uses a solid
+    // dark background instead — looks intentional, no vibrancy fudge.
     let window = WebviewWindowBuilder::new(
         app,
         TRAY_PANEL_LABEL,
@@ -278,7 +281,6 @@ fn toggle_tray_panel(app: &tauri::AppHandle, click_x: f64, monitor_scale: f64) -
     .inner_size(TRAY_PANEL_WIDTH, TRAY_PANEL_HEIGHT)
     .resizable(false)
     .decorations(false)
-    .transparent(true)
     .always_on_top(true)
     .skip_taskbar(true)
     .visible(false)
@@ -390,11 +392,22 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
             } = event
             {
                 let app = tray.app_handle();
-                // Prefer the icon rect midpoint (more stable than the cursor
-                // position); fall back to the cursor x if rect isn't usable.
-                let icon_x = (rect.position.x + rect.size.width / 2.0) as f64;
+                // Tauri 2.x wraps rect.position / size in enums (Physical
+                // vs Logical) — unwrap to a physical f64 here, falling back
+                // to the cursor x if the rect isn't usable.
+                let icon_x_opt: Option<f64> = match rect.position {
+                    tauri::Position::Physical(p) => Some(p.x as f64),
+                    tauri::Position::Logical(p) => Some(p.x),
+                };
+                let icon_w: f64 = match rect.size {
+                    tauri::Size::Physical(s) => s.width as f64,
+                    tauri::Size::Logical(s) => s.width,
+                };
                 let cursor_x = position.x;
-                let click_x = if icon_x > 0.0 { icon_x } else { cursor_x };
+                let click_x = icon_x_opt
+                    .map(|x| x + icon_w / 2.0)
+                    .filter(|&x| x > 0.0)
+                    .unwrap_or(cursor_x);
                 // Best-effort monitor scale; default to 2.0 on retina if
                 // we can't query it (macOS).
                 let scale = app
