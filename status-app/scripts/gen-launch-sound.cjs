@@ -1,19 +1,18 @@
 #!/usr/bin/env node
 /**
- * Shardtown launch sound — v3: cinematic with pre-impact rise + reverb.
+ * Shardtown launch sound — v4: continuous swell, harmonic coherence, soft tail.
  *
- * Three layers:
- * 1. PRE-RISE (0.0–0.6s) — filtered white noise sweeping up + an
- *    ascending pitched element. Builds anticipation. Fades to silence
- *    just before the hit.
- * 2. HIT + BLOOM (0.6s) — sub-bass impact at 55Hz with pitch envelope,
- *    Cmaj9 chord struck like a bell with inharmonic partials, staggered
- *    note entries so the chord opens up.
- * 3. REVERB TAIL (0.6–4s) — fake convolution via 4 stacked feedback
- *    delays at prime intervals, mixed under the dry signal. Gives the
- *    sound space and a long natural decay.
- *
- * Stereo. Slight per-voice panning so the chord feels wide.
+ * Fixes from v3:
+ * - The pre-rise was noise + a glide F2→C3 unrelated to the chord, which
+ *   felt disconnected. Now the rise IS the chord — sub C2/C3 fundamentals
+ *   plus a higher C5 sparkle swelling in. Same harmonic family throughout,
+ *   so the impact feels like the chord finally "anchoring" instead of
+ *   appearing out of nowhere.
+ * - No more discrete pre-rise → impact → tail layers. The bell partials
+ *   start their attack during the rise, just at very low amplitude, so
+ *   there's no perceptible "switch" between sections.
+ * - Long exponential fade over 1.2s at the end — the linear fade in v3
+ *   was making the tail die abruptly.
  *
  * Run: node scripts/gen-launch-sound.cjs
  * Output: public/sounds/shardtown-launch.wav
@@ -23,100 +22,118 @@ const fs = require("fs");
 const path = require("path");
 
 const SAMPLE_RATE = 44100;
-const DURATION = 4.0;
+const DURATION = 4.5;
 const N = Math.floor(SAMPLE_RATE * DURATION);
-const HIT_AT = 0.6; // when the chord lands
+const HIT_AT = 0.7; // peak intensity moment
 
 const left = new Float32Array(N);
 const right = new Float32Array(N);
 
 function pan(p, s, leftBuf, rightBuf, i) {
-  // Equal-power panning. p in [-1, 1].
   const l = Math.cos((p + 1) * Math.PI / 4);
   const r = Math.sin((p + 1) * Math.PI / 4);
   leftBuf[i] += s * l;
   rightBuf[i] += s * r;
 }
 
-/* ─── 1. Pre-rise: filtered noise + ascending sine ─────────────────── */
-let lpfPrev = 0;
-for (let i = 0; i < N; i++) {
-  const t = i / SAMPLE_RATE;
-  if (t > HIT_AT) break;
-  const k = t / HIT_AT; // 0 → 1
-  // White noise → simple lowpass that opens up over time
-  const cutoff = 0.02 + 0.4 * k; // 0..1 normalized
-  const noise = Math.random() * 2 - 1;
-  lpfPrev = lpfPrev + cutoff * (noise - lpfPrev);
-  const noiseEnv = Math.pow(k, 2) * (1 - Math.pow(k, 8)) * 0.18;
-  pan(0, lpfPrev * noiseEnv, left, right, i);
-
-  // Ascending sine glide — F2 (87Hz) up to C3 (130.8Hz) over 600ms
-  const f = 87 + (130.8 - 87) * Math.pow(k, 1.5);
-  const riseEnv = Math.pow(k, 1.8) * (1 - Math.pow(k, 12)) * 0.08;
-  const rise = Math.sin(2 * Math.PI * f * t);
-  pan(0, rise * riseEnv, left, right, i);
-}
-
-/* ─── 2. Hit: sub-bass impact ──────────────────────────────────────── */
-function addImpact() {
-  const f = 55;
-  for (let i = 0; i < N; i++) {
-    const t = i / SAMPLE_RATE - HIT_AT;
-    if (t < 0 || t > 0.4) continue;
-    const env = t < 0.003 ? t / 0.003 : Math.exp(-t / 0.08);
-    const pitched = f * (1 + 0.5 * Math.exp(-t / 0.05));
-    const s = 0.55 * env * Math.sin(2 * Math.PI * pitched * t);
-    pan(0, s, left, right, i);
+/** Smooth swell envelope: ease-in to peak at HIT_AT, then bell-like decay. */
+function bellEnv(t, swellSec, decaySec) {
+  if (t < 0) return 0;
+  if (t < swellSec) {
+    // ease-in cubic — smoother than linear
+    const k = t / swellSec;
+    return k * k * (3 - 2 * k);
   }
+  return Math.exp(-(t - swellSec) / decaySec);
 }
-addImpact();
 
-/* ─── 2. Hit: Cmaj9 bell chord, staggered + panned ─────────────────── */
-function addBellVoice(start, f, amp, panning) {
+/* ─── Bell voice with continuous swell + decay (no segmentation) ────── */
+function addBellVoice(start, swell, f, amp, panning) {
   const partials = [
-    { ratio: 1.00, amp: 1.00, decay: 2.4 },
-    { ratio: 2.00, amp: 0.42, decay: 1.7 },
-    { ratio: 3.01, amp: 0.28, decay: 1.1 },
+    { ratio: 1.00, amp: 1.00, decay: 2.6 },
+    { ratio: 2.00, amp: 0.42, decay: 1.8 },
+    { ratio: 3.01, amp: 0.28, decay: 1.2 },
     { ratio: 4.07, amp: 0.18, decay: 0.7 },
     { ratio: 5.10, amp: 0.10, decay: 0.4 },
   ];
   for (let i = 0; i < N; i++) {
-    const t = i / SAMPLE_RATE - (HIT_AT + start);
+    const t = i / SAMPLE_RATE - start;
     if (t < 0) continue;
-    const attack = t < 0.003 ? t / 0.003 : 1;
     let s = 0;
     for (const p of partials) {
-      s += p.amp * Math.exp(-t / p.decay) * Math.sin(2 * Math.PI * f * p.ratio * t);
+      const env = bellEnv(t, swell, p.decay);
+      s += p.amp * env * Math.sin(2 * Math.PI * f * p.ratio * t);
     }
-    pan(panning, s * amp * attack, left, right, i);
+    pan(panning, s * amp, left, right, i);
   }
 }
 
+/**
+ * The chord builds in over the swell time — every voice starts at t=0 but
+ * with its own swell duration so they fade in staggered yet smoothly. The
+ * voices that "hit later" actually have shorter swells, so the perceived
+ * "blooming" comes from the swell durations, not from gaps in time.
+ */
 const chord = [
-  { f:  65.41, start: 0.00, amp: 0.18, pan:  0.00 }, // C2  centered bass
-  { f: 130.81, start: 0.00, amp: 0.20, pan:  0.00 }, // C3  centered
-  { f: 164.81, start: 0.04, amp: 0.18, pan: -0.35 }, // E3  left
-  { f: 196.00, start: 0.08, amp: 0.18, pan:  0.35 }, // G3  right
-  { f: 246.94, start: 0.13, amp: 0.16, pan: -0.55 }, // B3  more left
-  { f: 293.66, start: 0.20, amp: 0.14, pan:  0.55 }, // D4  more right
+  // Sub-bass + bass: long swell so they're present from the start
+  { f:  65.41, swell: 0.65, amp: 0.20, pan:  0.00 }, // C2  bass
+  { f: 130.81, swell: 0.65, amp: 0.22, pan:  0.00 }, // C3
+  // Mid voices: medium swell, panned for width
+  { f: 164.81, swell: 0.55, amp: 0.20, pan: -0.30 }, // E3  left
+  { f: 196.00, swell: 0.50, amp: 0.20, pan:  0.30 }, // G3  right
+  // High voices: shorter swell, more outboard pan, "sparkle" coming in last
+  { f: 246.94, swell: 0.42, amp: 0.18, pan: -0.55 }, // B3
+  { f: 293.66, swell: 0.35, amp: 0.16, pan:  0.55 }, // D4
+  // Top harmonic — high C5 as the cinematic "sparkle"
+  { f: 523.25, swell: 0.55, amp: 0.10, pan:  0.00 }, // C5
 ];
-for (const n of chord) addBellVoice(n.start, n.f, n.amp, n.pan);
+for (const n of chord) addBellVoice(0, n.swell, n.f, n.amp, n.pan);
 
-/* ─── 3. Reverb tail: 4 stacked feedback delays at prime intervals ── */
+/* ─── Soft sub-bass "weight" that swells in and lingers ─────────────── */
+// Not a discrete impact — a continuous low rumble that anchors the chord.
+for (let i = 0; i < N; i++) {
+  const t = i / SAMPLE_RATE;
+  // Swell in over 500ms, peak around HIT_AT, then very slow decay
+  const swellEnv = t < 0.5 ? Math.pow(t / 0.5, 2) : Math.exp(-(t - 0.5) / 2.2);
+  // Two slightly detuned subs (32.7 and 32.85 Hz, C1) for warmth without clash
+  const sub = 0.5 * Math.sin(2 * Math.PI * 32.70 * t)
+            + 0.5 * Math.sin(2 * Math.PI * 32.85 * t);
+  const s = sub * swellEnv * 0.18;
+  left[i]  += s;
+  right[i] += s;
+}
+
+/* ─── Air shimmer — very subtle filtered noise that adds "space" ─────── */
+let lpfL = 0, lpfR = 0;
+for (let i = 0; i < N; i++) {
+  const t = i / SAMPLE_RATE;
+  // Swell in slowly, fade out by 3s
+  const env = t < HIT_AT
+    ? Math.pow(t / HIT_AT, 2.5) * 0.5
+    : Math.exp(-(t - HIT_AT) / 1.8) * 0.5;
+  if (env < 0.001) continue;
+  // Stereo decorrelated noise, lowpass for "air" not "hiss"
+  const cutoff = 0.06;
+  const nL = Math.random() * 2 - 1;
+  const nR = Math.random() * 2 - 1;
+  lpfL = lpfL + cutoff * (nL - lpfL);
+  lpfR = lpfR + cutoff * (nR - lpfR);
+  left[i]  += lpfL * env * 0.05;
+  right[i] += lpfR * env * 0.05;
+}
+
+/* ─── Reverb: stacked feedback delays, longer + smoother ────────────── */
 function addReverb(buf, otherBuf) {
-  // Different delay times per channel for natural width.
   const delays = buf === left
-    ? [0.0379, 0.0631, 0.0911, 0.1283]
-    : [0.0413, 0.0587, 0.0941, 0.1217];
-  const feedback = 0.62;
-  const mix = 0.32;
+    ? [0.0379, 0.0631, 0.0911, 0.1283, 0.1721]
+    : [0.0413, 0.0587, 0.0941, 0.1217, 0.1759];
+  const feedback = 0.68;
+  const mix = 0.36;
   const wet = new Float32Array(N);
   for (const d of delays) {
     const ds = Math.floor(d * SAMPLE_RATE);
     for (let i = ds; i < N; i++) {
-      // Inject the dry signal + the prior wet content (cross-channel for stereo spread)
-      wet[i] += feedback * 0.25 * (buf[i - ds] + 0.4 * otherBuf[i - ds] + wet[i - ds]);
+      wet[i] += feedback * 0.20 * (buf[i - ds] + 0.45 * otherBuf[i - ds] + wet[i - ds]);
     }
   }
   for (let i = 0; i < N; i++) buf[i] += wet[i] * mix;
@@ -124,35 +141,39 @@ function addReverb(buf, otherBuf) {
 addReverb(left, right);
 addReverb(right, left);
 
-/* ─── Master tail fade + soft limiter ─────────────────────────────── */
-const fadeStart = Math.floor((DURATION - 0.6) * SAMPLE_RATE);
+/* ─── Master: long exponential fade-out so the tail dies smoothly ───── */
+const fadeStart = Math.floor((DURATION - 1.2) * SAMPLE_RATE);
 for (let i = fadeStart; i < N; i++) {
+  // Exponential rather than linear — perceptually smoother for decays.
   const k = (N - i) / (N - fadeStart);
-  left[i]  *= k;
-  right[i] *= k;
+  const env = k * k; // ease-out
+  left[i]  *= env;
+  right[i] *= env;
 }
-function limit(buf) {
+
+/* ─── Soft saturation instead of hard limiter — warmer than clipping ── */
+function softSat(buf) {
   for (let i = 0; i < N; i++) {
     const v = buf[i];
-    if (v > 0.95) buf[i] = 0.95 + (v - 0.95) * 0.1;
-    else if (v < -0.95) buf[i] = -0.95 + (v + 0.95) * 0.1;
+    // tanh-like soft clip via algebraic approximation
+    buf[i] = v / (1 + Math.abs(v) * 0.4);
   }
 }
-limit(left); limit(right);
+softSat(left); softSat(right);
 
-/* ─── Write 16-bit stereo PCM WAV ─────────────────────────────────── */
+/* ─── 16-bit stereo PCM WAV ─────────────────────────────────────────── */
 const HEADER_LEN = 44;
-const buf = Buffer.alloc(HEADER_LEN + N * 4); // 2 channels × 2 bytes
+const buf = Buffer.alloc(HEADER_LEN + N * 4);
 buf.write("RIFF", 0);
 buf.writeUInt32LE(36 + N * 4, 4);
 buf.write("WAVE", 8);
 buf.write("fmt ", 12);
 buf.writeUInt32LE(16, 16);
-buf.writeUInt16LE(1, 20);                   // PCM
-buf.writeUInt16LE(2, 22);                   // stereo
+buf.writeUInt16LE(1, 20);
+buf.writeUInt16LE(2, 22);
 buf.writeUInt32LE(SAMPLE_RATE, 24);
-buf.writeUInt32LE(SAMPLE_RATE * 4, 28);     // byte rate (sr * 4)
-buf.writeUInt16LE(4, 32);                   // block align
+buf.writeUInt32LE(SAMPLE_RATE * 4, 28);
+buf.writeUInt16LE(4, 32);
 buf.writeUInt16LE(16, 34);
 buf.write("data", 36);
 buf.writeUInt32LE(N * 4, 40);
@@ -168,3 +189,5 @@ const out = path.resolve(__dirname, "..", "public", "sounds", "shardtown-launch.
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, buf);
 console.log(`wrote ${out} (${(buf.length / 1024).toFixed(1)} KB, ${DURATION}s @ ${SAMPLE_RATE}Hz, stereo)`);
+
+void HIT_AT; // referenced only in comments now
