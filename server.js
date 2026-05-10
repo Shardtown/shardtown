@@ -938,10 +938,15 @@ app.use(async (req, res, next) => {
 // auth — no per-route refactor needed.
 const BEARER_RE = /^Bearer\s+(.+)$/i;
 app.use(async (req, res, next) => {
-    if (req.session?.account?.id) return next();
     const auth = req.headers.authorization || '';
     const m = BEARER_RE.exec(auth);
+    // No bearer token → fall through to whatever cookie-based session
+    // express-session has set up.
     if (!m) return next();
+    // If a bearer is present we ALWAYS validate it, even when an existing
+    // session cookie is also attached. The bearer is the source of truth
+    // for desktop clients; otherwise the global CSRF guard would block
+    // every POST because the bearer-authed request wouldn't be flagged.
     const tokenHash = crypto.createHash('sha256').update(m[1].trim()).digest('hex');
     try {
         const [rows] = await db.execute(
