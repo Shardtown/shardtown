@@ -64,7 +64,7 @@ export function DesktopOverview() {
   return (
     <AppLayout>
       {/* Hero status — the centerpiece, NordVPN's "Quick Connect" panel */}
-      <div className="relative overflow-hidden rounded-[22px] border border-white/[0.06] bg-[#15161b] p-8 mb-3 max-w-[760px]">
+      <div className="relative overflow-hidden rounded-[22px] border border-white/[0.06] bg-[#15161b] p-8 mb-3">
         <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full bg-[radial-gradient(circle,rgba(91,141,255,0.08),transparent_65%)] pointer-events-none" />
         <div className="relative">
           <div className="flex items-center gap-2 text-[11.5px] font-bold tracking-[0.16em] uppercase text-emerald-400 mb-3.5">
@@ -103,7 +103,7 @@ export function DesktopOverview() {
       </div>
 
       {/* Stat tiles */}
-      <div className="grid grid-cols-3 gap-2.5 mb-8 max-w-[760px]">
+      <div className="grid grid-cols-3 gap-2.5 mb-8">
         <StatTile
           icon={<Shield size={15} strokeWidth={1.8} />}
           label="ShardGuard"
@@ -125,7 +125,7 @@ export function DesktopOverview() {
       </div>
 
       {/* Per-bot quick row */}
-      <div className="grid md:grid-cols-2 gap-3 mb-8 max-w-[760px]">
+      <div className="grid md:grid-cols-2 gap-3 mb-8">
         <BotQuickCard
           to="/shardguard/server"
           icon={<Shield size={18} strokeWidth={1.8} />}
@@ -183,7 +183,7 @@ function GuildSection({
   muted?: boolean;
 }) {
   return (
-    <div className="mb-7 max-w-[760px]">
+    <div className="mb-7">
       <div className="flex items-baseline justify-between mb-2.5">
         <p className="text-[12px] font-bold tracking-[0.16em] uppercase text-white/[0.38]">{title}</p>
         {!loading && <span className="text-[11px] text-white/[0.18] tabular-nums">{guilds.length}</span>}
