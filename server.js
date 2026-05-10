@@ -4681,6 +4681,12 @@ function generateCsrfToken(req) {
 }
 
 function verifyCsrf(req, res, next) {
+    // Bearer-authed requests carry an explicit Authorization header, which
+    // browsers don't attach automatically — they're not vulnerable to CSRF
+    // by definition. Skip the check so legacy routes that opt in to
+    // verifyCsrf directly (admin login, etc.) keep working for desktop
+    // clients that authenticate via PAT.
+    if (req.bearerAuthed) return next();
     const token = req.body._csrf || req.headers['x-csrf-token'];
     const expected = req.session.csrfSecret
         ? crypto.createHmac('sha256', req.session.csrfSecret).update('csrf').digest('hex')
