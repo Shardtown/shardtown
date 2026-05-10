@@ -8,6 +8,7 @@ import {
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost, isApiError } from "@/api/client";
+import { IS_DESKTOP } from "@/lib/desktop";
 import type { ShardGuardGuildData, SGSettings } from "@/api/shardguard";
 import { SaveBar } from "@/components/shardguard/SaveBar";
 import { ScreenTimeCard } from "@/components/ui/screen-time-card";
@@ -105,7 +106,7 @@ export function ShardGuardGuild() {
   if (loading) {
     return (
       <AppLayout>
-        <section className="container-wide pt-24 md:pt-32">
+        <section className={IS_DESKTOP ? "px-2 pt-4" : "container-wide pt-24 md:pt-32"}>
           <div className="h-4 w-32 bg-white/5 rounded-full animate-pulse mb-6" />
           <div className="h-20 w-3/4 bg-white/5 rounded animate-pulse mb-12" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-10">
@@ -132,7 +133,7 @@ export function ShardGuardGuild() {
   if (error || !data || !draft) {
     return (
       <AppLayout>
-        <section className="container-wide pt-24 text-center max-w-xl mx-auto">
+        <section className={IS_DESKTOP ? "px-2 pt-8 text-center max-w-xl mx-auto" : "container-wide pt-24 text-center max-w-xl mx-auto"}>
           <p className="text-red-400 mb-4">{error || "Aucune donnée"}</p>
           <Link to="/shardguard/server" className="btn-liquid btn-liquid--primary rounded-full px-6 py-3 font-bold text-sm inline-flex items-center justify-center">Retour aux serveurs</Link>
         </section>
@@ -171,26 +172,28 @@ export function ShardGuardGuild() {
 
   return (
     <AppLayout>
-      <section className="container-wide pt-24 md:pt-32 pb-32">
+      <section className={IS_DESKTOP ? "px-2 pt-2 pb-32" : "container-wide pt-24 md:pt-32 pb-32"}>
         {/* Back link — same pill aesthetic as the rest of the site */}
         <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: heroEase }}
-          className="mb-10"
+          className={IS_DESKTOP ? "mb-3" : "mb-10"}
         >
           <Link
             to="/shardguard/server"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 text-[12px] font-bold uppercase tracking-[0.2em] text-white/55 hover:text-white transition-colors"
+            className={IS_DESKTOP
+              ? "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/[0.18] text-[10.5px] font-semibold tracking-wide text-white/55 hover:text-white transition-colors"
+              : "inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 text-[12px] font-bold uppercase tracking-[0.2em] text-white/55 hover:text-white transition-colors"}
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Mes serveurs
           </Link>
         </motion.div>
 
-        {/* HERO — same editorial treatment as the home : overline + Inter Black uppercase */}
-        <header className="mb-16 md:mb-20">
-          <div className="flex items-center gap-6 flex-wrap mb-8">
+        {/* HERO — compact in desktop, full editorial on web */}
+        <header className={IS_DESKTOP ? "mb-6" : "mb-16 md:mb-20"}>
+          <div className={IS_DESKTOP ? "flex items-center gap-3.5 mb-3" : "flex items-center gap-6 flex-wrap mb-8"}>
             <motion.div
               className="flex-shrink-0"
               initial={{ opacity: 0, scale: reduce ? 1 : 0.85 }}
@@ -201,10 +204,14 @@ export function ShardGuardGuild() {
                 <img
                   src={guildIcon}
                   alt=""
-                  className="w-20 h-20 md:w-24 md:h-24 rounded-2xl border border-white/10 shadow-2xl"
+                  className={IS_DESKTOP
+                    ? "w-11 h-11 rounded-xl border border-white/10"
+                    : "w-20 h-20 md:w-24 md:h-24 rounded-2xl border border-white/10 shadow-2xl"}
                 />
               ) : (
-                <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-3xl font-extrabold text-white/70 shadow-2xl">
+                <div className={IS_DESKTOP
+                  ? "w-11 h-11 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-base font-extrabold text-white/70"
+                  : "w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-3xl font-extrabold text-white/70 shadow-2xl"}>
                   {data.guild.name[0]?.toUpperCase()}
                 </div>
               )}
@@ -215,10 +222,14 @@ export function ShardGuardGuild() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.7, delay: 0.1, ease: heroEase }}
             >
-              <h1 className="font-extrabold tracking-tight leading-[0.95] truncate text-4xl md:text-6xl lg:text-7xl">
+              <h1 className={IS_DESKTOP
+                ? "font-extrabold tracking-tight leading-tight truncate text-[22px]"
+                : "font-extrabold tracking-tight leading-[0.95] truncate text-4xl md:text-6xl lg:text-7xl"}>
                 {data.guild.name}
               </h1>
-              <p className="text-[11px] text-white/30 font-mono-num mt-3">
+              <p className={IS_DESKTOP
+                ? "text-[10.5px] text-white/30 font-mono-num mt-1"
+                : "text-[11px] text-white/30 font-mono-num mt-3"}>
                 ID&nbsp;<span className="text-white/45">{data.guild.id}</span>
               </p>
             </motion.div>
@@ -242,7 +253,9 @@ export function ShardGuardGuild() {
               initial={{ opacity: 0, y: reduce ? 0 : 24 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.25, ease: heroEase }}
-              className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-14"
+              className={IS_DESKTOP
+                ? "grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6"
+                : "grid grid-cols-1 lg:grid-cols-3 gap-5 mb-14"}
             >
               {/* COMMUNAUTÉ */}
               <ScreenTimeCard
