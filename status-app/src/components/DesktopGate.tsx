@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Loader2, KeyRound, ExternalLink } from "lucide-react";
 import { IS_DESKTOP, tokenGet, tokenSet, openExternal } from "@/lib/desktop";
 import { apiGet, ApiError, setBearerToken } from "@/api/client";
+import { OnboardingTour, shouldShowOnboarding } from "@/components/OnboardingTour";
 
 type State =
   | { kind: "boot" }
@@ -31,6 +32,8 @@ export function DesktopGate({ children }: { children: ReactNode }) {
   // mounted with the `boot-leaving` class so it can fade out gracefully on
   // top of the incoming login/dashboard.
   const [bootLeaving, setBootLeaving] = useState(false);
+  // First-launch onboarding — flagged once and never again.
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     if (!IS_DESKTOP) return;
@@ -76,6 +79,12 @@ export function DesktopGate({ children }: { children: ReactNode }) {
       setState(next);
       setBootLeaving(true);
       setTimeout(() => { if (!cancelled) setBootLeaving(false); }, TRANSITION_MS);
+      // When landing on the dashboard for the first time, surface the
+      // onboarding tour. Delayed past the boot crossfade so it doesn't
+      // overlap with the leaving boot screen.
+      if (next.kind === "ready" && shouldShowOnboarding()) {
+        setTimeout(() => { if (!cancelled) setShowOnboarding(true); }, TRANSITION_MS + 250);
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -86,10 +95,19 @@ export function DesktopGate({ children }: { children: ReactNode }) {
       {state.kind === "login" && (
         <DesktopLogin
           reason={state.reason}
-          onSuccess={() => setState({ kind: "ready" })}
+          onSuccess={() => {
+            setState({ kind: "ready" });
+            // First-time setup: pop the tour right after login if not done.
+            if (shouldShowOnboarding()) {
+              setTimeout(() => setShowOnboarding(true), 600);
+            }
+          }}
         />
       )}
       {state.kind === "ready" && <>{children}</>}
+      {state.kind === "ready" && IS_DESKTOP && showOnboarding && (
+        <OnboardingTour onClose={() => setShowOnboarding(false)} />
+      )}
       {/* Boot leaves on top with a fade/scale-out so the swap reads as one
           fluid motion instead of a hard cut. */}
       {bootLeaving && <BootScreen leaving />}

@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Volume2, VolumeX, Play, Bell, Fingerprint } from "lucide-react";
+import { Volume2, VolumeX, Play, Bell, Fingerprint, Sparkles, PlayCircle } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
   EVENTS, PRESETS,
   loadSoundsConfig, saveSoundsConfig, playPreset,
   type SoundsConfig, type SoundEvent,
 } from "@/lib/sounds";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 /**
  * Desktop-only Preferences page. Currently hosts:
@@ -17,6 +18,7 @@ import {
  */
 export function DesktopPreferences() {
   const [cfg, setCfg] = useState<SoundsConfig>(loadSoundsConfig);
+  const [tourOpen, setTourOpen] = useState(false);
 
   useEffect(() => { saveSoundsConfig(cfg); }, [cfg]);
 
@@ -83,6 +85,25 @@ export function DesktopPreferences() {
           </div>
         </Section>
 
+        {/* ─── Tour ──────────────────────────────────────────── */}
+        <Section title="Découverte" icon={<Sparkles size={14} strokeWidth={2} />}>
+          <div className="rounded-[14px] bg-white/[0.025] border border-white/[0.06] p-4 flex items-center gap-3">
+            <div className="flex-1">
+              <p className="text-[13px] font-semibold mb-0.5">Revoir le tour guidé</p>
+              <p className="text-[12px] text-white/[0.62]">8 étapes, environ 1 minute. Présentation des modules.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTourOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-[12px] font-semibold transition-opacity hover:opacity-80"
+              style={{ borderColor: "var(--ds-border-strong)", color: "var(--ds-text)" }}
+            >
+              <PlayCircle size={13} strokeWidth={2} />
+              Lancer le tour
+            </button>
+          </div>
+        </Section>
+
         {/* ─── Touch ID ──────────────────────────────────────── */}
         <Section title="Sécurité biométrique" icon={<Fingerprint size={14} strokeWidth={2} />}>
           <div className="rounded-[14px] bg-white/[0.025] border border-white/[0.06] p-4">
@@ -99,6 +120,7 @@ export function DesktopPreferences() {
           </div>
         </Section>
       </div>
+      {tourOpen && <OnboardingTour onClose={() => setTourOpen(false)} />}
     </AppLayout>
   );
 }
