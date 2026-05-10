@@ -14,6 +14,7 @@ import { Outils } from "@/routes/Outils";
 import { DesktopOverview } from "@/routes/desktop/Overview";
 import { DesktopRpc } from "@/routes/desktop/Rpc";
 import { DesktopPreferences } from "@/routes/desktop/Preferences";
+import { DesktopBotServer } from "@/routes/desktop/BotServer";
 import { Premium } from "@/routes/Premium";
 import { ShardServer } from "@/routes/shard/Server";
 import { ShardGuild } from "@/routes/shard/Guild";
@@ -84,9 +85,9 @@ export function App() {
               {IS_DESKTOP && <Route path="/preferences" element={<DesktopPreferences />} />}
               {/* Ancien chemin — redirige vers /outils pour ne rien casser */}
               <Route path="/dashboard" element={<Navigate to="/outils" replace />} />
-              <Route path="/shard/server" element={<ShardServer />} />
+              <Route path="/shard/server" element={IS_DESKTOP ? <DesktopBotServer kind="shard" /> : <ShardServer />} />
               <Route path="/shard/guild/:guildId" element={<ShardGuild />} />
-              <Route path="/shardguard/server" element={<ShardGuardServer />} />
+              <Route path="/shardguard/server" element={IS_DESKTOP ? <DesktopBotServer kind="shardguard" /> : <ShardGuardServer />} />
               <Route path="/shardguard/guild/:guildId" element={<ShardGuardGuild />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<Admin />} />
