@@ -10,6 +10,7 @@
     "frontendDist": "../../status-app/dist"
   },
   "app": {
+    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "Shardtown",

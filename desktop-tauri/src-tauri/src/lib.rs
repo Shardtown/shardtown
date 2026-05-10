@@ -269,9 +269,8 @@ fn toggle_tray_panel(app: &tauri::AppHandle, click_x: f64, monitor_scale: f64) -
     }
 
     // Same SPA, but a ?panel=tray query so App.tsx renders the compact view.
-    // `transparent(true)` requires the macos-private-api feature, which we
-    // don't enable to keep the build vanilla. The popover uses a solid
-    // dark background instead — looks intentional, no vibrancy fudge.
+    // Transparent window enables the rounded corners + soft shadow drawn
+    // by the CSS in the panel. Requires macos-private-api feature.
     let window = WebviewWindowBuilder::new(
         app,
         TRAY_PANEL_LABEL,
@@ -281,6 +280,8 @@ fn toggle_tray_panel(app: &tauri::AppHandle, click_x: f64, monitor_scale: f64) -
     .inner_size(TRAY_PANEL_WIDTH, TRAY_PANEL_HEIGHT)
     .resizable(false)
     .decorations(false)
+    .transparent(true)
+    .shadow(false)
     .always_on_top(true)
     .skip_taskbar(true)
     .visible(false)
@@ -360,10 +361,11 @@ fn build_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
         .item(&quit)
         .build()?;
 
-    let icon = app
-        .default_window_icon()
-        .cloned()
-        .expect("bundle ships a default window icon");
+    // Dedicated tray icon (NOT the app's window icon) so the menu-bar
+    // logo can be distinct from the dock icon. Embedded at compile time
+    // from src-tauri/icons/tray.png.
+    let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))
+        .expect("tray.png is a valid PNG bundled at compile time");
 
     TrayIconBuilder::with_id("main")
         .icon(icon)
@@ -434,6 +436,17 @@ pub fn run() {
             rpc_set, rpc_clear, rpc_disconnect, rpc_status,
             biometric_confirm,
         ])
+        // Hide-instead-of-quit on the main window: the user can close the
+        // main window with ⌘W but the app keeps running with just the
+        // menu-bar tray icon visible. ⌘Q quits properly.
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .setup(|app| {
             #[cfg(target_os = "macos")]
             {

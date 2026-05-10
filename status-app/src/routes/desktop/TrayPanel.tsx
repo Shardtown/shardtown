@@ -255,15 +255,22 @@ function TrayStyles() {
   return (
     <style>{`
       html, body, #root {
-        background: #0e0f14;
+        background: transparent;
         overflow: hidden;
         height: 100%;
         margin: 0;
       }
       .tray-panel {
         position: relative;
-        width: 100%; height: 100%;
-        background: #0e0f14;
+        width: calc(100% - 24px);
+        height: calc(100% - 24px);
+        margin: 8px 12px 16px;
+        background: #15161b;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        box-shadow:
+          0 24px 60px -10px rgba(0, 0, 0, 0.5),
+          0 8px 20px -5px rgba(0, 0, 0, 0.35);
         color: #f5f5f7;
         font-family: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
         font-size: 13px;
