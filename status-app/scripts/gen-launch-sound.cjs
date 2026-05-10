@@ -1,20 +1,21 @@
 #!/usr/bin/env node
 /**
- * Shardtown launch sound — v5: clean pad chord, nothing else.
+ * Shardtown launch sound — v6: Glass-style chime, mid-register, short.
  *
- * Previous versions (bells, sub impact, noise shimmer) sounded synthetic
- * and overengineered. This one strips back to a single idea: a soft pad
- * chord swelling in, holding, fading out, drowned in reverb. Like the
- * BBC iPlayer or Linear app launch — confident in its restraint.
+ * The previous pad (v5) was too high — bright sparkle, long swell, way
+ * more elaborate than what's needed. Glass is short (~600ms), two soft
+ * tones in the middle register, gentle decay, that's it. We adopt the
+ * same restraint with our own voicing:
  *
- * - Cmaj7 voicing across two octaves (C3 E3 G3 B3 + C4 E4 G4) for body.
- * - Each voice is pure sine + 2nd + 3rd harmonic at decreasing amps —
- *   integer ratios only, no inharmonic content, so it sounds like a
- *   warm organ/pad, never like a glass bell.
- * - Tiny per-voice detuning (0.4 cents) for natural chorus warmth.
- * - 1.0s ease-in attack, 1.0s hold, 1.5s ease-out tail.
- * - Long stereo reverb (2 stacked schroeder-style allpass + comb filters).
- * - Soft tanh saturation on the master, exponential fade-out.
+ * - F major triad in the middle register (F3 / A3 / C4) — warm but not
+ *   muddy, no top end above C4 so nothing reads as "aigu".
+ * - Bell-like additive synthesis with INTEGER harmonics (1x, 2x, 3x).
+ *   No inharmonic ratios → no metallic glass-tinkle, just a warm chime.
+ * - Notes hit with 30/60ms staggers so the chord blooms without a hard
+ *   block hit.
+ * - Bell envelope: 5ms attack ramp (no click), exponential 800ms decay.
+ * - Light Schroeder reverb, much drier than v5 (25% wet vs 45%).
+ * - Total 1.5s with 400ms tail fade.
  *
  * Run: node scripts/gen-launch-sound.cjs
  * Output: public/sounds/shardtown-launch.wav
@@ -24,33 +25,11 @@ const fs = require("fs");
 const path = require("path");
 
 const SAMPLE_RATE = 44100;
-const DURATION = 3.5;
+const DURATION = 1.5;
 const N = Math.floor(SAMPLE_RATE * DURATION);
-
-const ATTACK = 1.0;
-const HOLD = 1.0;
-// Release auto-computed from DURATION.
 
 const left = new Float32Array(N);
 const right = new Float32Array(N);
-
-/** Smooth ADSR-ish envelope: ease-in attack, sustain at 1.0, ease-out. */
-function envelope(t) {
-  if (t < 0) return 0;
-  if (t < ATTACK) {
-    const k = t / ATTACK;
-    return k * k * (3 - 2 * k); // smoothstep
-  }
-  if (t < ATTACK + HOLD) return 1;
-  const releaseStart = ATTACK + HOLD;
-  const releaseLen = DURATION - releaseStart;
-  const k = (t - releaseStart) / releaseLen;
-  if (k >= 1) return 0;
-  // ease-out cubic — slow start of the fade, fast at the very end so the
-  // tail dies gently in your ears, not abruptly.
-  const inv = 1 - k;
-  return inv * inv * inv;
-}
 
 function pan(p, s, leftBuf, rightBuf, i) {
   const l = Math.cos((p + 1) * Math.PI / 4);
@@ -59,59 +38,47 @@ function pan(p, s, leftBuf, rightBuf, i) {
   rightBuf[i] += s * r;
 }
 
-/** Pure-harmonic pad voice. No inharmonic content, no FM, no detuned saw. */
-function addPadVoice(f, amp, panning) {
-  // Two oscillators detuned by ±0.4 cents (~0.023%) for chorus warmth
-  const detune = 0.00023;
-  const f1 = f * (1 - detune);
-  const f2 = f * (1 + detune);
-  // Integer harmonics, smoothly rolling off. No 5x+ — keeps it warm,
-  // not bright/synthy.
+/**
+ * Single chime voice, integer harmonics only. The 2nd partial decays
+ * faster than the fundamental so the high content fades first — same
+ * trick a real bell uses to sound "settled" after the initial strike.
+ */
+function addChimeVoice(start, f, amp, panning) {
   const partials = [
-    { ratio: 1, amp: 1.00 },
-    { ratio: 2, amp: 0.30 },
-    { ratio: 3, amp: 0.10 },
+    { ratio: 1, amp: 1.00, decay: 0.9 },
+    { ratio: 2, amp: 0.35, decay: 0.5 },
+    { ratio: 3, amp: 0.12, decay: 0.3 },
   ];
   for (let i = 0; i < N; i++) {
-    const t = i / SAMPLE_RATE;
-    const env = envelope(t);
-    if (env < 0.0005) continue;
+    const t = i / SAMPLE_RATE - start;
+    if (t < 0) continue;
+    const attack = t < 0.005 ? t / 0.005 : 1;
     let s = 0;
     for (const p of partials) {
-      s += p.amp * 0.5 * (
-        Math.sin(2 * Math.PI * f1 * p.ratio * t)
-      + Math.sin(2 * Math.PI * f2 * p.ratio * t)
-      );
+      s += p.amp * Math.exp(-t / p.decay) * Math.sin(2 * Math.PI * f * p.ratio * t);
     }
-    pan(panning, s * amp * env, left, right, i);
+    pan(panning, s * amp * attack, left, right, i);
   }
 }
 
-/* Cmaj7 spread across 2 octaves. Pan widens with frequency for a natural
-   "lower notes centered, upper notes outboard" stage feel. */
+// F major triad, middle register. Light staggers (30ms / 60ms) so the
+// triad blooms instead of stacking instantly.
 const chord = [
-  { f: 130.81, amp: 0.18, pan:  0.00 }, // C3 (anchor bass)
-  { f: 164.81, amp: 0.16, pan: -0.20 }, // E3
-  { f: 196.00, amp: 0.16, pan:  0.20 }, // G3
-  { f: 246.94, amp: 0.14, pan: -0.40 }, // B3
-  { f: 261.63, amp: 0.14, pan:  0.00 }, // C4
-  { f: 329.63, amp: 0.12, pan:  0.40 }, // E4
-  { f: 392.00, amp: 0.10, pan: -0.55 }, // G4
+  { f: 174.61, start: 0.000, amp: 0.32, pan:  0.00 }, // F3
+  { f: 220.00, start: 0.030, amp: 0.30, pan: -0.25 }, // A3
+  { f: 261.63, start: 0.060, amp: 0.28, pan:  0.25 }, // C4
 ];
-for (const n of chord) addPadVoice(n.f, n.amp, n.pan);
+for (const n of chord) addChimeVoice(n.start, n.f, n.amp, n.pan);
 
-/* ─── Schroeder-style reverb: parallel comb filters → series allpass ── */
+/* ─── Light Schroeder reverb ─────────────────────────────────────────── */
 function combFilter(buf, delaySec, feedback, damping) {
   const ds = Math.floor(delaySec * SAMPLE_RATE);
   const out = new Float32Array(N);
   const memory = new Float32Array(ds);
-  let mi = 0;
-  let lp = 0;
+  let mi = 0, lp = 0;
   for (let i = 0; i < N; i++) {
     const sample = memory[mi];
     out[i] = sample;
-    // Damped feedback: simple onepole lowpass on the feedback signal so
-    // high frequencies decay faster — mimics natural air absorption.
     lp = lp * damping + sample * (1 - damping);
     memory[mi] = buf[i] + lp * feedback;
     mi = (mi + 1) % ds;
@@ -134,29 +101,35 @@ function allpassFilter(buf, delaySec, feedback) {
   return out;
 }
 
-function buildReverb(buf, comb1, comb2, comb3, comb4) {
-  // 4 parallel combs at primes — sums to a dense early reflection field
-  const c1 = combFilter(buf, comb1, 0.84, 0.18);
-  const c2 = combFilter(buf, comb2, 0.83, 0.20);
-  const c3 = combFilter(buf, comb3, 0.82, 0.22);
-  const c4 = combFilter(buf, comb4, 0.81, 0.24);
+function buildReverb(buf, c1, c2, c3, c4) {
+  // Smaller room than v5 — short delays, less feedback, drier mix.
+  const r1 = combFilter(buf, c1, 0.74, 0.30);
+  const r2 = combFilter(buf, c2, 0.73, 0.32);
+  const r3 = combFilter(buf, c3, 0.72, 0.34);
+  const r4 = combFilter(buf, c4, 0.71, 0.36);
   const sum = new Float32Array(N);
-  for (let i = 0; i < N; i++) sum[i] = (c1[i] + c2[i] + c3[i] + c4[i]) * 0.25;
-  // 2 series allpass for diffusion — smooths the comb sound out
+  for (let i = 0; i < N; i++) sum[i] = (r1[i] + r2[i] + r3[i] + r4[i]) * 0.25;
   const a1 = allpassFilter(sum, 0.005, 0.7);
-  const a2 = allpassFilter(a1, 0.0017, 0.7);
-  return a2;
+  return allpassFilter(a1, 0.0017, 0.7);
 }
 
-const wetL = buildReverb(left,  0.0297, 0.0371, 0.0411, 0.0437);
-const wetR = buildReverb(right, 0.0319, 0.0353, 0.0419, 0.0449);
-const wetMix = 0.45;
+const wetL = buildReverb(left,  0.0211, 0.0273, 0.0317, 0.0349);
+const wetR = buildReverb(right, 0.0227, 0.0263, 0.0331, 0.0367);
+const wetMix = 0.25;
 for (let i = 0; i < N; i++) {
-  left[i]  = left[i]  * (1 - wetMix * 0.5) + wetL[i] * wetMix;
-  right[i] = right[i] * (1 - wetMix * 0.5) + wetR[i] * wetMix;
+  left[i]  = left[i]  * (1 - wetMix * 0.4) + wetL[i] * wetMix;
+  right[i] = right[i] * (1 - wetMix * 0.4) + wetR[i] * wetMix;
 }
 
-/* ─── Master soft saturation ────────────────────────────────────────── */
+/* ─── Tail fade-out + soft saturation ───────────────────────────────── */
+const fadeStart = Math.floor((DURATION - 0.4) * SAMPLE_RATE);
+for (let i = fadeStart; i < N; i++) {
+  const k = (N - i) / (N - fadeStart);
+  const env = k * k;
+  left[i]  *= env;
+  right[i] *= env;
+}
+
 function softSat(buf) {
   for (let i = 0; i < N; i++) {
     const v = buf[i];
