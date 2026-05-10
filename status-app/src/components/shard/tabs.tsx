@@ -154,6 +154,12 @@ export function BirthdaysTab({ settings, update, channels, roles }: TabBase) {
       <Field label="Message" hint="{user} = mention du membre">
         <TextInput value={settings.birthdayMessage} onChange={e => update({ birthdayMessage: e.target.value })} placeholder="🎂 Joyeux anniversaire {user} !" />
       </Field>
+      {IS_DESKTOP && (settings.birthdayMessage || "").trim() !== "" && (
+        <div className="mt-3">
+          <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/35 mb-2">Aperçu live</p>
+          <DiscordPreview text={settings.birthdayMessage || ""} />
+        </div>
+      )}
     </SectionCard>
   );
 }
@@ -192,6 +198,12 @@ export function ScheduledTab({ guildId, channels }: TabBase & { announcements?: 
           className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
           {busy ? "Création…" : "Programmer"}
         </button>
+        {IS_DESKTOP && message.trim() !== "" && (
+          <div className="mt-4">
+            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/35 mb-2">Aperçu live</p>
+            <DiscordPreview text={message} />
+          </div>
+        )}
       </SectionCard>
       {items.length > 0 && (
         <SectionCard title="Annonces programmées">
@@ -568,13 +580,17 @@ export function EmbedBuilderTab({ guildId, channels }: TabBase) {
         {result && <p className="text-xs text-emerald-400 mt-2">{result}</p>}
       </SectionCard>
 
-      <SectionCard title="Aperçu">
-        <div className="rounded-lg border-l-4 bg-[#2b2d31] p-4" style={{ borderLeftColor: form.color }}>
-          {form.title && <p className="font-bold mb-2">{form.title}</p>}
-          {form.description && <p className="text-white/80 text-sm whitespace-pre-wrap">{form.description}</p>}
-          {form.image && <img src={form.image} alt="" className="mt-3 rounded-lg max-h-40 object-cover" onError={e => ((e.currentTarget as HTMLImageElement).style.display = "none")} />}
-          {form.footer && <p className="text-white/40 text-[11px] mt-3">{form.footer}</p>}
-        </div>
+      <SectionCard title="Aperçu live" description="Reflet pixel-faithful de ce que verra Discord">
+        <DiscordPreview
+          text=""
+          embed={{
+            title: form.title,
+            description: form.description,
+            color: form.color,
+            footer: form.footer,
+            image: form.image,
+          }}
+        />
       </SectionCard>
     </div>
   );

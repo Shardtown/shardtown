@@ -69,6 +69,16 @@ export function DesktopBotServer({ kind }: Props) {
   }
   useEffect(() => { load(); }, [kind]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Live: re-fetch the (cached) guild list every 60s + on window focus.
+  // Cheap because /api/account/guilds reads from the DB cache; the bot
+  // presence ids are themselves cached for 60s server-side.
+  useEffect(() => {
+    function onFocus() { load(); }
+    const id = setInterval(() => { if (!document.hidden) load(); }, 60_000);
+    window.addEventListener("focus", onFocus);
+    return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
+  }, [kind]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function refresh() {
     setRefreshing(true);
     try {

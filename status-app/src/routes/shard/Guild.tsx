@@ -49,27 +49,43 @@ export function ShardGuild() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     if (!guildId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const d = await apiGet<ShardGuildData>(`/api/shard/guild/${guildId}`);
-      setData(d);
-      setDraft(d.settings);
+      // Background refresh keeps the user's draft intact — only volatile
+      // structural data (channels, categories, roles) is reapplied.
+      setData(prev => silent && prev ? { ...prev, channels: d.channels, categories: d.categories, roles: d.roles } : d);
+      if (!silent) setDraft(d.settings);
       setError(null);
     } catch (e) {
       if (isApiError(e) && (e.status === 401 || e.status === 403)) {
         nav("/shard/server", { replace: true });
         return;
       }
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg || "Erreur de chargement");
+      if (!silent) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg || "Erreur de chargement");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [guildId, nav]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Live data poll (desktop only): 30s interval + on window focus, silent
+  // so the user's editing draft isn't disturbed.
+  useEffect(() => {
+    if (!IS_DESKTOP) return;
+    const id = setInterval(() => {
+      if (!document.hidden) refresh(true).catch(() => {});
+    }, 30_000);
+    function onFocus() { refresh(true).catch(() => {}); }
+    window.addEventListener("focus", onFocus);
+    return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
+  }, [refresh]);
 
   const dirty = useMemo(() => {
     if (!data || !draft) return false;

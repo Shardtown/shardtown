@@ -49,27 +49,47 @@ export function ShardGuardGuild() {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     if (!guildId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const d = await apiGet<ShardGuardGuildData>(`/api/shardguard/guild/${guildId}`);
-      setData(d);
-      setDraft(d.settings);
+      // On silent (background) refreshes only update the volatile parts —
+      // stats, channels, roles — and never touch settings so the user's
+      // unsaved draft isn't blown away mid-edit.
+      setData(prev => silent && prev ? { ...prev, stats: d.stats, channels: d.channels, roles: d.roles } : d);
+      if (!silent) setDraft(d.settings);
       setError(null);
     } catch (e) {
       if (isApiError(e) && (e.status === 401 || e.status === 403)) {
         nav("/shardguard/server", { replace: true });
         return;
       }
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg || "Erreur de chargement");
+      if (!silent) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(msg || "Erreur de chargement");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [guildId, nav]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Live data: poll the stats portion every 30s while the window is
+  // focused. Skipped automatically if the user has unsaved changes so
+  // background updates don't fight with the form.
+  useEffect(() => {
+    if (!IS_DESKTOP) return;
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      // Best-effort silent refresh; failures are swallowed.
+      refresh(true).catch(() => {});
+    }, 30_000);
+    function onFocus() { refresh(true).catch(() => {}); }
+    window.addEventListener("focus", onFocus);
+    return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
+  }, [refresh]);
 
   const dirty = useMemo(() => {
     if (!data || !draft) return false;
