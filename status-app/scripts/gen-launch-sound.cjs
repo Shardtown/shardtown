@@ -25,7 +25,7 @@ const fs = require("fs");
 const path = require("path");
 
 const SAMPLE_RATE = 44100;
-const DURATION = 1.5;
+const DURATION = 2.6;
 const N = Math.floor(SAMPLE_RATE * DURATION);
 
 const left = new Float32Array(N);
@@ -45,9 +45,9 @@ function pan(p, s, leftBuf, rightBuf, i) {
  */
 function addChimeVoice(start, f, amp, panning) {
   const partials = [
-    { ratio: 1, amp: 1.00, decay: 0.9 },
-    { ratio: 2, amp: 0.35, decay: 0.5 },
-    { ratio: 3, amp: 0.12, decay: 0.3 },
+    { ratio: 1, amp: 1.00, decay: 1.6 },
+    { ratio: 2, amp: 0.35, decay: 0.9 },
+    { ratio: 3, amp: 0.12, decay: 0.5 },
   ];
   for (let i = 0; i < N; i++) {
     const t = i / SAMPLE_RATE - start;
@@ -122,7 +122,7 @@ for (let i = 0; i < N; i++) {
 }
 
 /* ─── Tail fade-out + soft saturation ───────────────────────────────── */
-const fadeStart = Math.floor((DURATION - 0.4) * SAMPLE_RATE);
+const fadeStart = Math.floor((DURATION - 0.6) * SAMPLE_RATE);
 for (let i = fadeStart; i < N; i++) {
   const k = (N - i) / (N - fadeStart);
   const env = k * k;
