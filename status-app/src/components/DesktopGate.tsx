@@ -58,6 +58,13 @@ export function DesktopGate({ children }: { children: ReactNode }) {
       let next: State;
       if (!token) {
         next = { kind: "login" };
+      } else if (isDemoToken(token)) {
+        // Demo magic — skip the /api/account/me validation entirely
+        // since there's no network involved. Auto-enables demo mode
+        // even if localStorage was wiped between launches.
+        enableDemoMode();
+        setBearerToken(token);
+        next = { kind: "ready" };
       } else {
         setBearerToken(token);
         try {

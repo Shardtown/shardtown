@@ -12,7 +12,7 @@
  */
 
 import { IS_DESKTOP, API_BASE } from "../lib/desktop";
-import { isDemoMode, mockApiCall } from "../lib/demo";
+import { isDemoMode, mockApiCall, DEMO_TOKEN, enableDemoMode } from "../lib/demo";
 
 /**
  * Error thrown by the API client. Exposes the HTTP status code and the
@@ -42,6 +42,10 @@ const bearerListeners = new Set<(token: string | null) => void>();
 
 export function setBearerToken(token: string | null) {
   bearerToken = token;
+  // If we're handed the demo magic, auto-enable demo mode so any
+  // subsequent request goes through the mock — even if localStorage's
+  // demo flag has been wiped between launches.
+  if (token === DEMO_TOKEN) enableDemoMode();
   bearerListeners.forEach(fn => fn(token));
 }
 export function getBearerToken(): string | null { return bearerToken; }
@@ -117,7 +121,12 @@ async function rawSend({ method, path, body, stream }: TransportOptions): Promis
   // Demo mode short-circuits all network. We return a synthetic Response
   // built from the mock module so the rest of the pipeline (apiGet / send
   // / parseError) keeps working unchanged. Fully offline-capable.
-  if (isDemoMode()) {
+  //
+  // Two triggers — either the localStorage flag is on, OR the current
+  // bearer token is the demo magic. The second case covers the launch-
+  // after-localStorage-wipe scenario: keychain still has the demo
+  // token, app should automatically stay offline.
+  if (isDemoMode() || bearerToken === DEMO_TOKEN) {
     const mock = mockApiCall(method, path, body);
     if (mock) {
       const text = typeof mock.body === "string" ? mock.body : JSON.stringify(mock.body);
