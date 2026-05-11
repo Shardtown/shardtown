@@ -15,6 +15,7 @@ import { DesktopOverview } from "@/routes/desktop/Overview";
 import { DesktopRpc } from "@/routes/desktop/Rpc";
 import { DesktopPreferences } from "@/routes/desktop/Preferences";
 import { DesktopStatus } from "@/routes/desktop/Status";
+import { DesktopAccount } from "@/routes/desktop/Account";
 import { DesktopBotServer } from "@/routes/desktop/BotServer";
 import { TrayPanel } from "@/routes/desktop/TrayPanel";
 import { Premium } from "@/routes/Premium";
@@ -105,7 +106,7 @@ export function App() {
               <Route path="/account/signup" element={<Navigate to="/account/login?mode=register" replace />} />
               <Route path="/account/login" element={<AccountLogin />} />
               <Route path="/account/verify" element={<VerifyEmail />} />
-              <Route path="/account" element={<Account />} />
+              <Route path="/account" element={IS_DESKTOP ? <DesktopAccount /> : <Account />} />
               <Route path="*" element={<Navigate to={HOME_ROUTE} replace />} />
             </Routes>
           </ErrorBoundary>
