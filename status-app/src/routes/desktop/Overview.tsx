@@ -253,7 +253,7 @@ export function DesktopOverview() {
       <SectionHead title="Statistiques" muted />
       <div className="grid md:grid-cols-2 gap-3">
         <StatCard
-          icon={<img src="/image/shardguard.png" alt="" className="w-7 h-7 rounded-[8px] object-cover" />}
+          icon={<img src="/image/shardguard.png" alt="" className="w-full h-full object-cover" />}
           label="ShardGuard"
           value={`${sgConfigured} / ${sgTotal}`}
           sub="serveurs actifs"
@@ -261,7 +261,7 @@ export function DesktopOverview() {
           to="/shardguard/server"
         />
         <StatCard
-          icon={<img src="/image/shard.png" alt="" className="w-7 h-7 rounded-[8px] object-cover" />}
+          icon={<img src="/image/shard.png" alt="" className="w-full h-full object-cover" />}
           label="Shard"
           value={`${sConfigured} / ${sTotal}`}
           sub="serveurs actifs"
@@ -357,7 +357,7 @@ function StatCard({
       style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
     >
       <div
-        className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0"
+        className="w-11 h-11 rounded-[12px] overflow-hidden flex items-center justify-center flex-shrink-0"
         style={{ background: "var(--ds-panel-2)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }}
       >
         {icon}

@@ -127,64 +127,128 @@ export function DesktopRpc() {
   return (
     <AppLayout>
       <div>
-        <h1 className="text-[28px] font-black tracking-tight mb-1.5">Discord Rich Presence</h1>
-        <p
-          className="text-[13.5px] font-medium mb-7 max-w-[520px]"
-          style={{ color: "var(--ds-text-mut)" }}
+        {/* ─── HERO CARD ─────────────────────────────────────────── */}
+        <div
+          className="relative overflow-hidden rounded-[22px] border mb-5 rpc-hero"
+          style={{ borderColor: "var(--ds-border)" }}
         >
-          Personnalise ton statut Discord depuis l'app. Discord doit être ouvert pour que la connexion IPC fonctionne.
-        </p>
+          <div className="absolute inset-0 rpc-hero-bg" />
+          <div className="relative px-7 py-8">
+            <div className="flex items-center gap-3.5 mb-5">
+              <div
+                className="w-[44px] h-[44px] rounded-full flex items-center justify-center"
+                style={{
+                  background: "rgba(255, 255, 255, 0.06)",
+                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                }}
+              >
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${active ? "bg-emerald-400" : "bg-white/[0.25]"}`}
+                  style={active ? { boxShadow: "0 0 10px rgb(74, 222, 128)" } : undefined}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-[26px] font-black tracking-tight leading-[1.05]">
+                  Discord Rich Presence
+                </h1>
+                <p
+                  className="text-[13px] font-semibold mt-1 inline-flex items-center gap-1.5"
+                  style={{ color: active ? "rgb(74, 222, 128)" : "var(--ds-text-mut)" }}
+                >
+                  {active ? "Connecté à Discord" : "Inactif — lance l'activation pour pousser ton activité"}
+                </p>
+              </div>
+            </div>
 
-        {/* Status hero */}
-        <div className="relative overflow-hidden rounded-[18px] border border-white/[0.06] bg-[#15161b] p-5 mb-5 flex items-center gap-4">
-          <div className={`w-2.5 h-2.5 rounded-full ${active ? "bg-emerald-400 shadow-[0_0_10px_rgb(74,222,128)]" : "bg-white/[0.18]"}`} />
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold">
-              {active ? "Connecté à Discord" : "Inactif"}
-            </p>
-            <p className="text-[11.5px] text-white/[0.38]">
-              {active ? "Ton activité personnalisée est visible sur ton profil." : "Lance l'activation pour pousser ton activité."}
-            </p>
-          </div>
-          {active ? (
-            <>
-              <button
-                type="button"
-                onClick={clear}
-                disabled={busy}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-white/[0.18] text-[12px] font-semibold hover:bg-white/[0.025] disabled:opacity-45"
-              >
-                <Trash2 size={12} strokeWidth={2} /> Effacer
-              </button>
-              <button
-                type="button"
-                onClick={disconnect}
-                disabled={busy}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-red-500/10 border border-red-500/25 text-red-300 text-[12px] font-semibold hover:bg-red-500/20 disabled:opacity-45"
-              >
-                <Power size={12} strokeWidth={2} /> Déconnecter
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={activate}
-              disabled={busy || !settings.app_id.trim()}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white text-black text-[12.5px] font-bold hover:opacity-90 active:scale-[0.99] transition-all disabled:opacity-45 disabled:cursor-not-allowed"
+            <p
+              className="text-[12.5px] font-medium mb-5 max-w-[480px]"
+              style={{ color: "var(--ds-text-mut)" }}
             >
-              {busy ? <Loader2 size={12} strokeWidth={2.4} className="animate-spin" /> : <Sparkles size={12} strokeWidth={2.2} />}
-              Activer le RPC
-            </button>
-          )}
+              Personnalise ton statut Discord depuis l'app. Discord doit être ouvert pour que la connexion IPC fonctionne.
+            </p>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {active ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={activate}
+                    disabled={busy}
+                    className="inline-flex items-center gap-1.5 px-5 h-[40px] rounded-full font-bold text-[12.5px] transition-all disabled:opacity-45 disabled:cursor-not-allowed"
+                    style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+                  >
+                    {busy ? <Loader2 size={13} strokeWidth={2.4} className="animate-spin" /> : <Sparkles size={13} strokeWidth={2.2} />}
+                    Mettre à jour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clear}
+                    disabled={busy}
+                    className="inline-flex items-center gap-1.5 px-4 h-[40px] rounded-full font-bold text-[12.5px] transition-colors disabled:opacity-45"
+                    style={{ background: "var(--ds-panel-2)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }}
+                  >
+                    <Trash2 size={12} strokeWidth={2} /> Effacer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={disconnect}
+                    disabled={busy}
+                    className="inline-flex items-center gap-1.5 px-4 h-[40px] rounded-full font-bold text-[12.5px] transition-colors disabled:opacity-45"
+                    style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
+                  >
+                    <Power size={12} strokeWidth={2} /> Déconnecter
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={activate}
+                  disabled={busy || !settings.app_id.trim()}
+                  className="inline-flex items-center gap-1.5 px-6 h-[44px] rounded-full font-bold text-[13.5px] transition-all disabled:opacity-45 disabled:cursor-not-allowed"
+                  style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+                >
+                  {busy ? <Loader2 size={13} strokeWidth={2.4} className="animate-spin" /> : <Sparkles size={13} strokeWidth={2.2} />}
+                  Activer le RPC
+                </button>
+              )}
+            </div>
+          </div>
+
+          <style>{`
+            .rpc-hero {
+              background: linear-gradient(135deg, #14152b 0%, #0f1018 70%);
+            }
+            [data-theme="light"] .rpc-hero {
+              background: linear-gradient(135deg, #e8ebff 0%, #f5f5f7 70%);
+            }
+            .rpc-hero-bg {
+              background-image:
+                radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.22) 1px, transparent 0);
+              background-size: 22px 22px;
+              opacity: 0.35;
+              mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
+              -webkit-mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
+            }
+            [data-theme="light"] .rpc-hero-bg {
+              background-image:
+                radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.32) 1px, transparent 0);
+            }
+          `}</style>
         </div>
 
         {info && (
-          <div className="mb-5 px-4 py-2.5 rounded-xl bg-emerald-500/[0.08] border border-emerald-500/20 text-emerald-300 text-[12.5px]">
+          <div
+            className="mb-5 px-4 py-2.5 rounded-xl text-[12.5px] font-semibold"
+            style={{ background: "rgba(74, 222, 128, 0.08)", border: "1px solid rgba(74, 222, 128, 0.25)", color: "rgb(74, 222, 128)" }}
+          >
             {info}
           </div>
         )}
         {error && (
-          <div className="mb-5 px-4 py-2.5 rounded-xl bg-red-500/[0.08] border border-red-500/25 text-red-300 text-[12.5px]">
+          <div
+            className="mb-5 px-4 py-2.5 rounded-xl text-[12.5px] font-semibold"
+            style={{ background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.25)", color: "rgb(252, 165, 165)" }}
+          >
             {error}
           </div>
         )}
@@ -197,7 +261,8 @@ export function DesktopRpc() {
                 Trouve-le sur{" "}
                 <button
                   type="button"
-                  className="underline underline-offset-2 hover:text-white inline-flex items-center gap-1"
+                  className="underline underline-offset-2 inline-flex items-center gap-1 transition-opacity hover:opacity-80"
+                  style={{ color: "var(--ds-text)" }}
                   onClick={() => shellOpen("https://discord.com/developers/applications").catch(() => {})}
                 >
                   discord.com/developers/applications
@@ -224,7 +289,10 @@ export function DesktopRpc() {
           <Field label="État (2ème ligne)">
             <input type="text" value={settings.state} onChange={e => update("state", e.target.value)} maxLength={128} className={inputCls} />
           </Field>
-          <label className="flex items-center gap-2.5 px-4 py-3 rounded-[12px] bg-white/[0.025] border border-white/[0.06] cursor-pointer hover:bg-white/[0.04] transition-colors">
+          <label
+            className="flex items-center gap-2.5 px-4 py-3 rounded-[12px] cursor-pointer transition-colors"
+            style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)" }}
+          >
             <input
               type="checkbox"
               checked={settings.show_elapsed}
@@ -233,7 +301,9 @@ export function DesktopRpc() {
             />
             <div>
               <p className="text-[13px] font-semibold">Afficher le temps écoulé</p>
-              <p className="text-[11.5px] text-white/[0.38]">Démarre un compteur "il y a X minutes" sur ton statut.</p>
+              <p className="text-[11.5px]" style={{ color: "var(--ds-text-dim)" }}>
+                Démarre un compteur "il y a X minutes" sur ton statut.
+              </p>
             </div>
           </label>
         </Section>
@@ -266,24 +336,25 @@ export function DesktopRpc() {
           </div>
         </Section>
 
-        {active && (
-          <button
-            type="button"
-            onClick={activate}
-            disabled={busy}
-            className="mt-4 w-full px-4 py-3.5 rounded-full bg-white text-black font-bold text-[13px] hover:opacity-90 active:scale-[0.99] transition-all disabled:opacity-45 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
-          >
-            {busy ? <Loader2 size={13} strokeWidth={2.4} className="animate-spin" /> : <Sparkles size={13} strokeWidth={2.2} />}
-            Mettre à jour le RPC
-          </button>
-        )}
+        <style>{`
+          .rpc-input {
+            background: var(--ds-panel);
+            border: 1px solid var(--ds-border);
+            color: var(--ds-text);
+          }
+          .rpc-input::placeholder { color: var(--ds-text-dim); }
+          .rpc-input:focus {
+            background: var(--ds-panel-2);
+            border-color: var(--ds-border-strong);
+          }
+        `}</style>
       </div>
     </AppLayout>
   );
 }
 
 const inputCls =
-  "w-full px-3.5 py-2.5 rounded-[12px] bg-black/40 border border-white/[0.06] focus:border-white/[0.18] focus:bg-black/60 outline-none text-white text-[13px] transition-colors placeholder:text-white/[0.18]";
+  "w-full px-3.5 py-2.5 rounded-[12px] outline-none text-[13px] transition-colors rpc-input";
 
 function Section({
   title, hint, children,

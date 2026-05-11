@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Volume2, VolumeX, Bell, Fingerprint, Sparkles, PlayCircle } from "lucide-react";
+import { Volume2, VolumeX, Bell, Fingerprint, Sparkles, PlayCircle, Settings } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
   EVENTS,
@@ -30,13 +30,56 @@ export function DesktopPreferences() {
   return (
     <AppLayout>
       <div>
-        <h1 className="text-[28px] font-black tracking-tight mb-1.5">Préférences</h1>
-        <p
-          className="text-[13.5px] font-medium mb-9 max-w-[520px]"
-          style={{ color: "var(--ds-text-mut)" }}
+        {/* ─── HERO CARD ─────────────────────────────────────────── */}
+        <div
+          className="relative overflow-hidden rounded-[22px] border mb-7 prefs-hero"
+          style={{ borderColor: "var(--ds-border)" }}
         >
-          Sons d'événements, sécurité biométrique et autres réglages spécifiques à l'app.
-        </p>
+          <div className="absolute inset-0 prefs-hero-bg" />
+          <div className="relative px-7 py-8">
+            <div className="flex items-center gap-3.5 mb-2">
+              <div
+                className="w-[44px] h-[44px] rounded-full flex items-center justify-center"
+                style={{
+                  background: "rgba(255, 255, 255, 0.06)",
+                  color: "#fff",
+                  border: "1px solid rgba(255, 255, 255, 0.12)",
+                }}
+              >
+                <Settings size={19} strokeWidth={2.2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-[26px] font-black tracking-tight leading-[1.05]">Préférences</h1>
+                <p
+                  className="text-[13px] font-semibold mt-1"
+                  style={{ color: "var(--ds-text-mut)" }}
+                >
+                  Sons d'événements, sécurité biométrique et autres réglages.
+                </p>
+              </div>
+            </div>
+          </div>
+          <style>{`
+            .prefs-hero {
+              background: linear-gradient(135deg, #14152b 0%, #0f1018 70%);
+            }
+            [data-theme="light"] .prefs-hero {
+              background: linear-gradient(135deg, #e8ebff 0%, #f5f5f7 70%);
+            }
+            .prefs-hero-bg {
+              background-image:
+                radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.22) 1px, transparent 0);
+              background-size: 22px 22px;
+              opacity: 0.35;
+              mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
+              -webkit-mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
+            }
+            [data-theme="light"] .prefs-hero-bg {
+              background-image:
+                radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.32) 1px, transparent 0);
+            }
+          `}</style>
+        </div>
 
         {/* ─── Sons ──────────────────────────────────────────── */}
         <Section title="Sons de notification" icon={<Bell size={14} strokeWidth={2} />}>
