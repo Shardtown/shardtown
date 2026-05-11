@@ -27,6 +27,39 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Releasing version $VERSION"
 
+      - name: Discord — build started
+        id: discord_start
+        if: env.WEBHOOK != ''
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          PAYLOAD=$(jq -n \
+            --arg ver "$VERSION" \
+            --arg run "$RUN_URL" \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              username: "Shardtown CI",
+              embeds: [{
+                title: "🟡 Build Shardtown \($ver) en cours…",
+                description: "Compilation Rust + bundle Tauri + signature. Patiente ~10 min.",
+                color: 16763904,
+                fields: [
+                  { name: "Version", value: "`\($ver)`", inline: true },
+                  { name: "Statut",  value: "`running`", inline: true },
+                  { name: "CI run",  value: $run }
+                ],
+                timestamp: $ts
+              }]
+            }')
+          RESPONSE=$(curl -fsS -X POST "$WEBHOOK?wait=true" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+          MSG_ID=$(echo "$RESPONSE" | jq -r '.id')
+          echo "message_id=$MSG_ID" >> "$GITHUB_OUTPUT"
+          echo "Posted Discord message $MSG_ID"
+
       - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
@@ -108,38 +141,55 @@ jobs:
             desktop-tauri/staging/Shardtown_${{ steps.meta.outputs.version }}.app.tar.gz.sig
             desktop-tauri/staging/latest.json
 
-      - name: Notify Discord
-        if: always() && env.DISCORD_WEBHOOK != ''
+      - name: Discord — update final status
+        if: always() && env.WEBHOOK != '' && env.MSG_ID != ''
         env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+          WEBHOOK: ${{ secrets.DISCORD_RELEASE_WEBHOOK }}
+          MSG_ID: ${{ steps.discord_start.outputs.message_id }}
           VERSION: ${{ steps.meta.outputs.version }}
           STATUS: ${{ job.status }}
         run: |
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          MANIFEST_URL="https://shardtwn.fr/updates/latest.json"
           if [ "$STATUS" = "success" ]; then
             COLOR=5763719          # green
             TITLE="✅ Shardtown $VERSION publiée"
             DESC="Disponible via le bouton de mise à jour dans l'app desktop."
+            FIELDS=$(jq -n \
+              --arg ver "$VERSION" --arg st "$STATUS" --arg mf "$MANIFEST_URL" --arg run "$RUN_URL" \
+              '[
+                { name: "Version",   value: "`\($ver)`", inline: true },
+                { name: "Statut",    value: "`\($st)`",  inline: true },
+                { name: "Manifeste", value: $mf },
+                { name: "CI run",    value: $run }
+              ]')
           else
             COLOR=15548997         # red
             TITLE="❌ Build Shardtown $VERSION échoué"
-            DESC="Échec à l'étape \`$STATUS\`. Vérifier les logs GitHub Actions."
+            DESC="Le build a échoué. Vérifie les logs GitHub Actions."
+            FIELDS=$(jq -n \
+              --arg ver "$VERSION" --arg st "$STATUS" --arg run "$RUN_URL" \
+              '[
+                { name: "Version", value: "`\($ver)`", inline: true },
+                { name: "Statut",  value: "`\($st)`",  inline: true },
+                { name: "CI run",  value: $run }
+              ]')
           fi
-          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          MANIFEST_URL="https://shardtwn.fr/updates/latest.json"
-          curl -fsS -X POST "$DISCORD_WEBHOOK" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"username\": \"Shardtown CI\",
-              \"embeds\": [{
-                \"title\": \"$TITLE\",
-                \"description\": \"$DESC\",
-                \"color\": $COLOR,
-                \"fields\": [
-                  { \"name\": \"Version\", \"value\": \"\`$VERSION\`\", \"inline\": true },
-                  { \"name\": \"Status\", \"value\": \"\`$STATUS\`\", \"inline\": true },
-                  { \"name\": \"Manifeste\", \"value\": \"$MANIFEST_URL\" },
-                  { \"name\": \"CI run\", \"value\": \"$RUN_URL\" }
-                ],
-                \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"
+          PAYLOAD=$(jq -n \
+            --arg title "$TITLE" \
+            --arg desc  "$DESC" \
+            --argjson color $COLOR \
+            --argjson fields "$FIELDS" \
+            --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{
+              embeds: [{
+                title: $title,
+                description: $desc,
+                color: $color,
+                fields: $fields,
+                timestamp: $ts
               }]
-            }"
+            }')
+          curl -fsS -X PATCH "$WEBHOOK/messages/$MSG_ID" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
