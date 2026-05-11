@@ -245,8 +245,8 @@ fn build_menu(app: &tauri::AppHandle) -> tauri::Result<()> {
 }
 
 const TRAY_PANEL_LABEL: &str = "tray-panel";
-const TRAY_PANEL_WIDTH: f64 = 340.0;
-const TRAY_PANEL_HEIGHT: f64 = 440.0;
+const TRAY_PANEL_WIDTH: f64 = 360.0;
+const TRAY_PANEL_HEIGHT: f64 = 520.0;
 
 /// Show / toggle the small popover that sits just under the menu-bar tray
 /// icon — NordVPN / Claude style. Created lazily on first click; subsequent

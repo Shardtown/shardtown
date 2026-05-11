@@ -1,18 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Shield, Zap, Search, ArrowUpRight, Power, ExternalLink, Circle,
-  ChevronRight,
+  Shield, Zap, Search, ChevronRight, Bell, Settings,
+  CheckCircle2, Crown, X,
 } from "lucide-react";
 import { apiGet, setBearerToken } from "@/api/client";
 import { tokenGet, openExternal } from "@/lib/desktop";
 
 /**
- * Tray-icon popover — small 340×440 window that pops below the menu bar
- * when the user clicks the Shardtown tray icon. NordVPN / Claude style.
- *
- * Lives in its own URL (?panel=tray) so it can mount without the full
- * sidebar shell. Loads its own bearer token from the keychain at start
- * — same trust model as the main window.
+ * Tray-icon popover — 360×520 window anchored under the menu-bar icon.
+ * NordVPN-style: top bar with branding + actions, hero status card with
+ * primary CTA, recent servers grid, bots-by-status section, footer.
  */
 
 interface Guild {
@@ -21,6 +18,7 @@ interface Guild {
   icon: string | null;
   owner: boolean;
   bot_present: boolean;
+  bot: "shardguard" | "shard";
 }
 
 interface SummaryData {
@@ -38,16 +36,19 @@ export function TrayPanel() {
     (async () => {
       const token = await tokenGet().catch(() => null);
       if (!token) {
-        if (!cancelled) setError("Non connecté. Ouvre l'app pour te connecter.");
+        if (!cancelled) setError("Ouvre l'app pour te connecter.");
         return;
       }
       setBearerToken(token);
       try {
         const [sg, s] = await Promise.all([
-          apiGet<{ guilds: Guild[] }>("/api/account/guilds?bot=shardguard"),
-          apiGet<{ guilds: Guild[] }>("/api/account/guilds?bot=shard"),
+          apiGet<{ guilds: Omit<Guild, "bot">[] }>("/api/account/guilds?bot=shardguard"),
+          apiGet<{ guilds: Omit<Guild, "bot">[] }>("/api/account/guilds?bot=shard"),
         ]);
-        if (!cancelled) setData({ shardguard: sg.guilds, shard: s.guilds });
+        if (!cancelled) setData({
+          shardguard: sg.guilds.map(g => ({ ...g, bot: "shardguard" })),
+          shard: s.guilds.map(g => ({ ...g, bot: "shard" })),
+        });
       } catch {
         if (!cancelled) setError("Erreur de connexion.");
       }
@@ -55,36 +56,66 @@ export function TrayPanel() {
     return () => { cancelled = true; };
   }, []);
 
-  // Combined list — used both for the search and the "X serveurs" tile.
   const allGuilds = useMemo(() => {
     if (!data) return [];
-    return [
-      ...data.shardguard.map(g => ({ ...g, bot: "shardguard" as const })),
-      ...data.shard.map(g => ({ ...g, bot: "shard" as const })),
-    ];
+    return [...data.shardguard, ...data.shard];
   }, [data]);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return allGuilds.filter(g => g.name.toLowerCase().includes(q)).slice(0, 8);
+    return allGuilds.filter(g => g.name.toLowerCase().includes(q)).slice(0, 6);
   }, [allGuilds, query]);
 
   const sgActive = data?.shardguard.filter(g => g.bot_present).length ?? 0;
   const sgTotal = data?.shardguard.length ?? 0;
   const sActive = data?.shard.filter(g => g.bot_present).length ?? 0;
   const sTotal = data?.shard.length ?? 0;
+  const totalActive = sgActive + sActive;
+  const allActive = totalActive > 0 && sgActive === sgTotal && sActive === sTotal;
+
+  // Recents = first 4 configured guilds (deduplicated by id across bots)
+  const recents = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Guild[] = [];
+    for (const g of allGuilds) {
+      if (!g.bot_present) continue;
+      if (seen.has(g.id)) continue;
+      seen.add(g.id);
+      out.push(g);
+      if (out.length >= 4) break;
+    }
+    return out;
+  }, [allGuilds]);
 
   function openMain(path = "/outils") {
-    openExternal(`shardtown://open${path}`).catch(() => {});
-    // The protocol handler isn't wired (yet); as a fallback we just
-    // open the web equivalent so the user can still get there.
     openExternal(`https://shardtwn.fr${path}`).catch(() => {});
   }
 
   return (
     <div className="tray-panel">
       <div className="tray-drag" data-tauri-drag-region />
+
+      {/* Top bar — brand + small action icons */}
+      <header className="tray-top">
+        <button type="button" className="tray-brand" onClick={() => openMain("/outils")}>
+          <img src="/image/favicon.png" alt="" />
+          <span>Ouvrir l'application</span>
+        </button>
+        <div className="tray-top-actions">
+          <button type="button" className="tray-icon-btn" title="Notifications">
+            <Bell size={13} strokeWidth={2} />
+          </button>
+          <button
+            type="button"
+            className="tray-icon-btn"
+            title="Préférences"
+            onClick={() => openMain("/preferences")}
+          >
+            <Settings size={13} strokeWidth={2} />
+          </button>
+        </div>
+      </header>
 
       {/* Search */}
       <div className="tray-search">
@@ -94,84 +125,109 @@ export function TrayPanel() {
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Rechercher un serveur, une action…"
-          autoFocus
           spellCheck={false}
         />
         {query && (
           <button type="button" className="tray-search-clear" onClick={() => setQuery("")}>
-            ✕
+            <X size={11} strokeWidth={2.4} />
           </button>
         )}
       </div>
 
-      {error && <div className="tray-error">{error}</div>}
+      {/* Search results take over the middle when active */}
+      {query ? (
+        <div className="tray-scroll">
+          <div className="tray-results">
+            {filtered.length === 0 ? (
+              <p className="tray-empty">Aucun serveur ne correspond.</p>
+            ) : (
+              filtered.map(g => <TrayGuildRow key={`${g.bot}:${g.id}`} guild={g} />)
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="tray-scroll">
+          {/* Hero status card */}
+          <div className={`tray-hero ${allActive ? "ok" : "warn"}`}>
+            <div className="tray-hero-icon">
+              <CheckCircle2 size={20} strokeWidth={2} />
+            </div>
+            <div className="tray-hero-body">
+              <p className="tray-hero-title">
+                {totalActive > 0
+                  ? allActive ? "Tous les bots actifs" : `${totalActive} bot${totalActive > 1 ? "s" : ""} actif${totalActive > 1 ? "s" : ""}`
+                  : "Aucun bot configuré"}
+              </p>
+              <p className="tray-hero-sub">
+                {totalActive > 0
+                  ? `Sur ${sgTotal + sTotal} serveur${sgTotal + sTotal > 1 ? "s" : ""} où tu es admin`
+                  : "Configure tes serveurs depuis l'app"}
+              </p>
+            </div>
+          </div>
 
-      {/* Search results (only when typing) */}
-      {query && (
-        <div className="tray-results">
-          {filtered.length === 0 ? (
-            <p className="tray-empty">Aucun serveur ne correspond.</p>
-          ) : (
-            filtered.map(g => (
-              <TrayGuildRow key={`${g.bot}:${g.id}`} guild={g} />
-            ))
+          <button
+            type="button"
+            className="tray-cta"
+            onClick={() => openMain("/outils")}
+          >
+            Ouvrir le tableau de bord
+            <ChevronRight size={13} strokeWidth={2.4} />
+          </button>
+
+          {/* Recents */}
+          {recents.length > 0 && (
+            <>
+              <div className="tray-section-head">
+                <span>Récents</span>
+                <button
+                  type="button"
+                  className="tray-section-link"
+                  onClick={() => openMain("/outils")}
+                >
+                  Tous <ChevronRight size={9} strokeWidth={2.4} />
+                </button>
+              </div>
+              <div className="tray-grid">
+                {recents.map(g => <TrayRecentCard key={`${g.bot}:${g.id}`} guild={g} />)}
+              </div>
+            </>
           )}
+
+          {/* Bots */}
+          <div className="tray-section-head">
+            <span>Bots</span>
+          </div>
+          <div className="tray-bot-list">
+            <TrayBotRow
+              kind="shardguard"
+              icon={<Shield size={13} strokeWidth={2} />}
+              label="ShardGuard"
+              active={sgActive}
+              total={sgTotal}
+              onClick={() => openMain("/shardguard/server")}
+            />
+            <TrayBotRow
+              kind="shard"
+              icon={<Zap size={13} strokeWidth={2} />}
+              label="Shard"
+              active={sActive}
+              total={sTotal}
+              onClick={() => openMain("/shard/server")}
+            />
+          </div>
         </div>
       )}
 
-      {/* Status when not searching */}
-      {!query && (
-        <>
-          <div className="tray-section-label">Bots</div>
-          <BotStatusRow
-            icon={<Shield size={13} strokeWidth={2} />}
-            label="ShardGuard"
-            active={sgActive}
-            total={sgTotal}
-          />
-          <BotStatusRow
-            icon={<Zap size={13} strokeWidth={2} />}
-            label="Shard"
-            active={sActive}
-            total={sTotal}
-          />
-
-          <div className="tray-section-label">Accès rapide</div>
-          <TrayActionRow
-            icon={<ArrowUpRight size={13} strokeWidth={2} />}
-            label="Ouvrir le tableau de bord"
-            onClick={() => openMain("/outils")}
-          />
-          <TrayActionRow
-            icon={<Shield size={13} strokeWidth={2} />}
-            label="Configurer ShardGuard"
-            onClick={() => openMain("/shardguard/server")}
-          />
-          <TrayActionRow
-            icon={<Zap size={13} strokeWidth={2} />}
-            label="Configurer Shard"
-            onClick={() => openMain("/shard/server")}
-          />
-        </>
-      )}
+      {error && <div className="tray-error">{error}</div>}
 
       <div className="tray-footer">
         <span className="tray-online">
-          <Circle size={6} fill="rgb(74, 222, 128)" stroke="none" />
+          <span className="tray-dot" />
           Connecté
         </span>
         <span className="tray-sep">·</span>
-        <button
-          type="button"
-          className="tray-foot-btn"
-          onClick={() => {
-            // Quitter l'app — just close the panel, the user can ⌘Q
-            // from the main window if they want to fully quit.
-            if (typeof window !== "undefined") window.close();
-          }}
-        >
-          <Power size={10} strokeWidth={2} /> Fermer
-        </button>
+        <span className="tray-foot-version">v0.1.1</span>
       </div>
 
       <TrayStyles />
@@ -179,74 +235,80 @@ export function TrayPanel() {
   );
 }
 
-function TrayGuildRow({
-  guild,
-}: {
-  guild: Guild & { bot: "shardguard" | "shard" };
-}) {
+function TrayGuildRow({ guild }: { guild: Guild }) {
   const BotIcon = guild.bot === "shardguard" ? Shield : Zap;
   const iconUrl = guild.icon
     ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=48`
     : null;
   const initials = guild.name[0]?.toUpperCase() ?? "?";
-
   return (
     <button
       type="button"
       className="tray-row"
       onClick={() => openExternal(`https://shardtwn.fr/${guild.bot}/guild/${guild.id}`).catch(() => {})}
     >
-      {iconUrl ? (
-        <img src={iconUrl} alt="" className="tray-row-icon" />
-      ) : (
-        <div className="tray-row-icon tray-row-icon-fallback">{initials}</div>
-      )}
+      {iconUrl
+        ? <img src={iconUrl} alt="" className="tray-row-icon" />
+        : <div className="tray-row-icon tray-row-icon-fallback">{initials}</div>}
       <div className="tray-row-body">
-        <p className="tray-row-name">{guild.name}</p>
+        <p className="tray-row-name">
+          {guild.name}
+          {guild.owner && <Crown size={9} strokeWidth={2.4} className="tray-row-crown" />}
+        </p>
         <p className="tray-row-meta">
           <BotIcon size={9} strokeWidth={2} />
           {guild.bot === "shardguard" ? "ShardGuard" : "Shard"}
           {guild.bot_present && <span className="tray-row-ok">· Configuré</span>}
         </p>
       </div>
-      <ChevronRight size={12} strokeWidth={2} className="tray-row-arrow" />
+      <ChevronRight size={11} strokeWidth={2} className="tray-row-arrow" />
     </button>
   );
 }
 
-function BotStatusRow({
-  icon, label, active, total,
+function TrayRecentCard({ guild }: { guild: Guild }) {
+  const iconUrl = guild.icon
+    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
+    : null;
+  const initials = guild.name.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase().slice(0, 2);
+  return (
+    <button
+      type="button"
+      className="tray-card"
+      onClick={() => openExternal(`https://shardtwn.fr/${guild.bot}/guild/${guild.id}`).catch(() => {})}
+    >
+      {iconUrl
+        ? <img src={iconUrl} alt="" className="tray-card-icon" />
+        : <div className="tray-card-icon tray-card-icon-fallback">{initials || "?"}</div>}
+      <p className="tray-card-name">{guild.name}</p>
+      <p className="tray-card-meta">Le plus actif</p>
+    </button>
+  );
+}
+
+function TrayBotRow({
+  icon, label, active, total, onClick,
 }: {
+  kind: "shardguard" | "shard";
   icon: React.ReactNode;
   label: string;
   active: number;
   total: number;
-}) {
-  return (
-    <div className="tray-status">
-      <span className="tray-status-icon">{icon}</span>
-      <span className="tray-status-label">{label}</span>
-      <span className="tray-status-value">
-        <span className="tray-status-active">{active}</span>
-        <span className="tray-status-slash">/{total}</span>
-      </span>
-      <span className={`tray-status-dot ${active > 0 ? "ok" : ""}`} />
-    </div>
-  );
-}
-
-function TrayActionRow({
-  icon, label, onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
   onClick: () => void;
 }) {
+  const ok = active > 0;
   return (
-    <button type="button" className="tray-action" onClick={onClick}>
-      <span className="tray-action-icon">{icon}</span>
-      <span className="tray-action-label">{label}</span>
-      <ExternalLink size={10} strokeWidth={2} className="tray-action-ext" />
+    <button type="button" className="tray-bot-row" onClick={onClick}>
+      <span className="tray-bot-icon">{icon}</span>
+      <div className="tray-bot-body">
+        <p className="tray-bot-label">{label}</p>
+        <p className="tray-bot-meta">
+          <span className={`tray-bot-state ${ok ? "ok" : ""}`}>{ok ? "Actif" : "Inactif"}</span>
+          <span className="tray-sep">·</span>
+          <span>{active} / {total} serveur{total > 1 ? "s" : ""}</span>
+        </p>
+      </div>
+      <ChevronRight size={11} strokeWidth={2} className="tray-bot-arrow" />
     </button>
   );
 }
@@ -263,8 +325,8 @@ function TrayStyles() {
       .tray-panel {
         position: relative;
         width: calc(100% - 24px);
-        height: calc(100% - 24px);
-        margin: 8px 12px 16px;
+        height: calc(100% - 20px);
+        margin: 4px 12px 16px;
         background: #15161b;
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 18px;
@@ -274,110 +336,277 @@ function TrayStyles() {
         color: #f5f5f7;
         font-family: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
         font-size: 13px;
-        display: flex; flex-direction: column;
+        display: flex;
+        flex-direction: column;
         overflow: hidden;
       }
       .tray-drag {
-        height: 8px; flex-shrink: 0;
+        height: 6px;
+        flex-shrink: 0;
         -webkit-app-region: drag;
       }
-      .tray-search {
-        margin: 4px 12px 10px;
-        padding: 9px 12px;
-        background: rgba(255, 255, 255, 0.035);
+      .tray-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 0 14px;
+      }
+      .tray-scroll::-webkit-scrollbar { width: 0; }
+
+      /* Top bar */
+      .tray-top {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px 4px;
+        flex-shrink: 0;
+      }
+      .tray-brand {
+        flex: 1;
+        display: flex; align-items: center; gap: 8px;
+        background: rgba(255, 255, 255, 0.04);
         border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+        padding: 8px 12px;
+        color: #fff;
+        font-size: 12.5px;
+        font-weight: 600;
+        font-family: inherit;
+        cursor: pointer;
+        text-align: left;
+        transition: background 0.12s ease;
+      }
+      .tray-brand:hover { background: rgba(255, 255, 255, 0.07); }
+      .tray-brand img { width: 18px; height: 18px; border-radius: 5px; }
+      .tray-top-actions { display: flex; gap: 4px; flex-shrink: 0; }
+      .tray-icon-btn {
+        width: 32px; height: 32px;
         border-radius: 10px;
-        display: flex; align-items: center; gap: 9px;
-        color: rgba(255, 255, 255, 0.55);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        color: rgba(255, 255, 255, 0.65);
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        transition: background 0.12s ease, color 0.12s ease;
+      }
+      .tray-icon-btn:hover {
+        background: rgba(255, 255, 255, 0.07);
+        color: #fff;
+      }
+
+      /* Search */
+      .tray-search {
+        margin: 6px 14px 12px;
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 12px;
+        display: flex; align-items: center; gap: 8px;
+        color: rgba(255, 255, 255, 0.5);
+        flex-shrink: 0;
       }
       .tray-search input {
         flex: 1;
-        background: none;
-        border: none;
-        outline: none;
+        background: none; border: none; outline: none;
         color: #fff;
-        font-size: 13px;
+        font-size: 12.5px;
         font-family: inherit;
       }
-      .tray-search input::placeholder { color: rgba(255, 255, 255, 0.3); }
+      .tray-search input::placeholder { color: rgba(255, 255, 255, 0.28); }
       .tray-search-clear {
         background: none; border: none; cursor: pointer;
         color: rgba(255, 255, 255, 0.38);
-        font-size: 11px;
-        padding: 2px 4px;
+        padding: 2px;
+        display: flex;
       }
       .tray-search-clear:hover { color: #fff; }
 
-      .tray-section-label {
-        font-size: 9.5px;
+      /* Hero status card */
+      .tray-hero {
+        display: flex; align-items: flex-start; gap: 12px;
+        padding: 14px 14px 14px;
+        border-radius: 14px;
+        background: rgba(74, 222, 128, 0.06);
+        border: 1px solid rgba(74, 222, 128, 0.22);
+        margin-bottom: 8px;
+      }
+      .tray-hero.warn {
+        background: rgba(251, 191, 36, 0.06);
+        border-color: rgba(251, 191, 36, 0.22);
+      }
+      .tray-hero-icon {
+        width: 36px; height: 36px;
+        border-radius: 11px;
+        background: rgba(74, 222, 128, 0.12);
+        color: rgb(74, 222, 128);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .tray-hero.warn .tray-hero-icon {
+        background: rgba(251, 191, 36, 0.12);
+        color: rgb(251, 191, 36);
+      }
+      .tray-hero-body { flex: 1; min-width: 0; }
+      .tray-hero-title {
+        margin: 0;
+        font-size: 14.5px;
         font-weight: 700;
-        letter-spacing: 0.22em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.32);
-        padding: 6px 16px 6px;
-      }
-      .tray-section-label:not(:first-of-type) { padding-top: 14px; }
-
-      .tray-status {
-        display: flex; align-items: center; gap: 10px;
-        margin: 0 8px;
-        padding: 9px 8px;
-        border-radius: 8px;
+        line-height: 1.2;
         color: #fff;
       }
-      .tray-status:hover { background: rgba(255, 255, 255, 0.035); }
-      .tray-status-icon {
+      .tray-hero-sub {
+        margin: 4px 0 0;
+        font-size: 11.5px;
         color: rgba(255, 255, 255, 0.55);
-        width: 13px; display: flex;
-      }
-      .tray-status-label { flex: 1; font-size: 13px; font-weight: 500; }
-      .tray-status-value {
-        font-variant-numeric: tabular-nums;
-        font-size: 12.5px;
-      }
-      .tray-status-active { font-weight: 600; color: #fff; }
-      .tray-status-slash { color: rgba(255, 255, 255, 0.32); }
-      .tray-status-dot {
-        width: 7px; height: 7px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.2);
-      }
-      .tray-status-dot.ok {
-        background: rgb(74, 222, 128);
-        box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
       }
 
-      .tray-action {
-        width: calc(100% - 16px);
-        margin: 0 8px;
-        padding: 9px 10px;
+      /* Primary CTA */
+      .tray-cta {
+        width: 100%;
+        padding: 11px 14px;
+        border-radius: 12px;
         border: none;
-        background: none;
-        color: #fff;
-        font-size: 13px;
+        background: #fff;
+        color: #000;
+        font-family: inherit;
+        font-weight: 700;
+        font-size: 12.5px;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        transition: opacity 0.12s ease, transform 0.05s ease;
+        margin-bottom: 16px;
+      }
+      .tray-cta:hover { opacity: 0.9; }
+      .tray-cta:active { transform: scale(0.99); }
+
+      /* Section headers */
+      .tray-section-head {
+        display: flex; align-items: center; justify-content: space-between;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.4);
+        padding: 6px 2px;
+        margin-top: 4px;
+      }
+      .tray-section-link {
+        display: inline-flex; align-items: center; gap: 2px;
+        background: none; border: none;
+        color: rgba(255, 255, 255, 0.55);
+        font-family: inherit;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        cursor: pointer;
+        padding: 0;
+      }
+      .tray-section-link:hover { color: #fff; }
+
+      /* Recent grid */
+      .tray-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+      .tray-card {
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 13px;
+        padding: 12px 12px 11px;
+        cursor: pointer;
         font-family: inherit;
         text-align: left;
-        display: flex; align-items: center; gap: 11px;
+        color: #fff;
+        transition: background 0.12s ease, border-color 0.12s ease;
+        min-width: 0;
+      }
+      .tray-card:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.14);
+      }
+      .tray-card-icon {
+        width: 26px; height: 26px;
         border-radius: 8px;
-        cursor: pointer;
-        transition: background 0.12s ease;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        object-fit: cover;
+        margin-bottom: 8px;
+        display: block;
       }
-      .tray-action:hover { background: rgba(255, 255, 255, 0.05); }
-      .tray-action-icon {
+      .tray-card-icon-fallback {
+        display: flex; align-items: center; justify-content: center;
+        font-size: 10px;
+        font-weight: 700;
         color: rgba(255, 255, 255, 0.55);
-        width: 13px; display: flex;
       }
-      .tray-action-label { flex: 1; font-weight: 500; }
-      .tray-action-ext {
-        color: rgba(255, 255, 255, 0.22);
-        transition: color 0.12s ease, transform 0.12s ease;
+      .tray-card-name {
+        margin: 0;
+        font-size: 12.5px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
-      .tray-action:hover .tray-action-ext {
-        color: rgba(255, 255, 255, 0.5);
-        transform: translateX(1px);
+      .tray-card-meta {
+        margin: 2px 0 0;
+        font-size: 10.5px;
+        color: rgba(255, 255, 255, 0.4);
       }
 
-      .tray-results { overflow-y: auto; padding: 4px 8px; }
+      /* Bot list rows */
+      .tray-bot-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+      .tray-bot-row {
+        display: flex; align-items: center; gap: 11px;
+        padding: 9px 10px;
+        border-radius: 11px;
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        cursor: pointer;
+        font-family: inherit;
+        text-align: left;
+        color: #fff;
+        transition: background 0.12s ease, border-color 0.12s ease;
+      }
+      .tray-bot-row:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+      .tray-bot-icon {
+        width: 28px; height: 28px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(255, 255, 255, 0.7);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .tray-bot-body { flex: 1; min-width: 0; }
+      .tray-bot-label {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .tray-bot-meta {
+        margin: 2px 0 0;
+        font-size: 10.5px;
+        color: rgba(255, 255, 255, 0.45);
+        display: flex; align-items: center; gap: 5px;
+      }
+      .tray-bot-state {
+        color: rgba(255, 255, 255, 0.45);
+        font-weight: 600;
+      }
+      .tray-bot-state.ok { color: rgb(74, 222, 128); }
+      .tray-bot-arrow {
+        color: rgba(255, 255, 255, 0.22);
+        flex-shrink: 0;
+      }
+      .tray-bot-row:hover .tray-bot-arrow { color: rgba(255, 255, 255, 0.55); }
+
+      /* Search results list */
+      .tray-results { display: flex; flex-direction: column; gap: 3px; padding-bottom: 8px; }
       .tray-empty {
         padding: 24px 12px;
         text-align: center;
@@ -387,17 +616,18 @@ function TrayStyles() {
       }
       .tray-row {
         width: 100%;
-        background: none;
-        border: none;
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(255, 255, 255, 0.05);
         text-align: left;
         font-family: inherit;
         display: flex; align-items: center; gap: 10px;
         padding: 8px 10px;
-        border-radius: 8px;
+        border-radius: 10px;
         cursor: pointer;
         color: #fff;
+        transition: background 0.12s ease;
       }
-      .tray-row:hover { background: rgba(255, 255, 255, 0.05); }
+      .tray-row:hover { background: rgba(255, 255, 255, 0.06); }
       .tray-row-icon {
         width: 28px; height: 28px;
         border-radius: 8px;
@@ -408,67 +638,63 @@ function TrayStyles() {
       }
       .tray-row-icon-fallback {
         display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 12px;
-        color: rgba(255, 255, 255, 0.6);
+        font-weight: 700; font-size: 11px;
+        color: rgba(255, 255, 255, 0.55);
       }
       .tray-row-body { flex: 1; min-width: 0; }
       .tray-row-name {
         margin: 0;
-        font-size: 13px;
+        font-size: 12.5px;
         font-weight: 600;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        display: flex; align-items: center; gap: 6px;
       }
+      .tray-row-crown { color: rgb(251, 191, 36); flex-shrink: 0; }
       .tray-row-meta {
         margin: 1px 0 0;
-        font-size: 10.5px;
-        color: rgba(255, 255, 255, 0.45);
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.42);
         display: flex; align-items: center; gap: 4px;
       }
       .tray-row-ok { color: rgb(74, 222, 128); }
-      .tray-row-arrow {
-        color: rgba(255, 255, 255, 0.22);
-        flex-shrink: 0;
-      }
-      .tray-row:hover .tray-row-arrow {
-        color: rgba(255, 255, 255, 0.5);
-      }
+      .tray-row-arrow { color: rgba(255, 255, 255, 0.22); flex-shrink: 0; }
+      .tray-row:hover .tray-row-arrow { color: rgba(255, 255, 255, 0.5); }
 
       .tray-error {
-        margin: 0 12px 8px;
+        margin: 0 14px 8px;
         padding: 10px 12px;
         background: rgba(239, 68, 68, 0.08);
         border: 1px solid rgba(239, 68, 68, 0.25);
-        border-radius: 8px;
+        border-radius: 10px;
         color: rgb(252, 165, 165);
         font-size: 11.5px;
       }
 
+      /* Footer */
       .tray-footer {
-        margin-top: auto;
-        padding: 10px 16px;
-        border-top: 1px solid rgba(255, 255, 255, 0.06);
-        display: flex; align-items: center; gap: 8px;
+        padding: 9px 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex; align-items: center; gap: 6px;
         font-size: 10.5px;
-        color: rgba(255, 255, 255, 0.38);
+        color: rgba(255, 255, 255, 0.35);
+        flex-shrink: 0;
+        background: rgba(255, 255, 255, 0.015);
       }
       .tray-online {
         display: inline-flex; align-items: center; gap: 5px;
         color: rgb(74, 222, 128);
         font-weight: 600;
       }
-      .tray-sep { color: rgba(255, 255, 255, 0.18); }
-      .tray-foot-btn {
-        background: none; border: none;
-        color: rgba(255, 255, 255, 0.45);
-        font-family: inherit;
-        font-size: 10.5px;
-        cursor: pointer;
-        margin-left: auto;
-        display: inline-flex; align-items: center; gap: 4px;
+      .tray-dot {
+        width: 5px; height: 5px;
+        border-radius: 50%;
+        background: rgb(74, 222, 128);
+        box-shadow: 0 0 6px rgba(74, 222, 128, 0.7);
       }
-      .tray-foot-btn:hover { color: #fff; }
+      .tray-sep { color: rgba(255, 255, 255, 0.18); }
+      .tray-foot-version { margin-left: auto; font-family: ui-monospace, "SF Mono", monospace; font-size: 10px; }
     `}</style>
   );
 }
