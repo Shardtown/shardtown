@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Shield, Zap, Activity, ChevronRight, RefreshCw, ShieldCheck,
-  X, Sparkles, BookOpen, Crown,
+  X, Sparkles, Crown,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/api/auth";
