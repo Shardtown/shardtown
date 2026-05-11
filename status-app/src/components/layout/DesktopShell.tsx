@@ -89,10 +89,9 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           to="/outils"
           aria-label="Tableau de bord"
           title="Shardtown"
-          className="w-10 h-10 rounded-[12px] overflow-hidden flex items-center justify-center mb-6 transition-opacity hover:opacity-90"
-          style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
+          className="w-10 h-10 flex items-center justify-center mb-6 transition-opacity hover:opacity-90"
         >
-          <img src="/image/favicon.png" alt="Shardtown" className="w-7 h-7 object-contain" />
+          <img src="/image/favicon.png" alt="Shardtown" className="w-10 h-10 object-contain" />
         </Link>
 
         <nav className="flex flex-col gap-1.5">
