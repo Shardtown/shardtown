@@ -77,16 +77,21 @@ installées chez les users voient l'update à leur prochain lancement.
 Va sur https://github.com/Shardtown/shardtown/settings/secrets/actions
 et ajoute :
 
-- `TAURI_SIGNING_PRIVATE_KEY` → contenu **complet** de
-  `~/.shardtown-updater.key` (incluant les lignes `untrusted comment:` etc.)
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` → le mot de passe que tu as défini
-  quand tu as généré la clé
+**Signature des updates**
+- `TAURI_SIGNING_PRIVATE_KEY` → contenu **complet** de `~/.shardtown-updater.key`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` → le mot de passe défini à la génération
 
-Récupère le contenu de la clé privée :
+**Déploiement sur shardtwn.fr (rsync SSH)**
+- `SHARDTWN_SSH_HOST` → hostname/IP du VPS (ex. `shardtwn.fr`)
+- `SHARDTWN_SSH_USER` → user SSH (ex. `root`)
+- `SHARDTWN_SSH_KEY` → clé SSH **privée** complète qui a le droit
+  d'écrire dans `updates/` sur le VPS
+- `SHARDTWN_UPDATES_PATH` → chemin absolu, ex. `/root/shardtown/updates`
+
+Récupère le contenu de la clé de signature :
 ```bash
 cat ~/.shardtown-updater.key | pbcopy
 ```
-…puis colle dans le secret.
 
 ---
 

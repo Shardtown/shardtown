@@ -1,3 +1,8 @@
 node_modules/
 .env
 *.log
+
+# Auto-updater payloads — pushed to the VPS by CI, not committed
+updates/
+desktop-tauri/staging/
+desktop-tauri/latest.json

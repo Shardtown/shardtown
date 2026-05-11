@@ -1133,6 +1133,20 @@ app.get('/_legacy/', async (req, res) => {
 const SPA_DIST = path.join(__dirname, 'status-app', 'dist');
 app.use('/assets', express.static(path.join(SPA_DIST, 'assets'), { maxAge: '1y', immutable: true }));
 
+// Auto-updater payloads (latest.json + .app.tar.gz + .sig + .dmg).
+// Pushed here by the GitHub Actions release workflow via rsync over SSH.
+// Public — no auth — integrity enforced by ed25519 signature that the
+// desktop app verifies with its embedded public key.
+const UPDATES_DIR = path.join(__dirname, 'updates');
+try { fs.mkdirSync(UPDATES_DIR, { recursive: true }); } catch { /* */ }
+app.use('/updates', express.static(UPDATES_DIR, {
+    setHeaders(res, file) {
+        // latest.json must be fresh; binaries are immutable (named by version)
+        if (file.endsWith('.json')) res.setHeader('Cache-Control', 'public, max-age=60');
+        else                        res.setHeader('Cache-Control', 'public, max-age=3600, immutable');
+    },
+}));
+
 // Lightweight session info for the React app
 app.get('/api/me', async (req, res) => {
     // Prefer the new accounts session (email/password / OAuth). When a

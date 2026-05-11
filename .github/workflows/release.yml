@@ -63,26 +63,47 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri:build
 
-      - name: Generate latest.json
+      - name: Stage release artifacts
         working-directory: desktop-tauri
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
-          BASE="https://github.com/${{ github.repository }}/releases/download/v$VERSION"
+          mkdir -p staging
+          cp "src-tauri/target/release/bundle/dmg/Shardtown_${VERSION}_aarch64.dmg"   "staging/Shardtown_${VERSION}_aarch64.dmg"
+          cp  src-tauri/target/release/bundle/macos/Shardtown.app.tar.gz             "staging/Shardtown_${VERSION}.app.tar.gz"
+          cp  src-tauri/target/release/bundle/macos/Shardtown.app.tar.gz.sig         "staging/Shardtown_${VERSION}.app.tar.gz.sig"
           node scripts/make-manifest.mjs \
             --version "$VERSION" \
             --notes "Release $VERSION" \
             --sig-path src-tauri/target/release/bundle/macos/Shardtown.app.tar.gz.sig \
-            --download-url-darwin-aarch64 "$BASE/Shardtown.app.tar.gz" \
-            --out latest.json
+            --download-url-darwin-aarch64 "https://shardtwn.fr/updates/Shardtown_${VERSION}.app.tar.gz" \
+            --out staging/latest.json
+          ls -la staging
 
-      - name: Create / update GitHub Release
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SHARDTWN_SSH_KEY }}
+
+      - name: Trust shardtwn.fr SSH host
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.SHARDTWN_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Rsync artifacts to shardtwn.fr
+        working-directory: desktop-tauri
+        run: |
+          rsync -avz --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r \
+            staging/ \
+            "${{ secrets.SHARDTWN_SSH_USER }}@${{ secrets.SHARDTWN_SSH_HOST }}:${{ secrets.SHARDTWN_UPDATES_PATH }}/"
+
+      - name: Create / update private GitHub Release (record-keeping)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Shardtown ${{ steps.meta.outputs.version }}
           generate_release_notes: true
           files: |
-            desktop-tauri/src-tauri/target/release/bundle/dmg/Shardtown_${{ steps.meta.outputs.version }}_aarch64.dmg
-            desktop-tauri/src-tauri/target/release/bundle/macos/Shardtown.app.tar.gz
-            desktop-tauri/src-tauri/target/release/bundle/macos/Shardtown.app.tar.gz.sig
-            desktop-tauri/latest.json
+            desktop-tauri/staging/Shardtown_${{ steps.meta.outputs.version }}_aarch64.dmg
+            desktop-tauri/staging/Shardtown_${{ steps.meta.outputs.version }}.app.tar.gz
+            desktop-tauri/staging/Shardtown_${{ steps.meta.outputs.version }}.app.tar.gz.sig
+            desktop-tauri/staging/latest.json
