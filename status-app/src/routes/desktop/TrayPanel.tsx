@@ -238,7 +238,7 @@ export function TrayPanel() {
 function TrayGuildRow({ guild }: { guild: Guild }) {
   const BotIcon = guild.bot === "shardguard" ? Shield : Zap;
   const iconUrl = guild.icon
-    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=48`
+    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
     : null;
   const initials = guild.name[0]?.toUpperCase() ?? "?";
   return (

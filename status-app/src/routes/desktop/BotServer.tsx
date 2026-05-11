@@ -300,9 +300,14 @@ function Stat({
 function GuildIcon({ guild, size = 40 }: { guild: Guild; size?: number }) {
   const initials = guild.name.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase().slice(0, 2);
   if (guild.icon) {
+    // Discord CDN only accepts power-of-2 sizes (16/32/64/128/256/512/1024).
+    // Pick the smallest one that's >= our 2x display size so retina stays
+    // crisp without wasting bandwidth.
+    const target = size * 2;
+    const cdnSize = [16, 32, 64, 128, 256, 512, 1024].find(s => s >= target) ?? 128;
     return (
       <img
-        src={`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size * 2}`}
+        src={`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${cdnSize}`}
         alt=""
         className="rounded-[10px] object-cover border flex-shrink-0"
         style={{ width: size, height: size, borderColor: "var(--ds-border)" }}
