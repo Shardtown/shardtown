@@ -50,11 +50,11 @@ jobs:
 
       - name: Install status-app deps
         working-directory: status-app
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Install desktop-tauri deps
         working-directory: desktop-tauri
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Build Tauri bundle (signs via env vars)
         working-directory: desktop-tauri
