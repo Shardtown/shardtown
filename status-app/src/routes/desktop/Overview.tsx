@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Shield, Zap, Activity, ChevronRight, RefreshCw,
-  X, Sparkles,
+  Activity, ChevronRight, RefreshCw,
+  X, Sparkles, User as UserIcon,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { useAuth } from "@/api/auth";
+import { useAuth, avatarUrl } from "@/api/auth";
 import { apiGet, apiPost } from "@/api/client";
 
 interface GuildSummary {
@@ -103,10 +103,14 @@ export function DesktopOverview() {
 
         <div className="relative px-8 py-10">
           <div className="flex items-center gap-3.5 mb-7">
-            <div
-              className="w-[44px] h-[44px] rounded-full flex items-center justify-center hero-shield"
-            >
-              <Shield size={19} strokeWidth={2.2} />
+            <div className="w-[48px] h-[48px] rounded-full overflow-hidden hero-shield flex items-center justify-center">
+              {user
+                ? <img
+                    src={avatarUrl(user, 128)}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                : <UserIcon size={20} strokeWidth={2} />}
             </div>
             <div>
               <p className="text-[26px] font-black tracking-tight leading-[1.05]">
@@ -249,7 +253,7 @@ export function DesktopOverview() {
       <SectionHead title="Statistiques" muted />
       <div className="grid md:grid-cols-2 gap-3">
         <StatCard
-          icon={<Shield size={15} strokeWidth={1.8} />}
+          icon={<img src="/image/shardguard.png" alt="" className="w-7 h-7 rounded-[8px] object-cover" />}
           label="ShardGuard"
           value={`${sgConfigured} / ${sgTotal}`}
           sub="serveurs actifs"
@@ -257,7 +261,7 @@ export function DesktopOverview() {
           to="/shardguard/server"
         />
         <StatCard
-          icon={<Zap size={15} strokeWidth={1.8} />}
+          icon={<img src="/image/shard.png" alt="" className="w-7 h-7 rounded-[8px] object-cover" />}
           label="Shard"
           value={`${sConfigured} / ${sTotal}`}
           sub="serveurs actifs"
@@ -304,7 +308,7 @@ function RecentCard({ guild }: { guild: GuildSummary & { bot: "shardguard" | "sh
     ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
     : null;
   const initials = guild.name.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase().slice(0, 2);
-  const BotIcon = guild.bot === "shardguard" ? Shield : Zap;
+  const botAvatar = guild.bot === "shardguard" ? "/image/shardguard.png" : "/image/shard.png";
 
   return (
     <Link
@@ -328,7 +332,7 @@ function RecentCard({ guild }: { guild: GuildSummary & { bot: "shardguard" | "sh
       <div className="min-w-0">
         <p className="text-[13.5px] font-bold truncate">{guild.name}</p>
         <p className="text-[10.5px] font-semibold mt-0.5 inline-flex items-center gap-1" style={{ color: "var(--ds-text-dim)" }}>
-          <BotIcon size={9} strokeWidth={2} />
+          <img src={botAvatar} alt="" className="w-3 h-3 rounded-[3px] object-cover" />
           {guild.bot === "shardguard" ? "ShardGuard" : "Shard"}
         </p>
       </div>

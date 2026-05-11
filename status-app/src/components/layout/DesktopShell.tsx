@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutGrid, Shield, Zap, Sparkles, Settings, HelpCircle,
-  Search, Bell, User, LogOut, Sun, Moon, X,
+  LayoutGrid, Sparkles, Settings, HelpCircle,
+  Search, Bell, User, LogOut, X,
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
 import { tokenClear, biometricConfirm, openExternal, IS_DESKTOP } from "@/lib/desktop";
 import { apiGet, apiPost, setBearerToken } from "@/api/client";
 import { disableDemoMode, isDemoMode } from "@/lib/demo";
-import { getStoredTheme, setTheme, type Theme } from "@/lib/theme";
 
 /**
  * Desktop chrome — full NordVPN-style redesign.
@@ -39,7 +38,6 @@ export function DesktopShell({ children }: { children: ReactNode }) {
   const { user, refresh } = useAuth();
   const location = useLocation();
   const nav = useNavigate();
-  const [theme, setThemeState] = useState<Theme>(getStoredTheme);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -50,18 +48,12 @@ export function DesktopShell({ children }: { children: ReactNode }) {
   }
 
   const items: NavSpec[] = [
-    { to: "/outils",            icon: <LayoutGrid size={18} strokeWidth={1.8} />, label: "Tableau de bord" },
-    { to: "/shardguard/server", icon: <Shield     size={18} strokeWidth={1.8} />, label: "ShardGuard" },
-    { to: "/shard/server",      icon: <Zap        size={18} strokeWidth={1.8} />, label: "Shard" },
-    { to: "/rpc",               icon: <Sparkles   size={18} strokeWidth={1.8} />, label: "Discord RPC" },
-    { to: "/preferences",       icon: <Settings   size={18} strokeWidth={1.8} />, label: "Préférences" },
+    { to: "/outils",            icon: <LayoutGrid size={18} strokeWidth={1.8} />,                       label: "Tableau de bord" },
+    { to: "/shardguard/server", icon: <BotAvatar src="/image/shardguard.png" size={22} alt="ShardGuard" />, label: "ShardGuard" },
+    { to: "/shard/server",      icon: <BotAvatar src="/image/shard.png"      size={22} alt="Shard" />,     label: "Shard" },
+    { to: "/rpc",               icon: <Sparkles   size={18} strokeWidth={1.8} />,                       label: "Discord RPC" },
+    { to: "/preferences",       icon: <Settings   size={18} strokeWidth={1.8} />,                       label: "Préférences" },
   ];
-
-  function toggleTheme() {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setThemeState(next);
-    setTheme(next);
-  }
 
   async function logout() {
     setProfileOpen(false);
@@ -92,19 +84,16 @@ export function DesktopShell({ children }: { children: ReactNode }) {
         className="w-[76px] flex-shrink-0 flex flex-col items-center pt-9 pb-3 select-none border-r"
         style={{ background: "var(--ds-bg-1)", borderColor: "var(--ds-border)" }}
       >
-        {/* Logo button at the top, toggle theme on click */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          aria-label={theme === "dark" ? "Mode clair" : "Mode sombre"}
-          title={theme === "dark" ? "Mode clair" : "Mode sombre"}
-          className="w-9 h-9 rounded-[11px] flex items-center justify-center mb-6 transition-opacity hover:opacity-80"
-          style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
+        {/* Static Shardtown logo at the top of the rail */}
+        <Link
+          to="/outils"
+          aria-label="Tableau de bord"
+          title="Shardtown"
+          className="w-10 h-10 rounded-[12px] overflow-hidden flex items-center justify-center mb-6 transition-opacity hover:opacity-90"
+          style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
         >
-          {theme === "dark"
-            ? <Sun size={14} strokeWidth={2} />
-            : <Moon size={14} strokeWidth={2} />}
-        </button>
+          <img src="/image/favicon.png" alt="Shardtown" className="w-7 h-7 object-contain" />
+        </Link>
 
         <nav className="flex flex-col gap-1.5">
           {items.map(item => (
@@ -146,7 +135,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
             type="button"
             aria-label="Notifications"
             className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--ds-panel-2)]"
-            style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
+            style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text)" }}
           >
             <Bell size={15} strokeWidth={1.8} />
           </button>
@@ -160,7 +149,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
             >
               {user
                 ? <img src={avatarUrl(user, 64)} alt="" className="w-full h-full object-cover" />
-                : <User size={15} strokeWidth={1.8} style={{ color: "var(--ds-text-mut)" }} />}
+                : <User size={15} strokeWidth={1.8} style={{ color: "var(--ds-text)" }} />}
             </button>
             {profileOpen && (
               <ProfileMenu
@@ -444,6 +433,18 @@ function SearchBox({
   );
 }
 
-// Keep this useMemo unused to satisfy the import; will be used by future
-// shell extensions if needed. Suppresses lint for unused imports.
-void useMemo;
+/**
+ * Bot avatar — used in the rail and anywhere we'd otherwise show a
+ * Shield/Zap lucide icon for ShardGuard or Shard. Loads from the
+ * bundled /image/{shardguard,shard}.png so it works offline + in demo.
+ */
+function BotAvatar({ src, size, alt }: { src: string; size: number; alt: string }) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      style={{ width: size, height: size }}
+      className="rounded-[7px] object-cover"
+    />
+  );
+}

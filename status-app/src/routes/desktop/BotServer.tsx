@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Shield, Zap, Search, RefreshCw, ArrowUpRight, ExternalLink,
+  Search, RefreshCw, ArrowUpRight, ExternalLink,
   CheckCircle2, PlusCircle,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -90,7 +90,7 @@ export function DesktopBotServer({ kind }: Props) {
   }
 
   const meta = BOT_LABEL[kind];
-  const Icon = kind === "shardguard" ? Shield : Zap;
+  const botAvatar = kind === "shardguard" ? "/image/shardguard.png" : "/image/shard.png";
 
   const guilds = data?.guilds ?? [];
   const filtered = useMemo(() => {
@@ -115,14 +115,13 @@ export function DesktopBotServer({ kind }: Props) {
         <div className="relative px-8 py-9">
           <div className="flex items-center gap-3.5 mb-6">
             <div
-              className="w-[44px] h-[44px] rounded-full flex items-center justify-center"
+              className="w-[44px] h-[44px] rounded-full overflow-hidden flex items-center justify-center"
               style={{
                 background: "rgba(255, 255, 255, 0.06)",
-                color: "#fff",
                 border: "1px solid rgba(255, 255, 255, 0.12)",
               }}
             >
-              <Icon size={19} strokeWidth={2.2} />
+              <img src={botAvatar} alt="" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-[26px] font-black tracking-tight leading-[1.05]">{meta.name}</h1>

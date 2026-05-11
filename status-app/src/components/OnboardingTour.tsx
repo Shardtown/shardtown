@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  LayoutGrid, Shield, Zap, Sparkles, Bell, Fingerprint,
+  LayoutGrid, Sparkles, Bell, Fingerprint,
   Sun, ChevronLeft, ChevronRight, X, CheckCircle2,
 } from "lucide-react";
 import { DiscordPreview } from "@/components/DiscordPreview";
@@ -24,7 +24,7 @@ export function markOnboardingComplete() {
 }
 
 interface Step {
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number }> | string;
   title: string;
   body: string;
   visual: React.ReactNode;
@@ -59,13 +59,13 @@ export function OnboardingTour({ onClose }: { onClose: () => void }) {
       visual: <DashboardVisual />,
     },
     {
-      icon: Shield,
+      icon: "/image/shardguard.png",
       title: "ShardGuard · Sécurité",
       body: "Anti-raid, captcha de vérification, modération automatique, mode panic, logs en temps réel. Tout se configure depuis l'app, par serveur.",
       visual: <BotVisual kind="shardguard" />,
     },
     {
-      icon: Zap,
+      icon: "/image/shard.png",
       title: "Shard · Communauté",
       body: "Niveaux, économie, tickets, sondages, giveaways, vocaux temporaires, embeds. Animations communautaires sans coder.",
       visual: <BotVisual kind="shard" />,
@@ -112,7 +112,7 @@ export function OnboardingTour({ onClose }: { onClose: () => void }) {
 
   const current = steps[step];
   const isLast = step === steps.length - 1;
-  const Icon = current.icon;
+  const Icon = typeof current.icon === "string" ? null : current.icon;
 
   function next() {
     if (isLast) { finish(); return; }
@@ -168,10 +168,12 @@ export function OnboardingTour({ onClose }: { onClose: () => void }) {
           <div className="onboarding-text">
             <div className="flex items-center gap-2 mb-3">
               <span
-                className="w-7 h-7 rounded-lg flex items-center justify-center"
+                className="w-7 h-7 rounded-lg flex items-center justify-center overflow-hidden"
                 style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)" }}
               >
-                <Icon size={13} strokeWidth={2} />
+                {Icon
+                  ? <Icon size={13} strokeWidth={2} />
+                  : <img src={current.icon as string} alt="" className="w-full h-full object-cover" />}
               </span>
               <p
                 className="text-[10.5px] font-bold tracking-[0.22em] uppercase"
@@ -333,7 +335,7 @@ function Tile({ label, value, tone }: { label: string; value: string; tone?: "di
 }
 
 function BotVisual({ kind }: { kind: "shardguard" | "shard" }) {
-  const Icon = kind === "shardguard" ? Shield : Zap;
+  const botAvatar = kind === "shardguard" ? "/image/shardguard.png" : "/image/shard.png";
   const name = kind === "shardguard" ? "Ma Communauté" : "Mon serveur Gaming";
   return (
     <div
@@ -350,7 +352,7 @@ function BotVisual({ kind }: { kind: "shardguard" | "shard" }) {
         <p className="text-[13.5px] font-semibold leading-tight">{name}</p>
         <p className="text-[11px] mt-0.5 inline-flex items-center gap-1.5"
            style={{ color: "var(--ds-text-mut)" }}>
-          <Icon size={11} strokeWidth={2} />
+          <img src={botAvatar} alt="" className="w-3 h-3 rounded-[3px] object-cover" />
           {kind === "shardguard" ? "ShardGuard" : "Shard"}
           <span style={{ color: "var(--ds-text-faint)" }}>·</span>
           <span style={{ color: "rgb(74, 222, 128)" }}>Configuré</span>

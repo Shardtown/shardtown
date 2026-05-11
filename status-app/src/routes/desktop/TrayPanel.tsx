@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Shield, Zap, Search, ChevronRight, Bell, Settings,
+  Search, ChevronRight, Bell, Settings,
   CheckCircle2, X,
 } from "lucide-react";
 import { apiGet, setBearerToken } from "@/api/client";
@@ -201,7 +201,7 @@ export function TrayPanel() {
           <div className="tray-bot-list">
             <TrayBotRow
               kind="shardguard"
-              icon={<Shield size={13} strokeWidth={2} />}
+              icon={<img src="/image/shardguard.png" alt="" className="tray-bot-avatar" />}
               label="ShardGuard"
               active={sgActive}
               total={sgTotal}
@@ -209,7 +209,7 @@ export function TrayPanel() {
             />
             <TrayBotRow
               kind="shard"
-              icon={<Zap size={13} strokeWidth={2} />}
+              icon={<img src="/image/shard.png" alt="" className="tray-bot-avatar" />}
               label="Shard"
               active={sActive}
               total={sTotal}
@@ -227,7 +227,7 @@ export function TrayPanel() {
 }
 
 function TrayGuildRow({ guild }: { guild: Guild }) {
-  const BotIcon = guild.bot === "shardguard" ? Shield : Zap;
+  const botAvatar = guild.bot === "shardguard" ? "/image/shardguard.png" : "/image/shard.png";
   const iconUrl = guild.icon
     ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
     : null;
@@ -244,7 +244,7 @@ function TrayGuildRow({ guild }: { guild: Guild }) {
       <div className="tray-row-body">
         <p className="tray-row-name">{guild.name}</p>
         <p className="tray-row-meta">
-          <BotIcon size={9} strokeWidth={2} />
+          <img src={botAvatar} alt="" className="tray-bot-avatar-xs" />
           {guild.bot === "shardguard" ? "ShardGuard" : "Shard"}
           {guild.bot_present && <span className="tray-row-ok">· Configuré</span>}
         </p>
@@ -647,6 +647,8 @@ function TrayStyles() {
         display: flex; align-items: center; gap: 4px;
       }
       .tray-row-ok { color: rgb(74, 222, 128); }
+      .tray-bot-avatar { width: 18px; height: 18px; border-radius: 5px; object-fit: cover; }
+      .tray-bot-avatar-xs { width: 10px; height: 10px; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
       .tray-row-arrow { color: rgba(255, 255, 255, 0.22); flex-shrink: 0; }
       .tray-row:hover .tray-row-arrow { color: rgba(255, 255, 255, 0.5); }
 
