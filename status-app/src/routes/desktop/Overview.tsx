@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Shield, Zap, Activity, ArrowUpRight, RefreshCw } from "lucide-react";
+import {
+  Shield, Zap, Activity, ChevronRight, RefreshCw, ShieldCheck,
+  X, Sparkles, BookOpen, Crown,
+} from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/api/auth";
 import { apiGet, apiPost } from "@/api/client";
@@ -19,15 +22,19 @@ interface GuildsState {
   loading: boolean;
 }
 
+const DISMISS_TIP_KEY = "shardtown.overview.dismiss-tip.v1";
+
 /**
- * NordVPN-style overview: a hero status card front and center, a row of
- * stat tiles, then per-bot quick-access cards. Pure desktop UI — no
- * "Bonjour" hero, no marketing copy, no card grid lifted from the web SPA.
+ * NordVPN-style dashboard hero: big map-like banner card, secondary
+ * dismissible upsell tip, "Récents" guild grid, and a stats footer.
  */
 export function DesktopOverview() {
   const { user } = useAuth();
   const [g, setG] = useState<GuildsState>({ shardguard: [], shard: [], loading: true });
   const [refreshing, setRefreshing] = useState(false);
+  const [tipDismissed, setTipDismissed] = useState(() => {
+    try { return localStorage.getItem(DISMISS_TIP_KEY) === "1"; } catch { return false; }
+  });
 
   async function load() {
     try {
@@ -53,249 +60,323 @@ export function DesktopOverview() {
     } finally { setRefreshing(false); }
   }
 
+  function dismissTip() {
+    setTipDismissed(true);
+    try { localStorage.setItem(DISMISS_TIP_KEY, "1"); } catch { /* */ }
+  }
+
+  // Combined recents = first 5 configured guilds (deduplicated)
+  const recents = useMemo(() => {
+    const all: (GuildSummary & { bot: "shardguard" | "shard" })[] = [
+      ...g.shardguard.filter(x => x.bot_present).map(x => ({ ...x, bot: "shardguard" as const })),
+      ...g.shard.filter(x => x.bot_present).map(x => ({ ...x, bot: "shard" as const })),
+    ];
+    const seen = new Set<string>();
+    const out: typeof all = [];
+    for (const x of all) {
+      if (seen.has(x.id)) continue;
+      seen.add(x.id);
+      out.push(x);
+      if (out.length >= 5) break;
+    }
+    return out;
+  }, [g]);
+
   const sgConfigured = g.shardguard.filter(x => x.bot_present).length;
   const sgTotal = g.shardguard.length;
   const sConfigured = g.shard.filter(x => x.bot_present).length;
   const sTotal = g.shard.length;
-  const totalServers = sgTotal + sTotal;
   const totalConfigured = sgConfigured + sConfigured;
+  const totalServers = sgTotal + sTotal;
+  const allOk = totalConfigured > 0 && sgConfigured === sgTotal && sConfigured === sTotal;
   const displayName = user?.global_name || user?.username || "ami";
 
   return (
     <AppLayout>
-      {/* Hero status — the centerpiece, NordVPN's "Quick Connect" panel */}
-      <div className="relative overflow-hidden rounded-[22px] border border-white/[0.06] bg-[#15161b] p-8 mb-3">
-        <div className="absolute -top-32 -right-32 w-80 h-80 rounded-full bg-[radial-gradient(circle,rgba(91,141,255,0.08),transparent_65%)] pointer-events-none" />
-        <div className="relative">
-          <div className="flex items-center gap-2 text-[11.5px] font-bold tracking-[0.16em] uppercase text-emerald-400 mb-3.5">
-            <span className="w-[7px] h-[7px] rounded-full bg-emerald-400 shadow-[0_0_12px_rgb(74,222,128)]" />
-            Tout fonctionne
+      {/* ─── HERO CARD ─────────────────────────────────────────── */}
+      <div
+        className="relative overflow-hidden rounded-[22px] border mb-4 hero-card"
+        style={{ borderColor: "var(--ds-border)" }}
+      >
+        {/* Background pattern — radial dots evoking the NordVPN map */}
+        <div className="absolute inset-0 hero-bg" />
+
+        <div className="relative px-8 py-8">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-[42px] h-[42px] rounded-full flex items-center justify-center ${allOk ? "hero-shield-ok" : "hero-shield-warn"}`}
+            >
+              {allOk
+                ? <ShieldCheck size={18} strokeWidth={2} />
+                : <Shield size={18} strokeWidth={2} />}
+            </div>
+            <div>
+              <p className="text-[22px] font-extrabold tracking-tight leading-tight">
+                Salut, {displayName}
+              </p>
+              <p
+                className="text-[13px] mt-0.5"
+                style={{ color: allOk ? "rgb(74, 222, 128)" : "rgb(251, 191, 36)" }}
+              >
+                {allOk ? "Tous les bots opérationnels" : totalServers === 0 ? "Aucun serveur lié" : "Configuration partielle"}
+              </p>
+            </div>
           </div>
-          <h1 className="text-[32px] font-extrabold tracking-tight mb-1.5">
-            Salut, {displayName}.
-          </h1>
-          <p className="text-[14px] text-white/[0.62] mb-5 max-w-[480px]">
+
+          <p className="text-[13.5px] mt-5 mb-6 max-w-[440px]" style={{ color: "var(--ds-text-mut)" }}>
             {totalConfigured > 0
-              ? `${totalConfigured} bot${totalConfigured > 1 ? "s" : ""} actif${totalConfigured > 1 ? "s" : ""} sur tes serveurs Discord. Tout est opérationnel.`
+              ? `${totalConfigured} bot${totalConfigured > 1 ? "s" : ""} actif${totalConfigured > 1 ? "s" : ""} sur ${totalServers} serveur${totalServers > 1 ? "s" : ""} Discord où tu es admin.`
               : totalServers > 0
-                ? `Tu as ${totalServers} serveur${totalServers > 1 ? "s" : ""} admin mais aucun bot configuré. Lance-toi.`
-                : "Lie ton compte Discord pour voir tes serveurs admin et configurer tes bots."}
+                ? `Tu as ${totalServers} serveur${totalServers > 1 ? "s" : ""} admin mais aucun bot configuré pour l'instant.`
+                : "Lie ton compte Discord pour voir tes serveurs et démarrer."}
           </p>
+
           <div className="flex items-center gap-2.5">
             <Link
               to="/shardguard/server"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-black font-bold text-[13px] hover:opacity-90 active:scale-[0.99] transition-all"
+              className="inline-flex items-center justify-center px-6 h-[42px] rounded-full font-bold text-[13px] hero-cta"
+              style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
             >
               Configurer mes serveurs
-              <ArrowUpRight size={14} strokeWidth={2.4} />
             </Link>
             <button
               type="button"
               onClick={refresh}
               disabled={refreshing}
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-white/[0.18] text-white text-[12.5px] font-semibold hover:bg-white/[0.025] disabled:opacity-45 transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 h-[42px] rounded-full font-semibold text-[12.5px] transition-colors disabled:opacity-50"
+              style={{ background: "var(--ds-panel-2)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }}
             >
-              <RefreshCw size={13} strokeWidth={2} className={refreshing ? "animate-spin" : ""} />
+              <RefreshCw size={12} strokeWidth={2} className={refreshing ? "animate-spin" : ""} />
               Actualiser
             </button>
           </div>
         </div>
+
+        <style>{`
+          .hero-card {
+            background: linear-gradient(135deg, #14152b 0%, #0f1018 70%);
+          }
+          [data-theme="light"] .hero-card {
+            background: linear-gradient(135deg, #e8ebff 0%, #f5f5f7 70%);
+          }
+          .hero-bg {
+            background-image:
+              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.25) 1px, transparent 0);
+            background-size: 24px 24px;
+            opacity: 0.4;
+            mask-image: radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%);
+          }
+          [data-theme="light"] .hero-bg {
+            background-image:
+              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.35) 1px, transparent 0);
+          }
+          .hero-shield-ok {
+            background: rgba(74, 222, 128, 0.12);
+            color: rgb(74, 222, 128);
+            border: 1px solid rgba(74, 222, 128, 0.25);
+          }
+          .hero-shield-warn {
+            background: rgba(239, 68, 68, 0.12);
+            color: rgb(239, 68, 68);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+          }
+          .hero-cta { transition: opacity 0.15s ease, transform 0.05s ease; }
+          .hero-cta:hover { opacity: 0.92; }
+          .hero-cta:active { transform: scale(0.99); }
+        `}</style>
       </div>
 
-      {/* Stat tiles */}
-      <div className="grid grid-cols-3 gap-2.5 mb-8">
-        <StatTile
+      {/* ─── DISMISSIBLE TIP ───────────────────────────────────── */}
+      {!tipDismissed && (
+        <div
+          className="rounded-[16px] border p-4 flex items-center gap-3.5 mb-8"
+          style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+        >
+          <div
+            className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(74, 222, 128, 0.12)", color: "rgb(74, 222, 128)" }}
+          >
+            <Sparkles size={15} strokeWidth={2} />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-[13.5px]">Active Discord Rich Presence</p>
+            <p className="text-[12px] mt-0.5" style={{ color: "var(--ds-text-mut)" }}>
+              Affiche un statut custom sur ton profil pendant que tu utilises l'app.
+            </p>
+          </div>
+          <Link
+            to="/rpc"
+            className="text-[12px] font-semibold transition-opacity hover:opacity-80"
+            style={{ color: "rgb(91, 109, 255)" }}
+          >
+            Activer
+          </Link>
+          <button
+            type="button"
+            onClick={dismissTip}
+            aria-label="Fermer"
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-colors"
+            style={{ color: "var(--ds-text-dim)" }}
+          >
+            <X size={13} strokeWidth={2} />
+          </button>
+        </div>
+      )}
+
+      {/* ─── RECENTS ───────────────────────────────────────────── */}
+      <SectionHead title="Récents" linkTo="/shardguard/server" linkLabel="Tous les serveurs" />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 mb-10">
+        {g.loading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[110px] rounded-[14px] animate-pulse"
+                style={{ background: "var(--ds-panel)" }}
+              />
+            ))
+          : recents.length === 0
+            ? <p className="col-span-full text-[12.5px]" style={{ color: "var(--ds-text-dim)" }}>
+                Aucun serveur configuré. Lance « Configurer mes serveurs » au-dessus.
+              </p>
+            : recents.map(r => <RecentCard key={`${r.bot}:${r.id}`} guild={r} />)}
+      </div>
+
+      {/* ─── STATISTIQUES ──────────────────────────────────────── */}
+      <SectionHead title="Statistiques" muted />
+      <div className="grid md:grid-cols-2 gap-3">
+        <StatCard
           icon={<Shield size={15} strokeWidth={1.8} />}
           label="ShardGuard"
           value={`${sgConfigured} / ${sgTotal}`}
-          sub="serveurs configurés"
+          sub="serveurs actifs"
+          accent="rgb(91, 109, 255)"
+          tone={sgConfigured > 0 ? "ok" : "off"}
+          to="/shardguard/server"
         />
-        <StatTile
+        <StatCard
           icon={<Zap size={15} strokeWidth={1.8} />}
           label="Shard"
           value={`${sConfigured} / ${sTotal}`}
-          sub="serveurs configurés"
-        />
-        <StatTile
-          icon={<Activity size={15} strokeWidth={1.8} />}
-          label="Total admin"
-          value={`${totalServers}`}
-          sub="serveurs où tu es admin"
-        />
-      </div>
-
-      {/* Per-bot quick row */}
-      <div className="grid md:grid-cols-2 gap-3 mb-8">
-        <BotQuickCard
-          to="/shardguard/server"
-          icon={<Shield size={18} strokeWidth={1.8} />}
-          name="ShardGuard"
-          tagline="Sécurité Discord"
-          configured={sgConfigured}
-          total={sgTotal}
-        />
-        <BotQuickCard
+          sub="serveurs actifs"
+          accent="rgb(91, 109, 255)"
+          tone={sConfigured > 0 ? "ok" : "off"}
           to="/shard/server"
-          icon={<Zap size={18} strokeWidth={1.8} />}
-          name="Shard"
-          tagline="Communauté & engagement"
-          configured={sConfigured}
-          total={sTotal}
         />
       </div>
-
-      {/* Live guild list — bots configured first, "À inviter" below */}
-      <GuildSection
-        title="Mes serveurs configurés"
-        empty="Aucun bot configuré pour l'instant. Lance « Configurer mes serveurs » ci-dessus."
-        guilds={[
-          ...g.shardguard.filter(x => x.bot_present).map(x => ({ ...x, bot: "shardguard" as const })),
-          ...g.shard.filter(x => x.bot_present).map(x => ({ ...x, bot: "shard" as const })),
-        ]}
-        loading={g.loading}
-      />
-
-      <GuildSection
-        title="Serveurs à configurer"
-        empty="Aucun serveur en attente."
-        guilds={[
-          ...g.shardguard.filter(x => !x.bot_present).map(x => ({ ...x, bot: "shardguard" as const })),
-          ...g.shard.filter(x => !x.bot_present).map(x => ({ ...x, bot: "shard" as const })),
-        ]}
-        loading={g.loading}
-        muted
-      />
     </AppLayout>
   );
 }
 
-interface GuildRowItem extends GuildSummary {
-  bot: "shardguard" | "shard";
-}
-
-function GuildSection({
-  title, empty, guilds, loading, muted,
+function SectionHead({
+  title, linkTo, linkLabel, muted,
 }: {
   title: string;
-  empty: string;
-  guilds: GuildRowItem[];
-  loading: boolean;
+  linkTo?: string;
+  linkLabel?: string;
   muted?: boolean;
 }) {
   return (
-    <div className="mb-7">
-      <div className="flex items-baseline justify-between mb-2.5">
-        <p className="text-[12px] font-bold tracking-[0.16em] uppercase text-white/[0.38]">{title}</p>
-        {!loading && <span className="text-[11px] text-white/[0.18] tabular-nums">{guilds.length}</span>}
-      </div>
-      {loading ? (
-        <div className="space-y-1.5">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="h-[58px] rounded-[14px] bg-white/[0.025] border border-white/[0.06] animate-pulse" />
-          ))}
-        </div>
-      ) : guilds.length === 0 ? (
-        <p className="px-4 py-3.5 rounded-[14px] bg-white/[0.025] border border-dashed border-white/[0.06] text-[12.5px] text-white/[0.38]">
-          {empty}
-        </p>
-      ) : (
-        <div className="space-y-1.5">
-          {guilds.map(g => <GuildRow key={`${g.bot}:${g.id}`} g={g} muted={muted} />)}
-        </div>
+    <div className="flex items-baseline justify-between mb-3">
+      <h2
+        className="text-[15px] font-bold"
+        style={{ color: muted ? "var(--ds-text-mut)" : "var(--ds-text)" }}
+      >
+        {title}
+      </h2>
+      {linkTo && (
+        <Link
+          to={linkTo}
+          className="inline-flex items-center gap-1 text-[12.5px] font-semibold transition-opacity hover:opacity-80"
+          style={{ color: "var(--ds-text-mut)" }}
+        >
+          {linkLabel} <ChevronRight size={11} strokeWidth={2.4} />
+        </Link>
       )}
     </div>
   );
 }
 
-function GuildRow({ g, muted }: { g: GuildRowItem; muted?: boolean }) {
-  const iconUrl = g.icon
-    ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64`
+function RecentCard({ guild }: { guild: GuildSummary & { bot: "shardguard" | "shard" } }) {
+  // Discord CDN demands power-of-2 sizes
+  const iconUrl = guild.icon
+    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
     : null;
-  const initials = g.name.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase().slice(0, 2);
-  const target = g.bot_present ? `/${g.bot}/guild/${g.id}` : `/${g.bot}/server`;
-  const BotIcon = g.bot === "shardguard" ? Shield : Zap;
+  const initials = guild.name.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase().slice(0, 2);
+  const BotIcon = guild.bot === "shardguard" ? Shield : Zap;
 
   return (
     <Link
-      to={target}
-      className="group flex items-center gap-3 p-2.5 pr-3.5 rounded-[14px] bg-white/[0.025] border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.18] transition-colors"
+      to={`/${guild.bot}/guild/${guild.id}`}
+      className="rounded-[14px] border p-3 flex flex-col gap-2 transition-all hover:-translate-y-0.5"
+      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
     >
-      {iconUrl ? (
-        <img src={iconUrl} alt="" className="w-9 h-9 rounded-[10px] object-cover border border-white/[0.06] flex-shrink-0" />
-      ) : (
-        <div className="w-9 h-9 rounded-[10px] bg-white/[0.05] border border-white/[0.06] flex items-center justify-center text-[12.5px] font-bold text-white/[0.62] flex-shrink-0">
-          {initials || "?"}
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <p className="text-[13.5px] font-semibold flex items-center gap-2 truncate">
-          {g.name}
-          {g.owner && (
-            <span className="text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded-full bg-amber-500/[0.06] border border-amber-500/25 text-amber-400">
-              Owner
-            </span>
-          )}
+      {iconUrl
+        ? <img
+            src={iconUrl}
+            alt=""
+            className="w-9 h-9 rounded-[10px] object-cover border self-start"
+            style={{ borderColor: "var(--ds-border)" }}
+          />
+        : <div
+            className="w-9 h-9 rounded-[10px] border flex items-center justify-center text-[12px] font-bold self-start"
+            style={{ background: "var(--ds-panel-2)", borderColor: "var(--ds-border)", color: "var(--ds-text-mut)" }}
+          >
+            {initials || "?"}
+          </div>}
+      <div className="min-w-0">
+        <p className="text-[13px] font-semibold truncate flex items-center gap-1.5">
+          {guild.name}
+          {guild.owner && <Crown size={10} strokeWidth={2.4} style={{ color: "rgb(251, 191, 36)" }} />}
         </p>
-        <p className="text-[11.5px] text-white/[0.38] flex items-center gap-1.5 mt-0.5">
-          <BotIcon size={11} strokeWidth={1.8} />
-          {g.bot === "shardguard" ? "ShardGuard" : "Shard"}
-          <span className="text-white/[0.18]">·</span>
-          <span className={muted ? "text-white/[0.38]" : "text-emerald-400"}>
-            {g.bot_present ? "Configuré" : "À inviter"}
-          </span>
+        <p className="text-[10.5px] mt-0.5 inline-flex items-center gap-1" style={{ color: "var(--ds-text-dim)" }}>
+          <BotIcon size={9} strokeWidth={2} />
+          {guild.bot === "shardguard" ? "ShardGuard" : "Shard"}
         </p>
       </div>
-      <ArrowUpRight size={13} strokeWidth={2} className="text-white/[0.18] group-hover:text-white/[0.62] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
     </Link>
   );
 }
 
-function StatTile({
-  icon, label, value, sub,
+function StatCard({
+  icon, label, value, sub, accent, tone, to,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub: string;
-}) {
-  return (
-    <div className="bg-white/[0.025] border border-white/[0.06] rounded-[14px] p-4">
-      <div className="flex items-center gap-2 mb-2 text-white/[0.62]">
-        {icon}
-        <span className="text-[10px] font-bold tracking-[0.22em] uppercase text-white/[0.38]">{label}</span>
-      </div>
-      <p className="text-[20px] font-bold leading-tight">{value}</p>
-      <p className="text-[11px] text-white/[0.38] mt-0.5">{sub}</p>
-    </div>
-  );
-}
-
-function BotQuickCard({
-  to, icon, name, tagline, configured, total,
-}: {
+  accent: string;
+  tone: "ok" | "off";
   to: string;
-  icon: React.ReactNode;
-  name: string;
-  tagline: string;
-  configured: number;
-  total: number;
 }) {
   return (
     <Link
       to={to}
-      className="group relative flex items-center gap-4 p-4 rounded-[16px] bg-white/[0.025] border border-white/[0.06] hover:bg-white/[0.05] hover:border-white/[0.18] transition-colors"
+      className="rounded-[16px] border p-5 flex items-start gap-4 transition-colors hover:bg-[var(--ds-panel-2)]"
+      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
     >
-      <div className="w-10 h-10 rounded-[10px] bg-white/[0.05] border border-white/[0.06] flex items-center justify-center text-white/[0.62] flex-shrink-0">
+      <div
+        className="w-10 h-10 rounded-[11px] flex items-center justify-center flex-shrink-0"
+        style={{ background: "var(--ds-panel-2)", color: tone === "ok" ? accent : "var(--ds-text-mut)" }}
+      >
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-semibold leading-tight">{name}</p>
-        <p className="text-[11.5px] text-white/[0.38] mt-0.5">{tagline}</p>
+        <div className="flex items-center gap-2 mb-1.5">
+          <p className="text-[14px] font-semibold">{label}</p>
+          <span
+            className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full"
+            style={tone === "ok"
+              ? { background: "rgba(74, 222, 128, 0.12)", color: "rgb(74, 222, 128)" }
+              : { background: "rgba(239, 68, 68, 0.10)", color: "rgb(239, 68, 68)" }}
+          >
+            {tone === "ok" ? "ON" : "OFF"}
+          </span>
+        </div>
+        <p className="text-[18px] font-bold tabular-nums">{value}</p>
+        <p className="text-[11.5px] mt-0.5" style={{ color: "var(--ds-text-dim)" }}>{sub}</p>
       </div>
-      <div className="text-right flex-shrink-0">
-        <p className="text-[15px] font-bold tabular-nums">{configured}<span className="text-white/[0.38]">/{total}</span></p>
-        <p className="text-[10px] text-white/[0.38]">configurés</p>
-      </div>
+      <Activity size={13} strokeWidth={2} style={{ color: "var(--ds-text-faint)" }} />
     </Link>
   );
 }

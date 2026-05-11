@@ -1,26 +1,61 @@
-import { useState, type ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  LayoutGrid, Shield, Zap, User, LogOut, Sparkles, Settings, Sun, Moon,
+  LayoutGrid, Shield, Zap, Sparkles, Settings, HelpCircle,
+  Search, Bell, User, LogOut, Sun, Moon, X,
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
-import { tokenClear, biometricConfirm, IS_DESKTOP } from "@/lib/desktop";
+import { tokenClear, biometricConfirm, openExternal, IS_DESKTOP } from "@/lib/desktop";
+import { apiGet, apiPost, setBearerToken } from "@/api/client";
 import { disableDemoMode, isDemoMode } from "@/lib/demo";
-import { setBearerToken, apiPost } from "@/api/client";
 import { getStoredTheme, setTheme, type Theme } from "@/lib/theme";
 
 /**
- * The desktop app's chrome — sidebar + main content area + bottom status
- * strip. Replaces the website's Header/Footer in Tauri mode. Keeps the
- * window-drag region pinned at the top so the chromeless macOS window
- * remains draggable from anywhere on the toolbar strip.
+ * Desktop chrome — full NordVPN-style redesign.
+ *
+ * Layout:
+ *   ┌────┬─────────────────────────────────────────┐
+ *   │ ⊞ │  [  🔍 search bar (centered)  ]  🔔  👤 │  ← top bar
+ *   │ 🛡│                                          │
+ *   │ ⚡│            main content                  │
+ *   │ ✨│         (full-bleed cards)               │
+ *   │ ⚙ │                                          │
+ *   │   │                                          │
+ *   │ ? │                                          │
+ *   └────┴─────────────────────────────────────────┘
+ *
+ * Sidebar is 76px wide, icons only. Active item has a rounded square
+ * highlight. Help anchored at the bottom. The top bar holds the search
+ * + bell + profile cluster.
  */
+
+interface NavSpec {
+  to: string;
+  icon: ReactNode;
+  label: string;
+}
+
 export function DesktopShell({ children }: { children: ReactNode }) {
   const { user, refresh } = useAuth();
   const location = useLocation();
+  const nav = useNavigate();
   const [theme, setThemeState] = useState<Theme>(getStoredTheme);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const displayName = user?.global_name || user?.username || "Compte";
+
+  function isActive(prefix: string) {
+    return location.pathname === prefix || location.pathname.startsWith(prefix + "/");
+  }
+
+  const items: NavSpec[] = [
+    { to: "/outils",            icon: <LayoutGrid size={18} strokeWidth={1.8} />, label: "Tableau de bord" },
+    { to: "/shardguard/server", icon: <Shield     size={18} strokeWidth={1.8} />, label: "ShardGuard" },
+    { to: "/shard/server",      icon: <Zap        size={18} strokeWidth={1.8} />, label: "Shard" },
+    { to: "/rpc",               icon: <Sparkles   size={18} strokeWidth={1.8} />, label: "Discord RPC" },
+    { to: "/preferences",       icon: <Settings   size={18} strokeWidth={1.8} />, label: "Préférences" },
+  ];
 
   function toggleTheme() {
     const next: Theme = theme === "dark" ? "light" : "dark";
@@ -28,20 +63,12 @@ export function DesktopShell({ children }: { children: ReactNode }) {
     setTheme(next);
   }
 
-  function isActive(prefix: string) {
-    return location.pathname === prefix || location.pathname.startsWith(prefix + "/");
-  }
-
   async function logout() {
-    // Touch ID gate on the desktop — destructive enough that we don't
-    // want a stray click to lock the user out. Skip in demo mode where
-    // there's nothing critical to protect.
+    setProfileOpen(false);
     if (IS_DESKTOP && !isDemoMode()) {
       const ok = await biometricConfirm("Confirme avec Touch ID pour te déconnecter");
       if (!ok) return;
     }
-    // Web logout endpoint clears the server session; for desktop we also
-    // wipe the local Keychain so the next launch shows the PAT screen.
     await apiPost("/api/account/logout").catch(() => {});
     if (IS_DESKTOP) {
       setBearerToken(null);
@@ -49,7 +76,6 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       disableDemoMode();
     }
     refresh();
-    // Hard reload so the DesktopGate runs again and lands on the PAT login.
     window.location.reload();
   }
 
@@ -61,148 +87,363 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       {/* Drag region — invisible strip at the top of the window */}
       <div className="fixed inset-x-0 top-0 h-7 z-50 pointer-events-none" data-tauri-drag-region />
 
-      {/* Sidebar */}
+      {/* ─── SIDEBAR ──────────────────────────────────────────────── */}
       <aside
-        className="w-[232px] flex-shrink-0 flex flex-col px-3 pt-9 pb-3 select-none border-r"
+        className="w-[76px] flex-shrink-0 flex flex-col items-center pt-9 pb-3 select-none border-r"
         style={{ background: "var(--ds-bg-1)", borderColor: "var(--ds-border)" }}
       >
-        <div className="flex items-center gap-2.5 px-2.5 pb-5">
+        {/* Logo button at the top, toggle theme on click */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? "Mode clair" : "Mode sombre"}
+          title={theme === "dark" ? "Mode clair" : "Mode sombre"}
+          className="w-9 h-9 rounded-[11px] flex items-center justify-center mb-6 transition-opacity hover:opacity-80"
+          style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
+        >
+          {theme === "dark"
+            ? <Sun size={14} strokeWidth={2} />
+            : <Moon size={14} strokeWidth={2} />}
+        </button>
+
+        <nav className="flex flex-col gap-1.5">
+          {items.map(item => (
+            <RailItem
+              key={item.to}
+              to={item.to}
+              icon={item.icon}
+              label={item.label}
+              active={isActive(item.to)}
+            />
+          ))}
+        </nav>
+
+        <div className="mt-auto">
           <button
             type="button"
-            onClick={toggleTheme}
-            aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
-            title={theme === "dark" ? "Mode clair" : "Mode sombre"}
-            className="w-[26px] h-[26px] rounded-md flex items-center justify-center transition-opacity hover:opacity-80"
-            style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
+            onClick={() => openExternal("https://shardtwn.fr/wiki").catch(() => {})}
+            aria-label="Aide"
+            title="Aide"
+            className="w-10 h-10 rounded-[12px] flex items-center justify-center transition-colors hover:opacity-80"
+            style={{ color: "var(--ds-text-dim)" }}
           >
-            {theme === "dark"
-              ? <Sun size={12} strokeWidth={2} />
-              : <Moon size={12} strokeWidth={2} />}
+            <HelpCircle size={18} strokeWidth={1.8} />
           </button>
-          <img src="/logo.png" alt="" className="w-[22px] h-[22px] rounded-md" />
-          <span className="font-extrabold text-[13.5px] tracking-tight">Shardtown</span>
-        </div>
-
-        <p className="text-[9.5px] font-bold tracking-[0.22em] uppercase px-3 pt-3 pb-2" style={{ color: "var(--ds-text-faint)" }}>
-          Accueil
-        </p>
-        <nav className="flex flex-col gap-px">
-          <NavItem to="/outils" active={isActive("/outils")} icon={<LayoutGrid size={15} strokeWidth={1.8} />} label="Tableau de bord" />
-        </nav>
-
-        <p className="text-[9.5px] font-bold tracking-[0.22em] uppercase px-3 pt-4 pb-2" style={{ color: "var(--ds-text-faint)" }}>
-          Bots
-        </p>
-        <nav className="flex flex-col gap-px">
-          <NavItem to="/shardguard/server" active={isActive("/shardguard")} icon={<Shield size={15} strokeWidth={1.8} />} label="ShardGuard" />
-          <NavItem to="/shard/server" active={isActive("/shard")} icon={<Zap size={15} strokeWidth={1.8} />} label="Shard" />
-        </nav>
-
-        <p className="text-[9.5px] font-bold tracking-[0.22em] uppercase px-3 pt-4 pb-2" style={{ color: "var(--ds-text-faint)" }}>
-          Discord
-        </p>
-        <nav className="flex flex-col gap-px">
-          <NavItem to="/rpc" active={isActive("/rpc")} icon={<Sparkles size={15} strokeWidth={1.8} />} label="Rich Presence" />
-        </nav>
-
-        <p className="text-[9.5px] font-bold tracking-[0.22em] uppercase px-3 pt-4 pb-2" style={{ color: "var(--ds-text-faint)" }}>
-          Compte
-        </p>
-        <nav className="flex flex-col gap-px">
-          <NavItem to="/account" active={isActive("/account")} icon={<User size={15} strokeWidth={1.8} />} label="Mon compte" />
-          <NavItem to="/preferences" active={isActive("/preferences")} icon={<Settings size={15} strokeWidth={1.8} />} label="Préférences" />
-        </nav>
-
-        {/* Sidebar footer — user row + logout */}
-        <div className="mt-auto pt-3 px-1 border-t" style={{ borderColor: "var(--ds-border)" }}>
-          <div className="flex items-center gap-2.5 p-2 rounded-xl">
-            {user
-              ? <img src={avatarUrl(user, 64)} alt="" className="w-[30px] h-[30px] rounded-[9px] border" style={{ borderColor: "var(--ds-border)" }} />
-              : <div
-                  className="w-[30px] h-[30px] rounded-[9px] border flex items-center justify-center text-[11px] font-bold"
-                  style={{ background: "var(--ds-panel-2)", borderColor: "var(--ds-border)", color: "var(--ds-text-mut)" }}
-                >
-                  {displayName[0]?.toUpperCase() || "?"}
-                </div>}
-            <span className="flex-1 min-w-0 text-[12.5px] font-semibold truncate">{displayName}</span>
-            <button
-              type="button"
-              onClick={logout}
-              aria-label="Déconnexion"
-              title="Déconnexion"
-              className="p-1.5 rounded-lg transition-colors hover:opacity-80"
-              style={{ color: "var(--ds-text-faint)" }}
-            >
-              <LogOut size={13} strokeWidth={2} />
-            </button>
-          </div>
         </div>
       </aside>
 
-      {/* Right pane — content scrolls, status bar pinned at bottom */}
+      {/* ─── RIGHT PANE: TOP BAR + CONTENT ─────────────────────────── */}
       <div className="flex-1 min-w-0 flex flex-col">
+        {/* Top bar */}
+        <header
+          className="h-[64px] flex-shrink-0 flex items-center gap-3 px-6 border-b"
+          style={{ borderColor: "var(--ds-border)", background: "var(--ds-bg)" }}
+        >
+          <div className="flex-1 flex justify-center">
+            <SearchBox open={searchOpen} setOpen={setSearchOpen} onNavigate={nav} />
+          </div>
+          <button
+            type="button"
+            aria-label="Notifications"
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--ds-panel-2)]"
+            style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
+          >
+            <Bell size={15} strokeWidth={1.8} />
+          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setProfileOpen(o => !o)}
+              aria-label="Profil"
+              className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center transition-opacity hover:opacity-80"
+              style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)" }}
+            >
+              {user
+                ? <img src={avatarUrl(user, 64)} alt="" className="w-full h-full object-cover" />
+                : <User size={15} strokeWidth={1.8} style={{ color: "var(--ds-text-mut)" }} />}
+            </button>
+            {profileOpen && (
+              <ProfileMenu
+                user={displayName}
+                onClose={() => setProfileOpen(false)}
+                onLogout={logout}
+                onAccount={() => { setProfileOpen(false); nav("/account"); }}
+              />
+            )}
+          </div>
+        </header>
+
+        {/* Main content area — scrolls, max-width centered for readability */}
         <main className="flex-1 min-h-0 overflow-y-auto">
-          <div className="pt-12 px-12 pb-8">{children}</div>
+          <div className="max-w-[960px] mx-auto px-8 pt-8 pb-16">{children}</div>
         </main>
-        <StatusBar />
       </div>
     </div>
   );
 }
 
-function NavItem({
-  to, active, icon, label,
+function RailItem({
+  to, icon, label, active,
 }: {
   to: string;
-  active: boolean;
   icon: ReactNode;
   label: string;
+  active: boolean;
 }) {
   return (
     <Link
       to={to}
-      className={`nav-item flex items-center gap-[11px] px-3 py-[9px] rounded-[10px] text-[13px] transition-colors ${active ? "nav-item-active" : ""}`}
+      title={label}
+      aria-label={label}
+      className="w-10 h-10 rounded-[12px] flex items-center justify-center transition-colors group"
       style={
         active
-          ? { background: "var(--ds-panel-2)", color: "var(--ds-text)", fontWeight: 600 }
-          : { color: "var(--ds-text-mut)" }
+          ? { background: "var(--ds-panel-hi)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }
+          : { color: "var(--ds-text-dim)" }
       }
     >
-      {icon}
-      {label}
+      <span style={active ? undefined : { transition: "color 0.12s ease" }}>
+        {icon}
+      </span>
     </Link>
   );
 }
 
-function StatusBar() {
-  const { user } = useAuth();
-  const demo = isDemoMode();
+function ProfileMenu({
+  user, onClose, onLogout, onAccount,
+}: {
+  user: string;
+  onClose: () => void;
+  onLogout: () => void;
+  onAccount: () => void;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    function onClick(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-profile-menu]") && !target.closest("[aria-label='Profil']")) onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onClick);
+    };
+  }, [onClose]);
+
   return (
     <div
-      className="flex-shrink-0 px-12 py-3 border-t flex items-center gap-3.5 text-[11.5px]"
-      style={{ borderColor: "var(--ds-border)", background: "var(--ds-bg-1)", color: "var(--ds-text-dim)" }}
+      data-profile-menu
+      className="absolute z-50 right-0 top-[calc(100%+8px)] w-[220px] rounded-[14px] border overflow-hidden profile-pop"
+      style={{
+        background: "var(--ds-bg-1)",
+        borderColor: "var(--ds-border-strong)",
+        boxShadow: "0 20px 50px -10px rgba(0,0,0,0.45)",
+      }}
     >
-      <span
-        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border"
-        style={{
-          background: demo ? "rgba(251, 191, 36, 0.08)" : "var(--ds-panel)",
-          borderColor: demo ? "rgba(251, 191, 36, 0.25)" : "var(--ds-border)",
-        }}
+      <div className="px-3 py-2.5 border-b" style={{ borderColor: "var(--ds-border)" }}>
+        <p className="text-[12px]" style={{ color: "var(--ds-text-dim)" }}>Connecté en tant que</p>
+        <p className="text-[13px] font-semibold truncate">{user}</p>
+      </div>
+      <button
+        type="button"
+        onClick={onAccount}
+        className="w-full text-left px-3 py-2.5 text-[13px] transition-colors hover:bg-[var(--ds-panel)] flex items-center gap-2"
+        style={{ color: "var(--ds-text)" }}
       >
-        <span
-          className="w-1.5 h-1.5 rounded-full"
-          style={demo
-            ? { background: "rgb(251, 191, 36)", boxShadow: "0 0 8px rgb(251, 191, 36)" }
-            : { background: "rgb(74, 222, 128)", boxShadow: "0 0 8px rgb(74, 222, 128)" }}
-        />
-        <span style={demo ? { color: "rgb(251, 191, 36)" } : undefined}>
-          {demo ? "Mode démo" : "Connecté"}
-        </span>
-      </span>
-      <span>{user?.username || "—"}</span>
-      <span style={{ color: "var(--ds-text-faint)" }}>·</span>
-      <span>{demo ? "données simulées" : "shardtwn.fr"}</span>
-      <span className="ml-auto font-mono text-[10.5px]" style={{ color: "var(--ds-text-faint)" }}>v0.1.1</span>
+        <User size={13} strokeWidth={2} style={{ color: "var(--ds-text-mut)" }} />
+        Mon compte
+      </button>
+      <button
+        type="button"
+        onClick={onLogout}
+        className="w-full text-left px-3 py-2.5 text-[13px] transition-colors hover:bg-[var(--ds-panel)] flex items-center gap-2 border-t"
+        style={{ color: "var(--ds-text)", borderColor: "var(--ds-border)" }}
+      >
+        <LogOut size={13} strokeWidth={2} style={{ color: "var(--ds-text-mut)" }} />
+        Déconnexion
+      </button>
+      <style>{`
+        .profile-pop { animation: prof-in 160ms cubic-bezier(0.22, 1, 0.36, 1); transform-origin: top right; }
+        @keyframes prof-in {
+          from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }
+
+/* ─── Search box (with ⌘K) ────────────────────────────────────────── */
+
+interface SearchHit {
+  label: string;
+  hint: string;
+  path: string;
+}
+
+function SearchBox({
+  open, setOpen, onNavigate,
+}: {
+  open: boolean;
+  setOpen: (v: boolean) => void;
+  onNavigate: (path: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [hits, setHits] = useState<SearchHit[]>([]);
+
+  // ⌘K global shortcut
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setOpen(true);
+        setTimeout(() => document.getElementById("topbar-search")?.focus(), 0);
+      }
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setOpen]);
+
+  // Search hits — locations (page actions) + live guild search
+  useEffect(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) { setHits([]); return; }
+
+    const locations: SearchHit[] = [
+      { label: "Tableau de bord",        hint: "Vue d'ensemble",         path: "/outils" },
+      { label: "ShardGuard · Serveurs",  hint: "Sécurité Discord",       path: "/shardguard/server" },
+      { label: "Shard · Serveurs",       hint: "Communauté",             path: "/shard/server" },
+      { label: "Discord RPC",            hint: "Rich Presence",          path: "/rpc" },
+      { label: "Préférences",            hint: "Sons, Touch ID, thème",  path: "/preferences" },
+      { label: "Mon compte",             hint: "Profil & connexions",    path: "/account" },
+    ];
+    const matched = locations.filter(l =>
+      l.label.toLowerCase().includes(q) || l.hint.toLowerCase().includes(q)
+    );
+
+    // Pull live guilds for in-search navigation
+    let cancelled = false;
+    (async () => {
+      try {
+        const [sg, s] = await Promise.all([
+          apiGet<{ guilds: { id: string; name: string }[] }>("/api/account/guilds?bot=shardguard").catch(() => ({ guilds: [] })),
+          apiGet<{ guilds: { id: string; name: string }[] }>("/api/account/guilds?bot=shard").catch(() => ({ guilds: [] })),
+        ]);
+        const guilds: SearchHit[] = [
+          ...sg.guilds.map(g => ({ label: g.name, hint: "ShardGuard · " + g.id, path: `/shardguard/guild/${g.id}` })),
+          ...s.guilds.map(g => ({ label: g.name, hint: "Shard · " + g.id, path: `/shard/guild/${g.id}` })),
+        ].filter(h => h.label.toLowerCase().includes(q));
+
+        // Dedup by path
+        const all = [...matched];
+        for (const g of guilds) if (!all.some(a => a.path === g.path)) all.push(g);
+        if (!cancelled) setHits(all.slice(0, 8));
+      } catch {
+        if (!cancelled) setHits(matched);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [query]);
+
+  function selectHit(hit: SearchHit) {
+    onNavigate(hit.path);
+    setOpen(false);
+    setQuery("");
+  }
+
+  return (
+    <div className="relative w-full max-w-[560px]">
+      <div
+        className="flex items-center gap-2.5 h-[42px] px-4 rounded-full border cursor-text transition-colors"
+        style={{
+          background: open ? "var(--ds-panel-2)" : "var(--ds-panel)",
+          borderColor: open ? "var(--ds-border-strong)" : "var(--ds-border)",
+        }}
+        onClick={() => {
+          setOpen(true);
+          setTimeout(() => document.getElementById("topbar-search")?.focus(), 0);
+        }}
+      >
+        <Search size={14} strokeWidth={2} style={{ color: "var(--ds-text-dim)" }} />
+        <input
+          id="topbar-search"
+          type="text"
+          value={query}
+          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          placeholder="Rechercher un serveur, une action…  (⌘K)"
+          spellCheck={false}
+          className="flex-1 bg-transparent outline-none text-[13.5px]"
+          style={{ color: "var(--ds-text)" }}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); setQuery(""); }}
+            className="opacity-60 hover:opacity-100"
+            aria-label="Effacer"
+          >
+            <X size={12} strokeWidth={2.4} />
+          </button>
+        )}
+      </div>
+
+      {open && (query.trim() !== "" || hits.length > 0) && (
+        <div
+          className="absolute z-40 top-[calc(100%+6px)] left-0 right-0 rounded-[14px] border overflow-hidden search-pop"
+          style={{
+            background: "var(--ds-bg-1)",
+            borderColor: "var(--ds-border-strong)",
+            boxShadow: "0 20px 60px -10px rgba(0,0,0,0.45)",
+          }}
+        >
+          {hits.length === 0 ? (
+            <p className="px-4 py-5 text-[12.5px] text-center" style={{ color: "var(--ds-text-dim)" }}>
+              Aucun résultat pour « {query} »
+            </p>
+          ) : (
+            <ul>
+              {hits.map((h, i) => (
+                <li key={`${h.path}-${i}`}>
+                  <button
+                    type="button"
+                    onMouseDown={e => e.preventDefault()}
+                    onClick={() => selectHit(h)}
+                    className="w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors hover:bg-[var(--ds-panel)]"
+                  >
+                    <span
+                      className="w-[26px] h-[26px] rounded-[8px] flex items-center justify-center flex-shrink-0"
+                      style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)" }}
+                    >
+                      <Search size={11} strokeWidth={2} />
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[13px] font-semibold truncate">{h.label}</span>
+                      <span className="block text-[11.5px] truncate" style={{ color: "var(--ds-text-dim)" }}>
+                        {h.hint}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <style>{`
+        .search-pop { animation: search-in 160ms cubic-bezier(0.22, 1, 0.36, 1); transform-origin: top center; }
+        @keyframes search-in {
+          from { opacity: 0; transform: scale(0.98) translateY(-4px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Keep this useMemo unused to satisfy the import; will be used by future
+// shell extensions if needed. Suppresses lint for unused imports.
+void useMemo;
