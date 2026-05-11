@@ -34,6 +34,12 @@ interface NavSpec {
   label: string;
 }
 
+interface NavGroup {
+  /** Tiny uppercase label rendered above the group (omit for the first group). */
+  label?: string;
+  items: NavSpec[];
+}
+
 export function DesktopShell({ children }: { children: ReactNode }) {
   const { user, refresh } = useAuth();
   const location = useLocation();
@@ -47,13 +53,27 @@ export function DesktopShell({ children }: { children: ReactNode }) {
     return location.pathname === prefix || location.pathname.startsWith(prefix + "/");
   }
 
-  const items: NavSpec[] = [
-    { to: "/outils",            icon: <LayoutGrid size={18} strokeWidth={1.8} />,                       label: "Tableau de bord" },
-    { to: "/shardguard/server", icon: <BotAvatar src="/image/shardguard.png" size={22} alt="ShardGuard" />, label: "ShardGuard" },
-    { to: "/shard/server",      icon: <BotAvatar src="/image/shard.png"      size={22} alt="Shard" />,     label: "Shard" },
-    { to: "/assistant",         icon: <MessageCircle size={18} strokeWidth={1.8} />,                    label: "Samia" },
-    { to: "/rpc",               icon: <Sparkles   size={18} strokeWidth={1.8} />,                       label: "Discord RPC" },
-    { to: "/preferences",       icon: <Settings   size={18} strokeWidth={1.8} />,                       label: "Préférences" },
+  const groups: NavGroup[] = [
+    {
+      items: [
+        { to: "/outils",    icon: <LayoutGrid    size={18} strokeWidth={1.8} />, label: "Tableau de bord" },
+        { to: "/assistant", icon: <MessageCircle size={18} strokeWidth={1.8} />, label: "Samia" },
+      ],
+    },
+    {
+      label: "Bots",
+      items: [
+        { to: "/shardguard/server", icon: <BotAvatar src="/image/shardguard.png" size={22} alt="ShardGuard" />, label: "ShardGuard" },
+        { to: "/shard/server",      icon: <BotAvatar src="/image/shard.png"      size={22} alt="Shard" />,     label: "Shard" },
+      ],
+    },
+    {
+      label: "Système",
+      items: [
+        { to: "/rpc",         icon: <Sparkles size={18} strokeWidth={1.8} />, label: "Discord RPC" },
+        { to: "/preferences", icon: <Settings size={18} strokeWidth={1.8} />, label: "Préférences" },
+      ],
+    },
   ];
 
   async function logout() {
@@ -95,15 +115,28 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           <img src="/image/favicon.png" alt="Shardtown" className="w-10 h-10 object-contain" />
         </Link>
 
-        <nav className="flex flex-col gap-1.5">
-          {items.map(item => (
-            <RailItem
-              key={item.to}
-              to={item.to}
-              icon={item.icon}
-              label={item.label}
-              active={isActive(item.to)}
-            />
+        <nav className="flex flex-col gap-1.5 w-10">
+          {groups.map((group, gi) => (
+            <div key={gi} className="flex flex-col gap-1.5">
+              {group.label && (
+                <div
+                  className="text-[8.5px] font-extrabold tracking-[0.18em] uppercase text-center mt-3 mb-0.5"
+                  style={{ color: "var(--ds-text-faint)" }}
+                  title={group.label}
+                >
+                  {group.label}
+                </div>
+              )}
+              {group.items.map(item => (
+                <RailItem
+                  key={item.to}
+                  to={item.to}
+                  icon={item.icon}
+                  label={item.label}
+                  active={isActive(item.to)}
+                />
+              ))}
+            </div>
           ))}
         </nav>
 

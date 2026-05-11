@@ -231,27 +231,9 @@ export function DesktopOverview() {
         </div>
       )}
 
-      {/* ─── RECENTS ───────────────────────────────────────────── */}
-      <SectionHead title="Récents" linkTo="/shardguard/server" linkLabel="Tous les serveurs" />
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 mb-10">
-        {g.loading
-          ? Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-[110px] rounded-[14px] animate-pulse"
-                style={{ background: "var(--ds-panel)" }}
-              />
-            ))
-          : recents.length === 0
-            ? <p className="col-span-full text-[12.5px]" style={{ color: "var(--ds-text-dim)" }}>
-                Aucun serveur configuré. Lance « Configurer mes serveurs » au-dessus.
-              </p>
-            : recents.map(r => <RecentCard key={`${r.bot}:${r.id}`} guild={r} />)}
-      </div>
-
-      {/* ─── STATISTIQUES ──────────────────────────────────────── */}
-      <SectionHead title="Statistiques" muted />
-      <div className="grid md:grid-cols-2 gap-3">
+      {/* ─── BOTS ──────────────────────────────────────────────── */}
+      <SectionHead title="Bots" />
+      <div className="grid md:grid-cols-2 gap-3 mb-10">
         <StatCard
           icon={<img src="/image/shardguard.png" alt="" className="w-full h-full object-cover" />}
           label="ShardGuard"
@@ -268,6 +250,24 @@ export function DesktopOverview() {
           tone={sConfigured > 0 ? "ok" : "off"}
           to="/shard/server"
         />
+      </div>
+
+      {/* ─── RECENTS ───────────────────────────────────────────── */}
+      <SectionHead title="Récents" linkTo="/shardguard/server" linkLabel="Tous les serveurs" muted />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 mb-10">
+        {g.loading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[110px] rounded-[14px] animate-pulse"
+                style={{ background: "var(--ds-panel)" }}
+              />
+            ))
+          : recents.length === 0
+            ? <p className="col-span-full text-[12.5px]" style={{ color: "var(--ds-text-dim)" }}>
+                Aucun serveur configuré. Lance « Configurer mes serveurs » au-dessus.
+              </p>
+            : recents.map(r => <RecentCard key={`${r.bot}:${r.id}`} guild={r} />)}
       </div>
     </AppLayout>
   );
