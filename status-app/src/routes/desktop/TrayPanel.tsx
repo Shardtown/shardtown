@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Shield, Zap, Search, ChevronRight, Bell, Settings,
-  CheckCircle2, Crown, X,
+  CheckCircle2, X,
 } from "lucide-react";
 import { apiGet, setBearerToken } from "@/api/client";
 import { tokenGet, openExternal } from "@/lib/desktop";
@@ -242,10 +242,7 @@ function TrayGuildRow({ guild }: { guild: Guild }) {
         ? <img src={iconUrl} alt="" className="tray-row-icon" />
         : <div className="tray-row-icon tray-row-icon-fallback">{initials}</div>}
       <div className="tray-row-body">
-        <p className="tray-row-name">
-          {guild.name}
-          {guild.owner && <Crown size={9} strokeWidth={2.4} className="tray-row-crown" />}
-        </p>
+        <p className="tray-row-name">{guild.name}</p>
         <p className="tray-row-meta">
           <BotIcon size={9} strokeWidth={2} />
           {guild.bot === "shardguard" ? "ShardGuard" : "Shard"}

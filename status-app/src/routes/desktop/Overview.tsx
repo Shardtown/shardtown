@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Shield, Zap, Activity, ChevronRight, RefreshCw, ShieldCheck,
-  X, Sparkles, Crown,
+  Shield, Zap, Activity, ChevronRight, RefreshCw,
+  X, Sparkles,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/api/auth";
@@ -101,40 +101,40 @@ export function DesktopOverview() {
         {/* Background pattern — radial dots evoking the NordVPN map */}
         <div className="absolute inset-0 hero-bg" />
 
-        <div className="relative px-8 py-8">
-          <div className="flex items-center gap-3">
+        <div className="relative px-8 py-10">
+          <div className="flex items-center gap-3.5 mb-7">
             <div
-              className={`w-[42px] h-[42px] rounded-full flex items-center justify-center ${allOk ? "hero-shield-ok" : "hero-shield-warn"}`}
+              className="w-[44px] h-[44px] rounded-full flex items-center justify-center hero-shield"
             >
-              {allOk
-                ? <ShieldCheck size={18} strokeWidth={2} />
-                : <Shield size={18} strokeWidth={2} />}
+              <Shield size={19} strokeWidth={2.2} />
             </div>
             <div>
-              <p className="text-[22px] font-extrabold tracking-tight leading-tight">
-                Salut, {displayName}
+              <p className="text-[26px] font-black tracking-tight leading-[1.05]">
+                Salut, {displayName}.
               </p>
               <p
-                className="text-[13px] mt-0.5"
-                style={{ color: allOk ? "rgb(74, 222, 128)" : "rgb(251, 191, 36)" }}
+                className="text-[13px] font-semibold mt-1 inline-flex items-center gap-1.5"
+                style={{ color: allOk ? "rgb(74, 222, 128)" : "var(--ds-text-mut)" }}
               >
-                {allOk ? "Tous les bots opérationnels" : totalServers === 0 ? "Aucun serveur lié" : "Configuration partielle"}
+                <span className="w-1.5 h-1.5 rounded-full"
+                  style={{
+                    background: allOk ? "rgb(74, 222, 128)" : "var(--ds-text-dim)",
+                    boxShadow: allOk ? "0 0 8px rgb(74, 222, 128)" : "none",
+                  }}
+                />
+                {allOk
+                  ? "Tous les bots opérationnels"
+                  : totalServers === 0
+                    ? "Aucun serveur lié"
+                    : `${totalConfigured} / ${totalServers} actifs`}
               </p>
             </div>
           </div>
 
-          <p className="text-[13.5px] mt-5 mb-6 max-w-[440px]" style={{ color: "var(--ds-text-mut)" }}>
-            {totalConfigured > 0
-              ? `${totalConfigured} bot${totalConfigured > 1 ? "s" : ""} actif${totalConfigured > 1 ? "s" : ""} sur ${totalServers} serveur${totalServers > 1 ? "s" : ""} Discord où tu es admin.`
-              : totalServers > 0
-                ? `Tu as ${totalServers} serveur${totalServers > 1 ? "s" : ""} admin mais aucun bot configuré pour l'instant.`
-                : "Lie ton compte Discord pour voir tes serveurs et démarrer."}
-          </p>
-
           <div className="flex items-center gap-2.5">
             <Link
               to="/shardguard/server"
-              className="inline-flex items-center justify-center px-6 h-[42px] rounded-full font-bold text-[13px] hero-cta"
+              className="inline-flex items-center justify-center px-6 h-[44px] rounded-full font-bold text-[13.5px] hero-cta"
               style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
             >
               Configurer mes serveurs
@@ -143,10 +143,10 @@ export function DesktopOverview() {
               type="button"
               onClick={refresh}
               disabled={refreshing}
-              className="inline-flex items-center gap-1.5 px-4 h-[42px] rounded-full font-semibold text-[12.5px] transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 h-[44px] rounded-full font-bold text-[12.5px] transition-colors disabled:opacity-50"
               style={{ background: "var(--ds-panel-2)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }}
             >
-              <RefreshCw size={12} strokeWidth={2} className={refreshing ? "animate-spin" : ""} />
+              <RefreshCw size={13} strokeWidth={2.4} className={refreshing ? "animate-spin" : ""} />
               Actualiser
             </button>
           </div>
@@ -171,15 +171,18 @@ export function DesktopOverview() {
             background-image:
               radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.35) 1px, transparent 0);
           }
-          .hero-shield-ok {
-            background: rgba(74, 222, 128, 0.12);
-            color: rgb(74, 222, 128);
-            border: 1px solid rgba(74, 222, 128, 0.25);
+          /* Neutral shield disc — no vivid red, no contextual emerald,
+             reads the same regardless of bot state. State info lives in
+             the small status pill underneath the greeting. */
+          .hero-shield {
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.12);
           }
-          .hero-shield-warn {
-            background: rgba(239, 68, 68, 0.12);
-            color: rgb(239, 68, 68);
-            border: 1px solid rgba(239, 68, 68, 0.25);
+          [data-theme="light"] .hero-shield {
+            background: rgba(0, 0, 0, 0.05);
+            color: #1a1a1a;
+            border: 1px solid rgba(0, 0, 0, 0.10);
           }
           .hero-cta { transition: opacity 0.15s ease, transform 0.05s ease; }
           .hero-cta:hover { opacity: 0.92; }
@@ -194,20 +197,20 @@ export function DesktopOverview() {
           style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
         >
           <div
-            className="w-9 h-9 rounded-[10px] flex items-center justify-center flex-shrink-0"
-            style={{ background: "rgba(74, 222, 128, 0.12)", color: "rgb(74, 222, 128)" }}
+            className="w-10 h-10 rounded-[11px] flex items-center justify-center flex-shrink-0"
+            style={{ background: "var(--ds-panel-2)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }}
           >
             <Sparkles size={15} strokeWidth={2} />
           </div>
           <div className="flex-1">
-            <p className="font-semibold text-[13.5px]">Active Discord Rich Presence</p>
-            <p className="text-[12px] mt-0.5" style={{ color: "var(--ds-text-mut)" }}>
-              Affiche un statut custom sur ton profil pendant que tu utilises l'app.
+            <p className="font-bold text-[13.5px]">Active Discord Rich Presence</p>
+            <p className="text-[12px] font-medium mt-0.5" style={{ color: "var(--ds-text-mut)" }}>
+              Affiche un statut custom sur ton profil Discord.
             </p>
           </div>
           <Link
             to="/rpc"
-            className="text-[12px] font-semibold transition-opacity hover:opacity-80"
+            className="text-[12px] font-bold transition-opacity hover:opacity-80"
             style={{ color: "rgb(91, 109, 255)" }}
           >
             Activer
@@ -277,9 +280,9 @@ function SectionHead({
   muted?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between mb-3">
+    <div className="flex items-baseline justify-between mb-3.5">
       <h2
-        className="text-[15px] font-bold"
+        className="text-[17px] font-extrabold tracking-tight"
         style={{ color: muted ? "var(--ds-text-mut)" : "var(--ds-text)" }}
       >
         {title}
@@ -287,7 +290,7 @@ function SectionHead({
       {linkTo && (
         <Link
           to={linkTo}
-          className="inline-flex items-center gap-1 text-[12.5px] font-semibold transition-opacity hover:opacity-80"
+          className="inline-flex items-center gap-1 text-[12.5px] font-bold transition-opacity hover:opacity-80"
           style={{ color: "var(--ds-text-mut)" }}
         >
           {linkLabel} <ChevronRight size={11} strokeWidth={2.4} />
@@ -325,11 +328,8 @@ function RecentCard({ guild }: { guild: GuildSummary & { bot: "shardguard" | "sh
             {initials || "?"}
           </div>}
       <div className="min-w-0">
-        <p className="text-[13px] font-semibold truncate flex items-center gap-1.5">
-          {guild.name}
-          {guild.owner && <Crown size={10} strokeWidth={2.4} style={{ color: "rgb(251, 191, 36)" }} />}
-        </p>
-        <p className="text-[10.5px] mt-0.5 inline-flex items-center gap-1" style={{ color: "var(--ds-text-dim)" }}>
+        <p className="text-[13.5px] font-bold truncate">{guild.name}</p>
+        <p className="text-[10.5px] font-semibold mt-0.5 inline-flex items-center gap-1" style={{ color: "var(--ds-text-dim)" }}>
           <BotIcon size={9} strokeWidth={2} />
           {guild.bot === "shardguard" ? "ShardGuard" : "Shard"}
         </p>
@@ -356,25 +356,25 @@ function StatCard({
       style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
     >
       <div
-        className="w-10 h-10 rounded-[11px] flex items-center justify-center flex-shrink-0"
-        style={{ background: "var(--ds-panel-2)", color: tone === "ok" ? accent : "var(--ds-text-mut)" }}
+        className="w-11 h-11 rounded-[12px] flex items-center justify-center flex-shrink-0"
+        style={{ background: "var(--ds-panel-2)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }}
       >
         {icon}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1.5">
-          <p className="text-[14px] font-semibold">{label}</p>
+          <p className="text-[14px] font-bold">{label}</p>
           <span
-            className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full"
+            className="text-[10px] font-bold tracking-[0.12em] uppercase px-2 py-0.5 rounded-full"
             style={tone === "ok"
-              ? { background: "rgba(74, 222, 128, 0.12)", color: "rgb(74, 222, 128)" }
-              : { background: "rgba(239, 68, 68, 0.10)", color: "rgb(239, 68, 68)" }}
+              ? { background: "rgba(74, 222, 128, 0.10)", color: "rgb(74, 222, 128)" }
+              : { background: "var(--ds-panel-2)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
           >
-            {tone === "ok" ? "ON" : "OFF"}
+            {tone === "ok" ? "Actif" : "Inactif"}
           </span>
         </div>
-        <p className="text-[18px] font-bold tabular-nums">{value}</p>
-        <p className="text-[11.5px] mt-0.5" style={{ color: "var(--ds-text-dim)" }}>{sub}</p>
+        <p className="text-[20px] font-extrabold tabular-nums">{value}</p>
+        <p className="text-[11.5px] font-semibold mt-0.5" style={{ color: "var(--ds-text-dim)" }}>{sub}</p>
       </div>
       <Activity size={13} strokeWidth={2} style={{ color: "var(--ds-text-faint)" }} />
     </Link>

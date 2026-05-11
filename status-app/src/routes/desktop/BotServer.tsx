@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Shield, Zap, Search, RefreshCw, ArrowUpRight, ExternalLink,
-  Crown, CheckCircle2, PlusCircle,
+  CheckCircle2, PlusCircle,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost } from "@/api/client";
@@ -341,15 +341,10 @@ function ConfiguredCard({ guild, kind }: { guild: Guild; kind: "shardguard" | "s
     >
       <GuildIcon guild={guild} size={42} />
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-[13.5px] truncate flex items-center gap-1.5">
-          {guild.name}
-          {guild.owner && (
-            <Crown size={11} strokeWidth={2} style={{ color: "rgb(251, 191, 36)" }} />
-          )}
-        </p>
-        <p className="text-[11.5px] mt-0.5 inline-flex items-center gap-1.5" style={{ color: "var(--ds-text-mut)" }}>
+        <p className="font-bold text-[13.5px] truncate">{guild.name}</p>
+        <p className="text-[11.5px] font-semibold mt-0.5 inline-flex items-center gap-1.5" style={{ color: "var(--ds-text-mut)" }}>
           <CheckCircle2 size={11} strokeWidth={2.2} style={{ color: "rgb(74, 222, 128)" }} />
-          Configuré · cliquer pour ajuster
+          Configuré
         </p>
       </div>
       <ArrowUpRight
@@ -383,13 +378,8 @@ function InviteCard({
     >
       <GuildIcon guild={guild} size={42} />
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-[13.5px] truncate flex items-center gap-1.5">
-          {guild.name}
-          {guild.owner && (
-            <Crown size={11} strokeWidth={2} style={{ color: "rgb(251, 191, 36)" }} />
-          )}
-        </p>
-        <p className="text-[11.5px] mt-0.5 inline-flex items-center gap-1.5" style={{ color: "var(--ds-text-mut)" }}>
+        <p className="font-bold text-[13.5px] truncate">{guild.name}</p>
+        <p className="text-[11.5px] font-semibold mt-0.5 inline-flex items-center gap-1.5" style={{ color: "var(--ds-text-mut)" }}>
           <PlusCircle size={11} strokeWidth={2.2} />
           À inviter
         </p>
