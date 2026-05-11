@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutGrid, Sparkles, Settings, HelpCircle,
-  Search, Bell, User, LogOut, X,
+  Search, Bell, User, LogOut, X, MessageCircle,
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
 import { tokenClear, biometricConfirm, openExternal, IS_DESKTOP } from "@/lib/desktop";
@@ -51,6 +51,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
     { to: "/outils",            icon: <LayoutGrid size={18} strokeWidth={1.8} />,                       label: "Tableau de bord" },
     { to: "/shardguard/server", icon: <BotAvatar src="/image/shardguard.png" size={22} alt="ShardGuard" />, label: "ShardGuard" },
     { to: "/shard/server",      icon: <BotAvatar src="/image/shard.png"      size={22} alt="Shard" />,     label: "Shard" },
+    { to: "/assistant",         icon: <MessageCircle size={18} strokeWidth={1.8} />,                    label: "Samia" },
     { to: "/rpc",               icon: <Sparkles   size={18} strokeWidth={1.8} />,                       label: "Discord RPC" },
     { to: "/preferences",       icon: <Settings   size={18} strokeWidth={1.8} />,                       label: "Préférences" },
   ];
@@ -303,6 +304,7 @@ function SearchBox({
       { label: "Tableau de bord",        hint: "Vue d'ensemble",         path: "/outils" },
       { label: "ShardGuard · Serveurs",  hint: "Sécurité Discord",       path: "/shardguard/server" },
       { label: "Shard · Serveurs",       hint: "Communauté",             path: "/shard/server" },
+      { label: "Samia",                  hint: "Assistante IA",          path: "/assistant" },
       { label: "Discord RPC",            hint: "Rich Presence",          path: "/rpc" },
       { label: "Préférences",            hint: "Sons, Touch ID, thème",  path: "/preferences" },
       { label: "Mon compte",             hint: "Profil & connexions",    path: "/account" },

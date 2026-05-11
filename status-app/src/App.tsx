@@ -75,7 +75,7 @@ export function App() {
                   <Route path="/terms" element={<Navigate to="/outils" replace />} />
                   <Route path="/privacy" element={<Navigate to="/outils" replace />} />
                   <Route path="/status" element={<Navigate to="/outils" replace />} />
-                  <Route path="/assistant" element={<Navigate to="/outils" replace />} />
+                  <Route path="/assistant" element={<Assistant />} />
                 </>
               ) : (
                 <>
