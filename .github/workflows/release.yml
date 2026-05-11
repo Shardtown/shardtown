@@ -1,0 +1,88 @@
+name: Release Desktop App
+
+# Triggered on git tags v0.1.2, v0.2.0, etc. The tag's version *must* match
+# the version declared in desktop-tauri/src-tauri/tauri.conf.json + Cargo.toml.
+
+on:
+  push:
+    tags:
+      - "v*"
+  # Lets you trigger manually from the Actions tab for reruns/tests
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Build & Release (macOS arm64)
+    runs-on: macos-14   # Apple Silicon runner → produces aarch64 builds
+    permissions:
+      contents: write   # required to create the GitHub Release
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: meta
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing version $VERSION"
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: status-app/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            desktop-tauri/src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('desktop-tauri/src-tauri/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install status-app deps
+        working-directory: status-app
+        run: npm ci --no-audit --no-fund
+
+      - name: Install desktop-tauri deps
+        working-directory: desktop-tauri
+        run: npm ci --no-audit --no-fund
+
+      - name: Build Tauri bundle (signs via env vars)
+        working-directory: desktop-tauri
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npm run tauri:build
+
+      - name: Generate latest.json
+        working-directory: desktop-tauri
+        run: |
+          VERSION="${{ steps.meta.outputs.version }}"
+          BASE="https://github.com/${{ github.repository }}/releases/download/v$VERSION"
+          node scripts/make-manifest.mjs \
+            --version "$VERSION" \
+            --notes "Release $VERSION" \
+            --sig-path src-tauri/target/release/bundle/macos/Shardtown.app.tar.gz.sig \
+            --download-url-darwin-aarch64 "$BASE/Shardtown.app.tar.gz" \
+            --out latest.json
+
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Shardtown ${{ steps.meta.outputs.version }}
+          generate_release_notes: true
+          files: |
+            desktop-tauri/src-tauri/target/release/bundle/dmg/Shardtown_${{ steps.meta.outputs.version }}_aarch64.dmg
+            desktop-tauri/src-tauri/target/release/bundle/macos/Shardtown.app.tar.gz
+            desktop-tauri/src-tauri/target/release/bundle/macos/Shardtown.app.tar.gz.sig
+            desktop-tauri/latest.json

@@ -54,7 +54,43 @@ Reload : `source ~/.zshrc`.
 
 ---
 
-## Publier une nouvelle version
+## Publier une nouvelle version (auto via CI)
+
+Une fois le setup ci-dessus fait, tu n'as **plus rien à build** localement.
+GitHub Actions s'en charge :
+
+```bash
+# 1. bump version dans desktop-tauri/src-tauri/tauri.conf.json ET Cargo.toml
+# 2. commit + push
+git add -A && git commit -m "bump 0.1.3" && git push
+# 3. tag + push du tag → CI déclenche le build, signe, release, manifeste
+git tag v0.1.3 && git push origin v0.1.3
+```
+
+GitHub Actions (`.github/workflows/release.yml`) tourne sur un runner
+macOS 14 (Apple Silicon), build le .dmg + .app.tar.gz + signature, génère
+`latest.json` et uploade le tout sur la Release `v0.1.3`. Les apps déjà
+installées chez les users voient l'update à leur prochain lancement.
+
+### Secrets GitHub à configurer (une fois)
+
+Va sur https://github.com/Shardtown/shardtown/settings/secrets/actions
+et ajoute :
+
+- `TAURI_SIGNING_PRIVATE_KEY` → contenu **complet** de
+  `~/.shardtown-updater.key` (incluant les lignes `untrusted comment:` etc.)
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` → le mot de passe que tu as défini
+  quand tu as généré la clé
+
+Récupère le contenu de la clé privée :
+```bash
+cat ~/.shardtown-updater.key | pbcopy
+```
+…puis colle dans le secret.
+
+---
+
+## Publier manuellement (fallback / debug)
 
 ### 1. Bump la version
 
