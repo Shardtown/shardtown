@@ -632,101 +632,132 @@ function UpdateButton() {
         title={`Mise à jour ${available.version} disponible`}
         disabled={isBusy}
         onClick={() => setMenuOpen(o => !o)}
-        className="relative w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--ds-panel-2)] disabled:cursor-wait"
+        className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--ds-panel-2)] disabled:cursor-wait"
         style={{
-          background: "rgba(91, 109, 255, 0.12)",
-          border: "1px solid rgba(91, 109, 255, 0.35)",
-          color: "rgb(165, 180, 252)",
+          background: "var(--ds-panel)",
+          border: "1px solid var(--ds-border)",
+          color: "rgb(74, 222, 128)",
         }}
       >
         {isBusy ? (
-          <Loader2 size={15} strokeWidth={2} className="animate-spin" />
+          <Loader2 size={15} strokeWidth={2.2} className="animate-spin" />
         ) : (
-          <Download size={15} strokeWidth={2} />
+          <Download size={15} strokeWidth={2.2} />
         )}
-        <span
-          className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
-          style={{
-            background: "rgb(91, 109, 255)",
-            boxShadow: "0 0 8px rgb(91, 109, 255)",
-            display: isBusy ? "none" : undefined,
-          }}
-        />
       </button>
 
       {menuOpen && !isBusy && (
         <div
           data-update-menu
-          className="absolute z-50 right-0 top-[calc(100%+10px)] w-[300px] rounded-[14px] border overflow-hidden"
+          className="absolute z-50 right-0 top-[calc(100%+12px)] w-[320px] rounded-[18px] border overflow-hidden update-pop"
           style={{
             background: "var(--ds-bg-1)",
             borderColor: "var(--ds-border-strong)",
-            boxShadow: "0 22px 50px -10px rgba(0,0,0,0.5)",
+            boxShadow: "0 28px 64px -16px rgba(0,0,0,0.6)",
           }}
         >
-          <div className="px-4 pt-4 pb-3 border-b" style={{ borderColor: "var(--ds-border)" }}>
-            <p className="text-[11px] font-bold tracking-[0.18em] uppercase" style={{ color: "rgb(165, 180, 252)" }}>
-              Mise à jour disponible
-            </p>
-            <p className="text-[15px] font-extrabold tracking-tight mt-1">Version {available.version}</p>
+          {/* Accent strip */}
+          <div className="h-[3px] w-full" style={{ background: "rgb(74, 222, 128)" }} />
+
+          <div className="px-5 pt-5 pb-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div
+                className="w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0"
+                style={{ background: "rgba(74, 222, 128, 0.12)", border: "1px solid rgba(74, 222, 128, 0.28)", color: "rgb(74, 222, 128)" }}
+              >
+                <Download size={16} strokeWidth={2.2} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p
+                  className="text-[10px] font-bold tracking-[0.22em] uppercase"
+                  style={{ color: "rgb(74, 222, 128)" }}
+                >
+                  Mise à jour disponible
+                </p>
+                <p className="text-[17px] font-extrabold tracking-tight font-mono-num leading-tight">
+                  v{available.version}
+                </p>
+              </div>
+            </div>
             {available.notes && (
               <p
-                className="text-[11.5px] font-medium mt-2 line-clamp-4 whitespace-pre-line"
+                className="text-[12px] font-medium leading-relaxed whitespace-pre-line line-clamp-5"
                 style={{ color: "var(--ds-text-mut)" }}
               >
                 {available.notes}
               </p>
             )}
           </div>
-          <div className="p-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setMenuOpen(false)}
-              className="flex-1 h-9 rounded-[10px] text-[12.5px] font-bold transition-colors hover:bg-[var(--ds-panel)]"
-              style={{ color: "var(--ds-text-mut)" }}
-            >
-              Plus tard
-            </button>
+
+          <div className="px-4 pb-4 flex flex-col gap-2">
             <button
               type="button"
               onClick={install}
-              className="flex-1 h-9 rounded-[10px] text-[12.5px] font-bold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-1.5"
-              style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+              className="w-full h-10 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2"
+              style={{ background: "rgb(74, 222, 128)", color: "#062e16" }}
             >
-              <Download size={12} strokeWidth={2.4} />
-              Installer
+              <Download size={13} strokeWidth={2.6} />
+              Installer maintenant
+            </button>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              className="w-full h-8 rounded-full text-[12px] font-bold transition-colors hover:bg-[var(--ds-panel)]"
+              style={{ color: "var(--ds-text-dim)" }}
+            >
+              Plus tard
             </button>
           </div>
+
+          <style>{`
+            .update-pop { animation: update-in 180ms cubic-bezier(0.22, 1, 0.36, 1); transform-origin: top right; }
+            @keyframes update-in {
+              from { opacity: 0; transform: scale(0.96) translateY(-6px); }
+              to   { opacity: 1; transform: scale(1) translateY(0); }
+            }
+          `}</style>
         </div>
       )}
 
       {/* Progress popover during download */}
       {isBusy && (
         <div
-          className="absolute z-50 right-0 top-[calc(100%+10px)] w-[280px] rounded-[14px] border px-4 py-3"
+          className="absolute z-50 right-0 top-[calc(100%+12px)] w-[300px] rounded-[18px] border px-5 py-4 update-pop"
           style={{
             background: "var(--ds-bg-1)",
             borderColor: "var(--ds-border-strong)",
-            boxShadow: "0 22px 50px -10px rgba(0,0,0,0.5)",
+            boxShadow: "0 28px 64px -16px rgba(0,0,0,0.6)",
           }}
         >
-          <p className="text-[12.5px] font-bold">
-            {progress.kind === "downloading"
-              ? `Téléchargement ${pct !== null ? `· ${pct}%` : "…"}`
-              : progress.kind === "installing"
-                ? "Installation…"
-                : "Vérification…"}
-          </p>
-          <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--ds-panel-2)" }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[13px] font-bold">
+              {progress.kind === "downloading"
+                ? "Téléchargement"
+                : progress.kind === "installing"
+                  ? "Installation"
+                  : "Vérification"}
+            </p>
+            {pct !== null && (
+              <p className="text-[12px] font-mono-num font-bold" style={{ color: "rgb(74, 222, 128)" }}>
+                {pct}%
+              </p>
+            )}
+          </div>
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--ds-panel-2)" }}>
             <div
               className="h-full transition-[width] duration-200"
               style={{
-                width: pct !== null ? `${pct}%` : "100%",
-                background: "rgb(91, 109, 255)",
+                width: pct !== null ? `${pct}%` : "40%",
+                background: "rgb(74, 222, 128)",
                 animation: pct === null ? "update-indeterm 1.4s ease-in-out infinite" : undefined,
               }}
             />
           </div>
+          <p className="text-[11px] mt-2.5" style={{ color: "var(--ds-text-dim)" }}>
+            {progress.kind === "installing"
+              ? "L'app va redémarrer dans un instant."
+              : "Garde l'app ouverte pendant le téléchargement."}
+          </p>
           <style>{`
             @keyframes update-indeterm {
               0%   { transform: translateX(-100%); }

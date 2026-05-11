@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Trash2, ShieldOff } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Trash2, ShieldOff, Loader2, CheckCircle2, AlertTriangle, X } from "lucide-react";
 import {
   type DiscordChannel, type DiscordRole, type SGSettings,
   parseJsonArray, isTrue, toFlag, to01,
@@ -404,34 +404,369 @@ export function AutomodTab({ settings, update }: TabProps) {
   );
 }
 
-/* ========== Mode Panic ========== */
+/* ========== Mode Panic ==========
+ *
+ * Lockdown immediate du serveur : ferme tous les salons (deny SendMessages
+ * pour @everyone) + supprime toutes les invitations actives. L'opération
+ * peut prendre plusieurs secondes selon le nombre de salons/invites — d'où
+ * le state machine + le modal de progression.
+ */
+type PanicState =
+  | { kind: "idle" }
+  | { kind: "confirming" }
+  | { kind: "loading" }
+  | { kind: "success"; channels?: number; invites?: number }
+  | { kind: "error"; message: string };
+
+interface PanicResponse {
+  success?: boolean;
+  error?: string;
+  channels_locked?: number;
+  invites_deleted?: number;
+}
+
 export function PanicTab() {
+  const [state, setState] = useState<PanicState>({ kind: "idle" });
+
+  async function fire() {
+    setState({ kind: "loading" });
+    try {
+      const d = await apiPost<PanicResponse>(
+        window.location.pathname.replace("/shardguard/guild/", "/shardguard/api/guild/") + "/panic",
+        { activate: true },
+      );
+      if (d.success) {
+        setState({ kind: "success", channels: d.channels_locked, invites: d.invites_deleted });
+      } else {
+        setState({ kind: "error", message: d.error || "Erreur inconnue" });
+      }
+    } catch (e) {
+      setState({ kind: "error", message: e instanceof Error ? e.message : "Erreur réseau" });
+    }
+  }
+
   return (
     <SectionCard title="Mode Panic">
       <div className="text-center py-8">
-        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 mb-4">
-          <ShieldOff className="w-5 h-5" />
-        </div>
-        <p className="text-white/60 mb-4">Lockdown immédiat du serveur en cas de raid.</p>
-        <p className="text-[12px] text-white/30 mb-6">Coupe les invitations et limite les nouveaux messages.</p>
-        <button
-          type="button"
-          className="px-6 py-3 rounded-full bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 font-bold text-sm transition-colors"
-          onClick={async () => {
-            try {
-              const d = await apiPost<{ success?: boolean; error?: string }>(
-                window.location.pathname.replace("/shardguard/guild/", "/shardguard/api/guild/") + "/panic",
-              );
-              alert(d.success ? "Mode panic activé" : `Erreur : ${d.error || ""}`);
-            } catch (e) {
-              alert(e instanceof Error ? e.message : "Erreur réseau");
-            }
+        <div
+          className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
+          style={{
+            background: "rgba(239, 68, 68, 0.10)",
+            border: "1px solid rgba(239, 68, 68, 0.25)",
+            color: "rgb(248, 113, 113)",
           }}
         >
+          <ShieldOff className="w-5 h-5" />
+        </div>
+        <p className="text-[14px] mb-2" style={{ color: "var(--ds-text-mut)" }}>
+          Lockdown immédiat du serveur en cas de raid.
+        </p>
+        <p className="text-[12px] mb-6" style={{ color: "var(--ds-text-dim)" }}>
+          Ferme tous les salons (lecture seule pour @everyone) et supprime toutes les invitations actives.
+        </p>
+        <button
+          type="button"
+          onClick={() => setState({ kind: "confirming" })}
+          className="px-6 h-11 rounded-full font-bold text-[13.5px] transition-colors inline-flex items-center gap-2"
+          style={{
+            background: "rgba(239, 68, 68, 0.12)",
+            border: "1px solid rgba(239, 68, 68, 0.35)",
+            color: "rgb(248, 113, 113)",
+          }}
+        >
+          <ShieldOff className="w-4 h-4" />
           Activer le mode panic
         </button>
       </div>
+
+      <PanicModal state={state} onClose={() => setState({ kind: "idle" })} onConfirm={fire} />
     </SectionCard>
+  );
+}
+
+function PanicModal({
+  state, onClose, onConfirm,
+}: {
+  state: PanicState;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  // ESC closes (except during loading)
+  useEffect(() => {
+    if (state.kind === "idle" || state.kind === "loading") return;
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [state.kind, onClose]);
+
+  if (state.kind === "idle") return null;
+
+  const closable = state.kind !== "loading";
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-6 panic-overlay"
+      onClick={closable ? onClose : undefined}
+    >
+      <div className="absolute inset-0" style={{ background: "rgba(0, 0, 0, 0.55)", backdropFilter: "blur(10px)" }} />
+      <div
+        className="relative w-full max-w-md rounded-[20px] border overflow-hidden panic-modal"
+        style={{
+          background: "var(--ds-bg-1)",
+          borderColor: "var(--ds-border-strong)",
+          boxShadow: "0 32px 80px -16px rgba(0,0,0,0.6)",
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Accent strip */}
+        <div
+          className="h-[3px] w-full"
+          style={{
+            background:
+              state.kind === "success" ? "rgb(74, 222, 128)" :
+              state.kind === "error"   ? "rgb(239, 68, 68)" :
+                                         "rgb(248, 113, 113)",
+          }}
+        />
+
+        {closable && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer"
+            className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--ds-panel-2)]"
+            style={{ background: "var(--ds-panel)", color: "var(--ds-text-mut)" }}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        <div className="px-7 pt-7 pb-6">
+          {state.kind === "confirming" && (
+            <ConfirmingBody onCancel={onClose} onConfirm={onConfirm} />
+          )}
+          {state.kind === "loading" && <LoadingBody />}
+          {state.kind === "success" && (
+            <SuccessBody channels={state.channels} invites={state.invites} onClose={onClose} />
+          )}
+          {state.kind === "error" && (
+            <ErrorBody message={state.message} onClose={onClose} />
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        .panic-overlay { animation: panic-fade 160ms ease-out; }
+        .panic-modal { animation: panic-pop 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+        @keyframes panic-fade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes panic-pop {
+          from { opacity: 0; transform: scale(0.94) translateY(8px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function ConfirmingBody({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <>
+      <div
+        className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
+        style={{
+          background: "rgba(239, 68, 68, 0.10)",
+          border: "1px solid rgba(239, 68, 68, 0.28)",
+          color: "rgb(248, 113, 113)",
+        }}
+      >
+        <AlertTriangle className="w-5 h-5" />
+      </div>
+      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(248, 113, 113)" }}>
+        Action critique
+      </p>
+      <h3 className="text-[20px] font-extrabold tracking-tight mb-2">Activer le mode panic ?</h3>
+      <p className="text-[13px] leading-relaxed mb-5" style={{ color: "var(--ds-text-mut)" }}>
+        Cette action va immédiatement&nbsp;:
+      </p>
+      <ul className="space-y-1.5 mb-6 text-[12.5px]" style={{ color: "var(--ds-text-mut)" }}>
+        <li className="flex items-start gap-2">
+          <span className="mt-1 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "rgb(248, 113, 113)" }} />
+          <span>Verrouiller <b style={{ color: "var(--ds-text)" }}>tous les salons</b> (lecture seule pour @everyone)</span>
+        </li>
+        <li className="flex items-start gap-2">
+          <span className="mt-1 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "rgb(248, 113, 113)" }} />
+          <span>Supprimer <b style={{ color: "var(--ds-text)" }}>toutes les invitations actives</b></span>
+        </li>
+      </ul>
+      <p className="text-[11.5px] mb-6" style={{ color: "var(--ds-text-dim)" }}>
+        Tu pourras retirer les permissions manuellement quand tu veux. Aucun message n'est supprimé.
+      </p>
+      <div className="flex gap-2.5">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 h-11 rounded-full text-[13px] font-bold transition-colors hover:bg-[var(--ds-panel-2)]"
+          style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text)" }}
+        >
+          Annuler
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="flex-1 h-11 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2"
+          style={{ background: "rgb(239, 68, 68)", color: "#fff" }}
+        >
+          <ShieldOff className="w-4 h-4" />
+          Activer
+        </button>
+      </div>
+    </>
+  );
+}
+
+function LoadingBody() {
+  return (
+    <div className="py-3">
+      <div
+        className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
+        style={{
+          background: "rgba(239, 68, 68, 0.10)",
+          border: "1px solid rgba(239, 68, 68, 0.28)",
+          color: "rgb(248, 113, 113)",
+        }}
+      >
+        <Loader2 className="w-5 h-5 animate-spin" />
+      </div>
+      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(248, 113, 113)" }}>
+        Lockdown en cours
+      </p>
+      <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Verrouillage du serveur…</h3>
+      <p className="text-[13px] leading-relaxed mb-4" style={{ color: "var(--ds-text-mut)" }}>
+        Fermeture des salons et suppression des invitations. Cette opération peut prendre plusieurs secondes selon la taille du serveur.
+      </p>
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--ds-panel-2)" }}>
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: "40%",
+            background: "rgb(248, 113, 113)",
+            animation: "panic-loader 1.4s ease-in-out infinite",
+          }}
+        />
+      </div>
+      <style>{`
+        @keyframes panic-loader {
+          0%   { transform: translateX(-120%); }
+          100% { transform: translateX(280%); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function SuccessBody({
+  channels, invites, onClose,
+}: {
+  channels?: number;
+  invites?: number;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <div
+        className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
+        style={{
+          background: "rgba(74, 222, 128, 0.12)",
+          border: "1px solid rgba(74, 222, 128, 0.32)",
+          color: "rgb(74, 222, 128)",
+        }}
+      >
+        <CheckCircle2 className="w-5 h-5" />
+      </div>
+      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(74, 222, 128)" }}>
+        Lockdown actif
+      </p>
+      <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Le serveur est sécurisé.</h3>
+      {(channels !== undefined || invites !== undefined) ? (
+        <div className="grid grid-cols-2 gap-2.5 mb-6">
+          {channels !== undefined && (
+            <div
+              className="rounded-[14px] border px-4 py-3"
+              style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+            >
+              <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
+                Salons
+              </p>
+              <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "rgb(74, 222, 128)" }}>
+                {channels}
+              </p>
+              <p className="text-[10.5px] mt-1" style={{ color: "var(--ds-text-dim)" }}>verrouillés</p>
+            </div>
+          )}
+          {invites !== undefined && (
+            <div
+              className="rounded-[14px] border px-4 py-3"
+              style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+            >
+              <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
+                Invitations
+              </p>
+              <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "rgb(74, 222, 128)" }}>
+                {invites}
+              </p>
+              <p className="text-[10.5px] mt-1" style={{ color: "var(--ds-text-dim)" }}>supprimées</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-[13px] leading-relaxed mb-6" style={{ color: "var(--ds-text-mut)" }}>
+          Tous les salons sont verrouillés et les invitations supprimées.
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={onClose}
+        className="w-full h-11 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90"
+        style={{ background: "rgb(74, 222, 128)", color: "#062e16" }}
+      >
+        OK
+      </button>
+    </>
+  );
+}
+
+function ErrorBody({ message, onClose }: { message: string; onClose: () => void }) {
+  return (
+    <>
+      <div
+        className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
+        style={{
+          background: "rgba(239, 68, 68, 0.10)",
+          border: "1px solid rgba(239, 68, 68, 0.28)",
+          color: "rgb(248, 113, 113)",
+        }}
+      >
+        <AlertTriangle className="w-5 h-5" />
+      </div>
+      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(248, 113, 113)" }}>
+        Échec
+      </p>
+      <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Mode panic non activé.</h3>
+      <p
+        className="text-[12.5px] leading-relaxed mb-5 px-3 py-2.5 rounded-[10px] font-mono break-words"
+        style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
+      >
+        {message}
+      </p>
+      <button
+        type="button"
+        onClick={onClose}
+        className="w-full h-11 rounded-full text-[13px] font-bold transition-colors hover:bg-[var(--ds-panel-2)]"
+        style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text)" }}
+      >
+        Fermer
+      </button>
+    </>
   );
 }
 

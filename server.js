@@ -4352,14 +4352,17 @@ app.post('/shardguard/api/guild/:guildID/panic', checkAuth, async (req, res) => 
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
 
-    const { activate } = req.body;
+    // Default to activate=true when the body is empty so a bare POST locks
+    // down the server (matches the UI's "Activer le mode panic" button).
+    // Pass { activate: false } explicitly to unlock.
+    const activate = req.body?.activate !== false;
     const headers = { Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' };
 
     try {
         const channelsRes = await axios.get(`https://discord.com/api/v10/guilds/${guildID}/channels`, { headers });
         const textChannels = channelsRes.data.filter(c => c.type === 0 || c.type === 5);
 
-        let count = 0;
+        let channels_locked = 0;
         for (const channel of textChannels) {
             try {
                 const overwrites = channel.permission_overwrites || [];
@@ -4375,22 +4378,35 @@ app.post('/shardguard/api/guild/:guildID/panic', checkAuth, async (req, res) => 
                     deny &= ~SEND_MESSAGES;
                 }
 
-                const newOverwrites = overwrites.filter(o => o.id !== guildID);
-                newOverwrites.push({ id: guildID, type: 0, allow: allow.toString(), deny: deny.toString() });
-
                 await axios.put(`https://discord.com/api/v10/channels/${channel.id}/permissions/${guildID}`, {
                     type: 0,
                     allow: allow.toString(),
                     deny: deny.toString()
                 }, { headers });
-                count++;
+                channels_locked++;
                 await new Promise(r => setTimeout(r, 100));
+            } catch {}
+        }
+
+        // Also nuke active invites — they're the main vector for an ongoing raid.
+        // No-op when deactivating (you can't "un-delete" an invite anyway).
+        let invites_deleted = 0;
+        if (activate) {
+            try {
+                const invRes = await axios.get(`https://discord.com/api/v10/guilds/${guildID}/invites`, { headers });
+                for (const inv of invRes.data || []) {
+                    try {
+                        await axios.delete(`https://discord.com/api/v10/invites/${inv.code}`, { headers });
+                        invites_deleted++;
+                        await new Promise(r => setTimeout(r, 80));
+                    } catch {}
+                }
             } catch {}
         }
 
         await db.execute('UPDATE settings SET panicModeActive = ? WHERE guildId = ?', [activate ? 1 : 0, guildID]);
 
-        res.json({ success: true, count, active: !!activate });
+        res.json({ success: true, channels_locked, invites_deleted, active: activate });
     } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
