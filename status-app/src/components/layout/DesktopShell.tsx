@@ -148,7 +148,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-col items-center gap-1">
           <button
             type="button"
             onClick={() => openExternal("https://shardtwn.fr/wiki").catch(() => {})}
@@ -159,6 +159,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           >
             <HelpCircle size={18} strokeWidth={1.8} />
           </button>
+          <AppVersion />
         </div>
       </aside>
 
@@ -527,6 +528,42 @@ function BotAvatar({ src, size, alt }: { src: string; size: number; alt: string 
       style={{ width: size, height: size }}
       className="rounded-[7px] object-cover"
     />
+  );
+}
+
+/* ─── App version label ────────────────────────────────────────────────
+ *
+ * Tiny version string rendered under the help icon at the bottom of the
+ * rail. Reads from Tauri's runtime API (which reflects tauri.conf.json at
+ * build time). Renders nothing on the web.
+ */
+function AppVersion() {
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!IS_DESKTOP) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getVersion } = await import("@tauri-apps/api/app");
+        const v = await getVersion();
+        if (!cancelled) setVersion(v);
+      } catch {
+        /* desktop API unavailable — skip */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (!IS_DESKTOP || !version) return null;
+  return (
+    <span
+      className="text-[9px] font-mono-num leading-none select-none"
+      style={{ color: "var(--ds-text-faint)" }}
+      title={`Shardtown ${version}`}
+    >
+      v{version}
+    </span>
   );
 }
 
