@@ -65,21 +65,18 @@ export function DesktopOverview() {
     try { localStorage.setItem(DISMISS_TIP_KEY, "1"); } catch { /* */ }
   }
 
-  // Combined recents = first 5 configured guilds (deduplicated)
+  // Combined recents = first configured guilds, merging both bots when both are present
   const recents = useMemo(() => {
-    const all: (GuildSummary & { bot: "shardguard" | "shard" })[] = [
-      ...g.shardguard.filter(x => x.bot_present).map(x => ({ ...x, bot: "shardguard" as const })),
-      ...g.shard.filter(x => x.bot_present).map(x => ({ ...x, bot: "shard" as const })),
-    ];
-    const seen = new Set<string>();
-    const out: typeof all = [];
-    for (const x of all) {
-      if (seen.has(x.id)) continue;
-      seen.add(x.id);
-      out.push(x);
-      if (out.length >= 5) break;
+    const byId = new Map<string, GuildSummary & { bots: ("shardguard" | "shard")[] }>();
+    for (const x of g.shardguard.filter(x => x.bot_present)) {
+      byId.set(x.id, { ...x, bots: ["shardguard"] });
     }
-    return out;
+    for (const x of g.shard.filter(x => x.bot_present)) {
+      const existing = byId.get(x.id);
+      if (existing) existing.bots.push("shard");
+      else byId.set(x.id, { ...x, bots: ["shard"] });
+    }
+    return [...byId.values()].slice(0, 8);
   }, [g]);
 
   const sgConfigured = g.shardguard.filter(x => x.bot_present).length;
@@ -267,7 +264,7 @@ export function DesktopOverview() {
             ? <p className="col-span-full text-[12.5px]" style={{ color: "var(--ds-text-dim)" }}>
                 Aucun serveur configuré. Lance « Configurer mes serveurs » au-dessus.
               </p>
-            : recents.map(r => <RecentCard key={`${r.bot}:${r.id}`} guild={r} />)}
+            : recents.map(r => <RecentCard key={r.id} guild={r} />)}
       </div>
     </AppLayout>
   );
@@ -302,39 +299,45 @@ function SectionHead({
   );
 }
 
-function RecentCard({ guild }: { guild: GuildSummary & { bot: "shardguard" | "shard" } }) {
+function RecentCard({ guild }: { guild: GuildSummary & { bots: ("shardguard" | "shard")[] } }) {
   // Discord CDN demands power-of-2 sizes
   const iconUrl = guild.icon
-    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
+    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
     : null;
   const initials = guild.name.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase().slice(0, 2);
-  const botAvatar = guild.bot === "shardguard" ? "/image/shardguard.png" : "/image/shard.png";
+  const primaryBot = guild.bots[0];
 
   return (
     <Link
-      to={`/${guild.bot}/guild/${guild.id}`}
-      className="rounded-[14px] border p-3 flex flex-col gap-2 transition-all hover:-translate-y-0.5"
+      to={`/${primaryBot}/guild/${guild.id}`}
+      className="rounded-[14px] border p-3 flex flex-col items-center text-center gap-2 transition-all hover:-translate-y-0.5 min-h-[110px]"
       style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
     >
       {iconUrl
         ? <img
             src={iconUrl}
             alt=""
-            className="w-9 h-9 rounded-[10px] object-cover border self-start"
+            className="w-12 h-12 rounded-[12px] object-cover border"
             style={{ borderColor: "var(--ds-border)" }}
           />
         : <div
-            className="w-9 h-9 rounded-[10px] border flex items-center justify-center text-[12px] font-bold self-start"
+            className="w-12 h-12 rounded-[12px] border flex items-center justify-center text-[13px] font-bold"
             style={{ background: "var(--ds-panel-2)", borderColor: "var(--ds-border)", color: "var(--ds-text-mut)" }}
           >
             {initials || "?"}
           </div>}
-      <div className="min-w-0">
-        <p className="text-[13.5px] font-bold truncate">{guild.name}</p>
-        <p className="text-[10.5px] font-semibold mt-0.5 inline-flex items-center gap-1" style={{ color: "var(--ds-text-dim)" }}>
-          <img src={botAvatar} alt="" className="w-3 h-3 rounded-[3px] object-cover" />
-          {guild.bot === "shardguard" ? "ShardGuard" : "Shard"}
-        </p>
+      <p className="text-[12px] font-bold leading-tight line-clamp-2 w-full break-words">{guild.name}</p>
+      <div className="flex items-center gap-1 mt-auto">
+        {guild.bots.map(b => (
+          <img
+            key={b}
+            src={b === "shardguard" ? "/image/shardguard.png" : "/image/shard.png"}
+            alt={b === "shardguard" ? "ShardGuard" : "Shard"}
+            title={b === "shardguard" ? "ShardGuard" : "Shard"}
+            className="w-4 h-4 rounded-[5px] object-cover border"
+            style={{ borderColor: "var(--ds-border)" }}
+          />
+        ))}
       </div>
     </Link>
   );
@@ -374,7 +377,7 @@ function StatCard({
             {tone === "ok" ? "Actif" : "Inactif"}
           </span>
         </div>
-        <p className="text-[20px] font-extrabold tabular-nums">{value}</p>
+        <p className="text-[20px] font-extrabold tracking-tight">{value}</p>
         <p className="text-[11.5px] font-semibold mt-0.5" style={{ color: "var(--ds-text-dim)" }}>{sub}</p>
       </div>
       <Activity size={13} strokeWidth={2} style={{ color: "var(--ds-text-faint)" }} />
