@@ -221,15 +221,6 @@ export function TrayPanel() {
 
       {error && <div className="tray-error">{error}</div>}
 
-      <div className="tray-footer">
-        <span className="tray-online">
-          <span className="tray-dot" />
-          Connecté
-        </span>
-        <span className="tray-sep">·</span>
-        <span className="tray-foot-version">v0.1.1</span>
-      </div>
-
       <TrayStyles />
     </div>
   );

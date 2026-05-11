@@ -254,6 +254,13 @@ const TRAY_PANEL_HEIGHT: f64 = 520.0;
 /// clicks elsewhere.
 #[cfg(target_os = "macos")]
 fn toggle_tray_panel(app: &tauri::AppHandle, click_x: f64, monitor_scale: f64) -> tauri::Result<()> {
+    // Bring the whole app to the foreground first. Without this, clicking
+    // the tray icon while another app (Safari, Discord…) has focus would
+    // create the window but it'd immediately lose focus to the foreground
+    // app — triggering our hide-on-blur listener before the user can even
+    // interact with it.
+    let _ = app.show();
+
     if let Some(existing) = app.get_webview_window(TRAY_PANEL_LABEL) {
         let visible = existing.is_visible().unwrap_or(false);
         if visible {
@@ -293,12 +300,27 @@ fn toggle_tray_panel(app: &tauri::AppHandle, click_x: f64, monitor_scale: f64) -
     let _ = window.set_focus();
 
     // Hide-on-blur: when the user clicks anywhere outside the popover the
-    // window loses focus → we tuck it away. They can re-open by clicking
-    // the tray icon again.
+    // window loses focus → we tuck it away. Tracked via a 200ms grace
+    // window after each show() to absorb the focus race that happens when
+    // the user invokes us from another app (Safari etc.) — without it,
+    // the panel would show + immediately blur + hide before they could
+    // interact.
     let panel_handle = window.clone();
     window.on_window_event(move |event| {
-        if let WindowEvent::Focused(false) = event {
-            let _ = panel_handle.hide();
+        match event {
+            WindowEvent::Focused(false) => {
+                // Schedule the hide; if the window was just shown,
+                // is_visible may still be true and the user's intent
+                // wasn't actually to dismiss.
+                let win = panel_handle.clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(150));
+                    if !win.is_focused().unwrap_or(true) {
+                        let _ = win.hide();
+                    }
+                });
+            }
+            _ => {}
         }
     });
 
