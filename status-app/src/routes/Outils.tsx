@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import {
-  Shield, Zap, Sparkles, ArrowRight, Lock, Mail,
+  Sparkles, ArrowRight, Lock, Mail,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -26,7 +26,7 @@ const BOTS = [
     description:
       "Anti-raid, vérification captcha, modération automatique, sanctions progressives, mode panic, logs en temps réel.",
     href: "/shardguard/server",
-    icon: Shield,
+    avatar: "/image/shardguard.png",
   },
   {
     label: "Shard",
@@ -34,7 +34,7 @@ const BOTS = [
     description:
       "Niveaux, économie, tickets, sondages, giveaways, vocaux temporaires, embeds, anniversaires, annonces planifiées.",
     href: "/shard/server",
-    icon: Zap,
+    avatar: "/image/shard.png",
   },
 ];
 
@@ -274,13 +274,15 @@ function ToolCard({
   description,
   href,
   icon: Icon,
+  avatar,
   cta,
 }: {
   label: string;
   tagline: string;
   description: string;
   href: string;
-  icon: typeof Shield;
+  icon?: typeof Sparkles;
+  avatar?: string;
   cta: string;
 }) {
   return (
@@ -291,8 +293,12 @@ function ToolCard({
         scale={1.02}
         className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 md:p-7 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full"
       >
-        <div className="w-11 h-11 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70 mb-5">
-          <Icon className="w-5 h-5" strokeWidth={2} />
+        <div className="w-11 h-11 rounded-xl overflow-hidden bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70 mb-5">
+          {avatar
+            ? <img src={avatar} alt="" className="w-full h-full object-cover" />
+            : Icon
+              ? <Icon className="w-5 h-5" strokeWidth={2} />
+              : null}
         </div>
         <h3 className="text-xl font-bold mb-1.5">{label}</h3>
         <p className="text-[10.5px] font-bold uppercase tracking-widest text-white/35 mb-4">

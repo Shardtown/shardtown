@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Shield, Zap, MessageSquare, Mail } from "lucide-react";
+import { ArrowRight, MessageSquare, Mail } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TiltCard } from "@/components/ui/tilt-card";
@@ -40,7 +40,7 @@ const TOOLS = [
     tagline: "Sécurité Discord",
     description: "Anti-raid, vérification captcha, modération avancée et logs en temps réel.",
     href: "/shardguard/server",
-    icon: Shield,
+    avatar: "/image/shardguard.png",
     accent: "text-blue-400",
   },
   {
@@ -48,7 +48,7 @@ const TOOLS = [
     tagline: "Multi-fonctions premium",
     description: "Niveaux, économie, tickets, sondages, giveaways, embed builder et plus.",
     href: "/shard/server",
-    icon: Zap,
+    avatar: "/image/shard.png",
     accent: "text-emerald-400",
   },
 ];
@@ -174,14 +174,13 @@ export function Index() {
         </Reveal>
         <RevealStagger className="grid md:grid-cols-2 gap-8 md:gap-10" staggerChildren={0.1} delayChildren={0.15}>
           {TOOLS.map(t => {
-            const Icon = t.icon;
             return (
               <RevealItem key={t.label} direction="right" distance={70} className="relative hover:z-10">
                 <Link to={t.href} className="group block h-full">
                   <HolographicCard className="h-full">
                     <div className="flex items-start gap-6 h-full">
-                      <div className={`w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center ${t.accent} flex-shrink-0`}>
-                        <Icon className="w-6 h-6" strokeWidth={2} />
+                      <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/[0.04] border border-white/[0.08] flex-shrink-0">
+                        <img src={t.avatar} alt="" className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2 flex-wrap">
