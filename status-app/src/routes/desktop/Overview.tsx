@@ -254,7 +254,7 @@ export function DesktopOverview() {
 
       {/* ─── RECENTS ───────────────────────────────────────────── */}
       <SectionHead title="Récents" linkTo="/shardguard/server" linkLabel="Tous les serveurs" muted />
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 mb-10">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2.5 mb-10">
         {g.loading
           ? Array.from({ length: 5 }).map((_, i) => (
               <div

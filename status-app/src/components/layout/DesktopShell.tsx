@@ -112,20 +112,18 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           title="Shardtown"
           className="w-10 h-10 flex items-center justify-center mb-6 transition-opacity hover:opacity-90"
         >
-          <img src="/image/favicon.png" alt="Shardtown" className="w-10 h-10 object-contain" />
+          <img src="/image/favicon.png" alt="Shardtown" className="w-6 h-6 object-contain" />
         </Link>
 
         <nav className="flex flex-col gap-1.5 w-10">
           {groups.map((group, gi) => (
             <div key={gi} className="flex flex-col gap-1.5">
-              {group.label && (
+              {gi > 0 && (
                 <div
-                  className="text-[8.5px] font-extrabold tracking-[0.18em] uppercase text-center mt-3 mb-0.5"
-                  style={{ color: "var(--ds-text-faint)" }}
-                  title={group.label}
-                >
-                  {group.label}
-                </div>
+                  className="mx-auto w-6 h-px my-2"
+                  style={{ background: "var(--ds-border)" }}
+                  aria-hidden
+                />
               )}
               {group.items.map(item => (
                 <RailItem
@@ -195,9 +193,9 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* Main content area — scrolls, max-width centered for readability */}
+        {/* Main content area — scrolls, full-bleed (pages decide their own widths) */}
         <main className="flex-1 min-h-0 overflow-y-auto">
-          <div className="max-w-[960px] mx-auto px-8 pt-8 pb-16">{children}</div>
+          <div className="w-full px-8 pt-8 pb-16">{children}</div>
         </main>
       </div>
     </div>

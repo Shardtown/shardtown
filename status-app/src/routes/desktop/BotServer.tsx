@@ -234,7 +234,7 @@ export function DesktopBotServer({ kind }: Props) {
               count={configured.length}
               total={guilds.filter(g => g.bot_present).length}
             >
-              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
                 {configured.map(g => (
                   <ConfiguredCard key={g.id} guild={g} kind={kind} />
                 ))}
@@ -249,7 +249,7 @@ export function DesktopBotServer({ kind }: Props) {
               total={guilds.filter(g => !g.bot_present).length}
               hint={`Cliquez pour inviter ${meta.name} sur un serveur où vous êtes admin.`}
             >
-              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
                 {available.map(g => (
                   <InviteCard key={g.id} guild={g} kind={kind} clientId={clientId} />
                 ))}
@@ -402,7 +402,7 @@ function InviteCard({
 
 function SkeletonGrid() {
   return (
-    <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
       {[0, 1, 2, 3, 4, 5].map(i => (
         <div
           key={i}
