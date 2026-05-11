@@ -452,6 +452,8 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(RpcState(Mutex::new(RpcInner { client: None, app_id: None })))
         .invoke_handler(tauri::generate_handler![
             token_get, token_set, token_clear,

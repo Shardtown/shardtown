@@ -2,10 +2,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutGrid, Sparkles, Settings, HelpCircle,
-  Search, Bell, User, LogOut, X, MessageCircle, Activity,
+  Search, Bell, User, LogOut, X, MessageCircle, Activity, Download, Loader2,
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
-import { tokenClear, biometricConfirm, openExternal, IS_DESKTOP } from "@/lib/desktop";
+import {
+  tokenClear, biometricConfirm, openExternal, IS_DESKTOP,
+  checkForUpdate, downloadAndInstallUpdate,
+  type UpdateInfo, type UpdateProgress,
+} from "@/lib/desktop";
 import { apiGet, apiPost, setBearerToken } from "@/api/client";
 import { disableDemoMode, isDemoMode } from "@/lib/demo";
 
@@ -168,6 +172,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           <div className="flex-1 flex justify-center">
             <SearchBox open={searchOpen} setOpen={setSearchOpen} onNavigate={nav} />
           </div>
+          <UpdateButton />
           <button
             type="button"
             aria-label="Notifications"
@@ -522,5 +527,177 @@ function BotAvatar({ src, size, alt }: { src: string; size: number; alt: string 
       style={{ width: size, height: size }}
       className="rounded-[7px] object-cover"
     />
+  );
+}
+
+/* ─── Update button ──────────────────────────────────────────────────────
+ *
+ * Sits between the search box and the bell. Invisible until the Tauri
+ * updater reports a newer version on the public manifest. Click → downloads,
+ * verifies signature, installs and relaunches. Polls every 30 min after the
+ * initial check at startup.
+ */
+function UpdateButton() {
+  const [available, setAvailable] = useState<UpdateInfo | null>(null);
+  const [progress, setProgress] = useState<UpdateProgress>({ kind: "idle" });
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!IS_DESKTOP) return;
+    let cancelled = false;
+    async function poll() {
+      const u = await checkForUpdate();
+      if (!cancelled) setAvailable(u);
+    }
+    poll();
+    const id = setInterval(poll, 30 * 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      const t = e.target as HTMLElement;
+      if (!t.closest("[data-update-menu]") && !t.closest("[data-update-btn]")) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+
+  if (!IS_DESKTOP || !available) return null;
+
+  const isBusy =
+    progress.kind === "checking" ||
+    progress.kind === "downloading" ||
+    progress.kind === "installing";
+
+  async function install() {
+    setMenuOpen(false);
+    try {
+      await downloadAndInstallUpdate(setProgress);
+    } catch (e) {
+      setProgress({ kind: "error", message: (e as Error)?.message || "Erreur d'installation" });
+    }
+  }
+
+  const pct =
+    progress.kind === "downloading" && progress.total
+      ? Math.round((progress.downloaded / progress.total) * 100)
+      : null;
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        data-update-btn
+        aria-label={`Mise à jour ${available.version} disponible`}
+        title={`Mise à jour ${available.version} disponible`}
+        disabled={isBusy}
+        onClick={() => setMenuOpen(o => !o)}
+        className="relative w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--ds-panel-2)] disabled:cursor-wait"
+        style={{
+          background: "rgba(91, 109, 255, 0.12)",
+          border: "1px solid rgba(91, 109, 255, 0.35)",
+          color: "rgb(165, 180, 252)",
+        }}
+      >
+        {isBusy ? (
+          <Loader2 size={15} strokeWidth={2} className="animate-spin" />
+        ) : (
+          <Download size={15} strokeWidth={2} />
+        )}
+        <span
+          className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full"
+          style={{
+            background: "rgb(91, 109, 255)",
+            boxShadow: "0 0 8px rgb(91, 109, 255)",
+            display: isBusy ? "none" : undefined,
+          }}
+        />
+      </button>
+
+      {menuOpen && !isBusy && (
+        <div
+          data-update-menu
+          className="absolute z-50 right-0 top-[calc(100%+10px)] w-[300px] rounded-[14px] border overflow-hidden"
+          style={{
+            background: "var(--ds-bg-1)",
+            borderColor: "var(--ds-border-strong)",
+            boxShadow: "0 22px 50px -10px rgba(0,0,0,0.5)",
+          }}
+        >
+          <div className="px-4 pt-4 pb-3 border-b" style={{ borderColor: "var(--ds-border)" }}>
+            <p className="text-[11px] font-bold tracking-[0.18em] uppercase" style={{ color: "rgb(165, 180, 252)" }}>
+              Mise à jour disponible
+            </p>
+            <p className="text-[15px] font-extrabold tracking-tight mt-1">Version {available.version}</p>
+            {available.notes && (
+              <p
+                className="text-[11.5px] font-medium mt-2 line-clamp-4 whitespace-pre-line"
+                style={{ color: "var(--ds-text-mut)" }}
+              >
+                {available.notes}
+              </p>
+            )}
+          </div>
+          <div className="p-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              className="flex-1 h-9 rounded-[10px] text-[12.5px] font-bold transition-colors hover:bg-[var(--ds-panel)]"
+              style={{ color: "var(--ds-text-mut)" }}
+            >
+              Plus tard
+            </button>
+            <button
+              type="button"
+              onClick={install}
+              className="flex-1 h-9 rounded-[10px] text-[12.5px] font-bold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-1.5"
+              style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+            >
+              <Download size={12} strokeWidth={2.4} />
+              Installer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Progress popover during download */}
+      {isBusy && (
+        <div
+          className="absolute z-50 right-0 top-[calc(100%+10px)] w-[280px] rounded-[14px] border px-4 py-3"
+          style={{
+            background: "var(--ds-bg-1)",
+            borderColor: "var(--ds-border-strong)",
+            boxShadow: "0 22px 50px -10px rgba(0,0,0,0.5)",
+          }}
+        >
+          <p className="text-[12.5px] font-bold">
+            {progress.kind === "downloading"
+              ? `Téléchargement ${pct !== null ? `· ${pct}%` : "…"}`
+              : progress.kind === "installing"
+                ? "Installation…"
+                : "Vérification…"}
+          </p>
+          <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--ds-panel-2)" }}>
+            <div
+              className="h-full transition-[width] duration-200"
+              style={{
+                width: pct !== null ? `${pct}%` : "100%",
+                background: "rgb(91, 109, 255)",
+                animation: pct === null ? "update-indeterm 1.4s ease-in-out infinite" : undefined,
+              }}
+            />
+          </div>
+          <style>{`
+            @keyframes update-indeterm {
+              0%   { transform: translateX(-100%); }
+              100% { transform: translateX(100%); }
+            }
+          `}</style>
+        </div>
+      )}
+    </div>
   );
 }

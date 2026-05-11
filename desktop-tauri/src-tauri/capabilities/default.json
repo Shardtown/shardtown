@@ -16,6 +16,9 @@
       "allow": [
         { "url": "https://shardtwn.fr/*" }
       ]
-    }
+    },
+    "updater:default",
+    "process:default",
+    "process:allow-restart"
   ]
 }

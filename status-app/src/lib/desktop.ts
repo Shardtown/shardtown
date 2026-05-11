@@ -80,3 +80,96 @@ export async function openExternal(url: string): Promise<void> {
   }
   window.open(url, "_blank", "noopener");
 }
+
+/* ─── Auto-updater ────────────────────────────────────────────────────── */
+
+export interface UpdateInfo {
+  /** New version string declared by the manifest (e.g. "0.1.2"). */
+  version: string;
+  /** Date string from the manifest (ISO). May be empty. */
+  date?: string;
+  /** Release notes / "what's new" text from the manifest. */
+  notes?: string;
+}
+
+export type UpdateProgress =
+  | { kind: "idle" }
+  | { kind: "checking" }
+  | { kind: "available"; info: UpdateInfo }
+  | { kind: "none" }
+  | { kind: "downloading"; downloaded: number; total: number | null }
+  | { kind: "installing" }
+  | { kind: "error"; message: string };
+
+/**
+ * Polls the public update manifest. Returns `UpdateInfo` if the manifest
+ * declares a version newer than the running app, or null otherwise.
+ *
+ * The endpoint, public key and signature verification are all configured in
+ * `tauri.conf.json` → `plugins.updater`. The Tauri updater plugin handles
+ * the actual signature check — we just surface the result.
+ *
+ * In web mode (or if the plugin isn't loaded) this resolves to `null`.
+ */
+export async function checkForUpdate(): Promise<UpdateInfo | null> {
+  if (!IS_DESKTOP) return null;
+  try {
+    const { check } = await import("@tauri-apps/plugin-updater");
+    const u = await check();
+    if (!u) return null;
+    return {
+      version: u.version,
+      date: u.date,
+      notes: u.body,
+    };
+  } catch (e) {
+    // Network down, bad manifest, signature mismatch — all considered "no
+    // update" from the user's perspective. The caller can re-check later.
+    console.warn("[updater] check failed:", e);
+    return null;
+  }
+}
+
+/**
+ * Runs the full download-verify-install-relaunch flow. Reports progress via
+ * the `onProgress` callback. Throws if anything fails (signature mismatch,
+ * network drop mid-download, …) — the caller should show an error toast.
+ */
+export async function downloadAndInstallUpdate(
+  onProgress?: (p: UpdateProgress) => void,
+): Promise<boolean> {
+  if (!IS_DESKTOP) return false;
+  const { check } = await import("@tauri-apps/plugin-updater");
+  const { relaunch } = await import("@tauri-apps/plugin-process");
+
+  onProgress?.({ kind: "checking" });
+  const u = await check();
+  if (!u) {
+    onProgress?.({ kind: "none" });
+    return false;
+  }
+
+  let downloaded = 0;
+  let total: number | null = null;
+
+  await u.downloadAndInstall(evt => {
+    switch (evt.event) {
+      case "Started":
+        total = evt.data.contentLength ?? null;
+        downloaded = 0;
+        onProgress?.({ kind: "downloading", downloaded, total });
+        break;
+      case "Progress":
+        downloaded += evt.data.chunkLength;
+        onProgress?.({ kind: "downloading", downloaded, total });
+        break;
+      case "Finished":
+        onProgress?.({ kind: "installing" });
+        break;
+    }
+  });
+
+  // Tauri replaces the .app on disk; relaunch the freshly installed binary.
+  await relaunch();
+  return true;
+}
