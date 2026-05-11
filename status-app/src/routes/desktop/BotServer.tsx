@@ -105,59 +105,95 @@ export function DesktopBotServer({ kind }: Props) {
 
   return (
     <AppLayout>
-      {/* Header strip */}
-      <div className="flex items-start justify-between gap-6 mb-7">
-        <div className="flex-1 min-w-0">
-          <p
-            className="text-[10.5px] font-bold tracking-[0.22em] uppercase mb-1.5"
-            style={{ color: "var(--ds-text-dim)" }}
-          >
-            {meta.tag}
-          </p>
-          <h1 className="text-[30px] font-extrabold tracking-tight mb-1.5 flex items-center gap-3">
-            <span
-              className="w-9 h-9 rounded-[10px] border flex items-center justify-center"
-              style={{ background: "var(--ds-panel-2)", borderColor: "var(--ds-border)", color: "var(--ds-text-mut)" }}
-            >
-              <Icon size={18} strokeWidth={1.8} />
-            </span>
-            {meta.name}
-          </h1>
-          <p className="text-[13.5px]" style={{ color: "var(--ds-text-mut)" }}>{meta.desc}</p>
-        </div>
+      {/* Hero card — same NordVPN-style pattern as Overview */}
+      <div
+        className="relative overflow-hidden rounded-[22px] border mb-4 botserver-hero"
+        style={{ borderColor: "var(--ds-border)" }}
+      >
+        <div className="absolute inset-0 botserver-hero-bg" />
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="relative px-8 py-9">
+          <div className="flex items-center gap-3.5 mb-6">
+            <div
+              className="w-[44px] h-[44px] rounded-full flex items-center justify-center"
+              style={{
+                background: "rgba(255, 255, 255, 0.06)",
+                color: "#fff",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+              }}
+            >
+              <Icon size={19} strokeWidth={2.2} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-[26px] font-black tracking-tight leading-[1.05]">{meta.name}</h1>
+              <p
+                className="text-[13px] font-semibold mt-1"
+                style={{ color: "var(--ds-text-mut)" }}
+              >
+                {meta.tag}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-6">
+            <span className="inline-flex items-baseline gap-2">
+              <span className="text-[24px] font-extrabold tabular-nums">{totalConfigured}</span>
+              <span className="text-[11.5px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--ds-text-dim)" }}>
+                actifs
+              </span>
+            </span>
+            <span className="w-px h-5" style={{ background: "var(--ds-border)" }} />
+            <span className="inline-flex items-baseline gap-2">
+              <span className="text-[24px] font-extrabold tabular-nums" style={{ color: "var(--ds-text-mut)" }}>
+                {guilds.length - totalConfigured}
+              </span>
+              <span className="text-[11.5px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--ds-text-dim)" }}>
+                à inviter
+              </span>
+            </span>
+            <span className="w-px h-5" style={{ background: "var(--ds-border)" }} />
+            <span className="inline-flex items-baseline gap-2">
+              <span className="text-[24px] font-extrabold tabular-nums" style={{ color: "var(--ds-text-mut)" }}>
+                {guilds.length}
+              </span>
+              <span className="text-[11.5px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--ds-text-dim)" }}>
+                admin
+              </span>
+            </span>
+          </div>
+
           <button
             type="button"
             onClick={refresh}
             disabled={refreshing}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-[12.5px] font-semibold disabled:opacity-45 transition-opacity hover:opacity-80"
-            style={{ borderColor: "var(--ds-border-strong)", color: "var(--ds-text)" }}
+            className="inline-flex items-center gap-1.5 px-4 h-[40px] rounded-full font-bold text-[12.5px] transition-colors disabled:opacity-50"
+            style={{ background: "var(--ds-panel-2)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }}
           >
-            <RefreshCw size={13} strokeWidth={2} className={refreshing ? "animate-spin" : ""} />
+            <RefreshCw size={13} strokeWidth={2.4} className={refreshing ? "animate-spin" : ""} />
             Synchroniser
           </button>
         </div>
-      </div>
 
-      {/* Stats strip */}
-      <div className="grid grid-cols-3 gap-2.5 mb-6">
-        <Stat
-          label="Configurés"
-          value={totalConfigured}
-          accent="ok"
-        />
-        <Stat
-          label="À inviter"
-          value={guilds.length - totalConfigured}
-        />
-        <Stat
-          label="Total admin"
-          value={guilds.length}
-          sub={data?.fetched_at
-            ? `sync ${new Date(data.fetched_at).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`
-            : "jamais sync"}
-        />
+        <style>{`
+          .botserver-hero {
+            background: linear-gradient(135deg, #14152b 0%, #0f1018 70%);
+          }
+          [data-theme="light"] .botserver-hero {
+            background: linear-gradient(135deg, #e8ebff 0%, #f5f5f7 70%);
+          }
+          .botserver-hero-bg {
+            background-image:
+              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.22) 1px, transparent 0);
+            background-size: 22px 22px;
+            opacity: 0.35;
+            mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
+          }
+          [data-theme="light"] .botserver-hero-bg {
+            background-image:
+              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.32) 1px, transparent 0);
+          }
+        `}</style>
       </div>
 
       {/* Search */}
@@ -253,44 +289,15 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mb-7">
-      <div className="flex items-baseline justify-between mb-2.5">
-        <p className="text-[12px] font-bold tracking-[0.16em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
-          {title}
-        </p>
-        <span className="text-[11px] tabular-nums" style={{ color: "var(--ds-text-faint)" }}>
+    <div className="mb-8">
+      <div className="flex items-baseline justify-between mb-3.5">
+        <h2 className="text-[17px] font-extrabold tracking-tight">{title}</h2>
+        <span className="text-[12px] font-bold tabular-nums" style={{ color: "var(--ds-text-mut)" }}>
           {count === total ? count : `${count} / ${total}`}
         </span>
       </div>
-      {hint && <p className="text-[12px] mb-3" style={{ color: "var(--ds-text-mut)" }}>{hint}</p>}
+      {hint && <p className="text-[12.5px] font-medium mb-3.5" style={{ color: "var(--ds-text-mut)" }}>{hint}</p>}
       {children}
-    </div>
-  );
-}
-
-function Stat({
-  label, value, sub, accent,
-}: {
-  label: string;
-  value: number;
-  sub?: string;
-  accent?: "ok";
-}) {
-  const valueColor = accent === "ok"
-    ? "rgb(74, 222, 128)" // emerald
-    : "var(--ds-text)";
-  return (
-    <div
-      className="rounded-[14px] border px-4 py-3.5"
-      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
-    >
-      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "var(--ds-text-dim)" }}>
-        {label}
-      </p>
-      <p className="text-[22px] font-bold leading-tight tabular-nums" style={{ color: valueColor }}>
-        {value}
-      </p>
-      {sub && <p className="text-[10.5px] mt-0.5" style={{ color: "var(--ds-text-faint)" }}>{sub}</p>}
     </div>
   );
 }

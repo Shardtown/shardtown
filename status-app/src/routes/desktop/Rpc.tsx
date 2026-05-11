@@ -126,12 +126,12 @@ export function DesktopRpc() {
 
   return (
     <AppLayout>
-      <div className="max-w-[760px]">
-        <p className="text-[10.5px] font-bold tracking-[0.22em] uppercase text-white/[0.38] mb-1.5">
-          Discord
-        </p>
-        <h1 className="text-[30px] font-extrabold tracking-tight mb-1.5">Rich Presence</h1>
-        <p className="text-[13.5px] text-white/[0.62] mb-7 max-w-[520px]">
+      <div>
+        <h1 className="text-[28px] font-black tracking-tight mb-1.5">Discord Rich Presence</h1>
+        <p
+          className="text-[13.5px] font-medium mb-7 max-w-[520px]"
+          style={{ color: "var(--ds-text-mut)" }}
+        >
           Personnalise ton statut Discord depuis l'app. Discord doit être ouvert pour que la connexion IPC fonctionne.
         </p>
 
@@ -293,9 +293,13 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-7">
-      <p className="text-[12px] font-bold tracking-[0.16em] uppercase text-white/[0.38] mb-1">{title}</p>
-      {hint && <p className="text-[11.5px] text-white/[0.38] mb-3">{hint}</p>}
+    <section className="mb-8">
+      <h2 className="text-[16px] font-extrabold tracking-tight mb-1">{title}</h2>
+      {hint && (
+        <p className="text-[12px] font-medium mb-3.5" style={{ color: "var(--ds-text-mut)" }}>
+          {hint}
+        </p>
+      )}
       <div className="space-y-2.5">{children}</div>
     </section>
   );
@@ -310,9 +314,18 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-[11.5px] font-semibold text-white/[0.62] mb-1">{label}</label>
+      <label
+        className="block text-[11.5px] font-bold mb-1.5"
+        style={{ color: "var(--ds-text-mut)" }}
+      >
+        {label}
+      </label>
       {children}
-      {hint && <p className="text-[11px] text-white/[0.38] mt-1.5">{hint}</p>}
+      {hint && (
+        <p className="text-[11px] font-medium mt-1.5" style={{ color: "var(--ds-text-dim)" }}>
+          {hint}
+        </p>
+      )}
     </div>
   );
 }

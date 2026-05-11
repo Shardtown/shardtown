@@ -29,12 +29,12 @@ export function DesktopPreferences() {
 
   return (
     <AppLayout>
-      <div className="max-w-[760px]">
-        <p className="text-[10.5px] font-bold tracking-[0.22em] uppercase text-white/[0.38] mb-1.5">
-          Préférences
-        </p>
-        <h1 className="text-[30px] font-extrabold tracking-tight mb-1.5">Personnalisation</h1>
-        <p className="text-[13.5px] text-white/[0.62] mb-9 max-w-[520px]">
+      <div>
+        <h1 className="text-[28px] font-black tracking-tight mb-1.5">Préférences</h1>
+        <p
+          className="text-[13.5px] font-medium mb-9 max-w-[520px]"
+          style={{ color: "var(--ds-text-mut)" }}
+        >
           Sons d'événements, sécurité biométrique et autres réglages spécifiques à l'app.
         </p>
 
@@ -135,9 +135,9 @@ function Section({
 }) {
   return (
     <section className="mb-9">
-      <div className="flex items-center gap-2 mb-3 text-white/[0.62]">
-        {icon}
-        <p className="text-[12px] font-bold tracking-[0.16em] uppercase text-white/[0.62]">{title}</p>
+      <div className="flex items-center gap-2.5 mb-3.5">
+        <span style={{ color: "var(--ds-text-mut)" }}>{icon}</span>
+        <h2 className="text-[16px] font-extrabold tracking-tight">{title}</h2>
       </div>
       {children}
     </section>
