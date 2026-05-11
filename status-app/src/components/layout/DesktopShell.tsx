@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutGrid, Sparkles, Settings, HelpCircle,
-  Search, Bell, User, LogOut, X, MessageCircle,
+  Search, Bell, User, LogOut, X, MessageCircle, Activity,
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
 import { tokenClear, biometricConfirm, openExternal, IS_DESKTOP } from "@/lib/desktop";
@@ -65,6 +65,12 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       items: [
         { to: "/shardguard/server", icon: <BotAvatar src="/image/shardguard.png" size={22} alt="ShardGuard" />, label: "ShardGuard" },
         { to: "/shard/server",      icon: <BotAvatar src="/image/shard.png"      size={22} alt="Shard" />,     label: "Shard" },
+      ],
+    },
+    {
+      label: "Statut",
+      items: [
+        { to: "/statut", icon: <Activity size={18} strokeWidth={1.8} />, label: "Statut des services" },
       ],
     },
     {
@@ -184,10 +190,14 @@ export function DesktopShell({ children }: { children: ReactNode }) {
             </button>
             {profileOpen && (
               <ProfileMenu
-                user={displayName}
+                displayName={displayName}
+                username={user?.username}
+                avatar={user ? avatarUrl(user, 96) : null}
                 onClose={() => setProfileOpen(false)}
                 onLogout={logout}
                 onAccount={() => { setProfileOpen(false); nav("/account"); }}
+                onPreferences={() => { setProfileOpen(false); nav("/preferences"); }}
+                onHelp={() => { setProfileOpen(false); openExternal("https://shardtwn.fr/wiki").catch(() => {}); }}
               />
             )}
           </div>
@@ -230,12 +240,17 @@ function RailItem({
 }
 
 function ProfileMenu({
-  user, onClose, onLogout, onAccount,
+  displayName, username, avatar,
+  onClose, onLogout, onAccount, onPreferences, onHelp,
 }: {
-  user: string;
+  displayName: string;
+  username?: string;
+  avatar: string | null;
   onClose: () => void;
   onLogout: () => void;
   onAccount: () => void;
+  onPreferences: () => void;
+  onHelp: () => void;
 }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
@@ -254,35 +269,42 @@ function ProfileMenu({
   return (
     <div
       data-profile-menu
-      className="absolute z-50 right-0 top-[calc(100%+8px)] w-[220px] rounded-[14px] border overflow-hidden profile-pop"
+      className="absolute z-50 right-0 top-[calc(100%+10px)] w-[280px] rounded-[16px] border overflow-hidden profile-pop"
       style={{
         background: "var(--ds-bg-1)",
         borderColor: "var(--ds-border-strong)",
-        boxShadow: "0 20px 50px -10px rgba(0,0,0,0.45)",
+        boxShadow: "0 24px 60px -12px rgba(0,0,0,0.55)",
       }}
     >
-      <div className="px-3 py-2.5 border-b" style={{ borderColor: "var(--ds-border)" }}>
-        <p className="text-[12px]" style={{ color: "var(--ds-text-dim)" }}>Connecté en tant que</p>
-        <p className="text-[13px] font-semibold truncate">{user}</p>
+      {/* NordVPN-style header: avatar + name + handle */}
+      <div className="px-4 pt-4 pb-4 flex items-center gap-3 border-b" style={{ borderColor: "var(--ds-border)" }}>
+        <div
+          className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
+          style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
+        >
+          {avatar
+            ? <img src={avatar} alt="" className="w-full h-full object-cover" />
+            : <User size={18} strokeWidth={2} style={{ color: "var(--ds-text-mut)" }} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-bold truncate">{displayName}</p>
+          {username && (
+            <p className="text-[11.5px] truncate" style={{ color: "var(--ds-text-dim)" }}>@{username}</p>
+          )}
+        </div>
       </div>
-      <button
-        type="button"
-        onClick={onAccount}
-        className="w-full text-left px-3 py-2.5 text-[13px] transition-colors hover:bg-[var(--ds-panel)] flex items-center gap-2"
-        style={{ color: "var(--ds-text)" }}
-      >
-        <User size={13} strokeWidth={2} style={{ color: "var(--ds-text-mut)" }} />
-        Mon compte
-      </button>
-      <button
-        type="button"
-        onClick={onLogout}
-        className="w-full text-left px-3 py-2.5 text-[13px] transition-colors hover:bg-[var(--ds-panel)] flex items-center gap-2 border-t"
-        style={{ color: "var(--ds-text)", borderColor: "var(--ds-border)" }}
-      >
-        <LogOut size={13} strokeWidth={2} style={{ color: "var(--ds-text-mut)" }} />
-        Déconnexion
-      </button>
+
+      {/* Menu items */}
+      <div className="py-1.5">
+        <MenuRow icon={<User size={15} strokeWidth={1.8} />}     label="Compte"      onClick={onAccount} />
+        <MenuRow icon={<Settings size={15} strokeWidth={1.8} />} label="Réglages"    onClick={onPreferences} />
+        <MenuRow icon={<HelpCircle size={15} strokeWidth={1.8} />} label="Aide"      onClick={onHelp} />
+      </div>
+
+      <div className="border-t py-1.5" style={{ borderColor: "var(--ds-border)" }}>
+        <MenuRow icon={<LogOut size={15} strokeWidth={1.8} />} label="Déconnexion" onClick={onLogout} danger />
+      </div>
+
       <style>{`
         .profile-pop { animation: prof-in 160ms cubic-bezier(0.22, 1, 0.36, 1); transform-origin: top right; }
         @keyframes prof-in {
@@ -291,6 +313,27 @@ function ProfileMenu({
         }
       `}</style>
     </div>
+  );
+}
+
+function MenuRow({
+  icon, label, onClick, danger,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left px-4 py-2.5 text-[13.5px] font-semibold transition-colors hover:bg-[var(--ds-panel)] flex items-center gap-3"
+      style={{ color: danger ? "rgb(248, 113, 113)" : "var(--ds-text)" }}
+    >
+      <span style={{ color: danger ? "rgb(248, 113, 113)" : "var(--ds-text-mut)" }}>{icon}</span>
+      {label}
+    </button>
   );
 }
 
@@ -338,6 +381,7 @@ function SearchBox({
       { label: "Samia",                  hint: "Assistante IA",          path: "/assistant" },
       { label: "Discord RPC",            hint: "Rich Presence",          path: "/rpc" },
       { label: "Préférences",            hint: "Sons, Touch ID, thème",  path: "/preferences" },
+      { label: "Statut des services",    hint: "Surveillance temps réel", path: "/statut" },
       { label: "Mon compte",             hint: "Profil & connexions",    path: "/account" },
     ];
     const matched = locations.filter(l =>

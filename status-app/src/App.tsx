@@ -14,6 +14,7 @@ import { Outils } from "@/routes/Outils";
 import { DesktopOverview } from "@/routes/desktop/Overview";
 import { DesktopRpc } from "@/routes/desktop/Rpc";
 import { DesktopPreferences } from "@/routes/desktop/Preferences";
+import { DesktopStatus } from "@/routes/desktop/Status";
 import { DesktopBotServer } from "@/routes/desktop/BotServer";
 import { TrayPanel } from "@/routes/desktop/TrayPanel";
 import { Premium } from "@/routes/Premium";
@@ -74,7 +75,8 @@ export function App() {
                   <Route path="/premium" element={<Navigate to="/outils" replace />} />
                   <Route path="/terms" element={<Navigate to="/outils" replace />} />
                   <Route path="/privacy" element={<Navigate to="/outils" replace />} />
-                  <Route path="/status" element={<Navigate to="/outils" replace />} />
+                  <Route path="/status" element={<Navigate to="/statut" replace />} />
+                  <Route path="/statut" element={<DesktopStatus />} />
                   <Route path="/assistant" element={<Assistant />} />
                 </>
               ) : (
