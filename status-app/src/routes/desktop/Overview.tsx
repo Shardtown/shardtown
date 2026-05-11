@@ -253,7 +253,6 @@ export function DesktopOverview() {
           label="ShardGuard"
           value={`${sgConfigured} / ${sgTotal}`}
           sub="serveurs actifs"
-          accent="rgb(91, 109, 255)"
           tone={sgConfigured > 0 ? "ok" : "off"}
           to="/shardguard/server"
         />
@@ -262,7 +261,6 @@ export function DesktopOverview() {
           label="Shard"
           value={`${sConfigured} / ${sTotal}`}
           sub="serveurs actifs"
-          accent="rgb(91, 109, 255)"
           tone={sConfigured > 0 ? "ok" : "off"}
           to="/shard/server"
         />
@@ -339,13 +337,12 @@ function RecentCard({ guild }: { guild: GuildSummary & { bot: "shardguard" | "sh
 }
 
 function StatCard({
-  icon, label, value, sub, accent, tone, to,
+  icon, label, value, sub, tone, to,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   sub: string;
-  accent: string;
   tone: "ok" | "off";
   to: string;
 }) {
