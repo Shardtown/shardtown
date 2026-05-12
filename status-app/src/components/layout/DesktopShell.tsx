@@ -10,6 +10,9 @@ import { PostUpdateNotes } from "@/components/PostUpdateNotes";
 import { GreetingToast } from "@/components/GreetingToast";
 import { TourHost } from "@/components/OnboardingTour";
 import {
+  PresenceProvider, PresenceStack, FieldPresenceLayer,
+} from "@/components/Presence";
+import {
   tokenClear, biometricConfirm, openExternal, IS_DESKTOP,
   checkForUpdate, downloadAndInstallUpdate,
   type UpdateInfo, type UpdateProgress,
@@ -126,6 +129,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
   }
 
   return (
+    <PresenceProvider>
     <div
       className="h-screen w-screen flex overflow-hidden relative"
       style={{ color: "var(--ds-text)" }}
@@ -213,6 +217,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           >
             <SearchBox open={searchOpen} setOpen={setSearchOpen} onNavigate={nav} />
           </div>
+          <PresenceStack />
           <UpdateButton />
           <button
             type="button"
@@ -266,7 +271,13 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       {/* Tour interactif — listens for startTour() event, navigates pages,
           spotlights real DOM anchors via [data-tour="…"] */}
       <TourHost />
+
+      {/* Live presence — floating avatar pinned to each input a peer is
+          editing, Canva-style. PresenceStack in the top bar shows who's
+          on the same guild scope. */}
+      <FieldPresenceLayer />
     </div>
+    </PresenceProvider>
   );
 }
 
