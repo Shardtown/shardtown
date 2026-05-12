@@ -208,9 +208,12 @@ export function DesktopShell({ children }: { children: ReactNode }) {
 
       {/* ─── RIGHT PANE: TOP BAR + CONTENT ─────────────────────────── */}
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* Top bar — search bar absolutely centered, right cluster pinned right */}
+        {/* Top bar — search bar absolutely centered, right cluster pinned right.
+            z-30 sets a stacking context so the popovers below (search,
+            update, profile) stay above the scrolling page content which
+            otherwise paints later in document order. */}
         <header
-          className="relative h-[72px] flex-shrink-0 flex items-center justify-end gap-3 px-6"
+          className="relative z-30 h-[72px] flex-shrink-0 flex items-center justify-end gap-3 px-6"
         >
           <div
             className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2"
