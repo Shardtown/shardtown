@@ -429,7 +429,7 @@ export function ShardGuardGuild() {
             {tab === "modroles" && <ModRolesTab {...tabProps} />}
             {tab === "banned" && <BannedWordsTab {...tabProps} />}
             {tab === "automod" && <AutomodTab {...tabProps} />}
-            {tab === "panic" && <PanicTab />}
+            {tab === "panic" && <PanicTab settings={draft} />}
             {tab === "stats" && <StatsTab chartData={data.chartData} totalMembers={data.stats.totalMembers} verifiedCount={data.stats.verifiedCount} />}
             {tab === "logs" && guildId && <LogsTab guildId={guildId} />}
             {tab === "members" && guildId && <MembersTab guildId={guildId} />}

@@ -55,6 +55,7 @@ export interface SGSettings {
   modAlertUserId?: string;
   webhookAlertEnabled?: string;
   webhookAlertChannelId?: string;
+  panicModeActive?: string | number;
 }
 
 export interface ShardGuardGuildData {

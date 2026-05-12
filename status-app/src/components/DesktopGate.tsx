@@ -6,6 +6,7 @@ import { shouldShowOnboarding, startTour } from "@/components/OnboardingTour";
 import { AuroraBackground } from "@/components/AuroraBackground";
 import { DEMO_TOKEN, isDemoToken, enableDemoMode, disableDemoMode } from "@/lib/demo";
 import { shouldRevalidate, setLastValidated } from "@/lib/tokenReval";
+import { useAuth } from "@/api/auth";
 
 type State =
   | { kind: "boot" }
@@ -30,6 +31,7 @@ const TRANSITION_MS = 480;
  * everything from there.
  */
 export function DesktopGate({ children }: { children: ReactNode }) {
+  const { refresh: refreshAuth } = useAuth();
   const [state, setState] = useState<State>(IS_DESKTOP ? { kind: "boot" } : { kind: "ready" });
   // Tracks the boot-screen leave animation. While true we keep BootScreen
   // mounted with the `boot-leaving` class so it can fade out gracefully on
@@ -95,6 +97,12 @@ export function DesktopGate({ children }: { children: ReactNode }) {
       // Begin the crossfade: swap the underlying screen now (so it can mount
       // and play its enter animation), but keep BootScreen layered on top
       // with the leaving class for TRANSITION_MS, then unmount it.
+      // Trigger an AuthContext refresh right before the dashboard mounts so
+      // the user profile (avatar + name) is in place by the time the hero
+      // renders — otherwise the first paint reads "Salut, ami." with no pdp.
+      if (next.kind === "ready") {
+        refreshAuth();
+      }
       setState(next);
       setBootLeaving(true);
       setTimeout(() => { if (!cancelled) setBootLeaving(false); }, TRANSITION_MS);
@@ -116,6 +124,10 @@ export function DesktopGate({ children }: { children: ReactNode }) {
         <DesktopLogin
           reason={state.reason}
           onSuccess={() => {
+            // Re-hit /api/me so the AuthContext picks up the new user behind
+            // the freshly stored bearer token — otherwise the dashboard
+            // greets "Salut, ami." with no avatar.
+            refreshAuth();
             setState({ kind: "ready" });
             // First-time setup: pop the tour right after login if not done.
             if (shouldShowOnboarding()) {

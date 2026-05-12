@@ -413,9 +413,9 @@ export function AutomodTab({ settings, update }: TabProps) {
  */
 type PanicState =
   | { kind: "idle" }
-  | { kind: "confirming" }
+  | { kind: "confirming"; activate: boolean }
   | { kind: "loading" }
-  | { kind: "success"; channels?: number; invites?: number }
+  | { kind: "success"; activated: boolean; channels?: number; invites?: number }
   | { kind: "error"; message: string };
 
 interface PanicResponse {
@@ -425,18 +425,33 @@ interface PanicResponse {
   invites_deleted?: number;
 }
 
-export function PanicTab() {
+export function PanicTab({ settings }: { settings: SGSettings }) {
   const [state, setState] = useState<PanicState>({ kind: "idle" });
+  // Mirror the persisted flag so we can flip the button label optimistically
+  // — the /panic endpoint mutates the DB directly, not via the regular
+  // config save flow, so we'd otherwise need to refetch the whole settings.
+  const [active, setActive] = useState(() => isTrue(settings.panicModeActive));
+  // Keep in sync if the parent's settings are refreshed (e.g. user switched
+  // guild and came back).
+  useEffect(() => {
+    setActive(isTrue(settings.panicModeActive));
+  }, [settings.panicModeActive]);
 
-  async function fire() {
+  async function fire(activate: boolean) {
     setState({ kind: "loading" });
     try {
       const d = await apiPost<PanicResponse>(
         window.location.pathname.replace("/shardguard/guild/", "/shardguard/api/guild/") + "/panic",
-        { activate: true },
+        { activate },
       );
       if (d.success) {
-        setState({ kind: "success", channels: d.channels_locked, invites: d.invites_deleted });
+        setActive(activate);
+        setState({
+          kind: "success",
+          activated: activate,
+          channels: d.channels_locked,
+          invites: d.invites_deleted,
+        });
       } else {
         setState({ kind: "error", message: d.error || "Erreur inconnue" });
       }
@@ -451,35 +466,54 @@ export function PanicTab() {
         <div
           className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
           style={{
-            background: "rgba(239, 68, 68, 0.10)",
-            border: "1px solid rgba(239, 68, 68, 0.25)",
-            color: "rgb(248, 113, 113)",
+            background: active ? "rgba(74, 222, 128, 0.12)" : "rgba(239, 68, 68, 0.10)",
+            border: active ? "1px solid rgba(74, 222, 128, 0.32)" : "1px solid rgba(239, 68, 68, 0.25)",
+            color: active ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)",
           }}
         >
           <ShieldOff className="w-5 h-5" />
         </div>
         <p className="text-[14px] mb-2" style={{ color: "var(--ds-text-mut)" }}>
-          Lockdown immédiat du serveur en cas de raid.
+          {active
+            ? "Le serveur est actuellement en lockdown."
+            : "Lockdown immédiat du serveur en cas de raid."}
         </p>
         <p className="text-[12px] mb-6" style={{ color: "var(--ds-text-dim)" }}>
-          Ferme tous les salons (lecture seule pour @everyone) et supprime toutes les invitations actives.
+          {active
+            ? "Tu peux redonner l'accès aux salons quand la menace est écartée. Les invitations supprimées ne reviennent pas, à recréer manuellement."
+            : "Ferme tous les salons (lecture seule pour @everyone) et supprime toutes les invitations actives."}
         </p>
         <button
           type="button"
-          onClick={() => setState({ kind: "confirming" })}
+          onClick={() => setState({ kind: "confirming", activate: !active })}
           className="px-6 h-11 rounded-full font-bold text-[13.5px] transition-colors inline-flex items-center gap-2"
-          style={{
-            background: "rgba(239, 68, 68, 0.12)",
-            border: "1px solid rgba(239, 68, 68, 0.35)",
-            color: "rgb(248, 113, 113)",
-          }}
+          style={
+            active
+              ? {
+                  background: "rgba(74, 222, 128, 0.12)",
+                  border: "1px solid rgba(74, 222, 128, 0.35)",
+                  color: "rgb(74, 222, 128)",
+                }
+              : {
+                  background: "rgba(239, 68, 68, 0.12)",
+                  border: "1px solid rgba(239, 68, 68, 0.35)",
+                  color: "rgb(248, 113, 113)",
+                }
+          }
         >
           <ShieldOff className="w-4 h-4" />
-          Activer le mode panic
+          {active ? "Désactiver le mode panic" : "Activer le mode panic"}
         </button>
       </div>
 
-      <PanicModal state={state} onClose={() => setState({ kind: "idle" })} onConfirm={fire} />
+      <PanicModal
+        state={state}
+        onClose={() => setState({ kind: "idle" })}
+        onConfirm={() => {
+          // Pull the requested activate flag out of the confirming state.
+          if (state.kind === "confirming") fire(state.activate);
+        }}
+      />
     </SectionCard>
   );
 }
@@ -539,11 +573,16 @@ function PanicModal({
 
         <div className="px-7 pt-7 pb-6">
           {state.kind === "confirming" && (
-            <ConfirmingBody onCancel={onClose} onConfirm={onConfirm} />
+            <ConfirmingBody activate={state.activate} onCancel={onClose} onConfirm={onConfirm} />
           )}
           {state.kind === "loading" && <LoadingBody />}
           {state.kind === "success" && (
-            <SuccessBody channels={state.channels} invites={state.invites} onClose={onClose} />
+            <SuccessBody
+              activated={state.activated}
+              channels={state.channels}
+              invites={state.invites}
+              onClose={onClose}
+            />
           )}
           {state.kind === "error" && (
             <ErrorBody message={state.message} onClose={onClose} />
@@ -564,39 +603,60 @@ function PanicModal({
   );
 }
 
-function ConfirmingBody({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
+function ConfirmingBody({
+  activate, onCancel, onConfirm,
+}: {
+  activate: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const accent = activate ? "rgb(248, 113, 113)" : "rgb(74, 222, 128)";
+  const accentBg = activate ? "rgba(239, 68, 68, 0.10)" : "rgba(74, 222, 128, 0.12)";
+  const accentBorder = activate ? "rgba(239, 68, 68, 0.28)" : "rgba(74, 222, 128, 0.32)";
+  const dotColor = accent;
+
   return (
     <>
       <div
         className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
-        style={{
-          background: "rgba(239, 68, 68, 0.10)",
-          border: "1px solid rgba(239, 68, 68, 0.28)",
-          color: "rgb(248, 113, 113)",
-        }}
+        style={{ background: accentBg, border: `1px solid ${accentBorder}`, color: accent }}
       >
         <AlertTriangle className="w-5 h-5" />
       </div>
-      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(248, 113, 113)" }}>
-        Action critique
+      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: accent }}>
+        {activate ? "Action critique" : "Sortie de lockdown"}
       </p>
-      <h3 className="text-[20px] font-extrabold tracking-tight mb-2">Activer le mode panic ?</h3>
+      <h3 className="text-[20px] font-extrabold tracking-tight mb-2">
+        {activate ? "Activer le mode panic ?" : "Désactiver le mode panic ?"}
+      </h3>
       <p className="text-[13px] leading-relaxed mb-5" style={{ color: "var(--ds-text-mut)" }}>
-        Cette action va immédiatement&nbsp;:
+        {activate ? "Cette action va immédiatement :" : "Cette action va :"}
       </p>
       <ul className="space-y-1.5 mb-6 text-[12.5px]" style={{ color: "var(--ds-text-mut)" }}>
-        <li className="flex items-start gap-2">
-          <span className="mt-1 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "rgb(248, 113, 113)" }} />
-          <span>Verrouiller <b style={{ color: "var(--ds-text)" }}>tous les salons</b> (lecture seule pour @everyone)</span>
-        </li>
-        <li className="flex items-start gap-2">
-          <span className="mt-1 w-1 h-1 rounded-full flex-shrink-0" style={{ background: "rgb(248, 113, 113)" }} />
-          <span>Supprimer <b style={{ color: "var(--ds-text)" }}>toutes les invitations actives</b></span>
-        </li>
+        {activate ? (
+          <>
+            <li className="flex items-start gap-2">
+              <span className="mt-1 w-1 h-1 rounded-full flex-shrink-0" style={{ background: dotColor }} />
+              <span>Verrouiller <b style={{ color: "var(--ds-text)" }}>tous les salons</b> (lecture seule pour @everyone)</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1 w-1 h-1 rounded-full flex-shrink-0" style={{ background: dotColor }} />
+              <span>Supprimer <b style={{ color: "var(--ds-text)" }}>toutes les invitations actives</b></span>
+            </li>
+          </>
+        ) : (
+          <>
+            <li className="flex items-start gap-2">
+              <span className="mt-1 w-1 h-1 rounded-full flex-shrink-0" style={{ background: dotColor }} />
+              <span>Rétablir l'envoi de messages pour <b style={{ color: "var(--ds-text)" }}>@everyone</b> sur tous les salons</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1 w-1 h-1 rounded-full flex-shrink-0" style={{ background: dotColor }} />
+              <span>Les invitations supprimées ne reviennent <b style={{ color: "var(--ds-text)" }}>pas automatiquement</b> — à recréer si besoin</span>
+            </li>
+          </>
+        )}
       </ul>
-      <p className="text-[11.5px] mb-6" style={{ color: "var(--ds-text-dim)" }}>
-        Tu pourras retirer les permissions manuellement quand tu veux. Aucun message n'est supprimé.
-      </p>
       <div className="flex gap-2.5">
         <button
           type="button"
@@ -610,10 +670,14 @@ function ConfirmingBody({ onCancel, onConfirm }: { onCancel: () => void; onConfi
           type="button"
           onClick={onConfirm}
           className="flex-1 h-11 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2"
-          style={{ background: "rgb(239, 68, 68)", color: "#fff" }}
+          style={
+            activate
+              ? { background: "rgb(239, 68, 68)", color: "#fff" }
+              : { background: "rgb(74, 222, 128)", color: "#062e16" }
+          }
         >
           <ShieldOff className="w-4 h-4" />
-          Activer
+          {activate ? "Activer" : "Désactiver"}
         </button>
       </div>
     </>
@@ -663,6 +727,7 @@ function LoadingBody() {
 function SuccessBody({
   channels, invites, onClose,
 }: {
+  activated: boolean;
   channels?: number;
   invites?: number;
   onClose: () => void;
@@ -680,26 +745,28 @@ function SuccessBody({
         <CheckCircle2 className="w-5 h-5" />
       </div>
       <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(74, 222, 128)" }}>
-        Lockdown actif
+        {activated ? "Lockdown actif" : "Lockdown levé"}
       </p>
-      <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Le serveur est sécurisé.</h3>
-      {(channels !== undefined || invites !== undefined) ? (
+      <h3 className="text-[20px] font-extrabold tracking-tight mb-3">
+        {activated ? "Le serveur est sécurisé." : "Le serveur est rouvert."}
+      </h3>
+      {channels !== undefined && channels > 0 ? (
         <div className="grid grid-cols-2 gap-2.5 mb-6">
-          {channels !== undefined && (
-            <div
-              className="rounded-[14px] border px-4 py-3"
-              style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
-            >
-              <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
-                Salons
-              </p>
-              <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "rgb(74, 222, 128)" }}>
-                {channels}
-              </p>
-              <p className="text-[10.5px] mt-1" style={{ color: "var(--ds-text-dim)" }}>verrouillés</p>
-            </div>
-          )}
-          {invites !== undefined && (
+          <div
+            className="rounded-[14px] border px-4 py-3"
+            style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+          >
+            <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
+              Salons
+            </p>
+            <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "rgb(74, 222, 128)" }}>
+              {channels}
+            </p>
+            <p className="text-[10.5px] mt-1" style={{ color: "var(--ds-text-dim)" }}>
+              {activated ? "verrouillés" : "rouverts"}
+            </p>
+          </div>
+          {activated && invites !== undefined && (
             <div
               className="rounded-[14px] border px-4 py-3"
               style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
@@ -716,7 +783,9 @@ function SuccessBody({
         </div>
       ) : (
         <p className="text-[13px] leading-relaxed mb-6" style={{ color: "var(--ds-text-mut)" }}>
-          Tous les salons sont verrouillés et les invitations supprimées.
+          {activated
+            ? "Tous les salons sont verrouillés et les invitations supprimées."
+            : "Les permissions @everyone ont été rétablies sur tous les salons."}
         </p>
       )}
       <button

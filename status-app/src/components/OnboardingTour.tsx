@@ -301,8 +301,7 @@ function InteractiveTour({ onClose }: { onClose: () => void }) {
       {/* Tauri drag handle so the window stays movable during the tour */}
       <div className="fixed inset-x-0 top-0 h-7 z-[501]" data-tauri-drag-region />
 
-      <SpotlightOverlay rect={showRing ? rect : null} />
-      {showRing && rect && <SpotlightRing rect={rect} />}
+      <Spotlight rect={showRing ? rect : null} />
 
       <TourCard
         step={step}
@@ -318,81 +317,51 @@ function InteractiveTour({ onClose }: { onClose: () => void }) {
   );
 }
 
-/* ─── Spotlight (SVG cutout overlay) ──────────────────────────────── */
-
-function SpotlightOverlay({ rect }: { rect: DOMRect | null }) {
-  const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
-  useEffect(() => {
-    function on() { setSize({ w: window.innerWidth, h: window.innerHeight }); }
-    window.addEventListener("resize", on);
-    return () => window.removeEventListener("resize", on);
-  }, []);
-  return (
-    <svg
-      className="fixed inset-0 pointer-events-none"
-      width={size.w}
-      height={size.h}
-      style={{ width: "100vw", height: "100vh" }}
-    >
-      <defs>
-        <mask id="tour-mask">
-          <rect width="100%" height="100%" fill="white" />
-          {rect && (
-            <rect
-              x={Math.max(0, rect.x - RING_PAD)}
-              y={Math.max(0, rect.y - RING_PAD)}
-              width={rect.width + 2 * RING_PAD}
-              height={rect.height + 2 * RING_PAD}
-              rx={14}
-              ry={14}
-              fill="black"
-            />
-          )}
-        </mask>
-      </defs>
-      <rect
-        width="100%"
-        height="100%"
-        fill="rgba(0, 0, 0, 0.68)"
-        mask="url(#tour-mask)"
-        style={{ transition: "opacity 200ms ease" }}
-      />
-    </svg>
-  );
-}
-
-function SpotlightRing({ rect }: { rect: DOMRect }) {
+/* ─── Spotlight (single DOM element, CSS-animated) ──────────────────
+ *
+ * One absolutely-positioned div that wears a *massive* outset box-shadow as
+ * the dim overlay (so we don't need a separate <svg> mask) plus a ring
+ * glow inset. left/top/width/height transition smoothly so when the
+ * target rect changes from one step to the next, the spotlight literally
+ * slides + grows into place instead of teleporting.
+ *
+ * When no rect (rect === null), we collapse the cutout to a 0-size point
+ * at the screen center → the box-shadow effectively dims the whole UI
+ * with no hole. The transition still runs, so leaving an anchored step
+ * for a centered step morphs gracefully.
+ */
+function Spotlight({ rect }: { rect: DOMRect | null }) {
+  const target = rect ?? null;
+  const cx = typeof window !== "undefined" ? window.innerWidth / 2 : 0;
+  const cy = typeof window !== "undefined" ? window.innerHeight / 2 : 0;
   return (
     <>
       <div
-        className="fixed pointer-events-none tour-ring"
+        className="fixed pointer-events-none tour-spotlight"
         style={{
-          left: rect.x - RING_PAD,
-          top: rect.y - RING_PAD,
-          width: rect.width + 2 * RING_PAD,
-          height: rect.height + 2 * RING_PAD,
+          left:   target ? target.x - RING_PAD : cx,
+          top:    target ? target.y - RING_PAD : cy,
+          width:  target ? target.width  + 2 * RING_PAD : 0,
+          height: target ? target.height + 2 * RING_PAD : 0,
           borderRadius: 14,
           zIndex: 5,
+          // box-shadow is the trick : a 9999px outset acts as the dim
+          // overlay; the inset 1px + 26px glow form the bright ring.
+          boxShadow: target
+            ? "0 0 0 9999px rgba(0, 0, 0, 0.68), 0 0 0 1px rgba(255, 255, 255, 0.85), 0 0 26px 5px rgba(255, 255, 255, 0.22)"
+            : "0 0 0 9999px rgba(0, 0, 0, 0.68)",
+          opacity: 1,
         }}
       />
       <style>{`
-        .tour-ring {
-          box-shadow:
-            0 0 0 1px rgba(255, 255, 255, 0.85),
-            0 0 26px 5px rgba(255, 255, 255, 0.22);
-          animation: tour-ring-pulse 1.8s ease-in-out infinite;
-        }
-        @keyframes tour-ring-pulse {
-          0%, 100% {
-            box-shadow:
-              0 0 0 1px rgba(255, 255, 255, 0.78),
-              0 0 22px 5px rgba(255, 255, 255, 0.20);
-          }
-          50% {
-            box-shadow:
-              0 0 0 1px rgba(255, 255, 255, 1),
-              0 0 32px 9px rgba(255, 255, 255, 0.32);
-          }
+        .tour-spotlight {
+          transition:
+            left   460ms cubic-bezier(0.22, 1, 0.36, 1),
+            top    460ms cubic-bezier(0.22, 1, 0.36, 1),
+            width  460ms cubic-bezier(0.22, 1, 0.36, 1),
+            height 460ms cubic-bezier(0.22, 1, 0.36, 1),
+            box-shadow 320ms cubic-bezier(0.22, 1, 0.36, 1);
+          will-change: left, top, width, height;
         }
       `}</style>
     </>
@@ -460,7 +429,6 @@ function TourCard({
 }) {
   return (
     <div
-      key={index}
       className="fixed pointer-events-auto tour-card"
       style={{
         left: pos.x,
@@ -487,24 +455,29 @@ function TourCard({
           <X size={11} strokeWidth={2.4} />
         </button>
 
-        <p
-          className="text-[10px] font-bold tracking-[0.22em] uppercase mb-2"
-          style={{ color: "var(--ds-text-dim)" }}
-        >
-          Étape {index + 1} / {total}
-        </p>
-        <h2
-          id="tour-title"
-          className="text-[18px] font-extrabold tracking-tight mb-2 pr-7"
-        >
-          {step.title}
-        </h2>
-        <p
-          className="text-[13px] leading-relaxed mb-5"
-          style={{ color: "var(--ds-text-mut)" }}
-        >
-          {step.body}
-        </p>
+        {/* Keyed wrapper around the textual content so it crossfades when the
+            step changes, while the outer card itself stays mounted and only
+            slides to the new position via CSS transition on left/top. */}
+        <div key={index} className="tour-card-text">
+          <p
+            className="text-[10px] font-bold tracking-[0.22em] uppercase mb-2"
+            style={{ color: "var(--ds-text-dim)" }}
+          >
+            Étape {index + 1} / {total}
+          </p>
+          <h2
+            id="tour-title"
+            className="text-[18px] font-extrabold tracking-tight mb-2 pr-7"
+          >
+            {step.title}
+          </h2>
+          <p
+            className="text-[13px] leading-relaxed mb-5"
+            style={{ color: "var(--ds-text-mut)" }}
+          >
+            {step.body}
+          </p>
+        </div>
 
         <div className="flex items-center gap-2">
           <button
@@ -559,12 +532,28 @@ function TourCard({
       {pos.arrow !== "none" && !pos.centered && <Arrow side={pos.arrow} />}
 
       <style>{`
+        /* Card mounts once and stays mounted across steps so it physically
+           glides to the next anchor — left/top transitions handle that.
+           Only the entry animation fires the very first time. */
         .tour-card {
           animation: tour-card-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+          transition:
+            left 460ms cubic-bezier(0.22, 1, 0.36, 1),
+            top  460ms cubic-bezier(0.22, 1, 0.36, 1);
+          will-change: left, top;
         }
         @keyframes tour-card-in {
           from { opacity: 0; transform: translateY(6px) scale(0.97); }
           to   { opacity: 1; transform: translateY(0)  scale(1); }
+        }
+        /* Crossfade the body text between steps without losing the card
+           position transition above. */
+        .tour-card-text {
+          animation: tour-text-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes tour-text-in {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
