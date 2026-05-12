@@ -997,7 +997,7 @@ function LoadingBody() {
 }
 
 function SuccessBody({
-  channels, invites, onClose,
+  activated, channels, invites, onClose,
 }: {
   activated: boolean;
   channels?: number;
