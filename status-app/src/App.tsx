@@ -16,6 +16,7 @@ import { DesktopRpc } from "@/routes/desktop/Rpc";
 import { DesktopPreferences } from "@/routes/desktop/Preferences";
 import { DesktopStatus } from "@/routes/desktop/Status";
 import { DesktopAccount } from "@/routes/desktop/Account";
+import { DesktopPremium } from "@/routes/desktop/Premium";
 import { DesktopBotServer } from "@/routes/desktop/BotServer";
 import { TrayPanel } from "@/routes/desktop/TrayPanel";
 import { Premium } from "@/routes/Premium";
@@ -73,11 +74,11 @@ export function App() {
                   {/* Desktop: tool hub is the entry, marketing routes redirect */}
                   <Route path="/" element={<Navigate to="/outils" replace />} />
                   <Route path="/wiki" element={<Navigate to="/outils" replace />} />
-                  <Route path="/premium" element={<Navigate to="/outils" replace />} />
                   <Route path="/terms" element={<Navigate to="/outils" replace />} />
                   <Route path="/privacy" element={<Navigate to="/outils" replace />} />
                   <Route path="/status" element={<Navigate to="/statut" replace />} />
                   <Route path="/statut" element={<DesktopStatus />} />
+                  <Route path="/premium" element={<DesktopPremium />} />
                   <Route path="/assistant" element={<Assistant />} />
                 </>
               ) : (

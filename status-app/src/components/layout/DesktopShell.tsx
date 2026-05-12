@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutGrid, Sparkles, Settings, HelpCircle,
-  Search, Bell, User, LogOut, X, MessageCircle, Activity, Download, Loader2, RefreshCw,
+  Search, Bell, User, LogOut, X, MessageCircle, Activity, Download, Loader2, RefreshCw, Crown,
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
 import {
@@ -50,8 +50,21 @@ export function DesktopShell({ children }: { children: ReactNode }) {
   const nav = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [isPremium, setIsPremium] = useState<boolean | null>(null);
 
   const displayName = user?.global_name || user?.username || "Compte";
+
+  // Poll premium status when the user is loaded. Cheap call (one DB query),
+  // refreshed on user change so a freshly-bought premium reflects without a
+  // full reload.
+  useEffect(() => {
+    if (!user) { setIsPremium(null); return; }
+    let cancelled = false;
+    apiGet<{ is_premium: boolean }>("/api/account/premium")
+      .then(r => { if (!cancelled) setIsPremium(r.is_premium); })
+      .catch(() => { if (!cancelled) setIsPremium(false); });
+    return () => { cancelled = true; };
+  }, [user]);
 
   function isActive(prefix: string) {
     return location.pathname === prefix || location.pathname.startsWith(prefix + "/");
@@ -75,6 +88,12 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       label: "Statut",
       items: [
         { to: "/statut", icon: <Activity size={18} strokeWidth={1.8} />, label: "Statut des services" },
+      ],
+    },
+    {
+      label: "Premium",
+      items: [
+        { to: "/premium", icon: <Crown size={18} strokeWidth={1.8} />, label: isPremium ? "Mon abonnement Premium" : "Passer en Premium" },
       ],
     },
     {
@@ -199,9 +218,11 @@ export function DesktopShell({ children }: { children: ReactNode }) {
                 displayName={displayName}
                 username={user?.username}
                 avatar={user ? avatarUrl(user, 96) : null}
+                isPremium={isPremium}
                 onClose={() => setProfileOpen(false)}
                 onLogout={logout}
                 onAccount={() => { setProfileOpen(false); nav("/account"); }}
+                onPremium={() => { setProfileOpen(false); nav("/premium"); }}
                 onPreferences={() => { setProfileOpen(false); nav("/preferences"); }}
                 onHelp={() => { setProfileOpen(false); openExternal("https://shardtwn.fr/wiki").catch(() => {}); }}
               />
@@ -246,15 +267,17 @@ function RailItem({
 }
 
 function ProfileMenu({
-  displayName, username, avatar,
-  onClose, onLogout, onAccount, onPreferences, onHelp,
+  displayName, username, avatar, isPremium,
+  onClose, onLogout, onAccount, onPremium, onPreferences, onHelp,
 }: {
   displayName: string;
   username?: string;
   avatar: string | null;
+  isPremium: boolean | null;
   onClose: () => void;
   onLogout: () => void;
   onAccount: () => void;
+  onPremium: () => void;
   onPreferences: () => void;
   onHelp: () => void;
 }) {
@@ -282,7 +305,7 @@ function ProfileMenu({
         boxShadow: "0 24px 60px -12px rgba(0,0,0,0.55)",
       }}
     >
-      {/* NordVPN-style header: avatar + name + handle */}
+      {/* NordVPN-style header: avatar + name + handle + plan badge */}
       <div className="px-4 pt-4 pb-4 flex items-center gap-3 border-b" style={{ borderColor: "var(--ds-border)" }}>
         <div
           className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
@@ -298,11 +321,30 @@ function ProfileMenu({
             <p className="text-[11.5px] truncate" style={{ color: "var(--ds-text-dim)" }}>@{username}</p>
           )}
         </div>
+        {isPremium !== null && (
+          <span
+            className="text-[9.5px] font-bold tracking-[0.14em] uppercase px-2 py-1 rounded-full inline-flex items-center gap-1 shrink-0"
+            style={
+              isPremium
+                ? { background: "rgba(251, 191, 36, 0.14)", color: "rgb(251, 191, 36)", border: "1px solid rgba(251, 191, 36, 0.3)" }
+                : { background: "var(--ds-panel)", color: "var(--ds-text-dim)", border: "1px solid var(--ds-border)" }
+            }
+          >
+            {isPremium && <Crown size={9} strokeWidth={2.4} />}
+            {isPremium ? "Premium" : "Basique"}
+          </span>
+        )}
       </div>
 
       {/* Menu items */}
       <div className="py-1.5">
         <MenuRow icon={<User size={15} strokeWidth={1.8} />}     label="Compte"      onClick={onAccount} />
+        <MenuRow
+          icon={<Crown size={15} strokeWidth={1.8} />}
+          label={isPremium ? "Mon Premium" : "Passer en Premium"}
+          onClick={onPremium}
+          accent={isPremium ? "premium" : undefined}
+        />
         <MenuRow icon={<Settings size={15} strokeWidth={1.8} />} label="Réglages"    onClick={onPreferences} />
         <MenuRow icon={<HelpCircle size={15} strokeWidth={1.8} />} label="Aide"      onClick={onHelp} />
       </div>
@@ -323,21 +365,30 @@ function ProfileMenu({
 }
 
 function MenuRow({
-  icon, label, onClick, danger,
+  icon, label, onClick, danger, accent,
 }: {
   icon: ReactNode;
   label: string;
   onClick: () => void;
   danger?: boolean;
+  accent?: "premium";
 }) {
+  const text =
+    danger              ? "rgb(248, 113, 113)" :
+    accent === "premium" ? "rgb(251, 191, 36)" :
+    "var(--ds-text)";
+  const iconColor =
+    danger              ? "rgb(248, 113, 113)" :
+    accent === "premium" ? "rgb(251, 191, 36)" :
+    "var(--ds-text-mut)";
   return (
     <button
       type="button"
       onClick={onClick}
       className="w-full text-left px-4 py-2.5 text-[13.5px] font-semibold transition-colors hover:bg-[var(--ds-panel)] flex items-center gap-3"
-      style={{ color: danger ? "rgb(248, 113, 113)" : "var(--ds-text)" }}
+      style={{ color: text }}
     >
-      <span style={{ color: danger ? "rgb(248, 113, 113)" : "var(--ds-text-mut)" }}>{icon}</span>
+      <span style={{ color: iconColor }}>{icon}</span>
       {label}
     </button>
   );

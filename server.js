@@ -2928,6 +2928,31 @@ app.post('/api/account/resend-verification', accountAuthLimiter, async (req, res
     }
 });
 
+// Premium summary for the desktop "Mon compte" / Premium pages.
+// Returns whether the user currently has at least one server with active
+// premium, plus the list of those servers with name + thumbnail. Drives
+// the "Basique / Premium" badge in the desktop shell.
+app.get('/api/account/premium', async (req, res) => {
+    if (!req.user) return res.json({ is_premium: false, guilds: [] });
+    try {
+        const adminGuilds = req.user.guilds.filter(g => hasGuildAdmin(g));
+        if (adminGuilds.length === 0) return res.json({ is_premium: false, guilds: [] });
+        const ids = adminGuilds.map(g => g.id);
+        const placeholders = ids.map(() => '?').join(',');
+        const [rows] = await db.execute(
+            `SELECT guildId, isPremium FROM settings WHERE guildId IN (${placeholders})`,
+            ids,
+        );
+        const premiumIds = new Set(rows.filter(r => Number(r.isPremium) === 1).map(r => String(r.guildId)));
+        const guilds = adminGuilds
+            .filter(g => premiumIds.has(String(g.id)))
+            .map(g => ({ id: g.id, name: g.name, icon: g.icon || null }));
+        res.json({ is_premium: guilds.length > 0, guilds });
+    } catch {
+        res.json({ is_premium: false, guilds: [] });
+    }
+});
+
 // Premium data — consumed by React /premium
 app.get('/api/premium', async (req, res) => {
     if (!req.user) return res.status(401).json({ adminGuilds: [] });
