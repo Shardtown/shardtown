@@ -1,6 +1,8 @@
 use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 use keyring::Entry;
 use serde::Deserialize;
+use std::fs;
+use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::menu::{AboutMetadataBuilder, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
@@ -12,33 +14,98 @@ use tauri::{LogicalPosition, LogicalSize, Manager, WebviewUrl, WebviewWindowBuil
 const KEYCHAIN_SERVICE: &str = "fr.shardtwn.dashboard";
 const KEYCHAIN_ACCOUNT: &str = "default";
 
+/// File-based token store path: ~/Library/Application Support/fr.shardtwn.dashboard/token.dat
+///
+/// Why not just Keychain? Macros : every unsigned (or ad-hoc-signed) build
+/// has a different code-signing identity, so the Keychain ACL refuses to
+/// share the entry between the old binary and the new one after an
+/// auto-update. The user gets thrown back to the login screen on every
+/// release. Falling back to a plain file under Application Support is
+/// strictly less secure than Keychain but it survives identity changes,
+/// which matters way more for UX. A future Apple-Developer-signed build
+/// could re-enable the Keychain path.
+fn token_file_path() -> Result<PathBuf, String> {
+    // dirs is already pulled in transitively by other deps. Fall back to
+    // $HOME if anything goes wrong — last resort.
+    let base = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .ok_or_else(|| "HOME indéfini".to_string())?;
+    let dir = base
+        .join("Library")
+        .join("Application Support")
+        .join(KEYCHAIN_SERVICE);
+    if !dir.exists() {
+        fs::create_dir_all(&dir).map_err(|e| format!("mkdir: {e}"))?;
+    }
+    Ok(dir.join("token.dat"))
+}
+
 fn entry() -> Result<Entry, String> {
     Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_ACCOUNT).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 fn token_get() -> Result<Option<String>, String> {
-    let entry = entry()?;
-    match entry.get_password() {
-        Ok(t) => Ok(Some(t)),
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(e) => Err(e.to_string()),
+    // 1. Try the file first — that's our persistent home post-update.
+    if let Ok(path) = token_file_path() {
+        if let Ok(s) = fs::read_to_string(&path) {
+            let trimmed = s.trim().to_string();
+            if !trimmed.is_empty() {
+                return Ok(Some(trimmed));
+            }
+        }
     }
+    // 2. Migration : if the user is upgrading from a previous build that
+    // wrote to the Keychain, lift the token out of there and re-save it
+    // to the file so the next launch finds it instantly.
+    if let Ok(entry) = entry() {
+        if let Ok(t) = entry.get_password() {
+            if let Ok(path) = token_file_path() {
+                let _ = write_token_file(&path, &t);
+            }
+            return Ok(Some(t));
+        }
+    }
+    Ok(None)
 }
 
 #[tauri::command]
 fn token_set(token: String) -> Result<(), String> {
-    entry()?.set_password(&token).map_err(|e| e.to_string())
+    let path = token_file_path()?;
+    write_token_file(&path, &token)?;
+    // Best-effort mirror to Keychain so it stays in sync for anything that
+    // might still read it directly. Failure is non-fatal — the file is
+    // the source of truth.
+    if let Ok(entry) = entry() {
+        let _ = entry.set_password(&token);
+    }
+    Ok(())
 }
 
 #[tauri::command]
 fn token_clear() -> Result<(), String> {
-    let entry = entry()?;
-    match entry.delete_credential() {
-        Ok(_) => Ok(()),
-        Err(keyring::Error::NoEntry) => Ok(()),
-        Err(e) => Err(e.to_string()),
+    if let Ok(path) = token_file_path() {
+        let _ = fs::remove_file(&path);
     }
+    if let Ok(entry) = entry() {
+        match entry.delete_credential() {
+            Ok(_) | Err(keyring::Error::NoEntry) => (),
+            Err(e) => return Err(e.to_string()),
+        }
+    }
+    Ok(())
+}
+
+fn write_token_file(path: &PathBuf, token: &str) -> Result<(), String> {
+    fs::write(path, token).map_err(|e| format!("write token: {e}"))?;
+    // chmod 600 — readable only by the current user. Best-effort; on a
+    // misbehaving FS we still want the write to succeed.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o600));
+    }
+    Ok(())
 }
 
 /// ─── Discord Rich Presence ───────────────────────────────────────────────
