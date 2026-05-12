@@ -429,38 +429,11 @@ client.once('ready', async () => {
     checkBirthdays();
 
     async function checkPolls() {
+        // Native Discord polls auto-expire on their own — we just clean up
+        // the local tracking row once the deadline has passed.
         try {
             const now = new Date();
-            const [rows] = await db.execute(`SELECT * FROM shard_polls WHERE ended = 0 AND endsAt IS NOT NULL AND endsAt <= ?`, [now]);
-            const EMOJIS = ['🔵', '🟢', '🟡', '🟠', '🔴'];
-            for (const poll of rows) {
-                try {
-                    const choices = safeJsonParse(poll.choices, []);
-                    if (!Array.isArray(choices) || !choices.length) continue;
-                    const [votes] = await db.execute(`SELECT choiceIndex, COUNT(*) as count FROM shard_poll_votes WHERE pollId = ? GROUP BY choiceIndex ORDER BY choiceIndex`, [poll.id]);
-                    const total = votes.reduce((s, v) => s + Number(v.count), 0);
-                    await db.execute(`UPDATE shard_polls SET ended = 1 WHERE id = ?`, [poll.id]);
-                    const resultsDesc = choices.map((c, i) => {
-                        const v = votes.find(v => v.choiceIndex === i);
-                        const count = v ? Number(v.count) : 0;
-                        const pct = total ? Math.round(count / total * 100) : 0;
-                        const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
-                        return `${EMOJIS[i]} **${c}**\n\`${bar}\` ${pct}% (${count} vote${count !== 1 ? 's' : ''})`;
-                    }).join('\n\n');
-                    const guild = client.guilds.cache.get(poll.guildId);
-                    if (!guild) continue;
-                    const channel = guild.channels.cache.get(poll.channelId);
-                    if (channel) {
-                        try {
-                            const msg = await channel.messages.fetch(poll.messageId);
-                            await msg.edit({
-                                embeds: [{ color: 0x6b7280, title: `📊 ${poll.question} — Résultats`, description: resultsDesc || 'Aucun vote.', footer: { text: `${total} vote(s) au total` }, timestamp: new Date().toISOString() }],
-                                components: [{ type: 1, components: choices.slice(0, 5).map((c, i) => ({ type: 2, style: 2, label: c.slice(0, 80), emoji: { name: EMOJIS[i] }, custom_id: `poll_ended_${i}`, disabled: true })) }]
-                            });
-                        } catch {}
-                    }
-                } catch {}
-            }
+            await db.execute(`UPDATE shard_polls SET ended = 1 WHERE ended = 0 AND endsAt IS NOT NULL AND endsAt <= ?`, [now]);
         } catch {}
     }
     setInterval(checkPolls, 60000);
@@ -893,38 +866,9 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    if (interaction.isButton() && interaction.customId.startsWith('poll_vote_')) {
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const choiceIndex = parseInt(interaction.customId.split('_')[2]);
-        const msgId = interaction.message.id;
-        const [rows] = await db.execute(`SELECT * FROM shard_polls WHERE messageId = ? AND ended = 0`, [msgId]);
-        if (!rows[0]) return interaction.editReply({ content: 'Ce sondage est terminé.' });
-        const poll = rows[0];
-        const choices = safeJsonParse(poll.choices, []);
-        if (!Array.isArray(choices) || !choices.length) return interaction.editReply({ content: 'Sondage corrompu.' });
-        const EMOJIS = ['🔵', '🟢', '🟡', '🟠', '🔴'];
-        try {
-            await db.execute(`INSERT INTO shard_poll_votes (pollId, userId, choiceIndex) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE choiceIndex = VALUES(choiceIndex)`, [poll.id, interaction.user.id, choiceIndex]);
-        } catch { return interaction.editReply({ content: 'Erreur lors du vote.' }); }
-        const [votes] = await db.execute(`SELECT choiceIndex, COUNT(*) as count FROM shard_poll_votes WHERE pollId = ? GROUP BY choiceIndex`, [poll.id]);
-        const total = votes.reduce((s, v) => s + Number(v.count), 0);
-        let updatedDesc;
-        if (poll.anonymous) {
-            updatedDesc = choices.map((c, i) => `${EMOJIS[i]} **${c}**`).join('\n') + `\n\n*Résultats masqués jusqu'à la clôture — ${total} vote(s) enregistré(s)*`;
-        } else {
-            updatedDesc = choices.map((c, i) => {
-                const v = votes.find(v => v.choiceIndex === i);
-                const count = v ? Number(v.count) : 0;
-                const pct = total ? Math.round(count / total * 100) : 0;
-                const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
-                return `${EMOJIS[i]} **${c}**\n\`${bar}\` ${pct}% (${count} vote${count !== 1 ? 's' : ''})`;
-            }).join('\n\n');
-        }
-        try {
-            await interaction.message.edit({ embeds: [{ color: 0x3b82f6, title: `📊 ${poll.question}`, description: updatedDesc, footer: { text: `${total} vote(s) au total` }, timestamp: new Date().toISOString() }] });
-        } catch {}
-        return interaction.editReply({ content: `${EMOJIS[choiceIndex]} Vous avez voté pour **${choices[choiceIndex]}**.` });
-    }
+    // Native Discord polls handle voting internally — the old poll_vote_*
+    // buttons are no longer emitted by /shard/guild/:guildID/poll. Legacy
+    // messages from before the migration will simply ignore clicks.
 
     if (interaction.isButton() && interaction.customId === 'giveaway_enter') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });

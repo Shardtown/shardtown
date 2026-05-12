@@ -3482,27 +3482,40 @@ app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
-    const { channelId, question, choices, endsAt, pollAnonymous = '0' } = req.body;
+    const { channelId, question, choices, duration, durationUnit, anonymous } = req.body;
     if (!channelId || !question || !Array.isArray(choices) || choices.length < 2) return res.status(400).json({ success: false, error: 'Données manquantes' });
-    const anonymousVal = parseInt(pollAnonymous) || 0;
-    const EMOJIS = ['🔵', '🟢', '🟡', '🟠', '🔴'];
-    const buttons = choices.slice(0, 5).map((c, i) => ({ type: 2, style: 2, label: c.slice(0, 80), emoji: { name: EMOJIS[i] }, custom_id: `poll_vote_${i}` }));
-    const rows = [];
-    for (let i = 0; i < buttons.length; i += 5) rows.push({ type: 1, components: buttons.slice(i, i + 5) });
-    const endsAtDate = endsAt ? new Date(endsAt) : null;
-    const embed = {
-        color: 0x3b82f6,
-        title: `📊 ${question}`,
-        description: choices.map((c, i) => `${EMOJIS[i]} **${c}**`).join('\n'),
-        footer: { text: endsAtDate ? `Se termine le ${endsAtDate.toLocaleString('fr-FR')}` : 'Cliquez pour voter' },
-        timestamp: new Date().toISOString()
+    // Discord native polls take a duration in HOURS, between 1 and 768 (32 days).
+    const rawDur = Number(duration) || 24;
+    const unit = String(durationUnit || 'hours');
+    let hours;
+    if (unit === 'minutes') hours = Math.max(1, Math.round(rawDur / 60));
+    else if (unit === 'days') hours = rawDur * 24;
+    else hours = rawDur;
+    hours = Math.max(1, Math.min(768, hours));
+    const cleanChoices = choices.slice(0, 10).map(c => String(c).slice(0, 55));
+    const pollPayload = {
+        poll: {
+            question: { text: String(question).slice(0, 300) },
+            answers: cleanChoices.map(c => ({ poll_media: { text: c } })),
+            duration: hours,
+            allow_multiselect: false,
+            layout_type: 1
+        }
     };
     try {
-        const msgRes = await axios.post(`https://discord.com/api/v10/channels/${channelId}/messages`, { embeds: [embed], components: rows }, { headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' } });
+        const msgRes = await axios.post(`https://discord.com/api/v10/channels/${channelId}/messages`, pollPayload, {
+            headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' }
+        });
         const messageId = msgRes.data.id;
-        const [result] = await db.execute(`INSERT INTO shard_polls (guildId, channelId, messageId, question, choices, endsAt, anonymous) VALUES (?, ?, ?, ?, ?, ?, ?)`, [guildID, channelId, messageId, question, JSON.stringify(choices), endsAtDate || null, anonymousVal]);
+        const endsAtDate = new Date(Date.now() + hours * 3600 * 1000);
+        const [result] = await db.execute(
+            `INSERT INTO shard_polls (guildId, channelId, messageId, question, choices, endsAt, anonymous) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [guildID, channelId, messageId, question, JSON.stringify(cleanChoices), endsAtDate, anonymous ? 1 : 0]
+        );
         res.json({ success: true, id: result.insertId });
-    } catch (err) { res.status(500).json({ success: false, error: err.response?.data?.message || 'Erreur serveur' }); }
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.response?.data?.message || 'Erreur serveur' });
+    }
 });
 
 app.post('/shard/guild/:guildID/poll/:pollId/end', checkAuthShard, async (req, res) => {
@@ -3513,24 +3526,14 @@ app.post('/shard/guild/:guildID/poll/:pollId/end', checkAuthShard, async (req, r
     const [rows] = await db.execute(`SELECT * FROM shard_polls WHERE id = ? AND guildId = ?`, [pollId, guildID]);
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Sondage introuvable' });
     const poll = rows[0];
-    const choices = typeof poll.choices === 'string' ? JSON.parse(poll.choices) : poll.choices;
-    const EMOJIS = ['🔵', '🟢', '🟡', '🟠', '🔴'];
-    const [votes] = await db.execute(`SELECT choiceIndex, COUNT(*) as count FROM shard_poll_votes WHERE pollId = ? GROUP BY choiceIndex ORDER BY choiceIndex`, [pollId]);
-    const total = votes.reduce((s, v) => s + v.count, 0);
     await db.execute(`UPDATE shard_polls SET ended = 1 WHERE id = ?`, [pollId]);
-    const results = choices.map((c, i) => { const v = votes.find(v => v.choiceIndex === i); return { choice: c, count: v ? v.count : 0 }; });
-    const resultsDesc = results.map((r, i) => {
-        const pct = total ? Math.round(r.count / total * 100) : 0;
-        const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
-        return `${EMOJIS[i]} **${r.choice}**\n\`${bar}\` ${pct}% (${r.count} vote${r.count !== 1 ? 's' : ''})`;
-    }).join('\n\n');
+    // Native Discord polls are ended via POST /channels/{channel.id}/polls/{message.id}/expire
     try {
-        await axios.patch(`https://discord.com/api/v10/channels/${poll.channelId}/messages/${poll.messageId}`, {
-            embeds: [{ color: 0x6b7280, title: `📊 ${poll.question} — Résultats`, description: resultsDesc || 'Aucun vote.', footer: { text: `${total} vote(s) au total` }, timestamp: new Date().toISOString() }],
-            components: [{ type: 1, components: choices.slice(0, 5).map((c, i) => ({ type: 2, style: 2, label: c.slice(0, 80), emoji: { name: EMOJIS[i] }, custom_id: `poll_ended_${i}`, disabled: true })) }]
-        }, { headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' } });
+        await axios.post(`https://discord.com/api/v10/channels/${poll.channelId}/polls/${poll.messageId}/expire`, {}, {
+            headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' }
+        });
     } catch {}
-    res.json({ success: true, results });
+    res.json({ success: true });
 });
 
 app.post('/shard/guild/:guildID/giveaway', checkAuthShard, async (req, res) => {
@@ -3709,6 +3712,100 @@ app.delete('/shard/guild/:guildID/shop/:id', checkAuthShard, async (req, res) =>
         await db.execute(`DELETE FROM shard_shop WHERE id = ? AND guildId = ?`, [id, guildID]);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
+});
+
+/**
+ * Components V2 publisher — accepts a simple block list from the visual
+ * editor and compiles it down to a Discord Components V2 message payload.
+ *
+ * Block shapes (matching status-app/src/components/shard/ComponentsBuilder.tsx):
+ *   { kind: "text", content }
+ *   { kind: "separator", spacing: "small" | "large", divider: bool }
+ *   { kind: "section", content, accessory: { kind: "thumb", url, description? } | { kind: "button", label, url } }
+ *   { kind: "gallery", items: [{ url, description? }] }
+ *   { kind: "buttons", buttons: [{ label, url }] }
+ *
+ * Discord component types we emit:
+ *   17 = Container, 10 = Text Display, 14 = Separator, 9 = Section,
+ *   11 = Thumbnail (section accessory), 12 = Media Gallery, 1 = Action Row,
+ *   2 = Button (link style 5)
+ */
+app.post('/shard/guild/:guildID/send-components', checkAuthShard, async (req, res) => {
+    const guildID = req.params.guildID;
+    const shardUser = req.session.shardUser;
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
+    if (!userGuild) return res.status(403).json({ success: false });
+    const { channelId, accentColor, blocks } = req.body;
+    if (!channelId || !/^\d{17,20}$/.test(String(channelId))) return res.status(400).json({ success: false, error: 'Salon invalide' });
+    if (!Array.isArray(blocks) || blocks.length === 0) return res.status(400).json({ success: false, error: 'Aucun bloc à envoyer' });
+
+    const isHttpUrl = (u) => typeof u === 'string' && /^https?:\/\//i.test(u);
+    const accentInt = parseInt(String(accentColor || '#5b6dff').replace('#', ''), 16) || 0x5b6dff;
+
+    const components = [];
+    for (const blk of blocks) {
+        if (!blk || typeof blk !== 'object') continue;
+        if (blk.kind === 'text' && typeof blk.content === 'string' && blk.content.trim()) {
+            components.push({ type: 10, content: String(blk.content).slice(0, 4000) });
+        } else if (blk.kind === 'separator') {
+            components.push({
+                type: 14,
+                spacing: blk.spacing === 'large' ? 2 : 1,
+                divider: blk.divider !== false,
+            });
+        } else if (blk.kind === 'section' && typeof blk.content === 'string' && blk.content.trim()) {
+            const acc = blk.accessory || {};
+            let accessory = null;
+            if (acc.kind === 'thumb' && isHttpUrl(acc.url)) {
+                accessory = { type: 11, media: { url: acc.url } };
+                if (acc.description) accessory.description = String(acc.description).slice(0, 200);
+            } else if (acc.kind === 'button' && isHttpUrl(acc.url)) {
+                accessory = { type: 2, style: 5, label: String(acc.label || 'Ouvrir').slice(0, 80), url: acc.url };
+            }
+            if (!accessory) continue; // section requires an accessory
+            components.push({
+                type: 9,
+                components: [{ type: 10, content: String(blk.content).slice(0, 4000) }],
+                accessory,
+            });
+        } else if (blk.kind === 'gallery' && Array.isArray(blk.items)) {
+            const items = blk.items.filter(it => it && isHttpUrl(it.url)).slice(0, 10).map(it => {
+                const m = { media: { url: it.url } };
+                if (it.description) m.description = String(it.description).slice(0, 200);
+                return m;
+            });
+            if (items.length === 0) continue;
+            components.push({ type: 12, items });
+        } else if (blk.kind === 'buttons' && Array.isArray(blk.buttons)) {
+            const buttons = blk.buttons.filter(b => b && isHttpUrl(b.url)).slice(0, 5).map(b => ({
+                type: 2, style: 5, label: String(b.label || 'Ouvrir').slice(0, 80), url: b.url,
+            }));
+            if (buttons.length === 0) continue;
+            components.push({ type: 1, components: buttons });
+        }
+    }
+
+    if (components.length === 0) {
+        return res.status(400).json({ success: false, error: 'Aucun bloc valide à envoyer.' });
+    }
+
+    const payload = {
+        flags: 1 << 15, // IS_COMPONENTS_V2 = 32768
+        components: [{
+            type: 17,
+            accent_color: accentInt,
+            components,
+        }],
+    };
+
+    try {
+        await axios.post(`https://discord.com/api/v10/channels/${channelId}/messages`, payload, {
+            headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' },
+        });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.response?.data?.message || 'Erreur serveur' });
+    }
 });
 
 app.post('/shard/guild/:guildID/send-embed', checkAuthShard, async (req, res) => {

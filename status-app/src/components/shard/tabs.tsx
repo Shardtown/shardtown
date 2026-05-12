@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Send, Cake, MessageCircleHeart, LogOut } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import {
   type DChannel, type DRole, type ShardSettings, type Poll, type Giveaway,
   type ScheduledAnnouncement, type ShopItem,
@@ -10,6 +10,7 @@ import { ColorPicker } from "@/components/forms/ColorPicker";
 import { apiPost, apiDelete } from "@/api/client";
 import { IS_DESKTOP } from "@/lib/desktop";
 import { DiscordPreview } from "@/components/DiscordPreview";
+import { ComponentsBuilder } from "@/components/shard/ComponentsBuilder";
 
 type Update = (patch: Partial<ShardSettings>) => void;
 
@@ -81,8 +82,8 @@ export function WelcomeTab({ guildId, settings, update, channels }: TabBase) {
         <Field label="Pied de page"><TextInput value={settings.welcomeFooter} onChange={e => update({ welcomeFooter: e.target.value })} /></Field>
         <Field label="Couleur"><ColorPicker value={settings.welcomeColor} onChange={v => update({ welcomeColor: v })} /></Field>
         <button type="button" onClick={() => test("welcome")} disabled={!settings.welcomeChannelId || testing === "welcome"}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-bold hover:bg-blue-500/20 disabled:opacity-50 transition-colors">
-          <Send className="w-3 h-3" /> {testing === "welcome" ? "Envoi…" : "Tester"}
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
+          {testing === "welcome" ? "Envoi…" : "Tester"}
         </button>
         {IS_DESKTOP && (
           <div className="mt-4">
@@ -107,8 +108,8 @@ export function WelcomeTab({ guildId, settings, update, channels }: TabBase) {
         <Field label="Pied de page"><TextInput value={settings.leaveFooter} onChange={e => update({ leaveFooter: e.target.value })} /></Field>
         <Field label="Couleur"><ColorPicker value={settings.leaveColor} onChange={v => update({ leaveColor: v })} /></Field>
         <button type="button" onClick={() => test("leave")} disabled={!settings.leaveChannelId || testing === "leave"}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-white/70 text-xs font-bold hover:bg-white/10 disabled:opacity-50 transition-colors">
-          <LogOut className="w-3 h-3" /> {testing === "leave" ? "Envoi…" : "Tester"}
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
+          {testing === "leave" ? "Envoi…" : "Tester"}
         </button>
         {IS_DESKTOP && (
           <div className="mt-4">
@@ -548,7 +549,42 @@ export function TempVoiceTab({ settings, update, voiceChannels, categories }: Ta
 }
 
 /* ========== EMBED BUILDER ========== */
+/**
+ * The previous "title + description + image" form was a thin wrapper around
+ * a legacy embed. The user requested a real, Discord-tool-like visual editor
+ * built on Components V2 — drag-drop blocks, a `＋` insert button between
+ * every block, and a fidèle preview. The implementation lives in
+ * `ComponentsBuilder.tsx`; this tab now just hosts it (and keeps the legacy
+ * single-embed form as a fallback toggle).
+ */
 export function EmbedBuilderTab({ guildId, channels }: TabBase) {
+  const [mode, setMode] = useState<"v2" | "legacy">("v2");
+  return (
+    <div className="space-y-4">
+      <div className="inline-flex p-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-bold">
+        <ModeBtn active={mode === "v2"} onClick={() => setMode("v2")}>Éditeur visuel</ModeBtn>
+        <ModeBtn active={mode === "legacy"} onClick={() => setMode("legacy")}>Embed simple</ModeBtn>
+      </div>
+      {mode === "v2"
+        ? <ComponentsBuilder guildId={guildId} channels={channels} />
+        : <LegacyEmbed guildId={guildId} channels={channels} />}
+    </div>
+  );
+}
+
+function ModeBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3.5 py-1.5 rounded-full transition-colors ${active ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function LegacyEmbed({ guildId, channels }: { guildId: string; channels: DChannel[] }) {
   const [form, setForm] = useState({ channelId: "", title: "", description: "", footer: "", color: "#3b82f6", image: "" });
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -700,8 +736,8 @@ export function TicketsTab({ guildId, settings, update, channels, categories, ro
         <Field label="Description"><TextArea value={settings.ticketPanelDescription} onChange={e => update({ ticketPanelDescription: e.target.value })} placeholder="Cliquez pour ouvrir un ticket…" /></Field>
         <Field label="Couleur"><ColorPicker value={settings.ticketPanelColor} onChange={v => update({ ticketPanelColor: v })} /></Field>
         <button type="button" onClick={deployPanel} disabled={busy || !settings.ticketPanelChannelId}
-          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50 inline-flex items-center gap-2">
-          <MessageCircleHeart className="w-3 h-3" /> {busy ? "Envoi…" : "Publier le panel"}
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
+          {busy ? "Envoi…" : "Publier le panel"}
         </button>
         {result && <p className="text-xs text-emerald-400 mt-2">{result}</p>}
       </SectionCard>
