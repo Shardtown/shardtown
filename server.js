@@ -3482,16 +3482,14 @@ app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
-    const { channelId, question, choices, duration, durationUnit, anonymous } = req.body;
+    const { channelId, question, choices, durationHours } = req.body;
     if (!channelId || !question || !Array.isArray(choices) || choices.length < 2) return res.status(400).json({ success: false, error: 'Données manquantes' });
-    // Discord native polls take a duration in HOURS, between 1 and 768 (32 days).
-    const rawDur = Number(duration) || 24;
-    const unit = String(durationUnit || 'hours');
-    let hours;
-    if (unit === 'minutes') hours = Math.max(1, Math.round(rawDur / 60));
-    else if (unit === 'days') hours = rawDur * 24;
-    else hours = rawDur;
-    hours = Math.max(1, Math.min(768, hours));
+    // Discord native polls only accept a fixed set of durations (1h, 4h, 8h,
+    // 24h, 72h, 168h = 1 sem., 336h = 2 sem.). We clamp to the closest valid
+    // option, with 24h as the default.
+    const ALLOWED_HOURS = [1, 4, 8, 24, 72, 168, 336];
+    const requested = Number(durationHours) || 24;
+    const hours = ALLOWED_HOURS.reduce((best, h) => Math.abs(h - requested) < Math.abs(best - requested) ? h : best, ALLOWED_HOURS[0]);
     const cleanChoices = choices.slice(0, 10).map(c => String(c).slice(0, 55));
     const pollPayload = {
         poll: {
@@ -3510,7 +3508,7 @@ app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
         const endsAtDate = new Date(Date.now() + hours * 3600 * 1000);
         const [result] = await db.execute(
             `INSERT INTO shard_polls (guildId, channelId, messageId, question, choices, endsAt, anonymous) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [guildID, channelId, messageId, question, JSON.stringify(cleanChoices), endsAtDate, anonymous ? 1 : 0]
+            [guildID, channelId, messageId, question, JSON.stringify(cleanChoices), endsAtDate, 0]
         );
         res.json({ success: true, id: result.insertId });
     } catch (err) {
@@ -3526,14 +3524,41 @@ app.post('/shard/guild/:guildID/poll/:pollId/end', checkAuthShard, async (req, r
     const [rows] = await db.execute(`SELECT * FROM shard_polls WHERE id = ? AND guildId = ?`, [pollId, guildID]);
     if (!rows[0]) return res.status(404).json({ success: false, error: 'Sondage introuvable' });
     const poll = rows[0];
-    await db.execute(`UPDATE shard_polls SET ended = 1 WHERE id = ?`, [pollId]);
-    // Native Discord polls are ended via POST /channels/{channel.id}/polls/{message.id}/expire
+
+    // Native Discord polls are ended via POST /channels/{channel.id}/polls/{message.id}/expire.
+    // If that fails (legacy poll from before the migration, or already
+    // expired) we fall back to deleting the message so the user still sees
+    // the poll disappear from the channel.
+    const authHdr = { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' };
     try {
-        await axios.post(`https://discord.com/api/v10/channels/${poll.channelId}/polls/${poll.messageId}/expire`, {}, {
-            headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' }
-        });
-    } catch {}
-    res.json({ success: true });
+        await axios.post(
+            `https://discord.com/api/v10/channels/${poll.channelId}/polls/${poll.messageId}/expire`,
+            {},
+            { headers: authHdr }
+        );
+        await db.execute(`UPDATE shard_polls SET ended = 1 WHERE id = ?`, [pollId]);
+        return res.json({ success: true });
+    } catch (err) {
+        const status = err.response?.status;
+        const apiMsg = err.response?.data?.message;
+        console.warn(`[poll/end] /expire failed for poll ${pollId} (HTTP ${status}): ${apiMsg || err.message}`);
+
+        // Fallback: delete the legacy message so the channel reflects the close.
+        try {
+            await axios.delete(
+                `https://discord.com/api/v10/channels/${poll.channelId}/messages/${poll.messageId}`,
+                { headers: authHdr }
+            );
+            await db.execute(`UPDATE shard_polls SET ended = 1 WHERE id = ?`, [pollId]);
+            return res.json({ success: true, fallback: 'deleted' });
+        } catch (delErr) {
+            console.warn(`[poll/end] delete fallback failed: ${delErr.response?.data?.message || delErr.message}`);
+            return res.status(500).json({
+                success: false,
+                error: apiMsg || delErr.response?.data?.message || 'Impossible de terminer le sondage. Vérifiez les permissions du bot.',
+            });
+        }
+    }
 });
 
 app.post('/shard/guild/:guildID/giveaway', checkAuthShard, async (req, res) => {

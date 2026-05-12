@@ -455,25 +455,48 @@ export function GiveawaysTab({ guildId, channels, roles }: TabBase & { giveaways
 }
 
 /* ========== POLLS ========== */
+// Discord native polls only accept a fixed set of durations.
+const POLL_DURATIONS = [
+  { value: "1",   label: "1 heure" },
+  { value: "4",   label: "4 heures" },
+  { value: "8",   label: "8 heures" },
+  { value: "24",  label: "1 jour" },
+  { value: "72",  label: "3 jours" },
+  { value: "168", label: "1 semaine" },
+  { value: "336", label: "2 semaines" },
+];
+
 export function PollsTab({ guildId, channels }: TabBase & { polls?: Poll[] }) {
   const [list, setList] = useState<Poll[]>([]);
-  const [form, setForm] = useState({ channelId: "", question: "", choices: ["", ""], duration: 24, durationUnit: "hours", anonymous: false });
+  const [form, setForm] = useState({ channelId: "", question: "", choices: ["", ""], durationHours: "24" });
   const [busy, setBusy] = useState(false);
+  const [endError, setEndError] = useState<string | null>(null);
 
   async function create() {
     const cleanChoices = form.choices.filter(c => c.trim());
     if (!form.channelId || !form.question || cleanChoices.length < 2) return;
     setBusy(true);
-    const r = await postJson(`/shard/guild/${guildId}/poll`, { ...form, choices: cleanChoices });
+    const r = await postJson(`/shard/guild/${guildId}/poll`, {
+      channelId: form.channelId,
+      question: form.question,
+      choices: cleanChoices,
+      durationHours: Number(form.durationHours),
+    });
     setBusy(false);
     if (r.success) {
-      setList(prev => [...prev, { id: r.pollId || Date.now(), channelId: form.channelId, question: form.question, choices: cleanChoices, endsAt: null, ended: 0 }]);
-      setForm({ ...form, question: "", choices: ["", ""] });
+      setList(prev => [...prev, { id: r.id || Date.now(), channelId: form.channelId, question: form.question, choices: cleanChoices, endsAt: null, ended: 0 }]);
+      setForm(f => ({ ...f, question: "", choices: ["", ""] }));
     }
   }
   async function end(id: number) {
-    await postJson(`/shard/guild/${guildId}/poll/${id}/end`);
-    setList(list.filter(x => x.id !== id));
+    setEndError(null);
+    const r = await postJson(`/shard/guild/${guildId}/poll/${id}/end`);
+    if (r.success) {
+      setList(list.filter(x => x.id !== id));
+    } else {
+      setEndError(r.error || "Impossible de clôturer le sondage.");
+      setTimeout(() => setEndError(null), 5000);
+    }
   }
   function setChoice(i: number, v: string) {
     const c = [...form.choices]; c[i] = v; setForm(f => ({ ...f, choices: c }));
@@ -481,7 +504,7 @@ export function PollsTab({ guildId, channels }: TabBase & { polls?: Poll[] }) {
 
   return (
     <div className="space-y-4">
-      <SectionCard title="Créer un sondage">
+      <SectionCard title="Créer un sondage" description="Utilise les sondages natifs de Discord — vote en un clic, résultats en direct.">
         <Field label="Salon"><Select options={channelOpts(channels)} value={form.channelId} onChange={v => setForm(f => ({ ...f, channelId: v }))} /></Field>
         <Field label="Question"><TextInput value={form.question} onChange={e => setForm(f => ({ ...f, question: e.target.value }))} placeholder="Pizza ou kebab ?" /></Field>
         <Field label="Choix (2 à 5)">
@@ -506,11 +529,7 @@ export function PollsTab({ guildId, channels }: TabBase & { polls?: Poll[] }) {
             )}
           </div>
         </Field>
-        <div className="grid grid-cols-3 gap-3">
-          <Field label="Durée"><NumberInput min={1} value={form.duration} onChange={e => setForm(f => ({ ...f, duration: Number(e.target.value) }))} /></Field>
-          <Field label="Unité"><Select options={DURATION_UNITS} value={form.durationUnit} onChange={v => setForm(f => ({ ...f, durationUnit: v }))} /></Field>
-          <Field label="Anonyme"><Toggle checked={form.anonymous} onChange={b => setForm(f => ({ ...f, anonymous: b }))} label={form.anonymous ? "Oui" : "Non"} /></Field>
-        </div>
+        <Field label="Durée"><Select options={POLL_DURATIONS} value={form.durationHours} onChange={v => setForm(f => ({ ...f, durationHours: v }))} /></Field>
         <button type="button" onClick={create} disabled={busy}
           className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
           {busy ? "Création…" : "Lancer le sondage"}
@@ -531,6 +550,7 @@ export function PollsTab({ guildId, channels }: TabBase & { polls?: Poll[] }) {
               </button>
             </div>
           ))}
+          {endError && <p className="text-[11px] text-red-400 mt-2">{endError}</p>}
         </SectionCard>
       )}
     </div>
