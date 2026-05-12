@@ -222,10 +222,11 @@ jobs:
               ;;
           esac
 
-          # Compose the Components V2 payload. The container holds the
-          # header + body + divider + footer + the action row, so the link
-          # button visually sits *inside* the accent-colored embed instead
-          # of dangling below it.
+          # Compose the Components V2 payload. The container wraps a Section
+          # (type 9) whose left side is the header + body text, and the
+          # accessory slot on the right hosts the link button — that's the
+          # only way to get a button to render *to the right* of the embed
+          # in Discord's V2 layout system.
           PAYLOAD=$(jq -n \
             --arg header "$HEADER" \
             --arg body "$BODY" \
@@ -239,13 +240,14 @@ jobs:
               flags: 32768,
               components: [
                 { type: 17, accent_color: $accent, components: [
-                  { type: 10, content: $header },
-                  { type: 10, content: $body },
+                  { type: 9, components: [
+                    { type: 10, content: $header },
+                    { type: 10, content: $body }
+                  ], accessory: {
+                    type: 2, style: 5, label: $actionLabel, url: $actionUrl
+                  }},
                   { type: 14, divider: true, spacing: 1 },
-                  { type: 10, content: ("`" + $repo + "` · par [" + $actor + "](" + $actorUrl + ")") },
-                  { type: 1, components: [
-                    { type: 2, style: 5, label: $actionLabel, url: $actionUrl }
-                  ]}
+                  { type: 10, content: ("`" + $repo + "` · par [" + $actor + "](" + $actorUrl + ")") }
                 ]}
               ]
             }')

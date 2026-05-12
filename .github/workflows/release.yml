@@ -45,13 +45,14 @@ jobs:
               flags: 32768,
               components: [
                 { type: 17, accent_color: 16763904, components: [
-                  { type: 10, content: "## Build Shardtown \($ver)" },
-                  { type: 10, content: "Compilation Rust + bundle Tauri + signature en cours. Patiente ~10 min." },
+                  { type: 9, components: [
+                    { type: 10, content: "## Build Shardtown \($ver)" },
+                    { type: 10, content: "Compilation Rust + bundle Tauri + signature en cours. Patiente ~10 min." }
+                  ], accessory: {
+                    type: 2, style: 5, label: "Run CI", url: $run
+                  }},
                   { type: 14, divider: true, spacing: 1 },
-                  { type: 10, content: "Statut : `running`\nVersion : `\($ver)`" },
-                  { type: 1, components: [
-                    { type: 2, style: 5, label: "Voir le run CI", url: $run }
-                  ]}
+                  { type: 10, content: "Statut : `running`\nVersion : `\($ver)`" }
                 ]}
               ]
             }')
@@ -173,14 +174,17 @@ jobs:
                 flags: 32768,
                 components: [
                   { type: 17, accent_color: 5763719, components: [
-                    { type: 10, content: $header },
-                    { type: 10, content: $body },
+                    { type: 9, components: [
+                      { type: 10, content: $header },
+                      { type: 10, content: $body }
+                    ], accessory: {
+                      type: 2, style: 5, label: "Télécharger", url: $dl
+                    }},
                     { type: 14, divider: true, spacing: 1 },
                     { type: 10, content: "Version : `\($ver)`\nStatut : `success`" },
                     { type: 1, components: [
-                      { type: 2, style: 5, label: "Télécharger", url: $dl },
-                      { type: 2, style: 5, label: "Manifeste",   url: $mf },
-                      { type: 2, style: 5, label: "Run CI",      url: $run }
+                      { type: 2, style: 5, label: "Manifeste", url: $mf },
+                      { type: 2, style: 5, label: "Run CI",    url: $run }
                     ]}
                   ]}
                 ]
@@ -198,13 +202,14 @@ jobs:
                 flags: 32768,
                 components: [
                   { type: 17, accent_color: 15548997, components: [
-                    { type: 10, content: $header },
-                    { type: 10, content: $body },
+                    { type: 9, components: [
+                      { type: 10, content: $header },
+                      { type: 10, content: $body }
+                    ], accessory: {
+                      type: 2, style: 5, label: "Voir les logs", url: $run
+                    }},
                     { type: 14, divider: true, spacing: 1 },
-                    { type: 10, content: "Version : `\($ver)`\nStatut : `\($st)`" },
-                    { type: 1, components: [
-                      { type: 2, style: 5, label: "Voir les logs", url: $run }
-                    ]}
+                    { type: 10, content: "Version : `\($ver)`\nStatut : `\($st)`" }
                   ]}
                 ]
               }')
