@@ -239,6 +239,33 @@ function safeJsonParse(value, fallback) {
     try { return JSON.parse(value); } catch { return fallback; }
 }
 
+/**
+ * Parse an emoji string from settings into the value expected by
+ * ButtonBuilder.setEmoji(). discord.js accepts:
+ *   - a unicode glyph string ("🎫")
+ *   - a custom-emoji mention ("<:name:id>" or "<a:name:id>")
+ *   - an object { id, name, animated }
+ *
+ * The dashboard saves the raw user input, so we forward strings as-is and
+ * fall back to undefined when empty (button rendered without emoji).
+ */
+function parseButtonEmoji(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return undefined;
+    return s;
+}
+
+const STYLE_TO_BUILDER = {
+    1: ButtonStyle.Primary,
+    2: ButtonStyle.Secondary,
+    3: ButtonStyle.Success,
+    4: ButtonStyle.Danger,
+};
+function resolveButtonStyle(v, fallback) {
+    const n = Number(v);
+    return STYLE_TO_BUILDER[n] || fallback;
+}
+
 client.once('ready', async () => {
     await connectDB();
     console.log(`✅ Shard connecté en tant que ${client.user.tag}`);
@@ -979,8 +1006,9 @@ client.on('interactionCreate', async (interaction) => {
         const closeBtn = new ButtonBuilder()
             .setCustomId('ticket_close')
             .setLabel(closeLabel)
-            .setEmoji('🔒')
-            .setStyle(ButtonStyle.Danger);
+            .setStyle(resolveButtonStyle(settings.ticketCloseButtonStyle, ButtonStyle.Danger));
+        const closeEmoji = parseButtonEmoji(settings.ticketCloseButtonEmoji ?? '🔒');
+        if (closeEmoji) closeBtn.setEmoji(closeEmoji);
 
         const row = new ActionRowBuilder().addComponents(closeBtn);
         await ticketChannel.send({ content: `${member} ${settings.ticketSupportRoleId ? `<@&${settings.ticketSupportRoleId}>` : ''}`, embeds: [ticketEmbed], components: [row] });
@@ -1026,11 +1054,75 @@ client.on('interactionCreate', async (interaction) => {
 
         await db.execute(`UPDATE shard_tickets SET status = 'closed' WHERE channelId = ?`, [channelId]);
 
+        // --- Generate transcript (when enabled) ---------------------------
+        // We walk the channel's message history (paginated by 100) and
+        // serialize each message into a compact JSON blob. The blob is
+        // stored under a 32-char hex id; the public viewer at
+        // /transcripts/:id renders it as a Discord-themed HTML page.
+        const PUBLIC_BASE_URL = process.env.PUBLIC_BASE_URL || 'https://shardtwn.fr';
+        const closedBy = interaction.member;
+        const opener = await guild.members.fetch(ticket.userId).catch(() => null);
+        let transcriptUrl = null;
+
+        if (settings?.ticketTranscriptEnabled !== 0 && settings?.ticketTranscriptEnabled !== '0') {
+            try {
+                const collected = [];
+                let beforeId = null;
+                while (collected.length < 5000) {
+                    const opts = { limit: 100 };
+                    if (beforeId) opts.before = beforeId;
+                    const batch = await interaction.channel.messages.fetch(opts);
+                    if (!batch.size) break;
+                    for (const m of batch.values()) collected.push(m);
+                    beforeId = batch.last().id;
+                    if (batch.size < 100) break;
+                }
+                collected.sort((a, b) => Number(BigInt(a.id) - BigInt(b.id)));
+                const messages = collected.map(m => ({
+                    id: m.id,
+                    timestamp: m.createdAt.toISOString(),
+                    authorId: m.author.id,
+                    authorName: m.member?.displayName || m.author.globalName || m.author.username,
+                    authorAvatar: m.author.displayAvatarURL({ size: 64, extension: 'png' }),
+                    bot: m.author.bot,
+                    content: m.content || '',
+                    attachments: Array.from(m.attachments.values()).map(a => ({
+                        url: a.url, name: a.name, contentType: a.contentType,
+                    })),
+                    embeds: m.embeds.map(e => ({
+                        title: e.title || '',
+                        description: e.description || '',
+                        color: e.color || 0,
+                        footer: e.footer?.text || '',
+                    })),
+                }));
+                const transcriptId = crypto.randomBytes(16).toString('hex');
+                await db.execute(
+                    `INSERT INTO shard_ticket_transcripts (id, guildId, guildName, channelName, openedById, openedByName, closedById, closedByName, openedAt, closedAt, messages)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        transcriptId,
+                        guild.id,
+                        guild.name,
+                        interaction.channel.name,
+                        ticket.userId,
+                        opener ? opener.user.username : ticket.userId,
+                        closedBy.id,
+                        closedBy.user.username,
+                        ticket.createdAt || new Date(),
+                        new Date(),
+                        JSON.stringify(messages),
+                    ]
+                );
+                transcriptUrl = `${PUBLIC_BASE_URL}/transcripts/${transcriptId}`;
+            } catch (err) {
+                console.warn('[ticket-close] Erreur génération transcript:', err.message);
+            }
+        }
+
         if (settings?.ticketLogChannelId) {
             const logChannel = guild.channels.cache.get(settings.ticketLogChannelId);
             if (logChannel) {
-                const closedBy = interaction.member;
-                const opener = await guild.members.fetch(ticket.userId).catch(() => null);
                 const logEmbed = new EmbedBuilder()
                     .setColor(hexToInt(settings.ticketLogCloseColor || '#ef4444'))
                     .setTitle(settings.ticketLogCloseTitle || '🔒 Ticket fermé')
@@ -1039,8 +1131,16 @@ client.on('interactionCreate', async (interaction) => {
                         { name: 'Fermé par', value: `${closedBy} (${closedBy.user.username})`, inline: true }
                     )
                     .setTimestamp();
+                if (transcriptUrl) {
+                    logEmbed.addFields({ name: 'Transcript', value: `[Voir la conversation](${transcriptUrl})`, inline: false });
+                }
                 logChannel.send({ embeds: [logEmbed] }).catch(() => {});
             }
+        }
+
+        // DM the opener the transcript link as a courtesy.
+        if (transcriptUrl && opener) {
+            opener.user.send({ content: `Votre ticket dans **${guild.name}** vient d'être fermé. Vous pouvez consulter la conversation ici : ${transcriptUrl}` }).catch(() => {});
         }
 
         await interaction.editReply({ content: 'Ticket fermé. Le salon sera supprimé dans 5 secondes.' });

@@ -437,6 +437,11 @@ async function connectDB() {
                 `ALTER TABLE shard_settings ADD COLUMN ticketPanelDescription TEXT`,
                 `ALTER TABLE shard_settings ADD COLUMN ticketPanelColor VARCHAR(7) DEFAULT '#3b82f6'`,
                 `ALTER TABLE shard_settings ADD COLUMN ticketPanelButtonLabel VARCHAR(80) DEFAULT 'Ouvrir un ticket'`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketPanelButtonEmoji VARCHAR(100) DEFAULT '🎫'`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketPanelButtonStyle TINYINT DEFAULT 1`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketCloseButtonEmoji VARCHAR(100) DEFAULT '🔒'`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketCloseButtonStyle TINYINT DEFAULT 4`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketTranscriptEnabled TINYINT(1) DEFAULT 1`,
                 `ALTER TABLE shard_settings ADD COLUMN ticketOpenTitle VARCHAR(255) DEFAULT ''`,
                 `ALTER TABLE shard_settings ADD COLUMN ticketOpenDescription TEXT`,
                 `ALTER TABLE shard_settings ADD COLUMN ticketOpenFooter VARCHAR(255) DEFAULT ''`,
@@ -515,6 +520,25 @@ async function connectDB() {
                     PRIMARY KEY (guildId, userId)
                 )
             `);
+            // Transcripts of closed tickets, served by GET /transcripts/:id.
+            // The id is a 32-char hex token — unguessable, so no extra
+            // auth gate on the public viewer.
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_ticket_transcripts (
+                    id CHAR(32) PRIMARY KEY,
+                    guildId VARCHAR(255) NOT NULL,
+                    guildName VARCHAR(255) DEFAULT '',
+                    channelName VARCHAR(255) NOT NULL,
+                    openedById VARCHAR(255) NOT NULL,
+                    openedByName VARCHAR(255) NOT NULL,
+                    closedById VARCHAR(255) DEFAULT '',
+                    closedByName VARCHAR(255) DEFAULT '',
+                    openedAt DATETIME NOT NULL,
+                    closedAt DATETIME NOT NULL,
+                    messages JSON NOT NULL,
+                    INDEX (guildId, closedAt)
+                )
+            `).catch(() => {});
             await db.execute(`
                 CREATE TABLE IF NOT EXISTS shard_shop (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -731,6 +755,27 @@ function hasGuildAdmin(guild) {
     try {
         return (BigInt(guild.permissions || 0) & PERM_ADMIN) === PERM_ADMIN;
     } catch { return false; }
+}
+
+/**
+ * Convert a string from the dashboard into the `emoji` object that Discord's
+ * REST API expects on a button.
+ *
+ * Accepted shapes:
+ *   "🎫"          → { name: "🎫" }              (unicode)
+ *   "<:name:1234>"  → { name, id, animated: false }
+ *   "<a:name:1234>" → { name, id, animated: true }
+ *
+ * If the input is empty/unparseable we return `undefined` so the button
+ * is rendered with no emoji (still valid for Discord).
+ */
+function parseDiscordEmoji(raw) {
+    const s = String(raw || '').trim();
+    if (!s) return undefined;
+    const m = s.match(/^<(a?):([A-Za-z0-9_~]+):(\d{15,25})>$/);
+    if (m) return { name: m[2], id: m[3], animated: m[1] === 'a' };
+    // Anything else: treat as a unicode emoji / single character glyph.
+    return { name: s.slice(0, 32) };
 }
 
 app.locals.safeJson = (data) =>
@@ -3398,8 +3443,13 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
         ticketEnabled, ticketCategoryId = '', ticketSupportRoleId = '', ticketLogChannelId = '', ticketMaxPerUser = 1,
         ticketPanelChannelId = '', ticketPanelTitle = '', ticketPanelDescription = '', ticketPanelColor = '#3b82f6',
         ticketPanelButtonLabel = 'Ouvrir un ticket',
+        ticketPanelButtonEmoji = '🎫',
+        ticketPanelButtonStyle = 1,
         ticketOpenTitle = '', ticketOpenDescription = '', ticketOpenFooter = '', ticketOpenColor = '#3b82f6',
         ticketCloseButtonLabel = 'Fermer le ticket',
+        ticketCloseButtonEmoji = '🔒',
+        ticketCloseButtonStyle = 4,
+        ticketTranscriptEnabled,
         ticketLogOpenTitle = '', ticketLogOpenColor = '#3b82f6',
         ticketLogCloseTitle = '', ticketLogCloseColor = '#ef4444',
         birthdayChannelId = '', birthdayMessage = '', birthdayRoleId = '',
@@ -3412,7 +3462,11 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
     } = req.body;
     const levelsEnabledVal = levelsEnabled ? 1 : 0;
     const ticketEnabledVal = ticketEnabled ? 1 : 0;
+    const ticketTranscriptEnabledVal = ticketTranscriptEnabled ? 1 : 0;
     const economyEnabledVal = economyEnabled ? 1 : 0;
+    const validStyles = [1, 2, 3, 4];
+    const panelBtnStyle = validStyles.includes(Number(ticketPanelButtonStyle)) ? Number(ticketPanelButtonStyle) : 1;
+    const closeBtnStyle = validStyles.includes(Number(ticketCloseButtonStyle)) ? Number(ticketCloseButtonStyle) : 4;
     const isPremiumSVal = parseInt(isPremiumS) || 0;
     const referralEnabledVal = parseInt(referralEnabled) || 0;
     const roleIds = Array.isArray(xpMultRoleId) ? xpMultRoleId : [xpMultRoleId].filter(Boolean);
@@ -3426,8 +3480,8 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
     } catch { thresholdsJson = '[]'; }
     try {
         await db.execute(`
-            INSERT INTO shard_settings (guildId, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabled, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, levelThresholds, ticketEnabled, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, ticketPanelButtonLabel, ticketOpenTitle, ticketOpenDescription, ticketOpenFooter, ticketOpenColor, ticketCloseButtonLabel, ticketLogOpenTitle, ticketLogOpenColor, ticketLogCloseTitle, ticketLogCloseColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabled, economyCurrencyName, economyDailyMin, economyDailyMax, isPremium, referralEnabled, referralReward, xpRoleMultipliers)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO shard_settings (guildId, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabled, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, levelThresholds, ticketEnabled, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, ticketPanelButtonLabel, ticketPanelButtonEmoji, ticketPanelButtonStyle, ticketOpenTitle, ticketOpenDescription, ticketOpenFooter, ticketOpenColor, ticketCloseButtonLabel, ticketCloseButtonEmoji, ticketCloseButtonStyle, ticketTranscriptEnabled, ticketLogOpenTitle, ticketLogOpenColor, ticketLogCloseTitle, ticketLogCloseColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabled, economyCurrencyName, economyDailyMin, economyDailyMax, isPremium, referralEnabled, referralReward, xpRoleMultipliers)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 welcomeChannelId = VALUES(welcomeChannelId), welcomeTitle = VALUES(welcomeTitle),
                 welcomeMessage = VALUES(welcomeMessage), welcomeFooter = VALUES(welcomeFooter),
@@ -3446,9 +3500,14 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
                 ticketPanelTitle = VALUES(ticketPanelTitle), ticketPanelDescription = VALUES(ticketPanelDescription),
                 ticketPanelColor = VALUES(ticketPanelColor),
                 ticketPanelButtonLabel = VALUES(ticketPanelButtonLabel),
+                ticketPanelButtonEmoji = VALUES(ticketPanelButtonEmoji),
+                ticketPanelButtonStyle = VALUES(ticketPanelButtonStyle),
                 ticketOpenTitle = VALUES(ticketOpenTitle), ticketOpenDescription = VALUES(ticketOpenDescription),
                 ticketOpenFooter = VALUES(ticketOpenFooter), ticketOpenColor = VALUES(ticketOpenColor),
                 ticketCloseButtonLabel = VALUES(ticketCloseButtonLabel),
+                ticketCloseButtonEmoji = VALUES(ticketCloseButtonEmoji),
+                ticketCloseButtonStyle = VALUES(ticketCloseButtonStyle),
+                ticketTranscriptEnabled = VALUES(ticketTranscriptEnabled),
                 ticketLogOpenTitle = VALUES(ticketLogOpenTitle), ticketLogOpenColor = VALUES(ticketLogOpenColor),
                 ticketLogCloseTitle = VALUES(ticketLogCloseTitle), ticketLogCloseColor = VALUES(ticketLogCloseColor),
                 birthdayChannelId = VALUES(birthdayChannelId),
@@ -3457,7 +3516,7 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
                 economyDailyMin = VALUES(economyDailyMin), economyDailyMax = VALUES(economyDailyMax),
                 isPremium = VALUES(isPremium), referralEnabled = VALUES(referralEnabled),
                 referralReward = VALUES(referralReward), xpRoleMultipliers = VALUES(xpRoleMultipliers)
-        `, [guildID, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabledVal, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, thresholdsJson, ticketEnabledVal, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, ticketPanelButtonLabel, ticketOpenTitle, ticketOpenDescription, ticketOpenFooter, ticketOpenColor, ticketCloseButtonLabel, ticketLogOpenTitle, ticketLogOpenColor, ticketLogCloseTitle, ticketLogCloseColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabledVal, economyCurrencyName, economyDailyMin, economyDailyMax, isPremiumSVal, referralEnabledVal, parseInt(referralReward) || 100, xpRoleMultipliersJson]);
+        `, [guildID, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabledVal, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, thresholdsJson, ticketEnabledVal, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, ticketPanelButtonLabel, ticketPanelButtonEmoji, panelBtnStyle, ticketOpenTitle, ticketOpenDescription, ticketOpenFooter, ticketOpenColor, ticketCloseButtonLabel, ticketCloseButtonEmoji, closeBtnStyle, ticketTranscriptEnabledVal, ticketLogOpenTitle, ticketLogOpenColor, ticketLogCloseTitle, ticketLogCloseColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabledVal, economyCurrencyName, economyDailyMin, economyDailyMax, isPremiumSVal, referralEnabledVal, parseInt(referralReward) || 100, xpRoleMultipliersJson]);
         res.json({ success: true });
     } catch (err) {
         console.error('Erreur save shard config:', err.message);
@@ -3470,21 +3529,23 @@ app.post('/shard/guild/:guildID/ticket-panel', checkAuthShard, async (req, res) 
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
-    const { channelId, title, description, color, buttonLabel } = req.body;
+    const { channelId, title, description, color, buttonLabel, buttonEmoji, buttonStyle } = req.body;
     if (!channelId || !/^\d{17,20}$/.test(String(channelId))) return res.status(400).json({ success: false, error: 'Salon invalide' });
     const colorInt = parseInt(String(color || '#3b82f6').replace('#', ''), 16) || 0x3b82f6;
     const embed = { color: colorInt, timestamp: new Date().toISOString() };
     if (title) embed.title = title;
     if (description) embed.description = description;
+    const validStyles = [1, 2, 3, 4];
+    const styleInt = validStyles.includes(Number(buttonStyle)) ? Number(buttonStyle) : 1;
     const payload = {
         embeds: [embed],
         components: [{
             type: 1,
             components: [{
                 type: 2,
-                style: 1,
+                style: styleInt,
                 label: String(buttonLabel || 'Ouvrir un ticket').slice(0, 80),
-                emoji: { name: '🎫' },
+                emoji: parseDiscordEmoji(buttonEmoji || '🎫'),
                 custom_id: 'ticket_open'
             }]
         }]
@@ -3498,6 +3559,316 @@ app.post('/shard/guild/:guildID/ticket-panel', checkAuthShard, async (req, res) 
         res.status(500).json({ success: false, error: err.response?.data?.message || 'Erreur serveur' });
     }
 });
+
+// List the most recent transcripts for a guild — feeds the dashboard's
+// "Transcriptions" sub-tab. Auth via the shard session (admin only).
+app.get('/shard/guild/:guildID/transcripts', checkAuthShard, async (req, res) => {
+    const guildID = req.params.guildID;
+    const shardUser = req.session.shardUser;
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
+    if (!userGuild) return res.status(403).json({ success: false });
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, channelName, openedByName, closedByName, openedAt, closedAt
+               FROM shard_ticket_transcripts WHERE guildId = ?
+               ORDER BY closedAt DESC LIMIT 100`,
+            [guildID]
+        );
+        res.json({ success: true, transcripts: rows });
+    } catch (err) {
+        console.error('Erreur list transcripts:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+// Public transcript viewer — renders a Discord-themed HTML page from the
+// JSON blob saved at close time. No auth: the 32-char hex id is the secret.
+app.get('/transcripts/:id', async (req, res) => {
+    const id = String(req.params.id || '');
+    if (!/^[a-f0-9]{32}$/i.test(id)) {
+        return res.status(404).send('Transcript introuvable.');
+    }
+    try {
+        const [rows] = await db.execute(
+            `SELECT * FROM shard_ticket_transcripts WHERE id = ?`, [id]
+        );
+        if (!rows[0]) return res.status(404).send('Transcript introuvable.');
+        const t = rows[0];
+        const messages = typeof t.messages === 'string' ? JSON.parse(t.messages) : t.messages;
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(renderTranscript({
+            channelName: t.channelName,
+            guildName: t.guildName || '',
+            openedByName: t.openedByName,
+            closedByName: t.closedByName,
+            openedAt: t.openedAt,
+            closedAt: t.closedAt,
+            messages: Array.isArray(messages) ? messages : [],
+        }));
+    } catch (err) {
+        console.error('Erreur viewer transcript:', err.message);
+        res.status(500).send('Erreur serveur.');
+    }
+});
+
+function htmlEscape(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function renderInlineMarkdown(s) {
+    // Very small subset, applied after HTML-escape so the source is safe.
+    let out = htmlEscape(s);
+    // Custom Discord emoji: <:name:id> / <a:name:id>
+    out = out.replace(/&lt;(a?):([A-Za-z0-9_~]+):(\d{15,25})&gt;/g, (_m, an, name, eid) => {
+        const ext = an ? 'gif' : 'png';
+        return `<img class="emoji" src="https://cdn.discordapp.com/emojis/${eid}.${ext}?size=44&quality=lossless" alt=":${name}:" title=":${name}:">`;
+    });
+    // Mentions
+    out = out.replace(/&lt;@!?(\d{15,25})&gt;/g, '<span class="mention">@user</span>');
+    out = out.replace(/&lt;@&amp;(\d{15,25})&gt;/g, '<span class="mention">@role</span>');
+    out = out.replace(/&lt;#(\d{15,25})&gt;/g, '<span class="mention">#salon</span>');
+    // Code blocks (triple) and inline
+    out = out.replace(/```([\s\S]*?)```/g, (_m, code) => `<pre class="code">${code}</pre>`);
+    out = out.replace(/`([^`\n]+)`/g, '<code class="inline-code">$1</code>');
+    // Bold / italic / strike / underline
+    out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    out = out.replace(/__([^_]+)__/g, '<u>$1</u>');
+    out = out.replace(/~~([^~]+)~~/g, '<s>$1</s>');
+    out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    // Links
+    out = out.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    // Line breaks
+    out = out.replace(/\n/g, '<br>');
+    return out;
+}
+
+function renderTranscript({ channelName, guildName, openedByName, closedByName, openedAt, closedAt, messages }) {
+    const fmtDate = (d) => {
+        try {
+            return new Date(d).toLocaleString('fr-FR', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit',
+            });
+        } catch { return ''; }
+    };
+    const totalMessages = messages.length;
+    const participants = new Set(messages.map(m => m.authorId)).size;
+
+    // Group consecutive messages by the same author (Discord style).
+    const groups = [];
+    for (const m of messages) {
+        const last = groups[groups.length - 1];
+        if (last && last.authorId === m.authorId && (new Date(m.timestamp) - new Date(last.lastTs)) < 5 * 60 * 1000) {
+            last.messages.push(m);
+            last.lastTs = m.timestamp;
+        } else {
+            groups.push({
+                authorId: m.authorId,
+                authorName: m.authorName,
+                authorAvatar: m.authorAvatar,
+                firstTs: m.timestamp,
+                lastTs: m.timestamp,
+                bot: !!m.bot,
+                messages: [m],
+            });
+        }
+    }
+
+    const groupsHtml = groups.map(g => {
+        const avatar = g.authorAvatar
+            ? `<img class="avatar" src="${htmlEscape(g.authorAvatar)}" alt="">`
+            : `<div class="avatar avatar-placeholder">${htmlEscape((g.authorName || '?').slice(0, 1).toUpperCase())}</div>`;
+        const msgsHtml = g.messages.map(m => {
+            const att = (m.attachments || []).map(a => {
+                if (a.contentType && a.contentType.startsWith('image/')) {
+                    return `<a href="${htmlEscape(a.url)}" target="_blank" rel="noopener"><img class="att-image" src="${htmlEscape(a.url)}" alt="${htmlEscape(a.name || '')}"></a>`;
+                }
+                return `<a class="att-link" href="${htmlEscape(a.url)}" target="_blank" rel="noopener">📎 ${htmlEscape(a.name || 'fichier')}</a>`;
+            }).join('');
+            const embeds = (m.embeds || []).map(e => {
+                const color = e.color
+                    ? `border-left-color:#${(Number(e.color) || 0).toString(16).padStart(6, '0')}`
+                    : '';
+                return `<div class="embed" style="${color}">
+                    ${e.title ? `<div class="embed-title">${renderInlineMarkdown(e.title)}</div>` : ''}
+                    ${e.description ? `<div class="embed-desc">${renderInlineMarkdown(e.description)}</div>` : ''}
+                    ${e.footer ? `<div class="embed-footer">${htmlEscape(e.footer)}</div>` : ''}
+                </div>`;
+            }).join('');
+            return `<div class="msg">
+                ${m.content ? `<div class="content">${renderInlineMarkdown(m.content)}</div>` : ''}
+                ${att}
+                ${embeds}
+            </div>`;
+        }).join('');
+        return `<div class="group">
+            ${avatar}
+            <div class="group-body">
+                <div class="head">
+                    <span class="author">${htmlEscape(g.authorName)}${g.bot ? '<span class="badge">BOT</span>' : ''}</span>
+                    <span class="timestamp">${fmtDate(g.firstTs)}</span>
+                </div>
+                ${msgsHtml}
+            </div>
+        </div>`;
+    }).join('');
+
+    return `<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${htmlEscape(channelName)} — Transcript Shardtown</title>
+<style>
+  :root {
+    --bg: #1e1f22;
+    --bg-2: #2b2d31;
+    --bg-3: #313338;
+    --text: #dbdee1;
+    --text-mut: #949ba4;
+    --text-dim: #6d6f78;
+    --accent: #5865f2;
+    --border: rgba(255,255,255,0.06);
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  .topbar {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 16px;
+    backdrop-filter: blur(8px);
+  }
+  .topbar .icon { font-size: 22px; color: var(--text-mut); }
+  .topbar .name { font-weight: 700; font-size: 16px; }
+  .topbar .meta { color: var(--text-mut); font-size: 12.5px; margin-left: auto; display: flex; gap: 16px; }
+  .topbar .meta b { color: var(--text); font-weight: 600; }
+  .container { max-width: 920px; margin: 0 auto; padding: 24px; }
+  .summary {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+  }
+  .summary .cell { display: flex; flex-direction: column; }
+  .summary .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); font-weight: 700; margin-bottom: 2px; }
+  .summary .value { font-size: 14px; font-weight: 600; }
+  .group { display: flex; gap: 14px; padding: 16px 0 4px; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    flex-shrink: 0; object-fit: cover;
+    background: var(--bg-3);
+  }
+  .avatar-placeholder {
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: var(--text-mut);
+  }
+  .group-body { flex: 1; min-width: 0; }
+  .head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 2px; }
+  .author { font-weight: 600; color: #fff; font-size: 15px; }
+  .badge {
+    display: inline-block; margin-left: 6px;
+    background: var(--accent); color: #fff;
+    border-radius: 4px; font-size: 10px; font-weight: 700;
+    padding: 1px 5px; vertical-align: middle;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .timestamp { color: var(--text-dim); font-size: 12px; }
+  .msg { word-wrap: break-word; }
+  .content { white-space: pre-wrap; word-break: break-word; }
+  .content a { color: #00a8fc; text-decoration: none; }
+  .content a:hover { text-decoration: underline; }
+  .emoji { width: 22px; height: 22px; vertical-align: -5px; }
+  .inline-code {
+    background: var(--bg-2);
+    padding: 1px 5px; border-radius: 4px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 13.5px;
+  }
+  pre.code {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px; margin: 6px 0;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 13px;
+    overflow-x: auto;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .mention {
+    color: #c9cdfb;
+    background: rgba(88, 101, 242, 0.15);
+    padding: 0 2px; border-radius: 3px;
+    font-weight: 500;
+  }
+  .att-image { max-width: 100%; max-height: 360px; border-radius: 6px; margin-top: 6px; display: block; }
+  .att-link {
+    display: inline-block; margin-top: 6px;
+    background: var(--bg-2); padding: 8px 12px;
+    border-radius: 6px; color: var(--text); text-decoration: none;
+    border: 1px solid var(--border);
+  }
+  .att-link:hover { background: var(--bg-3); }
+  .embed {
+    margin-top: 6px;
+    background: var(--bg-2);
+    border-left: 4px solid var(--accent);
+    border-radius: 4px;
+    padding: 8px 12px;
+    max-width: 520px;
+  }
+  .embed-title { font-weight: 700; margin-bottom: 4px; }
+  .embed-desc { color: var(--text); font-size: 14px; white-space: pre-wrap; }
+  .embed-footer { color: var(--text-dim); font-size: 12px; margin-top: 6px; }
+  .footer {
+    text-align: center; color: var(--text-dim); font-size: 12px;
+    padding: 32px 16px;
+  }
+  .footer a { color: var(--text-mut); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="icon">#</span>
+    <div>
+      <div class="name">${htmlEscape(channelName)}</div>
+      ${guildName ? `<div style="color:var(--text-mut);font-size:12px;">${htmlEscape(guildName)}</div>` : ''}
+    </div>
+    <div class="meta">
+      <span><b>${totalMessages}</b> message${totalMessages !== 1 ? 's' : ''}</span>
+      <span><b>${participants}</b> participant${participants !== 1 ? 's' : ''}</span>
+    </div>
+  </div>
+  <div class="container">
+    <div class="summary">
+      <div class="cell"><span class="label">Ouvert par</span><span class="value">${htmlEscape(openedByName)}</span></div>
+      <div class="cell"><span class="label">Ouvert le</span><span class="value">${fmtDate(openedAt)}</span></div>
+      <div class="cell"><span class="label">Fermé par</span><span class="value">${htmlEscape(closedByName) || '—'}</span></div>
+      <div class="cell"><span class="label">Fermé le</span><span class="value">${fmtDate(closedAt)}</span></div>
+    </div>
+    ${groupsHtml || '<p style="color:var(--text-dim);text-align:center;padding:48px;">Aucun message dans ce ticket.</p>'}
+    <div class="footer">
+      Transcript généré par <a href="https://shardtwn.fr">Shardtown</a> ·
+      Conservé pour audit support
+    </div>
+  </div>
+</body>
+</html>`;
+}
 
 app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;

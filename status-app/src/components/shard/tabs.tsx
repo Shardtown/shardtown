@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import {
   type DChannel, type DRole, type ShardSettings, type Poll, type Giveaway,
@@ -7,7 +7,7 @@ import {
 } from "@/api/shard";
 import { Field, NumberInput, TextInput, TextArea, Toggle, Select, SectionCard } from "@/components/shardguard/Field";
 import { ColorPicker } from "@/components/forms/ColorPicker";
-import { apiPost, apiDelete } from "@/api/client";
+import { apiPost, apiDelete, apiGet } from "@/api/client";
 import { IS_DESKTOP } from "@/lib/desktop";
 import { DiscordPreview } from "@/components/DiscordPreview";
 import { ComponentsBuilder } from "@/components/shard/ComponentsBuilder";
@@ -721,16 +721,65 @@ export function ReactionsTab({ guildId, settings, update }: TabBase) {
 
 /* ========== TICKETS ========== */
 /**
- * Le système de tickets envoie 4 embeds distincts :
- *  1. Le **panel public** (avec le bouton "Ouvrir un ticket")
- *  2. Le **message d'accueil** posté dans le salon ticket dès qu'il est créé
- *  3. Le **log d'ouverture** dans le salon de logs
- *  4. Le **log de fermeture** dans le salon de logs
+ * Tickets — divisé en deux sous-onglets :
+ *  • Configuration   → tout ce qui touche aux 4 embeds + boutons + emoji + style
+ *  • Transcription   → génération HTML des conversations à la fermeture
  *
- * Chaque embed a son propre titre/description/couleur/footer pour permettre
- * une vraie personnalisation du flow de support, sans toucher au code.
+ * Le système envoie 4 embeds distincts :
+ *  1. Panel public    (avec le bouton "Ouvrir un ticket")
+ *  2. Message d'accueil dans le salon-ticket à l'ouverture
+ *  3. Log d'ouverture dans le salon de logs
+ *  4. Log de fermeture (peut contenir le lien transcript)
+ *
+ * Chaque bouton (Ouvrir / Fermer) a son label, son emoji (unicode ou
+ * custom Discord <:name:id>) et son style (Primary / Secondary / Success /
+ * Danger). Côté Components V1 le bouton ne peut pas être un Link parce
+ * qu'on a besoin d'une interaction côté bot — c'est par design.
  */
+const BUTTON_STYLES = [
+  { value: "1", label: "Primary (bleu)" },
+  { value: "2", label: "Secondary (gris)" },
+  { value: "3", label: "Success (vert)" },
+  { value: "4", label: "Danger (rouge)" },
+];
+
+interface Transcript {
+  id: string;
+  channelName: string;
+  openedByName: string;
+  closedByName: string;
+  openedAt: string;
+  closedAt: string;
+}
+
 export function TicketsTab({ guildId, settings, update, channels, categories, roles }: TabBase) {
+  const [tab, setTab] = useState<"config" | "transcripts">("config");
+  return (
+    <div className="space-y-4">
+      <div className="inline-flex p-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-bold">
+        <TicketSubTab active={tab === "config"} onClick={() => setTab("config")}>Configuration</TicketSubTab>
+        <TicketSubTab active={tab === "transcripts"} onClick={() => setTab("transcripts")}>Transcription</TicketSubTab>
+      </div>
+      {tab === "config"
+        ? <TicketsConfig guildId={guildId} settings={settings} update={update} channels={channels} categories={categories} roles={roles} />
+        : <TicketsTranscripts guildId={guildId} settings={settings} update={update} />}
+    </div>
+  );
+}
+
+function TicketSubTab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3.5 py-1.5 rounded-full transition-colors ${active ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function TicketsConfig({ guildId, settings, update, channels, categories, roles }: TabBase) {
   const enabled = isOn(settings.ticketEnabled);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -743,6 +792,8 @@ export function TicketsTab({ guildId, settings, update, channels, categories, ro
       description: settings.ticketPanelDescription,
       color: settings.ticketPanelColor,
       buttonLabel: settings.ticketPanelButtonLabel,
+      buttonEmoji: settings.ticketPanelButtonEmoji,
+      buttonStyle: settings.ticketPanelButtonStyle,
     });
     setBusy(false);
     setResult(r.success ? "Panel envoyé !" : `Erreur : ${r.error || ""}`);
@@ -765,9 +816,20 @@ export function TicketsTab({ guildId, settings, update, channels, categories, ro
         <Field label="Salon du panel"><Select options={channelOpts(channels)} value={settings.ticketPanelChannelId} onChange={v => update({ ticketPanelChannelId: v })} /></Field>
         <Field label="Titre"><TextInput value={settings.ticketPanelTitle} onChange={e => update({ ticketPanelTitle: e.target.value })} placeholder="🎫 Support" /></Field>
         <Field label="Description"><TextArea value={settings.ticketPanelDescription} onChange={e => update({ ticketPanelDescription: e.target.value })} placeholder="Cliquez pour ouvrir un ticket…" /></Field>
-        <div className="grid md:grid-cols-2 gap-3">
-          <Field label="Libellé du bouton"><TextInput value={settings.ticketPanelButtonLabel || ""} onChange={e => update({ ticketPanelButtonLabel: e.target.value })} placeholder="Ouvrir un ticket" /></Field>
-          <Field label="Couleur"><ColorPicker value={settings.ticketPanelColor} onChange={v => update({ ticketPanelColor: v })} /></Field>
+        <Field label="Couleur"><ColorPicker value={settings.ticketPanelColor} onChange={v => update({ ticketPanelColor: v })} /></Field>
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+          <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/40 mb-2">Bouton « Ouvrir »</p>
+          <div className="grid md:grid-cols-3 gap-3">
+            <Field label="Libellé">
+              <TextInput value={settings.ticketPanelButtonLabel || ""} onChange={e => update({ ticketPanelButtonLabel: e.target.value })} placeholder="Ouvrir un ticket" />
+            </Field>
+            <Field label="Emoji" hint="Unicode (🎫) ou <:nom:id>">
+              <TextInput value={settings.ticketPanelButtonEmoji || ""} onChange={e => update({ ticketPanelButtonEmoji: e.target.value })} placeholder="🎫" />
+            </Field>
+            <Field label="Style">
+              <Select options={BUTTON_STYLES} value={String(settings.ticketPanelButtonStyle ?? 1)} onChange={v => update({ ticketPanelButtonStyle: Number(v) })} />
+            </Field>
+          </div>
         </div>
         <button type="button" onClick={deployPanel} disabled={busy || !settings.ticketPanelChannelId}
           className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
@@ -779,10 +841,23 @@ export function TicketsTab({ guildId, settings, update, channels, categories, ro
       <SectionCard title="② Message d'accueil dans le ticket" description="Posté dans le salon dès qu'un ticket est créé. Variables : {user} {username} {server} {ticketNumber}.">
         <Field label="Titre"><TextInput value={settings.ticketOpenTitle || ""} onChange={e => update({ ticketOpenTitle: e.target.value })} placeholder="🎫 Ticket #{ticketNumber}" /></Field>
         <Field label="Description"><TextArea value={settings.ticketOpenDescription || ""} onChange={e => update({ ticketOpenDescription: e.target.value })} placeholder="Bonjour {user}, un membre du support va vous répondre prochainement. Décrivez votre problème ci-dessous." /></Field>
-        <div className="grid md:grid-cols-3 gap-3">
+        <div className="grid md:grid-cols-2 gap-3">
           <Field label="Footer"><TextInput value={settings.ticketOpenFooter || ""} onChange={e => update({ ticketOpenFooter: e.target.value })} placeholder="Ouvert par {username}" /></Field>
           <Field label="Couleur"><ColorPicker value={settings.ticketOpenColor || "#3b82f6"} onChange={v => update({ ticketOpenColor: v })} /></Field>
-          <Field label="Libellé bouton « Fermer »"><TextInput value={settings.ticketCloseButtonLabel || ""} onChange={e => update({ ticketCloseButtonLabel: e.target.value })} placeholder="Fermer le ticket" /></Field>
+        </div>
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+          <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/40 mb-2">Bouton « Fermer »</p>
+          <div className="grid md:grid-cols-3 gap-3">
+            <Field label="Libellé">
+              <TextInput value={settings.ticketCloseButtonLabel || ""} onChange={e => update({ ticketCloseButtonLabel: e.target.value })} placeholder="Fermer le ticket" />
+            </Field>
+            <Field label="Emoji">
+              <TextInput value={settings.ticketCloseButtonEmoji || ""} onChange={e => update({ ticketCloseButtonEmoji: e.target.value })} placeholder="🔒" />
+            </Field>
+            <Field label="Style">
+              <Select options={BUTTON_STYLES} value={String(settings.ticketCloseButtonStyle ?? 4)} onChange={v => update({ ticketCloseButtonStyle: Number(v) })} />
+            </Field>
+          </div>
         </div>
       </SectionCard>
 
@@ -798,6 +873,83 @@ export function TicketsTab({ guildId, settings, update, channels, categories, ro
           <Field label="Titre"><TextInput value={settings.ticketLogCloseTitle || ""} onChange={e => update({ ticketLogCloseTitle: e.target.value })} placeholder="🔒 Ticket fermé" /></Field>
           <Field label="Couleur"><ColorPicker value={settings.ticketLogCloseColor || "#ef4444"} onChange={v => update({ ticketLogCloseColor: v })} /></Field>
         </div>
+      </SectionCard>
+    </div>
+  );
+}
+
+function TicketsTranscripts({ guildId, settings, update }: { guildId: string; settings: ShardSettings; update: Update }) {
+  const transcriptEnabled = isOn(settings.ticketTranscriptEnabled);
+  const [list, setList] = useState<Transcript[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    apiGet<{ success: boolean; transcripts: Transcript[] }>(`/shard/guild/${guildId}/transcripts`)
+      .then(r => { if (!cancelled) setList(r.transcripts || []); })
+      .catch(() => { if (!cancelled) setList([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [guildId]);
+
+  const fmt = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString("fr-FR", {
+        day: "2-digit", month: "2-digit", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      });
+    } catch { return ""; }
+  };
+
+  // Backend base — used to build absolute viewer URLs on the desktop app
+  // where window.location is the bundled file://. We resolve at runtime.
+  const BASE = typeof window !== "undefined" && /^https?:/.test(window.location.protocol)
+    ? window.location.origin
+    : "https://shardtwn.fr";
+
+  return (
+    <div className="space-y-4">
+      <SectionCard title="Génération des transcripts" description="À chaque fermeture de ticket, Shardtown enregistre toutes les messages dans une page web style Discord. Le lien est posté dans le salon de logs et envoyé en MP au membre.">
+        <Field label="Activer">
+          <Toggle
+            checked={transcriptEnabled}
+            onChange={b => update({ ticketTranscriptEnabled: to01(b) })}
+            label={transcriptEnabled ? "Activé" : "Désactivé"}
+          />
+        </Field>
+        <p className="text-[11.5px] text-white/40 mt-1">
+          URL : <code className="px-1.5 py-0.5 rounded bg-white/[0.05] font-mono-num">{BASE}/transcripts/&lt;id&gt;</code> — le lien est unique et non-deviné. Vous pouvez le partager sans authentification.
+        </p>
+      </SectionCard>
+
+      <SectionCard title="Tickets fermés récemment" description="100 derniers transcripts générés pour ce serveur.">
+        {loading ? (
+          <p className="text-[12px] text-white/30 italic">Chargement…</p>
+        ) : !list || list.length === 0 ? (
+          <p className="text-[12px] text-white/30 italic">Aucun transcript pour le moment. Fermez un ticket pour en générer un.</p>
+        ) : (
+          <div className="space-y-1">
+            {list.map(t => (
+              <div key={t.id} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold truncate">#{t.channelName}</p>
+                  <p className="text-[11px] text-white/40">
+                    {t.openedByName} → fermé par {t.closedByName || "—"} · {fmt(t.closedAt)}
+                  </p>
+                </div>
+                <a
+                  href={`${BASE}/transcripts/${t.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 text-xs font-bold"
+                >
+                  Ouvrir
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
       </SectionCard>
     </div>
   );

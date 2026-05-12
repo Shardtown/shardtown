@@ -43,12 +43,16 @@ export interface ShardSettings {
   ticketPanelDescription: string;
   ticketPanelColor: string;
   ticketPanelButtonLabel: string;
+  ticketPanelButtonEmoji: string;
+  ticketPanelButtonStyle: number | string;
   // Welcome embed posted inside a freshly opened ticket channel
   ticketOpenTitle: string;
   ticketOpenDescription: string;
   ticketOpenFooter: string;
   ticketOpenColor: string;
   ticketCloseButtonLabel: string;
+  ticketCloseButtonEmoji: string;
+  ticketCloseButtonStyle: number | string;
   // Log embeds posted in the staff log channel
   ticketLogOpenTitle: string;
   ticketLogOpenColor: string;
