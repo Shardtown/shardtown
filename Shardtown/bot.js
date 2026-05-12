@@ -16,6 +16,12 @@ const {
 
 const MANIFEST_URL = process.env.MANIFEST_URL || 'https://shardtwn.fr/updates/latest.json';
 
+// When set, slash commands are registered ON THIS SPECIFIC GUILD (instant
+// availability, no 1h propagation delay) and the *global* command set is
+// wiped to avoid duplicates in clients that previously cached it. Leave
+// empty to fall back to the legacy global registration.
+const DEV_GUILD_ID = process.env.SHARDTOWN_DEV_GUILD_ID || '1409954518682042462';
+
 const client = new Client({
     intents: [GatewayIntentBits.Guilds],
 });
@@ -37,10 +43,27 @@ async function registerCommands() {
     if (!process.env.SHARDTOWN_TOKEN) return;
     const rest = new REST({ version: '10' }).setToken(process.env.SHARDTOWN_TOKEN);
     try {
-        // Overwriting the global command set wipes any previously deployed
-        // commands (eg. /ticket, /close, /ticket-panel from earlier iterations).
-        await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
-        console.log(`[Shardtown] ${commands.length} slash commands enregistrées.`);
+        if (DEV_GUILD_ID) {
+            // Guild-scoped registration → commands appear instantly in the
+            // target server, no 1h propagation delay.
+            await rest.put(
+                Routes.applicationGuildCommands(client.user.id, DEV_GUILD_ID),
+                { body: commands },
+            );
+            console.log(`[Shardtown] ${commands.length} slash commands enregistrées sur la guild ${DEV_GUILD_ID}.`);
+            // Wipe the global set so users don't see ghost duplicates from
+            // previous deployments. Safe to run every boot — empty body just
+            // overwrites whatever was there.
+            try {
+                await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
+                console.log('[Shardtown] Anciennes commandes globales nettoyées.');
+            } catch (err) {
+                console.warn('[Shardtown] Nettoyage commandes globales KO:', err.message);
+            }
+        } else {
+            await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+            console.log(`[Shardtown] ${commands.length} slash commands enregistrées globalement.`);
+        }
     } catch (err) {
         console.error('[Shardtown] Échec enregistrement commands:', err.message);
     }
