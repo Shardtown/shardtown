@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Bot, StatsResponse } from "@/lib/types";
 import { apiGet } from "@/api/client";
 
@@ -54,8 +54,14 @@ function seedFromHistory(rows: StatsResponse["history"], live: LiveHistory) {
 }
 
 export function useStats(intervalMs = 30_000): StatsSnapshot {
-  const liveHistoryRef = useRef<LiveHistory>(emptyHistory());
-  const pingHistoryRef = useRef<Map<string, number[]>>(new Map());
+  // Init paresseuse via vars locales — éviter de lire `ref.current` dans le
+  // corps du render (interdit par le compilateur React 19). Les Map/objets
+  // sont par référence, donc le snapshot et les refs pointent vers la même
+  // structure mutable, comme avant.
+  const initialLive: LiveHistory = useMemo(() => emptyHistory(), []);
+  const initialPing: Map<string, number[]> = useMemo(() => new Map(), []);
+  const liveHistoryRef = useRef<LiveHistory>(initialLive);
+  const pingHistoryRef = useRef<Map<string, number[]>>(initialPing);
   const [snapshot, setSnapshot] = useState<StatsSnapshot>(() => ({
     bots: [],
     totalGuilds: 0,
@@ -68,8 +74,8 @@ export function useStats(intervalMs = 30_000): StatsSnapshot {
     avgPing: 0,
     allOnline: true,
     lastFetch: null,
-    pingHistory: pingHistoryRef.current,
-    liveHistory: liveHistoryRef.current,
+    pingHistory: initialPing,
+    liveHistory: initialLive,
     loading: true,
   }));
 

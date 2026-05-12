@@ -47,7 +47,13 @@ const IS_TRAY_PANEL = typeof window !== "undefined"
   && new URLSearchParams(window.location.search).get("panel") === "tray";
 
 export function App() {
+  // Hooks must run unconditionally — split the tray-panel branch into a
+  // separate component so its hook list never coexists with App's.
   if (IS_TRAY_PANEL) return <TrayPanel />;
+  return <AppMain />;
+}
+
+function AppMain() {
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [loading, setLoading] = useState(true);
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Loader2, RefreshCw } from "lucide-react";
 import { apiPost } from "@/api/client";
 
@@ -21,8 +21,11 @@ export function ShardSecure({ token, onChange }: Props) {
   // Honeypot — un bot remplit souvent tous les champs visibles ; ce champ
   // est invisible mais reste dans le DOM.
   const [honeypot, setHoneypot] = useState("");
-  // Délai mini avant d'autoriser la vérif (anti-script qui clique instantanément)
-  const mountedAt = useRef(Date.now());
+  // Délai mini avant d'autoriser la vérif (anti-script qui clique instantanément).
+  // useState avec init paresseuse — la fonction n'est appelée qu'au premier
+  // render, ce qui satisfait les règles "no impure / no ref access during
+  // render" du compilateur React 19. Le reset utilise le setter.
+  const [mountedAt, setMountedAt] = useState<number>(() => Date.now());
 
   useEffect(() => {
     if (token) setStatus("verified");
@@ -30,7 +33,7 @@ export function ShardSecure({ token, onChange }: Props) {
 
   async function verify() {
     if (status === "loading" || status === "verified") return;
-    const dt = Date.now() - mountedAt.current;
+    const dt = Date.now() - mountedAt;
     if (dt < 700) {
       // micro-délai pour rejoindre la fenêtre minimale côté serveur
       await new Promise(r => setTimeout(r, 700 - dt));
@@ -60,7 +63,7 @@ export function ShardSecure({ token, onChange }: Props) {
     onChange("");
     setStatus("idle");
     setErrorMsg(null);
-    mountedAt.current = Date.now();
+    setMountedAt(Date.now());
   }
 
   return (
