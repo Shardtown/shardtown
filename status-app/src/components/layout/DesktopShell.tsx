@@ -7,6 +7,7 @@ import {
 import { useAuth, avatarUrl } from "@/api/auth";
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
 import { PostUpdateNotes } from "@/components/PostUpdateNotes";
+import { GreetingToast } from "@/components/GreetingToast";
 import {
   tokenClear, biometricConfirm, openExternal, IS_DESKTOP,
   checkForUpdate, downloadAndInstallUpdate,
@@ -254,6 +255,9 @@ export function DesktopShell({ children }: { children: ReactNode }) {
 
       {/* Post-update brief — pops once after each new version install */}
       <PostUpdateNotes />
+
+      {/* Bonjour / Bonsoir — pops once par lancement avec le prénom */}
+      <GreetingToast />
     </div>
   );
 }
