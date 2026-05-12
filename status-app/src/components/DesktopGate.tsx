@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Loader2, KeyRound, ExternalLink } from "lucide-react";
-import { IS_DESKTOP, tokenGet, tokenSet, openExternal } from "@/lib/desktop";
+import { IS_DESKTOP, tokenGet, tokenSet, openExternal, onboardingDone } from "@/lib/desktop";
 import { apiGet, ApiError, setBearerToken } from "@/api/client";
 import { shouldShowOnboarding, startTour } from "@/components/OnboardingTour";
 import { AuroraBackground } from "@/components/AuroraBackground";
@@ -55,6 +55,17 @@ export function DesktopGate({ children }: { children: ReactNode }) {
     // resolves. Treat it as a brand moment, not a load indicator.
     const introDone = new Promise<void>(r => setTimeout(r, INTRO_MS));
     (async () => {
+      // Sync the persistent "onboarding done" flag from disk into localStorage
+      // BEFORE we check shouldShowOnboarding() below. The file in
+      // ~/Library/Application Support survives unsigned-build updates and
+      // webview localStorage wipes; without this sync, every update would
+      // re-launch the tour.
+      try {
+        if (await onboardingDone()) {
+          localStorage.setItem("shardtown.onboarding.v2", "done");
+        }
+      } catch { /* */ }
+
       const token = await tokenGet().catch(() => null);
       let next: State;
       if (!token) {

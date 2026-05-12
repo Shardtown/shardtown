@@ -139,29 +139,301 @@ export function RulesTab({ settings, update }: TabProps) {
 /* ========== CAPTCHA ========== */
 export function CaptchaTab({ settings, update }: TabProps) {
   return (
-    <SectionCard title="Système Captcha" description="Configurez le challenge demandé aux nouveaux membres.">
-      <div className="grid md:grid-cols-2 gap-4">
-        <Field label="Nombre de chiffres" hint="Entre 4 et 8.">
-          <NumberInput min={4} max={8} value={settings.captchaDigits} onChange={e => update({ captchaDigits: Number(e.target.value) })} />
+    <div className="flex flex-col gap-4">
+      <SectionCard title="Système Captcha" description="Configurez le challenge demandé aux nouveaux membres.">
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Nombre de chiffres" hint="Entre 4 et 8.">
+            <NumberInput min={4} max={8} value={settings.captchaDigits} onChange={e => update({ captchaDigits: Number(e.target.value) })} />
+          </Field>
+          <Field label="Niveau de bruit visuel">
+            <Select options={NOISE_OPTIONS} value={settings.captchaNoise} onChange={v => update({ captchaNoise: v })} />
+          </Field>
+          <Field label="Tentatives max" hint="Entre 1 et 5. Au-delà, kick automatique.">
+            <NumberInput min={1} max={5} value={settings.captchaAttempts} onChange={e => update({ captchaAttempts: Number(e.target.value) })} />
+          </Field>
+          <Field label="Délai d'expiration (min)" hint="Entre 5 et 60 minutes.">
+            <NumberInput min={5} max={60} value={settings.verificationTimeout} onChange={e => update({ verificationTimeout: Number(e.target.value) })} />
+          </Field>
+        </div>
+        <Field label="Kick auto si non vérifié">
+          <Toggle
+            checked={isTrue(settings.autoKickUnverified)}
+            onChange={b => update({ autoKickUnverified: toFlag(b) })}
+            label={isTrue(settings.autoKickUnverified) ? "Activé" : "Désactivé"}
+          />
         </Field>
-        <Field label="Niveau de bruit visuel">
-          <Select options={NOISE_OPTIONS} value={settings.captchaNoise} onChange={v => update({ captchaNoise: v })} />
-        </Field>
-        <Field label="Tentatives max" hint="Entre 1 et 5. Au-delà, kick automatique.">
-          <NumberInput min={1} max={5} value={settings.captchaAttempts} onChange={e => update({ captchaAttempts: Number(e.target.value) })} />
-        </Field>
-        <Field label="Délai d'expiration (min)" hint="Entre 5 et 60 minutes.">
-          <NumberInput min={5} max={60} value={settings.verificationTimeout} onChange={e => update({ verificationTimeout: Number(e.target.value) })} />
-        </Field>
-      </div>
-      <Field label="Kick auto si non vérifié">
-        <Toggle
-          checked={isTrue(settings.autoKickUnverified)}
-          onChange={b => update({ autoKickUnverified: toFlag(b) })}
-          label={isTrue(settings.autoKickUnverified) ? "Activé" : "Désactivé"}
-        />
-      </Field>
+      </SectionCard>
+
+      <VerifyAllPanel hasVerifiedRole={!!settings.verifiedRole?.trim()} />
+    </div>
+  );
+}
+
+/* ========== Verify-all action ========== */
+
+type VerifyState =
+  | { kind: "idle" }
+  | { kind: "confirming" }
+  | { kind: "loading" }
+  | { kind: "success"; granted: number; skipped: number }
+  | { kind: "error"; message: string };
+
+function VerifyAllPanel({ hasVerifiedRole }: { hasVerifiedRole: boolean }) {
+  const [state, setState] = useState<VerifyState>({ kind: "idle" });
+
+  async function fire() {
+    setState({ kind: "loading" });
+    try {
+      const d = await apiPost<{ success?: boolean; error?: string; granted?: number; skipped?: number }>(
+        window.location.pathname.replace("/shardguard/guild/", "/shardguard/api/guild/") + "/verify-all",
+      );
+      if (d.success) {
+        setState({ kind: "success", granted: d.granted ?? 0, skipped: d.skipped ?? 0 });
+        // Quietly trigger a parent refresh so the stats counters catch up.
+        // Dispatched as a window event so we don't have to thread a callback
+        // through every nested component.
+        window.dispatchEvent(new Event("shardtown:guild-refresh"));
+      } else {
+        setState({ kind: "error", message: d.error || "Erreur inconnue" });
+      }
+    } catch (e) {
+      setState({ kind: "error", message: e instanceof Error ? e.message : "Erreur réseau" });
+    }
+  }
+
+  return (
+    <SectionCard
+      title="Vérification de masse"
+      description="Attribuer immédiatement le rôle vérifié à tous les membres non-bots du serveur. Les comptes déjà vérifiés sont ignorés."
+    >
+      {!hasVerifiedRole && (
+        <p
+          className="text-[12px] mb-3 px-3 py-2 rounded-[10px]"
+          style={{
+            background: "rgba(251, 191, 36, 0.10)",
+            border: "1px solid rgba(251, 191, 36, 0.32)",
+            color: "rgb(252, 211, 77)",
+          }}
+        >
+          ⚠️ Aucun rôle vérifié n'est configuré — choisis-le dans l'onglet « Sécurité » avant de lancer la vérification de masse.
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={() => setState({ kind: "confirming" })}
+        disabled={!hasVerifiedRole}
+        className="px-5 h-11 rounded-full font-bold text-[13px] transition-colors inline-flex items-center gap-2 disabled:opacity-45 disabled:cursor-not-allowed"
+        style={{
+          background: "rgba(74, 222, 128, 0.12)",
+          border: "1px solid rgba(74, 222, 128, 0.35)",
+          color: "rgb(74, 222, 128)",
+        }}
+      >
+        <CheckCircle2 className="w-4 h-4" />
+        Vérifier tout le monde
+      </button>
+
+      <VerifyAllModal state={state} onClose={() => setState({ kind: "idle" })} onConfirm={fire} />
     </SectionCard>
+  );
+}
+
+function VerifyAllModal({
+  state, onClose, onConfirm,
+}: {
+  state: VerifyState;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    if (state.kind === "idle" || state.kind === "loading") return;
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [state.kind, onClose]);
+
+  if (state.kind === "idle") return null;
+  const closable = state.kind !== "loading";
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+      onClick={closable ? onClose : undefined}
+    >
+      <div className="absolute inset-0" style={{ background: "rgba(0, 0, 0, 0.55)", backdropFilter: "blur(10px)" }} />
+      <div
+        className="ds-glass relative w-full max-w-md rounded-[20px] border overflow-hidden"
+        style={{ borderColor: "var(--ds-border-strong)" }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div
+          className="h-[3px] w-full"
+          style={{
+            background:
+              state.kind === "success" ? "rgb(74, 222, 128)" :
+              state.kind === "error"   ? "rgb(239, 68, 68)" :
+                                         "rgb(74, 222, 128)",
+          }}
+        />
+        {closable && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fermer"
+            className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--ds-panel-2)]"
+            style={{ background: "var(--ds-panel)", color: "var(--ds-text-mut)" }}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+        <div className="px-7 pt-7 pb-6">
+          {state.kind === "confirming" && (
+            <>
+              <div
+                className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
+                style={{
+                  background: "rgba(74, 222, 128, 0.12)",
+                  border: "1px solid rgba(74, 222, 128, 0.32)",
+                  color: "rgb(74, 222, 128)",
+                }}
+              >
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(74, 222, 128)" }}>
+                Vérification massive
+              </p>
+              <h3 className="text-[20px] font-extrabold tracking-tight mb-2">Vérifier tout le monde ?</h3>
+              <p className="text-[13px] leading-relaxed mb-5" style={{ color: "var(--ds-text-mut)" }}>
+                Tous les membres non-bots du serveur recevront le rôle vérifié. Cette opération peut prendre une à deux minutes sur les grosses guildes (limite de débit Discord).
+              </p>
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 h-11 rounded-full text-[13px] font-bold transition-colors hover:bg-[var(--ds-panel-2)]"
+                  style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text)" }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={onConfirm}
+                  className="flex-1 h-11 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2"
+                  style={{ background: "rgb(74, 222, 128)", color: "#062e16" }}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Vérifier
+                </button>
+              </div>
+            </>
+          )}
+          {state.kind === "loading" && (
+            <div className="py-3">
+              <div
+                className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
+                style={{
+                  background: "rgba(74, 222, 128, 0.12)",
+                  border: "1px solid rgba(74, 222, 128, 0.28)",
+                  color: "rgb(74, 222, 128)",
+                }}
+              >
+                <Loader2 className="w-5 h-5 animate-spin" />
+              </div>
+              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(74, 222, 128)" }}>
+                En cours
+              </p>
+              <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Attribution des rôles…</h3>
+              <p className="text-[13px] leading-relaxed" style={{ color: "var(--ds-text-mut)" }}>
+                Chaque membre reçoit le rôle un par un pour respecter les limites Discord. Garde cette fenêtre ouverte jusqu'à la fin.
+              </p>
+            </div>
+          )}
+          {state.kind === "success" && (
+            <>
+              <div
+                className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
+                style={{
+                  background: "rgba(74, 222, 128, 0.12)",
+                  border: "1px solid rgba(74, 222, 128, 0.32)",
+                  color: "rgb(74, 222, 128)",
+                }}
+              >
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(74, 222, 128)" }}>
+                Vérification terminée
+              </p>
+              <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Tout le monde est vérifié.</h3>
+              <div className="grid grid-cols-2 gap-2.5 mb-6">
+                <div
+                  className="rounded-[14px] border px-4 py-3"
+                  style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+                >
+                  <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
+                    Rôles ajoutés
+                  </p>
+                  <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "rgb(74, 222, 128)" }}>
+                    {state.granted}
+                  </p>
+                </div>
+                <div
+                  className="rounded-[14px] border px-4 py-3"
+                  style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+                >
+                  <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
+                    Ignorés
+                  </p>
+                  <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "var(--ds-text)" }}>
+                    {state.skipped}
+                  </p>
+                  <p className="text-[10.5px] mt-1" style={{ color: "var(--ds-text-dim)" }}>déjà vérifiés / bots</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full h-11 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90"
+                style={{ background: "rgb(74, 222, 128)", color: "#062e16" }}
+              >
+                OK
+              </button>
+            </>
+          )}
+          {state.kind === "error" && (
+            <>
+              <div
+                className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
+                style={{
+                  background: "rgba(239, 68, 68, 0.10)",
+                  border: "1px solid rgba(239, 68, 68, 0.28)",
+                  color: "rgb(248, 113, 113)",
+                }}
+              >
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(248, 113, 113)" }}>
+                Échec
+              </p>
+              <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Vérification non effectuée.</h3>
+              <p
+                className="text-[12.5px] leading-relaxed mb-5 px-3 py-2.5 rounded-[10px] font-mono break-words"
+                style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
+              >
+                {state.message}
+              </p>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full h-11 rounded-full text-[13px] font-bold transition-colors hover:bg-[var(--ds-panel-2)]"
+                style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text)" }}
+              >
+                Fermer
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

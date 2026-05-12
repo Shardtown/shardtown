@@ -76,6 +76,14 @@ export function ShardGuardGuild() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Allow any descendant (e.g. the "Verify everyone" action) to ask for an
+  // authoritative refresh of the guild data so stats update on screen.
+  useEffect(() => {
+    function on() { refresh(); }
+    window.addEventListener("shardtown:guild-refresh", on);
+    return () => window.removeEventListener("shardtown:guild-refresh", on);
+  }, [refresh]);
+
   // Live data: poll the stats portion every 30s while the window is
   // focused. Skipped automatically if the user has unsaved changes so
   // background updates don't fight with the form.

@@ -132,115 +132,92 @@ export function DesktopRpc() {
 
   return (
     <AppLayout>
-      <div>
-        {/* ─── HERO CARD ─────────────────────────────────────────── */}
+      <div className="max-w-[920px] mx-auto">
+        {/* ─── STATUS HEADER ────────────────────────────────────── */}
         <div
-          className="relative overflow-hidden rounded-[22px] border mb-5 rpc-hero"
-          style={{ borderColor: "var(--ds-border)" }}
+          className="flex items-start justify-between gap-6 flex-wrap pt-1 pb-6"
           data-tour="rpc-activate"
         >
-          <div className="absolute inset-0 rpc-hero-bg" />
-          <div className="relative px-7 py-8">
-            <div className="flex items-center gap-3.5 mb-5">
-              <div
-                className="w-[44px] h-[44px] rounded-full flex items-center justify-center"
-                style={{
-                  background: "rgba(255, 255, 255, 0.06)",
-                  border: "1px solid rgba(255, 255, 255, 0.12)",
-                }}
-              >
-                <span
-                  className={`w-2.5 h-2.5 rounded-full ${active ? "bg-emerald-400" : "bg-white/[0.25]"}`}
-                  style={active ? { boxShadow: "0 0 10px rgb(74, 222, 128)" } : undefined}
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-[26px] font-black tracking-tight leading-[1.05]">
-                  Discord Rich Presence
-                </h1>
-                <p
-                  className="text-[13px] font-semibold mt-1 inline-flex items-center gap-1.5"
-                  style={{ color: active ? "rgb(74, 222, 128)" : "var(--ds-text-mut)" }}
-                >
-                  {active ? "Connecté à Discord" : "Inactif — lance l'activation pour pousser ton activité"}
-                </p>
-              </div>
-            </div>
-
-            <p
-              className="text-[12.5px] font-medium mb-5 max-w-[480px]"
-              style={{ color: "var(--ds-text-mut)" }}
+          <div className="flex items-center gap-4 min-w-0">
+            <div
+              className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0"
+              style={
+                active
+                  ? { background: "rgba(74, 222, 128, 0.10)", border: "1px solid rgba(74, 222, 128, 0.32)", color: "rgb(74, 222, 128)" }
+                  : { background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }
+              }
             >
-              Personnalise ton statut Discord depuis l'app. Discord doit être ouvert pour que la connexion IPC fonctionne.
-            </p>
-
-            <div className="flex items-center gap-2.5 flex-wrap">
-              {active ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={activate}
-                    disabled={busy}
-                    className="inline-flex items-center gap-1.5 px-5 h-[40px] rounded-full font-bold text-[12.5px] transition-all disabled:opacity-45 disabled:cursor-not-allowed"
-                    style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
-                  >
-                    {busy ? <Loader2 size={13} strokeWidth={2.4} className="animate-spin" /> : <Sparkles size={13} strokeWidth={2.2} />}
-                    Mettre à jour
-                  </button>
-                  <button
-                    type="button"
-                    onClick={clear}
-                    disabled={busy}
-                    className="inline-flex items-center gap-1.5 px-4 h-[40px] rounded-full font-bold text-[12.5px] transition-colors disabled:opacity-45"
-                    style={{ background: "var(--ds-panel-2)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }}
-                  >
-                    <Trash2 size={12} strokeWidth={2} /> Effacer
-                  </button>
-                  <button
-                    type="button"
-                    onClick={disconnect}
-                    disabled={busy}
-                    className="inline-flex items-center gap-1.5 px-4 h-[40px] rounded-full font-bold text-[12.5px] transition-colors disabled:opacity-45"
-                    style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
-                  >
-                    <Power size={12} strokeWidth={2} /> Déconnecter
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={activate}
-                  disabled={busy || !settings.app_id.trim()}
-                  className="inline-flex items-center gap-1.5 px-6 h-[44px] rounded-full font-bold text-[13.5px] transition-all disabled:opacity-45 disabled:cursor-not-allowed"
-                  style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
-                >
-                  {busy ? <Loader2 size={13} strokeWidth={2.4} className="animate-spin" /> : <Sparkles size={13} strokeWidth={2.2} />}
-                  Activer le RPC
-                </button>
-              )}
+              <Sparkles size={18} strokeWidth={1.8} />
+            </div>
+            <div className="min-w-0">
+              <p
+                className="text-[11px] font-bold tracking-[0.22em] uppercase mb-1.5 inline-flex items-center gap-2"
+                style={{ color: active ? "rgb(74, 222, 128)" : "var(--ds-text-dim)" }}
+              >
+                {active && (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full inline-block"
+                    style={{ background: "rgb(74, 222, 128)", boxShadow: "0 0 8px rgba(74, 222, 128, 0.65)" }}
+                  />
+                )}
+                Discord Rich Presence
+              </p>
+              <h1 className="text-[28px] font-black tracking-tight leading-[1.05] mb-1">
+                {active ? "Connecté à Discord." : "Inactif."}
+              </h1>
+              <p className="text-[12.5px] font-medium max-w-[520px]" style={{ color: "var(--ds-text-mut)" }}>
+                Personnalise ton statut Discord depuis l'app. Discord doit être ouvert pour que la connexion IPC fonctionne.
+              </p>
             </div>
           </div>
+        </div>
 
-          <style>{`
-            .rpc-hero {
-              background: linear-gradient(135deg, #14152b 0%, #0f1018 70%);
-            }
-            [data-theme="light"] .rpc-hero {
-              background: linear-gradient(135deg, #e8ebff 0%, #f5f5f7 70%);
-            }
-            .rpc-hero-bg {
-              background-image:
-                radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.22) 1px, transparent 0);
-              background-size: 22px 22px;
-              opacity: 0.35;
-              mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
-              -webkit-mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
-            }
-            [data-theme="light"] .rpc-hero-bg {
-              background-image:
-                radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.32) 1px, transparent 0);
-            }
-          `}</style>
+        <div className="h-px w-full mb-6" style={{ background: "var(--ds-border)" }} />
+
+        <div className="mb-6 flex items-center gap-2.5 flex-wrap">
+          {active ? (
+            <>
+              <button
+                type="button"
+                onClick={activate}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 px-5 h-[40px] rounded-full font-bold text-[12.5px] transition-all disabled:opacity-45 disabled:cursor-not-allowed"
+                style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+              >
+                {busy ? <Loader2 size={13} strokeWidth={2.4} className="animate-spin" /> : <Sparkles size={13} strokeWidth={2.2} />}
+                Mettre à jour
+              </button>
+              <button
+                type="button"
+                onClick={clear}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 px-4 h-[40px] rounded-full font-bold text-[12.5px] transition-colors disabled:opacity-45"
+                style={{ background: "var(--ds-panel)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }}
+              >
+                <Trash2 size={12} strokeWidth={2} /> Effacer
+              </button>
+              <button
+                type="button"
+                onClick={disconnect}
+                disabled={busy}
+                className="inline-flex items-center gap-1.5 px-4 h-[40px] rounded-full font-bold text-[12.5px] transition-colors disabled:opacity-45"
+                style={{ background: "var(--ds-panel)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
+              >
+                <Power size={12} strokeWidth={2} /> Déconnecter
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={activate}
+              disabled={busy || !settings.app_id.trim()}
+              className="inline-flex items-center gap-1.5 px-6 h-[44px] rounded-full font-bold text-[13.5px] transition-all disabled:opacity-45 disabled:cursor-not-allowed"
+              style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+            >
+              {busy ? <Loader2 size={13} strokeWidth={2.4} className="animate-spin" /> : <Sparkles size={13} strokeWidth={2.2} />}
+              Activer le RPC
+            </button>
+          )}
         </div>
 
         {info && (

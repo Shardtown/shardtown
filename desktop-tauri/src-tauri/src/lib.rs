@@ -108,6 +108,42 @@ fn write_token_file(path: &PathBuf, token: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// ─── Onboarding completion flag ─────────────────────────────────────────
+/// Same rationale as the token store : WKWebView's localStorage can be
+/// wiped or moved between unsigned-app updates, so the user gets re-prompted
+/// for the onboarding tour on every release. A tiny file in Application
+/// Support is bulletproof across reinstalls / signing changes / migrations.
+fn onboarding_file_path() -> Result<PathBuf, String> {
+    let base = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .ok_or_else(|| "HOME indéfini".to_string())?;
+    let dir = base
+        .join("Library")
+        .join("Application Support")
+        .join(KEYCHAIN_SERVICE);
+    if !dir.exists() {
+        fs::create_dir_all(&dir).map_err(|e| format!("mkdir: {e}"))?;
+    }
+    Ok(dir.join("onboarding.done"))
+}
+
+#[tauri::command]
+fn onboarding_get() -> Result<bool, String> {
+    let path = onboarding_file_path()?;
+    Ok(path.exists())
+}
+
+#[tauri::command]
+fn onboarding_set(done: bool) -> Result<(), String> {
+    let path = onboarding_file_path()?;
+    if done {
+        fs::write(&path, "1").map_err(|e| format!("write onboarding: {e}"))?;
+    } else {
+        let _ = fs::remove_file(&path);
+    }
+    Ok(())
+}
+
 /// ─── Discord Rich Presence ───────────────────────────────────────────────
 /// Opens an IPC connection to the local Discord client (Unix socket on
 /// macOS) and pushes activity payloads. Discord must be running; if not,
@@ -540,6 +576,7 @@ pub fn run() {
             token_get, token_set, token_clear,
             rpc_set, rpc_clear, rpc_disconnect, rpc_status,
             biometric_confirm,
+            onboarding_get, onboarding_set,
         ])
         // Hide-instead-of-quit on the main window: the user can close the
         // main window with ⌘W but the app keeps running with just the

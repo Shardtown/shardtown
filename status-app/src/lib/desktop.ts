@@ -46,6 +46,42 @@ export async function tokenClear(): Promise<void> {
   await invoke<void>("token_clear");
 }
 
+/* ─── Onboarding completion flag ─────────────────────────────────────── */
+
+/**
+ * Read whether the user has already gone through (or dismissed) the
+ * onboarding tour. Backed by a file in Application Support so it survives
+ * unsigned-build updates and webview localStorage wipes.
+ *
+ * Falls back to localStorage in web mode (or when the IPC isn't ready
+ * yet) so legacy paths keep working.
+ */
+export async function onboardingDone(): Promise<boolean> {
+  if (!IS_DESKTOP) {
+    try { return localStorage.getItem("shardtown.onboarding.v2") === "done"; } catch { return false; }
+  }
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    return await invoke<boolean>("onboarding_get");
+  } catch {
+    try { return localStorage.getItem("shardtown.onboarding.v2") === "done"; } catch { return false; }
+  }
+}
+
+export async function setOnboardingDone(done: boolean): Promise<void> {
+  // Always write the localStorage too — keeps the legacy gate working in
+  // web mode and during the IPC bootstrap.
+  try {
+    if (done) localStorage.setItem("shardtown.onboarding.v2", "done");
+    else localStorage.removeItem("shardtown.onboarding.v2");
+  } catch { /* */ }
+  if (!IS_DESKTOP) return;
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke<void>("onboarding_set", { done });
+  } catch { /* */ }
+}
+
 /* ─── Biometric confirmation ──────────────────────────────────────────── */
 
 /**

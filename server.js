@@ -4507,6 +4507,82 @@ app.post('/shardguard/api/guild/:guildID/panic', checkAuth, async (req, res) => 
     } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
+// Mass-assign the configured verified role to every non-bot member of the
+// guild. Iterates the member list page by page, adds the role on those who
+// don't have it, and inserts a `Success` log entry per user so the
+// verifiedCount stat catches up. Limited to guild admins — same gate as
+// the rest of the dashboard mutations.
+app.post('/shardguard/api/guild/:guildID/verify-all', checkAuth, async (req, res) => {
+    const guildID = req.params.guildID;
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
+    if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
+
+    const headers = { Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' };
+
+    try {
+        const [settingsRows] = await db.execute('SELECT verifiedRole FROM settings WHERE guildId = ?', [guildID]);
+        const verifiedRole = settingsRows[0]?.verifiedRole;
+        if (!verifiedRole) {
+            return res.status(400).json({
+                success: false,
+                error: 'Rôle vérifié non configuré dans les paramètres ShardGuard.',
+            });
+        }
+
+        // Paginate the Discord member list (max 1000 per page, capped at 10
+        // pages = 10 000 members to keep the request bounded). Real big-guild
+        // owners should run this twice if they hit the cap.
+        let after = '0';
+        let granted = 0;
+        let skipped = 0;
+        const MAX_PAGES = 10;
+        for (let page = 0; page < MAX_PAGES; page++) {
+            const r = await axios.get(
+                `https://discord.com/api/v10/guilds/${guildID}/members?limit=1000&after=${after}`,
+                { headers },
+            );
+            const batch = r.data || [];
+            if (batch.length === 0) break;
+
+            for (const m of batch) {
+                if (m.user?.bot) { skipped++; continue; }
+                const userId = m.user?.id;
+                if (!userId) continue;
+                const hasRole = Array.isArray(m.roles) && m.roles.includes(verifiedRole);
+                if (hasRole) { skipped++; continue; }
+                try {
+                    await axios.put(
+                        `https://discord.com/api/v10/guilds/${guildID}/members/${userId}/roles/${verifiedRole}`,
+                        {},
+                        { headers },
+                    );
+                    granted++;
+                    // Log the success so verifiedCount in /api/shardguard/guild
+                    // reflects the bulk verification without redesigning the
+                    // counting query.
+                    try {
+                        await db.execute(
+                            `INSERT IGNORE INTO logs (guildId, userId, status, details, timestamp)
+                             VALUES (?, ?, 'Success', 'Mass verification by admin', NOW())`,
+                            [guildID, userId],
+                        );
+                    } catch { /* schema variant — best-effort */ }
+                    // Discord rate limit safety
+                    await new Promise(r => setTimeout(r, 60));
+                } catch { /* member may have left, role hierarchy issue, etc */ }
+            }
+
+            after = batch[batch.length - 1].user?.id || after;
+            if (batch.length < 1000) break;
+        }
+
+        res.json({ success: true, granted, skipped });
+    } catch (err) {
+        console.error('[verify-all] error:', err.response?.data || err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur lors de la vérification de masse.' });
+    }
+});
+
 app.post('/shardguard/api/guild/:guildID/deploy', checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const VALID_DEPLOY_TYPES = ['all', 'verification', 'accesscode'];
