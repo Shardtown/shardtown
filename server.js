@@ -4585,7 +4585,38 @@ app.post('/shardguard/api/guild/:guildID/verify-all', checkAuth, async (req, res
                     const userId = m.user?.id;
                     if (!userId) continue;
                     const hasRole = Array.isArray(m.roles) && m.roles.includes(verifiedRole);
-                    if (hasRole) { job.skipped++; continue; }
+                    const username = m.user?.username || m.nick || 'unknown';
+
+                    // ── Case 1 : has the role already.
+                    // Skip the Discord PUT but backfill a Success log if the
+                    // member wasn't tracked yet (handles members verified
+                    // manually outside Shardtown, who otherwise never bump
+                    // the verifiedCount stat).
+                    if (hasRole) {
+                        try {
+                            const [rows] = await db.execute(
+                                'SELECT 1 FROM logs WHERE guildId = ? AND userId = ? AND status = "Success" LIMIT 1',
+                                [guildID, userId],
+                            );
+                            if (rows.length === 0) {
+                                await db.execute(
+                                    `INSERT INTO logs (guildId, userId, username, event, status)
+                                     VALUES (?, ?, ?, 'Backfill verified', 'Success')`,
+                                    [guildID, userId, username],
+                                );
+                                // Treat as granted — the stat now reflects them.
+                                job.granted++;
+                            } else {
+                                job.skipped++;
+                            }
+                        } catch (logErr) {
+                            console.warn('[verify-all] backfill log failed:', logErr.message);
+                            job.skipped++;
+                        }
+                        continue;
+                    }
+
+                    // ── Case 2 : missing role. Grant it + log.
                     try {
                         await axios.put(
                             `https://discord.com/api/v10/guilds/${guildID}/members/${userId}/roles/${verifiedRole}`,
@@ -4594,12 +4625,16 @@ app.post('/shardguard/api/guild/:guildID/verify-all', checkAuth, async (req, res
                         );
                         job.granted++;
                         try {
+                            // Real schema (cf ShardGuard/bot.js addLog) is:
+                            //   logs(guildId, userId, username, event, status)
                             await db.execute(
-                                `INSERT IGNORE INTO logs (guildId, userId, status, details, timestamp)
-                                 VALUES (?, ?, 'Success', 'Mass verification by admin', NOW())`,
-                                [guildID, userId],
+                                `INSERT INTO logs (guildId, userId, username, event, status)
+                                 VALUES (?, ?, ?, 'Mass verification by admin', 'Success')`,
+                                [guildID, userId, username],
                             );
-                        } catch { /* schema variant — best-effort */ }
+                        } catch (logErr) {
+                            console.warn('[verify-all] log insert failed:', logErr.message);
+                        }
                         await new Promise(r => setTimeout(r, 60));
                     } catch { /* member left, role hierarchy issue, etc */ }
                 }
