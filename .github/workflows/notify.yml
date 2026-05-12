@@ -47,18 +47,16 @@ jobs:
             exit 0
           fi
 
-          # Strips any leading "## " markdown headers from a string and keeps
-          # the result under N chars so Discord doesn't complain (4000 hard
-          # limit per text component, we stay conservative at 1200).
+          # Truncate a string to N chars (default 1200) for Discord text
+          # components. Pure bash to keep the YAML block scalar happy.
           truncate_md() {
-            python3 -c "
-import sys, json
-s = sys.argv[1]
-n = int(sys.argv[2])
-if len(s) > n:
-    s = s[:n].rstrip() + '…'
-print(s)
-" "$1" "${2:-1200}"
+            local s="$1"
+            local n="${2:-1200}"
+            if [ "${#s}" -gt "$n" ]; then
+              printf '%s…' "${s:0:$n}"
+            else
+              printf '%s' "$s"
+            fi
           }
 
           EV=$(echo "$PAYLOAD_JSON" | jq -c .)
@@ -87,8 +85,7 @@ print(s)
                 ) | join("\n")
               ')
               if [ "$COMMIT_COUNT" -gt 8 ]; then
-                COMMIT_LINES="$COMMIT_LINES
-… et $((COMMIT_COUNT - 8)) autre(s) commit(s)"
+                COMMIT_LINES="${COMMIT_LINES}"$'\n'"… et $((COMMIT_COUNT - 8)) autre(s) commit(s)"
               fi
 
               SUFFIX="s"
@@ -116,9 +113,7 @@ print(s)
                 *)        HEADER="## Issue #$NUM ($ACTION)"; ACCENT=3447003 ;;
               esac
               BODY="**$TITLE** — par *$USER*"
-              [ -n "$BODY_TEXT" ] && BODY="$BODY
-
-$BODY_TEXT"
+              [ -n "$BODY_TEXT" ] && BODY="${BODY}"$'\n\n'"$BODY_TEXT"
               ACTION_LABEL="Ouvrir l'issue"
               ACTION_URL="$URL"
               ;;
@@ -133,9 +128,7 @@ $BODY_TEXT"
               KIND="issue"
               [ "$IS_PR" != "false" ] && KIND="PR"
               HEADER="## Nouveau commentaire sur $KIND #$NUM"
-              BODY="*$USER* a écrit :
-
-$COMMENT"
+              BODY="*$USER* a écrit :"$'\n\n'"$COMMENT"
               ACCENT=3447003   # blue
               ACTION_LABEL="Voir le commentaire"
               ACTION_URL="$URL"
@@ -193,9 +186,7 @@ $COMMENT"
                 *)                 HEADER="## Review ($STATE) sur PR #$NUM"; ACCENT=3447003 ;;
               esac
               BODY="**$TITLE** — *$USER*"
-              [ -n "$COMMENT" ] && BODY="$BODY
-
-$COMMENT"
+              [ -n "$COMMENT" ] && BODY="${BODY}"$'\n\n'"$COMMENT"
               ACTION_LABEL="Voir la review"
               ACTION_URL="$URL"
               ;;
