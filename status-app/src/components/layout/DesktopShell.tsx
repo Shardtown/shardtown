@@ -171,7 +171,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
               key={gi}
               className="flex flex-col gap-1 p-1 rounded-[16px] border"
               style={{
-                background: "var(--ds-panel)",
+                background: "transparent",
                 borderColor: "var(--ds-border)",
               }}
             >
