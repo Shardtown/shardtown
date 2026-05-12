@@ -436,6 +436,16 @@ async function connectDB() {
                 `ALTER TABLE shard_settings ADD COLUMN ticketPanelTitle VARCHAR(255) DEFAULT ''`,
                 `ALTER TABLE shard_settings ADD COLUMN ticketPanelDescription TEXT`,
                 `ALTER TABLE shard_settings ADD COLUMN ticketPanelColor VARCHAR(7) DEFAULT '#3b82f6'`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketPanelButtonLabel VARCHAR(80) DEFAULT 'Ouvrir un ticket'`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketOpenTitle VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketOpenDescription TEXT`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketOpenFooter VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketOpenColor VARCHAR(7) DEFAULT '#3b82f6'`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketCloseButtonLabel VARCHAR(80) DEFAULT 'Fermer le ticket'`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketLogOpenTitle VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketLogOpenColor VARCHAR(7) DEFAULT '#3b82f6'`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketLogCloseTitle VARCHAR(255) DEFAULT ''`,
+                `ALTER TABLE shard_settings ADD COLUMN ticketLogCloseColor VARCHAR(7) DEFAULT '#ef4444'`,
                 `ALTER TABLE shard_settings ADD COLUMN birthdayChannelId VARCHAR(255) DEFAULT ''`,
                 `ALTER TABLE shard_settings ADD COLUMN birthdayMessage VARCHAR(500) DEFAULT ''`,
                 `ALTER TABLE shard_settings ADD COLUMN birthdayRoleId VARCHAR(255) DEFAULT ''`,
@@ -3387,6 +3397,11 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
         levelUpMessage = '', levelUpColor = '#3b82f6', levelThresholds = '',
         ticketEnabled, ticketCategoryId = '', ticketSupportRoleId = '', ticketLogChannelId = '', ticketMaxPerUser = 1,
         ticketPanelChannelId = '', ticketPanelTitle = '', ticketPanelDescription = '', ticketPanelColor = '#3b82f6',
+        ticketPanelButtonLabel = 'Ouvrir un ticket',
+        ticketOpenTitle = '', ticketOpenDescription = '', ticketOpenFooter = '', ticketOpenColor = '#3b82f6',
+        ticketCloseButtonLabel = 'Fermer le ticket',
+        ticketLogOpenTitle = '', ticketLogOpenColor = '#3b82f6',
+        ticketLogCloseTitle = '', ticketLogCloseColor = '#ef4444',
         birthdayChannelId = '', birthdayMessage = '', birthdayRoleId = '',
         economyEnabled, economyCurrencyName = 'coins', economyDailyMin = 50, economyDailyMax = 200,
         isPremiumS = '0',
@@ -3411,8 +3426,8 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
     } catch { thresholdsJson = '[]'; }
     try {
         await db.execute(`
-            INSERT INTO shard_settings (guildId, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabled, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, levelThresholds, ticketEnabled, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabled, economyCurrencyName, economyDailyMin, economyDailyMax, isPremium, referralEnabled, referralReward, xpRoleMultipliers)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO shard_settings (guildId, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabled, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, levelThresholds, ticketEnabled, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, ticketPanelButtonLabel, ticketOpenTitle, ticketOpenDescription, ticketOpenFooter, ticketOpenColor, ticketCloseButtonLabel, ticketLogOpenTitle, ticketLogOpenColor, ticketLogCloseTitle, ticketLogCloseColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabled, economyCurrencyName, economyDailyMin, economyDailyMax, isPremium, referralEnabled, referralReward, xpRoleMultipliers)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 welcomeChannelId = VALUES(welcomeChannelId), welcomeTitle = VALUES(welcomeTitle),
                 welcomeMessage = VALUES(welcomeMessage), welcomeFooter = VALUES(welcomeFooter),
@@ -3429,13 +3444,20 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
                 ticketSupportRoleId = VALUES(ticketSupportRoleId), ticketLogChannelId = VALUES(ticketLogChannelId),
                 ticketMaxPerUser = VALUES(ticketMaxPerUser), ticketPanelChannelId = VALUES(ticketPanelChannelId),
                 ticketPanelTitle = VALUES(ticketPanelTitle), ticketPanelDescription = VALUES(ticketPanelDescription),
-                ticketPanelColor = VALUES(ticketPanelColor), birthdayChannelId = VALUES(birthdayChannelId),
+                ticketPanelColor = VALUES(ticketPanelColor),
+                ticketPanelButtonLabel = VALUES(ticketPanelButtonLabel),
+                ticketOpenTitle = VALUES(ticketOpenTitle), ticketOpenDescription = VALUES(ticketOpenDescription),
+                ticketOpenFooter = VALUES(ticketOpenFooter), ticketOpenColor = VALUES(ticketOpenColor),
+                ticketCloseButtonLabel = VALUES(ticketCloseButtonLabel),
+                ticketLogOpenTitle = VALUES(ticketLogOpenTitle), ticketLogOpenColor = VALUES(ticketLogOpenColor),
+                ticketLogCloseTitle = VALUES(ticketLogCloseTitle), ticketLogCloseColor = VALUES(ticketLogCloseColor),
+                birthdayChannelId = VALUES(birthdayChannelId),
                 birthdayMessage = VALUES(birthdayMessage), birthdayRoleId = VALUES(birthdayRoleId),
                 economyEnabled = VALUES(economyEnabled), economyCurrencyName = VALUES(economyCurrencyName),
                 economyDailyMin = VALUES(economyDailyMin), economyDailyMax = VALUES(economyDailyMax),
                 isPremium = VALUES(isPremium), referralEnabled = VALUES(referralEnabled),
                 referralReward = VALUES(referralReward), xpRoleMultipliers = VALUES(xpRoleMultipliers)
-        `, [guildID, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabledVal, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, thresholdsJson, ticketEnabledVal, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabledVal, economyCurrencyName, economyDailyMin, economyDailyMax, isPremiumSVal, referralEnabledVal, parseInt(referralReward) || 100, xpRoleMultipliersJson]);
+        `, [guildID, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabledVal, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, thresholdsJson, ticketEnabledVal, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, ticketPanelButtonLabel, ticketOpenTitle, ticketOpenDescription, ticketOpenFooter, ticketOpenColor, ticketCloseButtonLabel, ticketLogOpenTitle, ticketLogOpenColor, ticketLogCloseTitle, ticketLogCloseColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabledVal, economyCurrencyName, economyDailyMin, economyDailyMax, isPremiumSVal, referralEnabledVal, parseInt(referralReward) || 100, xpRoleMultipliersJson]);
         res.json({ success: true });
     } catch (err) {
         console.error('Erreur save shard config:', err.message);
@@ -3448,7 +3470,7 @@ app.post('/shard/guild/:guildID/ticket-panel', checkAuthShard, async (req, res) 
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
-    const { channelId, title, description, color } = req.body;
+    const { channelId, title, description, color, buttonLabel } = req.body;
     if (!channelId || !/^\d{17,20}$/.test(String(channelId))) return res.status(400).json({ success: false, error: 'Salon invalide' });
     const colorInt = parseInt(String(color || '#3b82f6').replace('#', ''), 16) || 0x3b82f6;
     const embed = { color: colorInt, timestamp: new Date().toISOString() };
@@ -3461,7 +3483,7 @@ app.post('/shard/guild/:guildID/ticket-panel', checkAuthShard, async (req, res) 
             components: [{
                 type: 2,
                 style: 1,
-                label: 'Ouvrir un ticket',
+                label: String(buttonLabel || 'Ouvrir un ticket').slice(0, 80),
                 emoji: { name: '🎫' },
                 custom_id: 'ticket_open'
             }]

@@ -720,6 +720,16 @@ export function ReactionsTab({ guildId, settings, update }: TabBase) {
 }
 
 /* ========== TICKETS ========== */
+/**
+ * Le système de tickets envoie 4 embeds distincts :
+ *  1. Le **panel public** (avec le bouton "Ouvrir un ticket")
+ *  2. Le **message d'accueil** posté dans le salon ticket dès qu'il est créé
+ *  3. Le **log d'ouverture** dans le salon de logs
+ *  4. Le **log de fermeture** dans le salon de logs
+ *
+ * Chaque embed a son propre titre/description/couleur/footer pour permettre
+ * une vraie personnalisation du flow de support, sans toucher au code.
+ */
 export function TicketsTab({ guildId, settings, update, channels, categories, roles }: TabBase) {
   const enabled = isOn(settings.ticketEnabled);
   const [busy, setBusy] = useState(false);
@@ -732,6 +742,7 @@ export function TicketsTab({ guildId, settings, update, channels, categories, ro
       title: settings.ticketPanelTitle,
       description: settings.ticketPanelDescription,
       color: settings.ticketPanelColor,
+      buttonLabel: settings.ticketPanelButtonLabel,
     });
     setBusy(false);
     setResult(r.success ? "Panel envoyé !" : `Erreur : ${r.error || ""}`);
@@ -750,16 +761,43 @@ export function TicketsTab({ guildId, settings, update, channels, categories, ro
         </div>
       </SectionCard>
 
-      <SectionCard title="Panel public" description="Affiché aux membres pour ouvrir un ticket.">
+      <SectionCard title="① Panel public" description="Embed affiché aux membres pour ouvrir un ticket.">
         <Field label="Salon du panel"><Select options={channelOpts(channels)} value={settings.ticketPanelChannelId} onChange={v => update({ ticketPanelChannelId: v })} /></Field>
         <Field label="Titre"><TextInput value={settings.ticketPanelTitle} onChange={e => update({ ticketPanelTitle: e.target.value })} placeholder="🎫 Support" /></Field>
         <Field label="Description"><TextArea value={settings.ticketPanelDescription} onChange={e => update({ ticketPanelDescription: e.target.value })} placeholder="Cliquez pour ouvrir un ticket…" /></Field>
-        <Field label="Couleur"><ColorPicker value={settings.ticketPanelColor} onChange={v => update({ ticketPanelColor: v })} /></Field>
+        <div className="grid md:grid-cols-2 gap-3">
+          <Field label="Libellé du bouton"><TextInput value={settings.ticketPanelButtonLabel || ""} onChange={e => update({ ticketPanelButtonLabel: e.target.value })} placeholder="Ouvrir un ticket" /></Field>
+          <Field label="Couleur"><ColorPicker value={settings.ticketPanelColor} onChange={v => update({ ticketPanelColor: v })} /></Field>
+        </div>
         <button type="button" onClick={deployPanel} disabled={busy || !settings.ticketPanelChannelId}
           className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
           {busy ? "Envoi…" : "Publier le panel"}
         </button>
         {result && <p className="text-xs text-emerald-400 mt-2">{result}</p>}
+      </SectionCard>
+
+      <SectionCard title="② Message d'accueil dans le ticket" description="Posté dans le salon dès qu'un ticket est créé. Variables : {user} {username} {server} {ticketNumber}.">
+        <Field label="Titre"><TextInput value={settings.ticketOpenTitle || ""} onChange={e => update({ ticketOpenTitle: e.target.value })} placeholder="🎫 Ticket #{ticketNumber}" /></Field>
+        <Field label="Description"><TextArea value={settings.ticketOpenDescription || ""} onChange={e => update({ ticketOpenDescription: e.target.value })} placeholder="Bonjour {user}, un membre du support va vous répondre prochainement. Décrivez votre problème ci-dessous." /></Field>
+        <div className="grid md:grid-cols-3 gap-3">
+          <Field label="Footer"><TextInput value={settings.ticketOpenFooter || ""} onChange={e => update({ ticketOpenFooter: e.target.value })} placeholder="Ouvert par {username}" /></Field>
+          <Field label="Couleur"><ColorPicker value={settings.ticketOpenColor || "#3b82f6"} onChange={v => update({ ticketOpenColor: v })} /></Field>
+          <Field label="Libellé bouton « Fermer »"><TextInput value={settings.ticketCloseButtonLabel || ""} onChange={e => update({ ticketCloseButtonLabel: e.target.value })} placeholder="Fermer le ticket" /></Field>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="③ Log d'ouverture" description="Envoyé dans le salon de logs quand un ticket est ouvert.">
+        <div className="grid md:grid-cols-2 gap-3">
+          <Field label="Titre"><TextInput value={settings.ticketLogOpenTitle || ""} onChange={e => update({ ticketLogOpenTitle: e.target.value })} placeholder="🎫 Ticket ouvert" /></Field>
+          <Field label="Couleur"><ColorPicker value={settings.ticketLogOpenColor || "#3b82f6"} onChange={v => update({ ticketLogOpenColor: v })} /></Field>
+        </div>
+      </SectionCard>
+
+      <SectionCard title="④ Log de fermeture" description="Envoyé dans le salon de logs quand un ticket est fermé.">
+        <div className="grid md:grid-cols-2 gap-3">
+          <Field label="Titre"><TextInput value={settings.ticketLogCloseTitle || ""} onChange={e => update({ ticketLogCloseTitle: e.target.value })} placeholder="🔒 Ticket fermé" /></Field>
+          <Field label="Couleur"><ColorPicker value={settings.ticketLogCloseColor || "#ef4444"} onChange={v => update({ ticketLogCloseColor: v })} /></Field>
+        </div>
       </SectionCard>
     </div>
   );

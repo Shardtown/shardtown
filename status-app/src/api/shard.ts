@@ -42,6 +42,18 @@ export interface ShardSettings {
   ticketPanelTitle: string;
   ticketPanelDescription: string;
   ticketPanelColor: string;
+  ticketPanelButtonLabel: string;
+  // Welcome embed posted inside a freshly opened ticket channel
+  ticketOpenTitle: string;
+  ticketOpenDescription: string;
+  ticketOpenFooter: string;
+  ticketOpenColor: string;
+  ticketCloseButtonLabel: string;
+  // Log embeds posted in the staff log channel
+  ticketLogOpenTitle: string;
+  ticketLogOpenColor: string;
+  ticketLogCloseTitle: string;
+  ticketLogCloseColor: string;
   // Birthdays
   birthdayChannelId: string;
   birthdayMessage: string;

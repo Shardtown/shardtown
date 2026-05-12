@@ -953,17 +953,32 @@ client.on('interactionCreate', async (interaction) => {
             [guild.id, member.id, ticketChannel.id]
         );
 
-        const colorInt = parseInt((settings.ticketPanelColor || '#3b82f6').replace('#', ''), 16) || 0x3b82f6;
+        // Each ticket embed (welcome + logs) is fully configurable from
+        // the dashboard. Defaults preserve the historical wording when a
+        // guild has never customised the fields.
+        const ticketNumberStr = String(ticketNumber).padStart(4, '0');
+        const subst = (tpl) => String(tpl || '')
+            .replace(/{user}/g, `<@${member.id}>`)
+            .replace(/{username}/g, member.user.username)
+            .replace(/{server}/g, guild.name)
+            .replace(/{ticketNumber}/g, ticketNumberStr);
+
+        const welcomeTitle = subst(settings.ticketOpenTitle || `🎫 Ticket #${ticketNumberStr}`);
+        const welcomeDesc = subst(settings.ticketOpenDescription || `Bonjour {user}, un membre du support va vous répondre prochainement.\n\nDécrivez votre problème ci-dessous.`);
+        const welcomeFooter = subst(settings.ticketOpenFooter || `Ouvert par {username}`);
+        const welcomeColor = hexToInt(settings.ticketOpenColor || settings.ticketPanelColor || '#3b82f6');
+        const closeLabel = String(settings.ticketCloseButtonLabel || 'Fermer le ticket').slice(0, 80);
+
         const ticketEmbed = new EmbedBuilder()
-            .setColor(colorInt)
-            .setTitle(`🎫 Ticket #${String(ticketNumber).padStart(4, '0')}`)
-            .setDescription(`Bonjour ${member}, un membre du support va vous répondre prochainement.\n\nDécrivez votre problème ci-dessous.`)
-            .setFooter({ text: `Ouvert par ${member.user.username}` })
+            .setColor(welcomeColor)
+            .setTitle(welcomeTitle)
+            .setDescription(welcomeDesc)
+            .setFooter({ text: welcomeFooter })
             .setTimestamp();
 
         const closeBtn = new ButtonBuilder()
             .setCustomId('ticket_close')
-            .setLabel('Fermer le ticket')
+            .setLabel(closeLabel)
             .setEmoji('🔒')
             .setStyle(ButtonStyle.Danger);
 
@@ -974,12 +989,12 @@ client.on('interactionCreate', async (interaction) => {
             const logChannel = guild.channels.cache.get(settings.ticketLogChannelId);
             if (logChannel) {
                 const logEmbed = new EmbedBuilder()
-                    .setColor(0x3b82f6)
-                    .setTitle('🎫 Ticket ouvert')
+                    .setColor(hexToInt(settings.ticketLogOpenColor || '#3b82f6'))
+                    .setTitle(subst(settings.ticketLogOpenTitle || '🎫 Ticket ouvert'))
                     .addFields(
                         { name: 'Membre', value: `${member} (${member.user.username})`, inline: true },
                         { name: 'Salon', value: `${ticketChannel}`, inline: true },
-                        { name: 'Ticket', value: `#${String(ticketNumber).padStart(4, '0')}`, inline: true }
+                        { name: 'Ticket', value: `#${ticketNumberStr}`, inline: true }
                     )
                     .setTimestamp();
                 logChannel.send({ embeds: [logEmbed] }).catch(() => {});
@@ -1017,8 +1032,8 @@ client.on('interactionCreate', async (interaction) => {
                 const closedBy = interaction.member;
                 const opener = await guild.members.fetch(ticket.userId).catch(() => null);
                 const logEmbed = new EmbedBuilder()
-                    .setColor(0xef4444)
-                    .setTitle('🔒 Ticket fermé')
+                    .setColor(hexToInt(settings.ticketLogCloseColor || '#ef4444'))
+                    .setTitle(settings.ticketLogCloseTitle || '🔒 Ticket fermé')
                     .addFields(
                         { name: 'Ouvert par', value: opener ? `${opener} (${opener.user.username})` : ticket.userId, inline: true },
                         { name: 'Fermé par', value: `${closedBy} (${closedBy.user.username})`, inline: true }
