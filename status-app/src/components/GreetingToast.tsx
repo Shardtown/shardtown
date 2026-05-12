@@ -56,10 +56,8 @@ export function GreetingToast() {
         <div
           className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
           style={{
-            background: greeting.evening
-              ? "linear-gradient(135deg, rgba(91, 109, 255, 0.24), rgba(165, 180, 252, 0.18))"
-              : "linear-gradient(135deg, rgba(251, 191, 36, 0.26), rgba(244, 114, 182, 0.18))",
-            color: greeting.evening ? "rgb(165, 180, 252)" : "rgb(251, 191, 36)",
+            background: "var(--ds-panel-2)",
+            color: "var(--ds-text)",
             border: "1px solid var(--ds-border)",
           }}
         >
