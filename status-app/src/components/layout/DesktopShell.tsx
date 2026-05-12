@@ -5,6 +5,7 @@ import {
   Search, Bell, User, LogOut, X, MessageCircle, Activity, Download, Loader2, RefreshCw, Crown,
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
+import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
 import {
   tokenClear, biometricConfirm, openExternal, IS_DESKTOP,
   checkForUpdate, downloadAndInstallUpdate,
@@ -123,16 +124,35 @@ export function DesktopShell({ children }: { children: ReactNode }) {
 
   return (
     <div
-      className="h-screen w-screen flex overflow-hidden"
-      style={{ background: "var(--ds-bg)", color: "var(--ds-text)" }}
+      className="h-screen w-screen flex overflow-hidden relative"
+      style={{ color: "var(--ds-text)" }}
     >
+      {/* Animated multi-color gradient background — same one as shardtwn.fr.
+          Mounted behind everything (fixed, -z-10) so each surface above can
+          let it bleed through via translucent backgrounds + ds-glass. */}
+      <div className="fixed inset-0 pointer-events-none -z-10 opacity-55">
+        <BackgroundGradientAnimation
+          interactive={false}
+          gradientBackgroundStart="rgb(6, 10, 28)"
+          gradientBackgroundEnd="rgb(0, 0, 0)"
+          firstColor="37, 99, 235"
+          secondColor="139, 92, 246"
+          thirdColor="30, 64, 175"
+          fourthColor="236, 72, 153"
+          fifthColor="16, 185, 129"
+          size="60%"
+          blendingValue="screen"
+          containerClassName="!h-full !w-full"
+        />
+      </div>
+
       {/* Drag region — invisible strip at the top of the window */}
       <div className="fixed inset-x-0 top-0 h-7 z-50 pointer-events-none" data-tauri-drag-region />
 
       {/* ─── SIDEBAR ──────────────────────────────────────────────── */}
       <aside
-        className="w-[76px] flex-shrink-0 flex flex-col items-center pt-9 pb-3 select-none border-r"
-        style={{ background: "var(--ds-bg-1)", borderColor: "var(--ds-border)" }}
+        className="w-[76px] flex-shrink-0 flex flex-col items-center pt-9 pb-3 select-none border-r ds-glass"
+        style={{ borderColor: "var(--ds-border)" }}
       >
         {/* Static Shardtown logo at the top of the rail */}
         <Link
@@ -186,8 +206,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Top bar — search bar absolutely centered, right cluster pinned right */}
         <header
-          className="relative h-[64px] flex-shrink-0 flex items-center justify-end gap-3 px-6"
-          style={{ background: "var(--ds-bg)" }}
+          className="relative h-[72px] flex-shrink-0 flex items-center justify-end gap-3 px-6"
         >
           <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
             <SearchBox open={searchOpen} setOpen={setSearchOpen} onNavigate={nav} />
@@ -472,11 +491,10 @@ function SearchBox({
   }
 
   return (
-    <div className="relative w-full max-w-[560px]">
+    <div className="relative w-[min(720px,68vw)]">
       <div
-        className="flex items-center gap-2.5 h-[42px] px-4 rounded-full border cursor-text transition-colors"
+        className="ds-glass flex items-center gap-3 h-[48px] px-5 rounded-full border cursor-text transition-colors"
         style={{
-          background: open ? "var(--ds-panel-2)" : "var(--ds-panel)",
           borderColor: open ? "var(--ds-border-strong)" : "var(--ds-border)",
         }}
         onClick={() => {
@@ -484,7 +502,7 @@ function SearchBox({
           setTimeout(() => document.getElementById("topbar-search")?.focus(), 0);
         }}
       >
-        <Search size={14} strokeWidth={2} style={{ color: "var(--ds-text-dim)" }} />
+        <Search size={16} strokeWidth={2} style={{ color: "var(--ds-text-dim)" }} />
         <input
           id="topbar-search"
           type="text"
@@ -493,7 +511,7 @@ function SearchBox({
           onFocus={() => setOpen(true)}
           placeholder="Rechercher un serveur, une action…  (⌘K)"
           spellCheck={false}
-          className="flex-1 bg-transparent outline-none text-[13.5px]"
+          className="flex-1 bg-transparent outline-none text-[14.5px]"
           style={{ color: "var(--ds-text)" }}
         />
         {query && (
@@ -510,12 +528,8 @@ function SearchBox({
 
       {open && (query.trim() !== "" || hits.length > 0) && (
         <div
-          className="absolute z-40 top-[calc(100%+6px)] left-0 right-0 rounded-[14px] border overflow-hidden search-pop"
-          style={{
-            background: "var(--ds-bg-1)",
-            borderColor: "var(--ds-border-strong)",
-            boxShadow: "0 20px 60px -10px rgba(0,0,0,0.45)",
-          }}
+          className="ds-glass absolute z-40 top-[calc(100%+8px)] left-0 right-0 rounded-[14px] border overflow-hidden search-pop"
+          style={{ borderColor: "var(--ds-border-strong)" }}
         >
           {hits.length === 0 ? (
             <p className="px-4 py-5 text-[12.5px] text-center" style={{ color: "var(--ds-text-dim)" }}>
