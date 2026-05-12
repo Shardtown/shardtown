@@ -152,8 +152,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
 
       {/* ─── SIDEBAR ──────────────────────────────────────────────── */}
       <aside
-        className="w-[76px] flex-shrink-0 flex flex-col items-center pt-9 pb-3 select-none border-r ds-glass"
-        style={{ borderColor: "var(--ds-border)" }}
+        className="w-[76px] flex-shrink-0 flex flex-col items-center pt-9 pb-3 select-none"
       >
         {/* Static Shardtown logo at the top of the rail */}
         <Link
@@ -169,11 +168,8 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           {groups.map((group, gi) => (
             <div
               key={gi}
-              className="flex flex-col gap-1 p-1 rounded-[16px] border"
-              style={{
-                background: "transparent",
-                borderColor: "var(--ds-border)",
-              }}
+              className="flex flex-col gap-1 p-1 rounded-[16px] border ds-glass"
+              style={{ borderColor: "var(--ds-border)" }}
             >
               {group.items.map(item => (
                 <RailItem
