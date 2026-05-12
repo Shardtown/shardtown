@@ -3697,10 +3697,22 @@ function renderInlineMarkdown(s, { users = {}, roles = {}, channels = {} } = {})
     out = out.replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]])/g, (url) =>
         `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
 
-    // 9. Block quotes (lines starting with "> ").
-    out = out.replace(/(^|<br>)&gt; (.+?)(?=<br>|$)/g, '$1<span class="quote">$2</span>');
+    // 9. Discord-flavoured headings, applied per-line BEFORE we collapse
+    //    newlines. Discord supports `# ` (H1), `## ` (H2), `### ` (H3) at
+    //    the start of a line, plus `-# ` for muted subtitle text.
+    out = out.split('\n').map(line => {
+        let m;
+        if ((m = line.match(/^### (.*)$/))) return `<h3 class="md-h3">${m[1]}</h3>`;
+        if ((m = line.match(/^## (.*)$/)))  return `<h2 class="md-h2">${m[1]}</h2>`;
+        if ((m = line.match(/^# (.*)$/)))   return `<h1 class="md-h1">${m[1]}</h1>`;
+        if ((m = line.match(/^-# (.*)$/)))  return `<div class="md-sub">${m[1]}</div>`;
+        if ((m = line.match(/^&gt; (.*)$/))) return `<div class="quote">${m[1]}</div>`;
+        return line;
+    }).join('\n');
 
-    // 10. Newlines → <br>.
+    // 10. Newlines → <br>, except right after a block-level element
+    //    (heading / quote / subtitle) which already breaks the line.
+    out = out.replace(/(<\/h[1-3]>|<\/div>)\n/g, '$1');
     out = out.replace(/\n/g, '<br>');
 
     // 11. Rehydrate placeholders.
@@ -3993,10 +4005,15 @@ function renderTranscript({ channelName, guildName, openedByName, closedByName, 
   .reply-content { color: var(--text-mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 480px; }
   .edited { color: var(--text-dim); font-size: 11px; }
   .quote {
-    display: inline-block;
+    display: block;
     border-left: 4px solid var(--text-dim);
-    padding-left: 10px; color: var(--text-mut);
+    padding: 2px 0 2px 10px; margin: 2px 0;
+    color: var(--text-mut);
   }
+  .md-h1 { font-size: 22px; font-weight: 800; margin: 6px 0 2px; color: #fff; line-height: 1.25; }
+  .md-h2 { font-size: 18px; font-weight: 700; margin: 6px 0 2px; color: #fff; line-height: 1.3; }
+  .md-h3 { font-size: 15.5px; font-weight: 700; margin: 6px 0 2px; color: #fff; line-height: 1.3; }
+  .md-sub { font-size: 12px; color: var(--text-mut); margin: 2px 0; }
   .embed {
     --embed-accent: var(--accent);
     margin-top: 6px;
