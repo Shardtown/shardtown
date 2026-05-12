@@ -3594,7 +3594,12 @@ app.get('/transcripts/:id', async (req, res) => {
         );
         if (!rows[0]) return res.status(404).send('Transcript introuvable.');
         const t = rows[0];
-        const messages = typeof t.messages === 'string' ? JSON.parse(t.messages) : t.messages;
+        const parsed = typeof t.messages === 'string' ? JSON.parse(t.messages) : t.messages;
+        // Backward-compat: older transcripts saved just an array of messages
+        // (no users/roles/channels maps). Newer ones save { messages, users, roles, channels }.
+        const payload = Array.isArray(parsed)
+            ? { messages: parsed, users: {}, roles: {}, channels: {} }
+            : { messages: parsed?.messages || [], users: parsed?.users || {}, roles: parsed?.roles || {}, channels: parsed?.channels || {} };
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(renderTranscript({
             channelName: t.channelName,
@@ -3603,7 +3608,7 @@ app.get('/transcripts/:id', async (req, res) => {
             closedByName: t.closedByName,
             openedAt: t.openedAt,
             closedAt: t.closedAt,
-            messages: Array.isArray(messages) ? messages : [],
+            ...payload,
         }));
     } catch (err) {
         console.error('Erreur viewer transcript:', err.message);
@@ -3617,34 +3622,171 @@ function htmlEscape(s) {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function renderInlineMarkdown(s) {
-    // Very small subset, applied after HTML-escape so the source is safe.
-    let out = htmlEscape(s);
-    // Custom Discord emoji: <:name:id> / <a:name:id>
-    out = out.replace(/&lt;(a?):([A-Za-z0-9_~]+):(\d{15,25})&gt;/g, (_m, an, name, eid) => {
-        const ext = an ? 'gif' : 'png';
-        return `<img class="emoji" src="https://cdn.discordapp.com/emojis/${eid}.${ext}?size=44&quality=lossless" alt=":${name}:" title=":${name}:">`;
+/**
+ * Render a single message body — Discord-flavoured markdown subset.
+ *
+ * Strategy: tokens that produce HTML containing `<` (custom emojis,
+ * mentions) are matched on the RAW input first and replaced with opaque
+ * placeholders. Then we HTML-escape, apply text-only markdown (code,
+ * bold, italic, autolink), turn newlines into <br>, and finally rehydrate
+ * the placeholders. This way the autolink regex never sees the URL
+ * inside an injected `<img src=…>`.
+ */
+function renderInlineMarkdown(s, { users = {}, roles = {}, channels = {} } = {}) {
+    if (s == null) return '';
+    let src = String(s);
+    const tokens = [];
+    const token = (html) => {
+        const k = ` T${tokens.length} `;
+        tokens.push(html);
+        return k;
+    };
+
+    // 1. Code fences (triple backticks) — keep contents literal, even if
+    //    they contain <, &, etc. Capture optional language tag.
+    src = src.replace(/```(?:([a-zA-Z0-9_+\-]*)\n)?([\s\S]*?)```/g, (_m, lang, code) => {
+        const codeEsc = htmlEscape(code);
+        return token(`<pre class="code">${codeEsc}</pre>`);
     });
-    // Mentions
-    out = out.replace(/&lt;@!?(\d{15,25})&gt;/g, '<span class="mention">@user</span>');
-    out = out.replace(/&lt;@&amp;(\d{15,25})&gt;/g, '<span class="mention">@role</span>');
-    out = out.replace(/&lt;#(\d{15,25})&gt;/g, '<span class="mention">#salon</span>');
-    // Code blocks (triple) and inline
-    out = out.replace(/```([\s\S]*?)```/g, (_m, code) => `<pre class="code">${code}</pre>`);
-    out = out.replace(/`([^`\n]+)`/g, '<code class="inline-code">$1</code>');
-    // Bold / italic / strike / underline
-    out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    out = out.replace(/__([^_]+)__/g, '<u>$1</u>');
-    out = out.replace(/~~([^~]+)~~/g, '<s>$1</s>');
-    out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-    // Links
-    out = out.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
-    // Line breaks
+
+    // 2. Custom Discord emojis (static + animated). cdn.discordapp.com
+    //    returns the right format based on the extension we pick.
+    src = src.replace(/<(a?):([A-Za-z0-9_~]+):(\d{15,25})>/g, (_m, an, name, eid) => {
+        const ext = an ? 'gif' : 'png';
+        return token(`<img class="emoji" src="https://cdn.discordapp.com/emojis/${eid}.${ext}?size=44&quality=lossless" alt=":${htmlEscape(name)}:" title=":${htmlEscape(name)}:">`);
+    });
+
+    // 3. Mentions — try to use the captured user/role/channel maps for
+    //    real names, fall back to a generic label.
+    src = src.replace(/<@!?(\d{15,25})>/g, (_m, id) => {
+        const u = users[id];
+        return token(`<span class="mention">@${htmlEscape(u?.username || 'utilisateur')}</span>`);
+    });
+    src = src.replace(/<@&(\d{15,25})>/g, (_m, id) => {
+        const r = roles[id];
+        return token(`<span class="mention">@${htmlEscape(r?.name || 'rôle')}</span>`);
+    });
+    src = src.replace(/<#(\d{15,25})>/g, (_m, id) => {
+        const c = channels[id];
+        return token(`<span class="mention">#${htmlEscape(c?.name || 'salon')}</span>`);
+    });
+
+    // 4. Timestamps <t:UNIX[:F]>
+    src = src.replace(/<t:(\d+)(?::([tTdDfFR]))?>/g, (_m, ts) => {
+        const date = new Date(Number(ts) * 1000);
+        const str = isNaN(date.getTime()) ? '' : date.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return token(`<span class="mention">${htmlEscape(str)}</span>`);
+    });
+
+    // 5. Now escape what remains.
+    let out = htmlEscape(src);
+
+    // 6. Inline code (single backtick).
+    out = out.replace(/`([^`\n]+)`/g, (_m, code) => `<code class="inline-code">${code}</code>`);
+
+    // 7. Bold / underline / strike / italic. Underline (__x__) before
+    //    italic so the italic pattern doesn't eat the underscores.
+    out = out.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+    out = out.replace(/__([^_\n]+)__/g, '<u>$1</u>');
+    out = out.replace(/~~([^~\n]+)~~/g, '<s>$1</s>');
+    out = out.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+    out = out.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '<em>$1</em>');
+
+    // 8. Plain http(s) autolinks. Strip trailing punctuation that's
+    //    usually part of the sentence, not the URL.
+    out = out.replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)\]])/g, (url) =>
+        `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
+
+    // 9. Block quotes (lines starting with "> ").
+    out = out.replace(/(^|<br>)&gt; (.+?)(?=<br>|$)/g, '$1<span class="quote">$2</span>');
+
+    // 10. Newlines → <br>.
     out = out.replace(/\n/g, '<br>');
+
+    // 11. Rehydrate placeholders.
+    out = out.replace(/ T(\d+) /g, (_m, i) => tokens[Number(i)] || '');
     return out;
 }
 
-function renderTranscript({ channelName, guildName, openedByName, closedByName, openedAt, closedAt, messages }) {
+function renderAttachment(a) {
+    const url = htmlEscape(a.url || '');
+    const name = htmlEscape(a.name || 'fichier');
+    const ct = String(a.contentType || '').toLowerCase();
+    if (ct.startsWith('image/')) {
+        return `<a href="${url}" target="_blank" rel="noopener"><img class="att-image" src="${url}" alt="${name}"></a>`;
+    }
+    if (ct.startsWith('video/')) {
+        return `<video class="att-video" controls preload="metadata" src="${url}"></video>`;
+    }
+    if (ct.startsWith('audio/')) {
+        const dur = a.duration ? `<span class="att-audio-meta">${Math.round(a.duration)} s</span>` : '';
+        return `<div class="att-audio">
+            <audio controls preload="metadata" src="${url}"></audio>
+            <div class="att-audio-info">🎙️ ${name}${dur}</div>
+        </div>`;
+    }
+    // Unknown: fall back to a labeled link with size hint.
+    const sizeKb = a.size ? Math.round(a.size / 1024) : 0;
+    const sizeStr = sizeKb >= 1024 ? `${(sizeKb / 1024).toFixed(1)} MB` : sizeKb ? `${sizeKb} KB` : '';
+    return `<a class="att-link" href="${url}" target="_blank" rel="noopener">
+        <span class="att-icon">📎</span>
+        <span class="att-meta"><b>${name}</b>${sizeStr ? `<span class="att-size">${sizeStr}</span>` : ''}</span>
+    </a>`;
+}
+
+function renderSticker(s) {
+    // Lottie stickers (format 3) require a runtime renderer — we just
+    // show a placeholder so the message isn't visually empty.
+    const fmt = Number(s.format) || 1;
+    if (fmt === 3) {
+        return `<div class="sticker-placeholder">🎴 Sticker animé : ${htmlEscape(s.name)}</div>`;
+    }
+    const ext = fmt === 4 ? 'gif' : 'png';
+    return `<img class="sticker" src="https://media.discordapp.net/stickers/${s.id}.${ext}?size=160" alt="${htmlEscape(s.name)}" title="${htmlEscape(s.name)}">`;
+}
+
+function renderEmbed(e, ctx) {
+    const color = (typeof e.color === 'number' && e.color > 0)
+        ? `--embed-accent:#${e.color.toString(16).padStart(6, '0')};`
+        : '';
+    const author = e.authorName
+        ? `<div class="embed-author">${e.authorIcon ? `<img class="embed-author-icon" src="${htmlEscape(e.authorIcon)}">` : ''}${e.authorUrl ? `<a href="${htmlEscape(e.authorUrl)}" target="_blank" rel="noopener">${htmlEscape(e.authorName)}</a>` : htmlEscape(e.authorName)}</div>`
+        : '';
+    const title = e.title
+        ? `<div class="embed-title">${e.url ? `<a href="${htmlEscape(e.url)}" target="_blank" rel="noopener">${renderInlineMarkdown(e.title, ctx)}</a>` : renderInlineMarkdown(e.title, ctx)}</div>`
+        : '';
+    const desc = e.description ? `<div class="embed-desc">${renderInlineMarkdown(e.description, ctx)}</div>` : '';
+    const fields = (e.fields || []).length
+        ? `<div class="embed-fields">${e.fields.map(f => `<div class="embed-field ${f.inline ? 'inline' : ''}"><div class="embed-field-name">${renderInlineMarkdown(f.name, ctx)}</div><div class="embed-field-value">${renderInlineMarkdown(f.value, ctx)}</div></div>`).join('')}</div>`
+        : '';
+
+    // Tenor / Giphy / Streamable / etc. send "gifv" embeds whose video.url
+    // is the actual MP4. Auto-playing them loop+muted matches Discord.
+    let media = '';
+    if (e.video && (e.type === 'gifv' || e.type === 'video')) {
+        media = `<video class="embed-media" src="${htmlEscape(e.video)}" autoplay loop muted playsinline></video>`;
+    } else if (e.image) {
+        media = `<a href="${htmlEscape(e.image)}" target="_blank" rel="noopener"><img class="embed-media" src="${htmlEscape(e.image)}"></a>`;
+    } else if (e.thumbnail) {
+        media = `<a href="${htmlEscape(e.thumbnail)}" target="_blank" rel="noopener"><img class="embed-thumb" src="${htmlEscape(e.thumbnail)}"></a>`;
+    }
+
+    const footer = e.footer
+        ? `<div class="embed-footer">${e.footerIcon ? `<img class="embed-footer-icon" src="${htmlEscape(e.footerIcon)}">` : ''}${htmlEscape(e.footer)}</div>`
+        : '';
+
+    // Pure "media-only" embed (Tenor link): render just the media, no chrome.
+    if (!e.title && !e.description && !author && !footer && !fields && media && (e.type === 'image' || e.type === 'gifv' || e.type === 'video')) {
+        return `<div class="embed-media-only">${media}</div>`;
+    }
+
+    return `<div class="embed" style="${color}">
+        ${author}${title}${desc}${fields}${media}${footer}
+    </div>`;
+}
+
+function renderTranscript({ channelName, guildName, openedByName, closedByName, openedAt, closedAt, messages, users, roles, channels }) {
+    const ctx = { users, roles, channels };
     const fmtDate = (d) => {
         try {
             return new Date(d).toLocaleString('fr-FR', {
@@ -3660,7 +3802,8 @@ function renderTranscript({ channelName, guildName, openedByName, closedByName, 
     const groups = [];
     for (const m of messages) {
         const last = groups[groups.length - 1];
-        if (last && last.authorId === m.authorId && (new Date(m.timestamp) - new Date(last.lastTs)) < 5 * 60 * 1000) {
+        // Replies break the visual grouping in Discord — treat them as new groups too.
+        if (last && last.authorId === m.authorId && !m.reply && (new Date(m.timestamp) - new Date(last.lastTs)) < 5 * 60 * 1000) {
             last.messages.push(m);
             last.lastTs = m.timestamp;
         } else {
@@ -3681,27 +3824,14 @@ function renderTranscript({ channelName, guildName, openedByName, closedByName, 
             ? `<img class="avatar" src="${htmlEscape(g.authorAvatar)}" alt="">`
             : `<div class="avatar avatar-placeholder">${htmlEscape((g.authorName || '?').slice(0, 1).toUpperCase())}</div>`;
         const msgsHtml = g.messages.map(m => {
-            const att = (m.attachments || []).map(a => {
-                if (a.contentType && a.contentType.startsWith('image/')) {
-                    return `<a href="${htmlEscape(a.url)}" target="_blank" rel="noopener"><img class="att-image" src="${htmlEscape(a.url)}" alt="${htmlEscape(a.name || '')}"></a>`;
-                }
-                return `<a class="att-link" href="${htmlEscape(a.url)}" target="_blank" rel="noopener">📎 ${htmlEscape(a.name || 'fichier')}</a>`;
-            }).join('');
-            const embeds = (m.embeds || []).map(e => {
-                const color = e.color
-                    ? `border-left-color:#${(Number(e.color) || 0).toString(16).padStart(6, '0')}`
-                    : '';
-                return `<div class="embed" style="${color}">
-                    ${e.title ? `<div class="embed-title">${renderInlineMarkdown(e.title)}</div>` : ''}
-                    ${e.description ? `<div class="embed-desc">${renderInlineMarkdown(e.description)}</div>` : ''}
-                    ${e.footer ? `<div class="embed-footer">${htmlEscape(e.footer)}</div>` : ''}
-                </div>`;
-            }).join('');
-            return `<div class="msg">
-                ${m.content ? `<div class="content">${renderInlineMarkdown(m.content)}</div>` : ''}
-                ${att}
-                ${embeds}
-            </div>`;
+            const replyHtml = m.reply
+                ? `<div class="reply"><span class="reply-author">↪ ${htmlEscape(m.reply.authorName || 'utilisateur')}</span><span class="reply-content">${renderInlineMarkdown(m.reply.content || '', ctx)}</span></div>`
+                : '';
+            const contentHtml = m.content ? `<div class="content">${renderInlineMarkdown(m.content, ctx)}${m.editedAt ? '<span class="edited"> (modifié)</span>' : ''}</div>` : '';
+            const stickers = (m.stickers || []).map(renderSticker).join('');
+            const atts = (m.attachments || []).map(renderAttachment).join('');
+            const embeds = (m.embeds || []).map(e => renderEmbed(e, ctx)).join('');
+            return `<div class="msg">${replyHtml}${contentHtml}${atts}${stickers}${embeds}</div>`;
         }).join('');
         return `<div class="group">
             ${avatar}
@@ -3816,24 +3946,92 @@ function renderTranscript({ channelName, guildName, openedByName, closedByName, 
     font-weight: 500;
   }
   .att-image { max-width: 100%; max-height: 360px; border-radius: 6px; margin-top: 6px; display: block; }
+  .att-video { max-width: 520px; max-height: 360px; border-radius: 6px; margin-top: 6px; display: block; background: #000; }
+  .att-audio {
+    display: inline-flex; flex-direction: column;
+    gap: 6px; margin-top: 6px;
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; max-width: 480px;
+  }
+  .att-audio audio { width: 320px; max-width: 100%; outline: none; }
+  .att-audio-info { color: var(--text-mut); font-size: 12px; display: flex; align-items: center; gap: 8px; }
+  .att-audio-meta { color: var(--text-dim); font-size: 11px; }
   .att-link {
-    display: inline-block; margin-top: 6px;
-    background: var(--bg-2); padding: 8px 12px;
+    display: inline-flex; align-items: center; gap: 10px;
+    margin-top: 6px;
+    background: var(--bg-2); padding: 10px 14px;
     border-radius: 6px; color: var(--text); text-decoration: none;
     border: 1px solid var(--border);
+    max-width: 420px;
   }
   .att-link:hover { background: var(--bg-3); }
+  .att-icon { font-size: 18px; opacity: 0.6; }
+  .att-meta { display: flex; flex-direction: column; min-width: 0; }
+  .att-meta b { color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .att-size { color: var(--text-dim); font-size: 11.5px; }
+  .sticker { width: 160px; height: 160px; object-fit: contain; margin-top: 6px; display: block; }
+  .sticker-placeholder {
+    margin-top: 6px; padding: 16px;
+    background: var(--bg-2); border-radius: 8px;
+    color: var(--text-mut); font-size: 13px; text-align: center;
+    width: 160px;
+  }
+  .reply {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 4px; color: var(--text-mut);
+    font-size: 13px; padding-left: 14px; position: relative;
+  }
+  .reply::before {
+    content: ""; position: absolute;
+    left: 0; top: 50%; width: 10px; height: 8px;
+    border-left: 2px solid var(--text-dim);
+    border-top: 2px solid var(--text-dim);
+    border-top-left-radius: 4px;
+    transform: translateY(-50%);
+  }
+  .reply-author { color: var(--text); font-weight: 600; }
+  .reply-content { color: var(--text-mut); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 480px; }
+  .edited { color: var(--text-dim); font-size: 11px; }
+  .quote {
+    display: inline-block;
+    border-left: 4px solid var(--text-dim);
+    padding-left: 10px; color: var(--text-mut);
+  }
   .embed {
+    --embed-accent: var(--accent);
     margin-top: 6px;
     background: var(--bg-2);
-    border-left: 4px solid var(--accent);
+    border-left: 4px solid var(--embed-accent);
     border-radius: 4px;
-    padding: 8px 12px;
+    padding: 10px 14px;
     max-width: 520px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
-  .embed-title { font-weight: 700; margin-bottom: 4px; }
+  .embed-author { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; }
+  .embed-author a { color: var(--text); text-decoration: none; }
+  .embed-author a:hover { text-decoration: underline; }
+  .embed-author-icon { width: 24px; height: 24px; border-radius: 50%; }
+  .embed-title { font-weight: 700; font-size: 15px; }
+  .embed-title a { color: #00a8fc; text-decoration: none; }
+  .embed-title a:hover { text-decoration: underline; }
   .embed-desc { color: var(--text); font-size: 14px; white-space: pre-wrap; }
-  .embed-footer { color: var(--text-dim); font-size: 12px; margin-top: 6px; }
+  .embed-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 12px; margin-top: 4px; }
+  .embed-field { grid-column: span 3; min-width: 0; }
+  .embed-field.inline { grid-column: span 1; }
+  .embed-field-name { font-size: 13px; font-weight: 700; color: var(--text); }
+  .embed-field-value { font-size: 13.5px; color: var(--text); white-space: pre-wrap; }
+  .embed-media { max-width: 100%; max-height: 320px; border-radius: 4px; display: block; }
+  .embed-thumb { max-width: 80px; max-height: 80px; border-radius: 4px; display: block; float: right; margin-left: 14px; }
+  .embed-media-only {
+    margin-top: 6px;
+    max-width: 400px;
+  }
+  .embed-media-only video,
+  .embed-media-only img { max-width: 100%; border-radius: 8px; display: block; }
+  .embed-footer { color: var(--text-dim); font-size: 12px; margin-top: 2px; display: flex; align-items: center; gap: 6px; }
+  .embed-footer-icon { width: 20px; height: 20px; border-radius: 50%; }
   .footer {
     text-align: center; color: var(--text-dim); font-size: 12px;
     padding: 32px 16px;

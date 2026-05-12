@@ -1078,25 +1078,99 @@ client.on('interactionCreate', async (interaction) => {
                     if (batch.size < 100) break;
                 }
                 collected.sort((a, b) => Number(BigInt(a.id) - BigInt(b.id)));
-                const messages = collected.map(m => ({
-                    id: m.id,
-                    timestamp: m.createdAt.toISOString(),
-                    authorId: m.author.id,
-                    authorName: m.member?.displayName || m.author.globalName || m.author.username,
-                    authorAvatar: m.author.displayAvatarURL({ size: 64, extension: 'png' }),
-                    bot: m.author.bot,
-                    content: m.content || '',
-                    attachments: Array.from(m.attachments.values()).map(a => ({
-                        url: a.url, name: a.name, contentType: a.contentType,
-                    })),
-                    embeds: m.embeds.map(e => ({
-                        title: e.title || '',
-                        description: e.description || '',
-                        color: e.color || 0,
-                        footer: e.footer?.text || '',
-                    })),
-                }));
+
+                // Resolve users / roles / channels so mentions render with
+                // real names in the viewer (rather than "@user").
+                const users = {};
+                const roles = {};
+                const channelsMap = {};
+                const byId = new Map(collected.map(m => [m.id, m]));
+
+                for (const m of collected) {
+                    if (!users[m.author.id]) {
+                        users[m.author.id] = {
+                            username: m.member?.displayName || m.author.globalName || m.author.username,
+                            avatar: m.author.displayAvatarURL({ size: 64, extension: 'png' }),
+                            bot: !!m.author.bot,
+                        };
+                    }
+                    for (const [id, u] of m.mentions.users) {
+                        if (!users[id]) {
+                            users[id] = {
+                                username: u.globalName || u.username,
+                                avatar: u.displayAvatarURL({ size: 64, extension: 'png' }),
+                                bot: !!u.bot,
+                            };
+                        }
+                    }
+                    for (const [id, r] of m.mentions.roles) {
+                        if (!roles[id]) roles[id] = { name: r.name, color: r.color };
+                    }
+                    for (const [id, c] of m.mentions.channels) {
+                        if (!channelsMap[id]) channelsMap[id] = { name: c.name, type: c.type };
+                    }
+                }
+
+                const messages = collected.map(m => {
+                    const reply = m.reference && byId.get(m.reference.messageId);
+                    return {
+                        id: m.id,
+                        timestamp: m.createdAt.toISOString(),
+                        editedAt: m.editedAt ? m.editedAt.toISOString() : null,
+                        authorId: m.author.id,
+                        authorName: m.member?.displayName || m.author.globalName || m.author.username,
+                        authorAvatar: m.author.displayAvatarURL({ size: 64, extension: 'png' }),
+                        bot: !!m.author.bot,
+                        content: m.content || '',
+                        // Discord flags us VOICE_MESSAGE = 1 << 13 (8192).
+                        isVoiceMessage: !!(m.flags?.bitfield & 8192),
+                        attachments: Array.from(m.attachments.values()).map(a => ({
+                            url: a.url,
+                            name: a.name,
+                            contentType: a.contentType || '',
+                            size: a.size || 0,
+                            width: a.width || null,
+                            height: a.height || null,
+                            duration: a.duration || null,         // voice messages
+                            waveform: a.waveform || null,
+                        })),
+                        stickers: Array.from(m.stickers.values()).map(s => ({
+                            id: s.id,
+                            name: s.name,
+                            // Sticker.format: 1=PNG, 2=APNG, 3=LOTTIE, 4=GIF
+                            format: s.format,
+                        })),
+                        embeds: m.embeds.map(e => ({
+                            type: e.data?.type || e.type || '',
+                            title: e.title || '',
+                            description: e.description || '',
+                            url: e.url || '',
+                            color: e.color || 0,
+                            footer: e.footer?.text || '',
+                            footerIcon: e.footer?.iconURL || '',
+                            authorName: e.author?.name || '',
+                            authorIcon: e.author?.iconURL || '',
+                            authorUrl: e.author?.url || '',
+                            image: e.image?.url || '',
+                            thumbnail: e.thumbnail?.url || '',
+                            video: e.video?.url || '',
+                            videoWidth: e.video?.width || null,
+                            videoHeight: e.video?.height || null,
+                            providerName: e.provider?.name || '',
+                            fields: (e.fields || []).map(f => ({
+                                name: f.name || '', value: f.value || '', inline: !!f.inline,
+                            })),
+                        })),
+                        reply: reply ? {
+                            authorId: reply.author.id,
+                            authorName: reply.member?.displayName || reply.author.globalName || reply.author.username,
+                            content: (reply.content || '').slice(0, 180),
+                        } : null,
+                    };
+                });
+
                 const transcriptId = crypto.randomBytes(16).toString('hex');
+                const payload = { messages, users, roles, channels: channelsMap };
                 await db.execute(
                     `INSERT INTO shard_ticket_transcripts (id, guildId, guildName, channelName, openedById, openedByName, closedById, closedByName, openedAt, closedAt, messages)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -1111,7 +1185,7 @@ client.on('interactionCreate', async (interaction) => {
                         closedBy.user.username,
                         ticket.createdAt || new Date(),
                         new Date(),
-                        JSON.stringify(messages),
+                        JSON.stringify(payload),
                     ]
                 );
                 transcriptUrl = `${PUBLIC_BASE_URL}/transcripts/${transcriptId}`;
