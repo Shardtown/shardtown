@@ -155,36 +155,30 @@ export function DesktopOverview() {
         </div>
 
         <style>{`
+          /* Unified hero surface — matches the standard card background of
+             /premium, /account, /statut & /rpc. No more gradient that
+             reads as a different visual language from the rest of the app. */
           .hero-card {
-            background: linear-gradient(135deg, #14152b 0%, #0f1018 70%);
+            background: var(--ds-panel);
           }
-          [data-theme="light"] .hero-card {
-            background: linear-gradient(135deg, #e8ebff 0%, #f5f5f7 70%);
-          }
+          /* Subtle accent of the aurora bleeds through via the indigo dots,
+             kept faint so the surface stays calm. */
           .hero-bg {
             background-image:
-              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.25) 1px, transparent 0);
+              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.16) 1px, transparent 0);
             background-size: 24px 24px;
-            opacity: 0.4;
+            opacity: 0.5;
             mask-image: radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%);
             -webkit-mask-image: radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%);
           }
           [data-theme="light"] .hero-bg {
             background-image:
-              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.35) 1px, transparent 0);
+              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.22) 1px, transparent 0);
           }
-          /* Neutral shield disc — no vivid red, no contextual emerald,
-             reads the same regardless of bot state. State info lives in
-             the small status pill underneath the greeting. */
           .hero-shield {
-            background: rgba(255, 255, 255, 0.06);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.12);
-          }
-          [data-theme="light"] .hero-shield {
-            background: rgba(0, 0, 0, 0.05);
-            color: #1a1a1a;
-            border: 1px solid rgba(0, 0, 0, 0.10);
+            background: var(--ds-panel-2);
+            color: var(--ds-text);
+            border: 1px solid var(--ds-border);
           }
           .hero-cta { transition: opacity 0.15s ease, transform 0.05s ease; }
           .hero-cta:hover { opacity: 0.92; }

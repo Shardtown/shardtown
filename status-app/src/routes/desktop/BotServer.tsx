@@ -176,22 +176,19 @@ export function DesktopBotServer({ kind }: Props) {
 
         <style>{`
           .botserver-hero {
-            background: linear-gradient(135deg, #14152b 0%, #0f1018 70%);
-          }
-          [data-theme="light"] .botserver-hero {
-            background: linear-gradient(135deg, #e8ebff 0%, #f5f5f7 70%);
+            background: var(--ds-panel);
           }
           .botserver-hero-bg {
             background-image:
-              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.22) 1px, transparent 0);
+              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.16) 1px, transparent 0);
             background-size: 22px 22px;
-            opacity: 0.35;
+            opacity: 0.5;
             mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
             -webkit-mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
           }
           [data-theme="light"] .botserver-hero-bg {
             background-image:
-              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.32) 1px, transparent 0);
+              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.22) 1px, transparent 0);
           }
         `}</style>
       </div>
