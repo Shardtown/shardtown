@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ChevronLeft, ChevronRight, X, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, CheckCircle2, Sparkles } from "lucide-react";
 
 /**
  * Interactive product tour for the desktop app. Drives react-router
@@ -212,8 +212,8 @@ interface Pos {
   centered: boolean;
 }
 
-const CARD_W = 360;
-const CARD_H_EST = 200;
+const CARD_W = 460;
+const CARD_H_EST = 220;
 const RING_PAD = 8;
 const GAP = 14;
 
@@ -458,67 +458,108 @@ function TourCard({
       }}
     >
       <div
-        className="ds-glass relative rounded-[16px] border p-5"
+        className="ds-glass relative rounded-[18px] border overflow-hidden"
         style={{
           borderColor: "var(--ds-border-strong)",
           boxShadow: "0 30px 80px -10px rgba(0, 0, 0, 0.65)",
         }}
       >
+        {/* Indigo accent strip across the top — gives the card a clear
+            visual anchor and a hint of color that breaks the monochrome
+            grey of pure ds-glass. Also acts as a progress bar : its fill
+            tracks the current step / total. */}
+        <div
+          className="relative h-[3px] w-full"
+          style={{ background: "rgba(91, 109, 255, 0.12)" }}
+        >
+          <div
+            className="absolute inset-y-0 left-0"
+            style={{
+              width: `${((index + 1) / total) * 100}%`,
+              background: "linear-gradient(90deg, rgb(91, 109, 255) 0%, rgb(165, 180, 252) 100%)",
+              transition: "width 380ms cubic-bezier(0.22, 1, 0.36, 1)",
+              borderTopRightRadius: index + 1 < total ? 3 : 0,
+              borderBottomRightRadius: index + 1 < total ? 3 : 0,
+              boxShadow: "0 0 12px rgba(91, 109, 255, 0.45)",
+            }}
+          />
+        </div>
+
         <button
           type="button"
           onClick={onClose}
           aria-label="Fermer le tour"
           title="Fermer (Échap)"
-          className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
-          style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)" }}
+          className="absolute top-3.5 right-3.5 w-7 h-7 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--ds-panel-2)]"
+          style={{ background: "var(--ds-panel)", color: "var(--ds-text-mut)" }}
         >
           <X size={11} strokeWidth={2.4} />
         </button>
 
-        {/* Keyed wrapper around the textual content so it crossfades when the
-            step changes, while the outer card itself stays mounted and only
-            slides to the new position via CSS transition on left/top. */}
-        <div key={index} className="tour-card-text">
-          <p
-            className="text-[10px] font-bold tracking-[0.22em] uppercase mb-2"
-            style={{ color: "var(--ds-text-dim)" }}
-          >
-            Étape {index + 1} / {total}
-          </p>
-          <h2
-            id="tour-title"
-            className="text-[18px] font-extrabold tracking-tight mb-2 pr-7"
-          >
-            {step.title}
-          </h2>
-          <p
-            className="text-[13px] leading-relaxed mb-5"
-            style={{ color: "var(--ds-text-mut)" }}
-          >
-            {step.body}
-          </p>
+        <div className="px-6 pt-5 pb-4">
+          {/* Step pill with indigo accent (no more drab uppercase grey) */}
+          <div className="inline-flex items-center gap-2 mb-3">
+            <span
+              className="w-7 h-7 rounded-[9px] flex items-center justify-center"
+              style={{
+                background: "rgba(91, 109, 255, 0.14)",
+                border: "1px solid rgba(91, 109, 255, 0.30)",
+                color: "rgb(165, 180, 252)",
+              }}
+            >
+              <Sparkles size={13} strokeWidth={2} />
+            </span>
+            <span
+              className="text-[10px] font-bold tracking-[0.22em] uppercase font-mono-num"
+              style={{ color: "rgb(165, 180, 252)" }}
+            >
+              Étape {index + 1} <span style={{ color: "var(--ds-text-faint)" }}>/ {total}</span>
+            </span>
+          </div>
+
+          {/* Keyed wrapper around the textual content so it crossfades when the
+              step changes, while the outer card itself stays mounted and only
+              slides to the new position via CSS transition on left/top. */}
+          <div key={index} className="tour-card-text">
+            <h2
+              id="tour-title"
+              className="text-[19px] font-extrabold tracking-tight mb-2 pr-7"
+            >
+              {step.title}
+            </h2>
+            <p
+              className="text-[13px] leading-relaxed"
+              style={{ color: "var(--ds-text-mut)" }}
+            >
+              {step.body}
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Footer — clean separator + airy flex layout */}
+        <div
+          className="px-6 py-3 border-t flex items-center gap-3"
+          style={{ borderColor: "var(--ds-border)" }}
+        >
           <button
             type="button"
             onClick={onClose}
-            className="text-[11.5px] underline underline-offset-2 transition-opacity hover:opacity-70 mr-auto"
+            className="text-[11.5px] underline underline-offset-2 transition-opacity hover:opacity-70"
             style={{ color: "var(--ds-text-dim)" }}
           >
             Passer
           </button>
 
-          <div className="flex items-center gap-1.5 mr-1">
+          <div className="flex-1 flex items-center justify-center gap-1">
             {Array.from({ length: total }).map((_, di) => (
               <span
                 key={di}
                 className="rounded-full transition-all"
                 style={{
-                  width: di === index ? 14 : 5,
-                  height: 5,
+                  width: di === index ? 14 : 4,
+                  height: 4,
                   background: di === index
-                    ? "var(--ds-text)"
+                    ? "rgb(165, 180, 252)"
                     : di < index
                       ? "var(--ds-text-mut)"
                       : "var(--ds-text-faint)",
@@ -527,25 +568,27 @@ function TourCard({
             ))}
           </div>
 
-          <button
-            type="button"
-            onClick={onPrev}
-            disabled={index === 0}
-            aria-label="Étape précédente"
-            className="w-8 h-8 rounded-full border flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-opacity hover:opacity-80"
-            style={{ borderColor: "var(--ds-border)", color: "var(--ds-text-mut)" }}
-          >
-            <ChevronLeft size={13} strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            onClick={onNext}
-            className="inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full font-bold text-[12px] hover:opacity-90 active:scale-[0.99] transition-all"
-            style={{ background: "var(--ds-text)", color: "var(--ds-bg-1)" }}
-          >
-            {isLast ? "Terminer" : "Suivant"}
-            {isLast ? <CheckCircle2 size={12} strokeWidth={2.4} /> : <ChevronRight size={12} strokeWidth={2.4} />}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onPrev}
+              disabled={index === 0}
+              aria-label="Étape précédente"
+              className="w-8 h-8 rounded-full border flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-colors hover:bg-[var(--ds-panel-2)]"
+              style={{ borderColor: "var(--ds-border)", color: "var(--ds-text-mut)" }}
+            >
+              <ChevronLeft size={13} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              className="inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full font-bold text-[12px] hover:opacity-90 active:scale-[0.99] transition-all whitespace-nowrap"
+              style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+            >
+              {isLast ? "Terminer" : "Suivant"}
+              {isLast ? <CheckCircle2 size={12} strokeWidth={2.4} /> : <ChevronRight size={12} strokeWidth={2.4} />}
+            </button>
+          </div>
         </div>
       </div>
 
