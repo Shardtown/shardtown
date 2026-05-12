@@ -779,7 +779,9 @@ function TicketSubTab({ active, onClick, children }: { active: boolean; onClick:
   );
 }
 
-function TicketsConfig({ guildId, settings, update, channels, categories, roles }: TabBase) {
+function TicketsConfig({
+  guildId, settings, update, channels, categories, roles,
+}: Pick<TabBase, "guildId" | "settings" | "update" | "channels" | "categories" | "roles">) {
   const enabled = isOn(settings.ticketEnabled);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);

@@ -53,6 +53,7 @@ export interface ShardSettings {
   ticketCloseButtonLabel: string;
   ticketCloseButtonEmoji: string;
   ticketCloseButtonStyle: number | string;
+  ticketTranscriptEnabled: number | string;
   // Log embeds posted in the staff log channel
   ticketLogOpenTitle: string;
   ticketLogOpenColor: string;
