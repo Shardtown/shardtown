@@ -19,8 +19,11 @@ interface TokenRow {
 }
 
 /**
- * Desktop variant of /account — same APIs, same modals, but laid out with
- * the desktop shell's design tokens (--ds-*) instead of the web hero.
+ * Desktop /account — native-feel billing/account page.
+ *
+ * Visual language matches /premium (Linear / Notion / 1Password vibe) :
+ * a centered max-w-920 column, sections separated by hairline borders,
+ * dense rows inside single cards, no big hero, no card spam.
  */
 export function DesktopAccount() {
   const nav = useNavigate();
@@ -186,13 +189,11 @@ export function DesktopAccount() {
   if (loading || !account) {
     return (
       <AppLayout>
-        <div className="h-9 w-48 rounded-full animate-pulse mb-4" style={{ background: "var(--ds-panel)" }} />
-        <div className="grid md:grid-cols-2 gap-3 mb-3">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="h-32 rounded-[18px] animate-pulse" style={{ background: "var(--ds-panel)" }} />
-          ))}
+        <div className="max-w-[920px] mx-auto py-1">
+          <div className="h-10 w-72 rounded-full animate-pulse mb-6" style={{ background: "var(--ds-panel)" }} />
+          <div className="h-48 rounded-[14px] animate-pulse mb-6" style={{ background: "var(--ds-panel)" }} />
+          <div className="h-32 rounded-[14px] animate-pulse" style={{ background: "var(--ds-panel)" }} />
         </div>
-        <div className="h-48 rounded-[18px] animate-pulse" style={{ background: "var(--ds-panel)" }} />
       </AppLayout>
     );
   }
@@ -203,216 +204,223 @@ export function DesktopAccount() {
 
   return (
     <AppLayout>
-      {/* ─── HEADER ───────────────────────────────────────────── */}
-      <div className="flex items-center gap-4 mb-6">
-        <div
-          className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
-          style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
-        >
-          {avatarUrl
-            ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-            : <UserIcon size={22} strokeWidth={1.8} style={{ color: "var(--ds-text-mut)" }} />}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-[24px] font-black tracking-tight leading-tight truncate">{account.pseudo}</h1>
-          <p className="text-[12.5px] font-medium mt-0.5 truncate" style={{ color: "var(--ds-text-mut)" }}>
-            {account.email} · Inscrit le {new Date(account.created_at).toLocaleDateString("fr-FR")}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={logout}
-          className="inline-flex items-center gap-2 px-3.5 h-9 rounded-full text-[12px] font-bold transition-colors"
-          style={{ background: "var(--ds-panel)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
-        >
-          <LogOut size={12} strokeWidth={2.2} /> Déconnexion
-        </button>
-      </div>
+      <div className="max-w-[920px] mx-auto">
+        {/* ─── STATUS HEADER ───────────────────────────────── */}
+        <div className="flex items-start justify-between gap-6 flex-wrap pt-1 pb-6">
+          <div className="flex items-center gap-4 min-w-0">
+            <div
+              className="w-12 h-12 rounded-[14px] overflow-hidden flex items-center justify-center flex-shrink-0"
+              style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
+            >
+              {avatarUrl
+                ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                : <UserIcon size={20} strokeWidth={1.8} style={{ color: "var(--ds-text-mut)" }} />}
+            </div>
+            <div className="min-w-0">
+              <p
+                className="text-[11px] font-bold tracking-[0.22em] uppercase mb-1.5"
+                style={{ color: "var(--ds-text-dim)" }}
+              >
+                Mon compte
+              </p>
+              <h1 className="text-[28px] font-black tracking-tight leading-[1.05] mb-1 truncate">
+                {account.pseudo}
+              </h1>
+              <p className="text-[12.5px] font-medium" style={{ color: "var(--ds-text-mut)" }}>
+                {account.email} · Inscrit le {new Date(account.created_at).toLocaleDateString("fr-FR")}
+              </p>
+            </div>
+          </div>
 
-      {/* ─── BANNER ───────────────────────────────────────────── */}
-      {banner && (
-        <div
-          className="rounded-[14px] border px-4 py-3 flex items-start gap-2.5 text-[12.5px] font-semibold mb-4"
-          style={
-            banner.kind === "ok"
-              ? { background: "rgba(74, 222, 128, 0.08)", borderColor: "rgba(74, 222, 128, 0.32)", color: "rgb(134, 239, 172)" }
-              : { background: "rgba(239, 68, 68, 0.08)", borderColor: "rgba(239, 68, 68, 0.32)", color: "rgb(252, 165, 165)" }
-          }
-        >
-          {banner.kind === "ok" ? <ShieldCheck size={14} className="mt-0.5 shrink-0" /> : <ShieldAlert size={14} className="mt-0.5 shrink-0" />}
-          <span>{banner.text}</span>
-        </div>
-      )}
-
-      {!account.email_verified && (
-        <div
-          className="inline-flex items-start gap-2 px-3 py-1.5 rounded-full text-[12px] font-semibold mb-5"
-          style={{ background: "rgba(251, 191, 36, 0.10)", border: "1px solid rgba(251, 191, 36, 0.32)", color: "rgb(252, 211, 77)" }}
-        >
-          <ShieldAlert size={12} className="mt-0.5 shrink-0" />
-          <span>Email non vérifié — vérifie le lien envoyé à <b>{account.email}</b>.</span>
-        </div>
-      )}
-
-      {/* ─── CONNEXIONS ────────────────────────────────────────── */}
-      <SectionCard
-        kicker="Connexions"
-        title="Comptes liés"
-        description="Discord est nécessaire pour configurer les bots. Google et GitHub sont optionnels."
-      >
-        <div className="divide-y" style={{ borderColor: "var(--ds-border)" }}>
-          <ConnectionRow
-            kind="discord"
-            title="ShardGuard"
-            caption="Compte principal pour ShardGuard et les dashboards"
-            linkedId={account.discord_id}
-            linkedName={account.discord_username}
-            linkedAvatar={account.discord_avatar}
-            hrefLink="/api/account/discord/link"
-            onUnlink={unlink}
-            extraAction={
-              account.discord_id ? (
-                <IconButton onClick={refreshGuilds} disabled={refreshing} ariaLabel="Actualiser mes serveurs">
-                  <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? "animate-spin" : ""} />
-                  {guildsCount !== null && <span className="font-mono-num">{guildsCount}</span>}
-                </IconButton>
-              ) : null
-            }
-          />
-          <ConnectionRow
-            kind="discord"
-            title="Shard"
-            caption="Compte distinct pour le bot Shard (optionnel)"
-            linkedId={account.shard_id}
-            linkedName={account.shard_username}
-            linkedAvatar={account.shard_avatar}
-            hrefLink="/api/account/shard/link"
-            onUnlink={unlinkShard}
-            extraAction={
-              account.shard_id ? (
-                <IconButton onClick={refreshShardGuilds} disabled={shardRefreshing} ariaLabel="Actualiser mes serveurs">
-                  <RefreshCw size={11} strokeWidth={2.2} className={shardRefreshing ? "animate-spin" : ""} />
-                  {shardGuildsCount !== null && <span className="font-mono-num">{shardGuildsCount}</span>}
-                </IconButton>
-              ) : null
-            }
-          />
-          <ConnectionRow
-            kind="google"
-            title="Google"
-            caption="Connexion en un clic via Google"
-            linkedId={account.oauth_google_id}
-            linkedName={account.oauth_google_email}
-            hrefLink="/api/account/oauth/google"
-            onUnlink={async () => {
-              if (!confirm("Délier Google ?")) return;
-              await apiPost("/api/account/oauth/google/unlink").catch(() => {});
-              refresh();
-            }}
-          />
-          <ConnectionRow
-            kind="github"
-            title="GitHub"
-            caption="Connexion en un clic via GitHub"
-            linkedId={account.oauth_github_id}
-            linkedName={account.oauth_github_username}
-            hrefLink="/api/account/oauth/github"
-            onUnlink={async () => {
-              if (!confirm("Délier GitHub ?")) return;
-              await apiPost("/api/account/oauth/github/unlink").catch(() => {});
-              refresh();
-            }}
-          />
-        </div>
-      </SectionCard>
-
-      {/* ─── PASSKEYS ──────────────────────────────────────────── */}
-      <SectionCard
-        kicker="Sécurité"
-        title="Clés de sécurité (passkeys)"
-        description="Connecte-toi avec Touch ID, Windows Hello ou une clé physique (YubiKey…)."
-        action={
           <button
             type="button"
-            onClick={openAddPasskey}
-            disabled={passkeyBusy}
-            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-[12px] font-bold transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+            onClick={logout}
+            className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full text-[12px] font-bold transition-colors hover:bg-[var(--ds-panel-2)]"
+            style={{ background: "var(--ds-panel)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
           >
-            {passkeyBusy ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} strokeWidth={2.4} />}
-            Ajouter
+            <LogOut size={11} strokeWidth={2.2} /> Déconnexion
           </button>
-        }
-      >
-        <div className="px-4 pb-4">
+        </div>
+
+        {/* ─── BANNER ──────────────────────────────────────── */}
+        {banner && (
+          <div
+            className="rounded-[12px] border px-4 py-2.5 flex items-start gap-2.5 text-[12.5px] font-semibold mb-4"
+            style={
+              banner.kind === "ok"
+                ? { background: "rgba(74, 222, 128, 0.08)", borderColor: "rgba(74, 222, 128, 0.32)", color: "rgb(134, 239, 172)" }
+                : { background: "rgba(239, 68, 68, 0.08)", borderColor: "rgba(239, 68, 68, 0.32)", color: "rgb(252, 165, 165)" }
+            }
+          >
+            {banner.kind === "ok" ? <ShieldCheck size={13} className="mt-0.5 shrink-0" /> : <ShieldAlert size={13} className="mt-0.5 shrink-0" />}
+            <span>{banner.text}</span>
+          </div>
+        )}
+
+        {!account.email_verified && (
+          <div
+            className="inline-flex items-start gap-2 px-3 py-1.5 rounded-full text-[12px] font-semibold mb-4"
+            style={{ background: "rgba(251, 191, 36, 0.10)", border: "1px solid rgba(251, 191, 36, 0.32)", color: "rgb(252, 211, 77)" }}
+          >
+            <ShieldAlert size={12} className="mt-0.5 shrink-0" />
+            <span>Email non vérifié — vérifie le lien envoyé à <b>{account.email}</b>.</span>
+          </div>
+        )}
+
+        <Separator />
+
+        {/* ─── CONNECTIONS ─────────────────────────────────── */}
+        <Section
+          title="Connexions"
+          subtitle="Discord est nécessaire pour configurer les bots. Google et GitHub sont optionnels."
+        >
+          <CardList>
+            <ConnectionRow
+              kind="discord"
+              title="ShardGuard"
+              caption="Compte principal pour ShardGuard et les dashboards"
+              linkedId={account.discord_id}
+              linkedName={account.discord_username}
+              linkedAvatar={account.discord_avatar}
+              hrefLink="/api/account/discord/link"
+              onUnlink={unlink}
+              extraAction={
+                account.discord_id ? (
+                  <IconButton onClick={refreshGuilds} disabled={refreshing} ariaLabel="Actualiser mes serveurs">
+                    <RefreshCw size={11} strokeWidth={2.2} className={refreshing ? "animate-spin" : ""} />
+                    {guildsCount !== null && <span className="font-mono-num">{guildsCount}</span>}
+                  </IconButton>
+                ) : null
+              }
+            />
+            <ConnectionRow
+              kind="discord"
+              title="Shard"
+              caption="Compte distinct pour le bot Shard (optionnel)"
+              linkedId={account.shard_id}
+              linkedName={account.shard_username}
+              linkedAvatar={account.shard_avatar}
+              hrefLink="/api/account/shard/link"
+              onUnlink={unlinkShard}
+              extraAction={
+                account.shard_id ? (
+                  <IconButton onClick={refreshShardGuilds} disabled={shardRefreshing} ariaLabel="Actualiser mes serveurs">
+                    <RefreshCw size={11} strokeWidth={2.2} className={shardRefreshing ? "animate-spin" : ""} />
+                    {shardGuildsCount !== null && <span className="font-mono-num">{shardGuildsCount}</span>}
+                  </IconButton>
+                ) : null
+              }
+            />
+            <ConnectionRow
+              kind="google"
+              title="Google"
+              caption="Connexion en un clic via Google"
+              linkedId={account.oauth_google_id}
+              linkedName={account.oauth_google_email}
+              hrefLink="/api/account/oauth/google"
+              onUnlink={async () => {
+                if (!confirm("Délier Google ?")) return;
+                await apiPost("/api/account/oauth/google/unlink").catch(() => {});
+                refresh();
+              }}
+            />
+            <ConnectionRow
+              kind="github"
+              title="GitHub"
+              caption="Connexion en un clic via GitHub"
+              linkedId={account.oauth_github_id}
+              linkedName={account.oauth_github_username}
+              hrefLink="/api/account/oauth/github"
+              onUnlink={async () => {
+                if (!confirm("Délier GitHub ?")) return;
+                await apiPost("/api/account/oauth/github/unlink").catch(() => {});
+                refresh();
+              }}
+            />
+          </CardList>
+        </Section>
+
+        <Separator />
+
+        {/* ─── PASSKEYS ────────────────────────────────────── */}
+        <Section
+          title="Clés de sécurité"
+          subtitle="Connecte-toi avec Touch ID, Windows Hello ou une clé physique (YubiKey…) plutôt qu'un mot de passe."
+          action={
+            <button
+              type="button"
+              onClick={openAddPasskey}
+              disabled={passkeyBusy}
+              className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full text-[12px] font-bold transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border-strong)", color: "var(--ds-text)" }}
+            >
+              {passkeyBusy ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} strokeWidth={2.4} />}
+              Ajouter une clé
+            </button>
+          }
+        >
           {passkeys === null ? (
-            <p className="text-[11px] font-bold uppercase tracking-widest py-2" style={{ color: "var(--ds-text-dim)" }}>
-              Chargement…
-            </p>
+            <EmptyState label="Chargement…" />
           ) : passkeys.length === 0 ? (
-            <p className="text-[11px] font-bold uppercase tracking-widest py-2" style={{ color: "var(--ds-text-dim)" }}>
-              Aucune clé enregistrée
-            </p>
+            <EmptyState label="Aucune clé enregistrée." />
           ) : (
-            <div className="flex flex-col gap-1.5">
+            <CardList>
               {passkeys.map(p => (
                 <ItemRow
                   key={p.id}
                   icon={<Fingerprint size={14} strokeWidth={1.8} />}
                   title={p.name}
-                  subtitle={`${p.transports || "-"} · ajoutée ${new Date(p.created_at).toLocaleDateString("fr-FR")}${
+                  subtitle={`${p.transports || "—"} · ajoutée ${new Date(p.created_at).toLocaleDateString("fr-FR")}${
                     p.last_used_at ? ` · utilisée ${new Date(p.last_used_at).toLocaleDateString("fr-FR")}` : ""
                   }`}
                   onDelete={() => setPasskeyToDelete({ id: p.id, name: p.name })}
                 />
               ))}
-            </div>
+            </CardList>
           )}
-        </div>
-      </SectionCard>
+        </Section>
 
-      {/* ─── TOKENS ────────────────────────────────────────────── */}
-      <SectionCard
-        kicker="Intégrations"
-        title="Tokens d'accès personnel"
-        description={
-          <>Pour authentifier l'app desktop ou un script tiers. Header :{" "}
-            <code
-              className="px-1.5 py-0.5 rounded text-[11px] font-mono"
-              style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
-            >Authorization: Bearer st_…</code>
-          </>
-        }
-        action={
-          <button
-            type="button"
-            onClick={openAddToken}
-            disabled={tokenBusy}
-            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-[12px] font-bold transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
-          >
-            {tokenBusy ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} strokeWidth={2.4} />}
-            Générer
-          </button>
-        }
-      >
-        <div className="px-4 pb-4">
+        <Separator />
+
+        {/* ─── TOKENS ──────────────────────────────────────── */}
+        <Section
+          title="Tokens d'accès personnel"
+          subtitle={
+            <>
+              Pour authentifier l'app desktop ou un script tiers. Header :{" "}
+              <code
+                className="px-1.5 py-0.5 rounded text-[11px] font-mono"
+                style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
+              >
+                Authorization: Bearer st_…
+              </code>
+            </>
+          }
+          action={
+            <button
+              type="button"
+              onClick={openAddToken}
+              disabled={tokenBusy}
+              className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full text-[12px] font-bold transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border-strong)", color: "var(--ds-text)" }}
+            >
+              {tokenBusy ? <Loader2 size={11} className="animate-spin" /> : <Plus size={11} strokeWidth={2.4} />}
+              Générer
+            </button>
+          }
+        >
           {tokens === null ? (
-            <p className="text-[11px] font-bold uppercase tracking-widest py-2" style={{ color: "var(--ds-text-dim)" }}>
-              Chargement…
-            </p>
+            <EmptyState label="Chargement…" />
           ) : tokens.length === 0 ? (
-            <p className="text-[11px] font-bold uppercase tracking-widest py-2" style={{ color: "var(--ds-text-dim)" }}>
-              Aucun token
-            </p>
+            <EmptyState label="Aucun token actif." />
           ) : (
-            <div className="flex flex-col gap-1.5">
+            <CardList>
               {tokens.map(t => (
                 <ItemRow
                   key={t.id}
                   icon={<KeyRound size={14} strokeWidth={1.8} />}
                   title={t.name}
-                  subtitle={`créé ${new Date(t.created_at).toLocaleDateString("fr-FR")}${
+                  subtitle={`Créé le ${new Date(t.created_at).toLocaleDateString("fr-FR")}${
                     t.last_used_at
                       ? ` · dernière utilisation ${new Date(t.last_used_at).toLocaleDateString("fr-FR")}`
                       : " · jamais utilisé"
@@ -420,12 +428,12 @@ export function DesktopAccount() {
                   onDelete={() => setTokenToDelete({ id: t.id, name: t.name })}
                 />
               ))}
-            </div>
+            </CardList>
           )}
-        </div>
-      </SectionCard>
+        </Section>
+      </div>
 
-      {/* ─── MODALS ───────────────────────────────────────────── */}
+      {/* ─── MODALS ───────────────────────────────────────── */}
       <Modal open={showAddPasskey} onClose={() => setShowAddPasskey(false)}>
         <ModalHeader icon={<Fingerprint size={18} strokeWidth={1.8} />} kicker="Nouvelle clé" title="Nom de la clé" />
         <p className="text-[13px] mb-4" style={{ color: "var(--ds-text-mut)" }}>
@@ -526,42 +534,61 @@ export function DesktopAccount() {
   );
 }
 
-/* ───────────────────── Section card ───────────────────── */
+/* ──────────────────────── Section primitive ──────────────────────── */
 
-function SectionCard({
-  kicker, title, description, action, children,
+function Section({
+  title, subtitle, action, children,
 }: {
-  kicker: string;
   title: string;
-  description?: ReactNode;
+  subtitle?: ReactNode;
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <div
-      className="rounded-[18px] border overflow-hidden mb-3"
-      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
-    >
-      <div className="px-4 pt-4 pb-3 flex items-start gap-3 border-b" style={{ borderColor: "var(--ds-border)" }}>
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
-            {kicker}
-          </p>
-          <h2 className="text-[15px] font-extrabold tracking-tight mt-1">{title}</h2>
-          {description && (
-            <p className="text-[12px] font-medium mt-1.5 max-w-xl" style={{ color: "var(--ds-text-mut)" }}>
-              {description}
-            </p>
+    <section className="py-7">
+      <div className="flex items-start justify-between gap-4 flex-wrap mb-4">
+        <div className="min-w-0">
+          <h2 className="text-[15.5px] font-extrabold tracking-tight mb-1">{title}</h2>
+          {subtitle && (
+            <p className="text-[12px] max-w-2xl" style={{ color: "var(--ds-text-mut)" }}>{subtitle}</p>
           )}
         </div>
         {action && <div className="shrink-0 self-center">{action}</div>}
       </div>
       {children}
+    </section>
+  );
+}
+
+function Separator() {
+  return <div className="h-px w-full" style={{ background: "var(--ds-border)" }} />;
+}
+
+function CardList({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="rounded-[14px] border overflow-hidden"
+      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+    >
+      <div className="divide-y" style={{ borderColor: "var(--ds-border)" }}>
+        {children}
+      </div>
     </div>
   );
 }
 
-/* ───────────────────── Connection row ───────────────────── */
+function EmptyState({ label }: { label: string }) {
+  return (
+    <div
+      className="rounded-[14px] border px-4 py-5 text-center text-[12px]"
+      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)", color: "var(--ds-text-dim)" }}
+    >
+      {label}
+    </div>
+  );
+}
+
+/* ──────────────────────── Connection row ──────────────────────── */
 
 function ConnectionRow({
   kind, title, caption, linkedId, linkedName, linkedAvatar, hrefLink, onUnlink, extraAction,
@@ -582,10 +609,7 @@ function ConnectionRow({
     : null;
 
   return (
-    <div
-      className="flex items-center gap-3.5 px-4 py-3 border-b last:border-b-0"
-      style={{ borderColor: "var(--ds-border)" }}
-    >
+    <div className="flex items-center gap-3.5 px-4 py-3">
       <div className="shrink-0">
         {avatarUrl ? (
           <img
@@ -606,7 +630,13 @@ function ConnectionRow({
       <div className="flex-1 min-w-0">
         <p className="text-[13px] font-bold flex items-center gap-1.5">
           {title}
-          {linked && <ShieldCheck size={11} style={{ color: "rgb(74, 222, 128)" }} aria-label="Lié" />}
+          {linked && (
+            <span
+              className="w-1.5 h-1.5 rounded-full inline-block"
+              style={{ background: "rgb(74, 222, 128)", boxShadow: "0 0 6px rgba(74, 222, 128, 0.65)" }}
+              aria-label="Lié"
+            />
+          )}
         </p>
         <p className="text-[11.5px] truncate" style={{ color: "var(--ds-text-dim)" }}>
           {linked ? (linkedName || caption) : caption}
@@ -619,7 +649,7 @@ function ConnectionRow({
             type="button"
             onClick={onUnlink}
             className="px-3 h-8 rounded-[8px] text-[11.5px] font-bold transition-colors hover:bg-[var(--ds-panel-2)]"
-            style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
+            style={{ background: "transparent", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
           >
             Délier
           </button>
@@ -627,7 +657,7 @@ function ConnectionRow({
           <a
             href={hrefLink}
             className="px-3 h-8 inline-flex items-center rounded-[8px] text-[11.5px] font-bold transition-opacity hover:opacity-90"
-            style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+            style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border-strong)", color: "var(--ds-text)" }}
           >
             Lier
           </a>
@@ -675,14 +705,14 @@ function IconButton({
       aria-label={ariaLabel}
       title={ariaLabel}
       className="inline-flex items-center gap-1.5 px-2.5 h-8 rounded-[8px] text-[11px] font-bold transition-colors hover:bg-[var(--ds-panel-2)] disabled:opacity-40"
-      style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
+      style={{ background: "transparent", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
     >
       {children}
     </button>
   );
 }
 
-/* ───────────────────── Item row ───────────────────── */
+/* ──────────────────────── Item row ──────────────────────── */
 
 function ItemRow({
   icon, title, subtitle, onDelete,
@@ -693,19 +723,16 @@ function ItemRow({
   onDelete: () => void;
 }) {
   return (
-    <div
-      className="flex items-center gap-3 px-3 py-2.5 rounded-[12px]"
-      style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
-    >
+    <div className="flex items-center gap-3.5 px-4 py-3">
       <div
-        className="w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0"
-        style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
+        className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0"
+        style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
       >
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[12.5px] font-bold truncate">{title}</p>
-        <p className="text-[10.5px] font-mono-num truncate" style={{ color: "var(--ds-text-dim)" }}>
+        <p className="text-[13px] font-bold truncate">{title}</p>
+        <p className="text-[11px] font-mono-num truncate" style={{ color: "var(--ds-text-dim)" }}>
           {subtitle}
         </p>
       </div>
@@ -714,7 +741,7 @@ function ItemRow({
         onClick={onDelete}
         aria-label="Supprimer"
         className="w-8 h-8 rounded-[8px] flex items-center justify-center shrink-0 transition-colors"
-        style={{ background: "rgba(239, 68, 68, 0.10)", border: "1px solid rgba(239, 68, 68, 0.25)", color: "rgb(248, 113, 113)" }}
+        style={{ background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.22)", color: "rgb(248, 113, 113)" }}
       >
         <Trash2 size={12} strokeWidth={2.2} />
       </button>
@@ -722,7 +749,7 @@ function ItemRow({
   );
 }
 
-/* ───────────────────── Modal primitives ───────────────────── */
+/* ──────────────────────── Modal primitives ──────────────────────── */
 
 function Modal({
   open, onClose, wide, children,
@@ -742,7 +769,7 @@ function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6" onClick={onClose}>
-      <div className="absolute inset-0" style={{ background: "rgba(0, 0, 0, 0.55)", backdropFilter: "blur(8px)" }} />
+      <div className="absolute inset-0" style={{ background: "rgba(0, 0, 0, 0.55)", backdropFilter: "blur(10px)" }} />
       <div
         className={`ds-glass relative rounded-[18px] border w-full ${wide ? "max-w-md" : "max-w-sm"} p-6`}
         style={{ borderColor: "var(--ds-border-strong)" }}
