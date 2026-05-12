@@ -82,7 +82,7 @@ function StatusHeader({
   lastUpdate: string;
 }) {
   return (
-    <div className="flex items-start justify-between gap-6 flex-wrap pt-1 pb-6">
+    <div className="flex items-start justify-between gap-6 flex-wrap pt-1 pb-6" data-tour="status-header">
       <div className="flex items-center gap-4 min-w-0">
         <div
           className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0"

@@ -21,6 +21,7 @@ const {
     verifyAuthenticationResponse,
 } = require('@simplewebauthn/server');
 const { SHARDTOWN_KNOWLEDGE } = require('./chatbot-knowledge');
+const presence = require('./presence');
 
 // Fisher-Yates with crypto.randomInt — replaces the buggy
 // `arr.sort(() => Math.random() - 0.5)` shuffle, which is both
@@ -1213,6 +1214,61 @@ app.get('/api/me', async (req, res) => {
             discriminator: req.user.discriminator || null,
         }
     });
+});
+
+// ─── Live presence (Canva-style) ───────────────────────────────────
+// In-memory who's-where: each dashboard SPA heartbeats every ~8s
+// while on a page, and polls peers every ~6s. Scope is typically the
+// SPA route ("/shardguard/guild/123"). Optional `field` says which
+// input the user is currently focused on, so peers can render a
+// small avatar next to the field being edited.
+//
+// Requires an authenticated user — we identify by Discord ID (set by
+// passport or the account-session hydration middleware above).
+
+function presenceIdentify(req) {
+    const u = req.user;
+    if (!u || !u.id) return null;
+    return {
+        id: String(u.id),
+        username: u.username || '',
+        global_name: u.global_name || u.username || '',
+        avatar: u.avatar || null,
+    };
+}
+
+app.post('/api/presence/heartbeat', (req, res) => {
+    const user = presenceIdentify(req);
+    if (!user) return res.status(401).json({ error: 'auth' });
+    const { scope, field, path, cursor } = req.body || {};
+    if (typeof scope !== 'string' || !scope || scope.length > 200) {
+        return res.status(400).json({ error: 'scope' });
+    }
+    const f = typeof field === 'string' && field.length > 0 && field.length <= 80 ? field : null;
+    const p = typeof path === 'string' && path.length > 0 && path.length <= 500 ? path : null;
+    let c = null;
+    if (cursor && typeof cursor === 'object'
+        && typeof cursor.x === 'number' && cursor.x >= 0 && cursor.x <= 100
+        && typeof cursor.y === 'number' && cursor.y >= 0 && cursor.y <= 100) {
+        c = { x: cursor.x, y: cursor.y };
+    }
+    presence.heartbeat(scope, user, { field: f, path: p, cursor: c });
+    res.json({ ok: true });
+});
+
+app.post('/api/presence/leave', (req, res) => {
+    const user = presenceIdentify(req);
+    if (!user) return res.status(401).json({ error: 'auth' });
+    const { scope } = req.body || {};
+    if (typeof scope === 'string' && scope) presence.leave(scope, user.id);
+    res.json({ ok: true });
+});
+
+app.get('/api/presence', (req, res) => {
+    const user = presenceIdentify(req);
+    const scope = String(req.query.scope || '');
+    if (!scope || scope.length > 200) return res.status(400).json({ error: 'scope' });
+    res.json({ peers: presence.peers(scope, user?.id || null) });
 });
 
 // ─── Chatbot IA (assistant Shardtown via Ollama auto-hébergé) ─────────

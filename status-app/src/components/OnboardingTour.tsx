@@ -1,20 +1,21 @@
-import { useEffect, useState } from "react";
-import {
-  LayoutGrid, Sparkles, Bell, Fingerprint,
-  Sun, ChevronLeft, ChevronRight, X, CheckCircle2,
-} from "lucide-react";
-import { DiscordPreview } from "@/components/DiscordPreview";
+import { useEffect, useState, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { ChevronLeft, ChevronRight, X, CheckCircle2 } from "lucide-react";
 
 /**
- * First-launch interactive tour for the desktop app. Tracks completion in
- * localStorage so it only ever shows once. Always skippable.
+ * Interactive product tour for the desktop app. Drives react-router
+ * to open the relevant page for each step, then locates a real DOM
+ * anchor via `[data-tour="key"]`, spotlights it (SVG mask + glow ring),
+ * and floats a tooltip card next to it.
  *
- * Each step has a title, description, and a small illustrative area —
- * either real component samples (so the tour shows what the user will
- * actually see) or an icon + mock card.
+ * The component must live inside <BrowserRouter> to use the routing
+ * hooks, so we expose <TourHost /> (mounted in DesktopShell) and a
+ * `startTour()` event-based trigger usable from anywhere — including
+ * pre-router code paths like DesktopGate.
  */
 
-const STORAGE_KEY = "shardtown.onboarding.v1";
+const STORAGE_KEY = "shardtown.onboarding.v2";
+const EVENT_NAME = "shardtown:start-tour";
 
 export function shouldShowOnboarding(): boolean {
   try { return localStorage.getItem(STORAGE_KEY) !== "done"; } catch { return false; }
@@ -22,203 +23,510 @@ export function shouldShowOnboarding(): boolean {
 export function markOnboardingComplete() {
   try { localStorage.setItem(STORAGE_KEY, "done"); } catch { /* */ }
 }
-
-interface Step {
-  icon: React.ComponentType<{ size?: number; strokeWidth?: number }> | string;
-  title: string;
-  body: string;
-  visual: React.ReactNode;
+export function startTour() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(EVENT_NAME));
 }
 
-export function OnboardingTour({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState(0);
+/* ─── Step script ─────────────────────────────────────────────────── */
 
-  // Block Esc → skip-confirms, arrow keys → navigate.
+interface Step {
+  /** Path to navigate to before the step renders. Omit to keep current route. */
+  route?: string;
+  /** `data-tour="…"` key on the DOM element to spotlight. Omit for centered modal. */
+  anchor?: string;
+  /** Preferred side for the tooltip when an anchor is set. */
+  side?: "top" | "bottom" | "left" | "right" | "auto";
+  title: string;
+  body: string;
+}
+
+const STEPS: Step[] = [
+  {
+    title: "Bienvenue dans Shardtown",
+    body: "On va faire le tour de l'app : chaque étape ouvre la page concernée et met en surbrillance l'élément expliqué. Tu peux passer à tout moment avec Échap.",
+    route: "/outils",
+  },
+  {
+    route: "/outils",
+    anchor: "hero",
+    side: "bottom",
+    title: "Ton tableau de bord",
+    body: "Le hero d'accueil te salue, affiche l'état général de tes bots et le bouton principal pour configurer tes serveurs.",
+  },
+  {
+    route: "/outils",
+    anchor: "bots-stats",
+    side: "top",
+    title: "Tes bots en un coup d'œil",
+    body: "Deux cartes — ShardGuard (sécurité, anti-raid, modération) et Shard (communauté, niveaux, économie). Le ratio te dit combien de tes serveurs sont déjà configurés.",
+  },
+  {
+    route: "/outils",
+    anchor: "recents",
+    side: "top",
+    title: "Serveurs récents",
+    body: "Tes serveurs configurés s'affichent ici en accès rapide. Un clic ouvre la config détaillée du bot pour ce serveur.",
+  },
+  {
+    anchor: "sidebar",
+    side: "right",
+    title: "Navigation latérale",
+    body: "Toute la navigation est ici, groupée par module : Tableau de bord, Bots, Statut, Premium, et Système (RPC + Préférences). Toujours accessible, sur toutes les pages.",
+  },
+  {
+    anchor: "search",
+    side: "bottom",
+    title: "Barre de recherche",
+    body: "Cherche un serveur, une page ou une fonctionnalité depuis n'importe où dans l'app. Centrée en haut, toujours à portée de clic.",
+  },
+  {
+    anchor: "profile",
+    side: "bottom",
+    title: "Ton profil",
+    body: "Avatar Discord, accès rapide à ton compte, au Premium, aux préférences et à la déconnexion. La déconnexion demande Touch ID.",
+  },
+  {
+    route: "/shardguard/server",
+    anchor: "bot-server-grid",
+    side: "top",
+    title: "ShardGuard · Sécurité",
+    body: "Sélectionne un serveur pour configurer ShardGuard : anti-raid, captcha de vérification, modération automatique, mode panic, logs en temps réel.",
+  },
+  {
+    route: "/rpc",
+    anchor: "rpc-activate",
+    side: "bottom",
+    title: "Discord Rich Presence",
+    body: "Active la Rich Presence pour afficher un statut custom sur ton profil Discord. Un clic, et Shardtown parle au client Discord en local.",
+  },
+  {
+    route: "/rpc",
+    anchor: "rpc-text",
+    side: "top",
+    title: "Customise ton statut",
+    body: "Choisis le texte de la ligne « Détails » et de la ligne « État ». Tu peux aussi ajouter des images et jusqu'à 2 boutons cliquables.",
+  },
+  {
+    route: "/preferences",
+    anchor: "prefs-sounds",
+    side: "bottom",
+    title: "Sons de notification",
+    body: "Pour chaque événement (raid, ticket, alerte…), choisis un son distinct. Plusieurs packs disponibles. Volume réglable par événement.",
+  },
+  {
+    route: "/preferences",
+    anchor: "prefs-biometric",
+    side: "top",
+    title: "Touch ID",
+    body: "Les actions destructives — déconnexion, révocation de token, mode panic, suppression de config — exigent Touch ID. Si ton Mac n'en a pas, c'est ton mot de passe système.",
+  },
+  {
+    route: "/preferences",
+    anchor: "prefs-token",
+    side: "top",
+    title: "Sécurité du token",
+    body: "Choisis à quelle fréquence l'app revalide ton token auprès du serveur. Par défaut on fait confiance au keychain pour ne pas te rebalancer au login à chaque update.",
+  },
+  {
+    route: "/account",
+    anchor: "account-connections",
+    side: "top",
+    title: "Connexions",
+    body: "Lie ton Discord — c'est ce qui permet à Shardtown de lister tes serveurs et d'y configurer les bots. Google et GitHub permettent la connexion en un clic.",
+  },
+  {
+    route: "/account",
+    anchor: "account-passkeys",
+    side: "top",
+    title: "Clés de sécurité",
+    body: "Crée une passkey Touch ID ou enregistre une YubiKey pour te connecter sans mot de passe — plus rapide et plus sûr.",
+  },
+  {
+    route: "/premium",
+    anchor: "premium-status",
+    side: "bottom",
+    title: "Premium",
+    body: "Débloque des serveurs supplémentaires, des fonctionnalités exclusives et un support prioritaire. Tu peux gérer ton abonnement depuis cette page.",
+  },
+  {
+    route: "/statut",
+    anchor: "status-header",
+    side: "bottom",
+    title: "Statut live",
+    body: "Suivi temps réel de l'infrastructure : shards, latence moyenne, incidents. Cette page reflète exactement ce que les utilisateurs voient sur shardtwn.fr/status.",
+  },
+  {
+    title: "Tu es prêt",
+    body: "C'est fini. Lance « Configurer mes serveurs » depuis le tableau de bord pour démarrer. Tu peux relancer ce tour à tout moment depuis Préférences > Découverte.",
+  },
+];
+
+/* ─── Public mounting point ───────────────────────────────────────── */
+
+/**
+ * Mounted once inside the router tree (DesktopShell). Listens for the
+ * global `startTour()` event and renders the InteractiveTour when fired.
+ */
+export function TourHost() {
+  const [open, setOpen] = useState(false);
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") finish();
-      if (e.key === "ArrowRight") next();
-      if (e.key === "ArrowLeft") prev();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step]);
+    const fn = () => setOpen(true);
+    window.addEventListener(EVENT_NAME, fn);
+    return () => window.removeEventListener(EVENT_NAME, fn);
+  }, []);
+  if (!open) return null;
+  return <InteractiveTour onClose={() => setOpen(false)} />;
+}
 
-  const steps: Step[] = [
-    {
-      icon: Sparkles,
-      title: "Bienvenue dans Shardtown",
-      body: "L'app native pour piloter tes bots Discord. On fait un tour rapide en 30 secondes par module. Tu peux passer à tout moment.",
-      visual: <WelcomeVisual />,
-    },
-    {
-      icon: LayoutGrid,
-      title: "Tableau de bord",
-      body: "L'écran d'accueil : vue d'ensemble de tes bots, stats live, et accès rapide à tous tes serveurs.",
-      visual: <DashboardVisual />,
-    },
-    {
-      icon: "/image/shardguard.png",
-      title: "ShardGuard · Sécurité",
-      body: "Anti-raid, captcha de vérification, modération automatique, mode panic, logs en temps réel. Tout se configure depuis l'app, par serveur.",
-      visual: <BotVisual kind="shardguard" />,
-    },
-    {
-      icon: "/image/shard.png",
-      title: "Shard · Communauté",
-      body: "Niveaux, économie, tickets, sondages, giveaways, vocaux temporaires, embeds. Animations communautaires sans coder.",
-      visual: <BotVisual kind="shard" />,
-    },
-    {
-      icon: Sparkles,
-      title: "Aperçu live Discord",
-      body: "Chaque message ou embed que tu configures se rend en temps réel comme Discord va l'afficher. Tu vois exactement ce que verront tes membres.",
-      visual: (
-        <div className="scale-[0.85] origin-top">
-          <DiscordPreview
-            text="Bienvenue {user} sur **mon serveur** ! Nous sommes maintenant {memberCount}."
-            embed={{
-              title: "Bienvenue !",
-              description: "Lis les règles dans #regles avant de poster.",
-              color: "#5865f2",
-              footer: "Configuré via Shardtown",
-            }}
-            serverName="Ma Communauté"
-            memberCount={1234}
-          />
-        </div>
-      ),
-    },
-    {
-      icon: Bell,
-      title: "Discord Rich Presence",
-      body: "Affiche un statut custom sur ton profil Discord — utile pour montrer que tu pilotes tes bots. Détails, état, images, bouton, tout est configurable.",
-      visual: <RpcVisual />,
-    },
-    {
-      icon: Fingerprint,
-      title: "Sécurité & Préférences",
-      body: "Touch ID pour les actions destructives (déconnexion, révocation de token). Sons de notification configurables. Thème clair/sombre via le toggle en haut-gauche.",
-      visual: <PrefsVisual />,
-    },
-    {
-      icon: CheckCircle2,
-      title: "Tu es prêt",
-      body: "Commence par lier ton compte Discord depuis « Mon compte », puis va sur ShardGuard ou Shard pour configurer ton premier serveur. Bon vol.",
-      visual: <DoneVisual />,
-    },
-  ];
+/* ─── Backward-compatible export for legacy callers ───────────────── */
+export function OnboardingTour({ onClose }: { onClose: () => void }) {
+  return <InteractiveTour onClose={onClose} />;
+}
 
-  const current = steps[step];
-  const isLast = step === steps.length - 1;
-  const Icon = typeof current.icon === "string" ? null : current.icon;
+/* ─── The interactive tour ────────────────────────────────────────── */
 
-  function next() {
-    if (isLast) { finish(); return; }
-    setStep(s => Math.min(steps.length - 1, s + 1));
-  }
-  function prev() { setStep(s => Math.max(0, s - 1)); }
+interface Pos {
+  x: number;
+  y: number;
+  arrow: "top" | "bottom" | "left" | "right" | "none";
+  centered: boolean;
+}
+
+const CARD_W = 360;
+const CARD_H_EST = 200;
+const RING_PAD = 8;
+const GAP = 14;
+
+function InteractiveTour({ onClose }: { onClose: () => void }) {
+  const [i, setI] = useState(0);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  const [waiting, setWaiting] = useState(false);
+  const nav = useNavigate();
+  const loc = useLocation();
+  const step = STEPS[i];
+  const lastIRef = useRef(-1);
+
   function finish() {
     markOnboardingComplete();
     onClose();
   }
+  function next() {
+    if (i >= STEPS.length - 1) finish();
+    else setI(i + 1);
+  }
+  function prev() { setI(s => Math.max(0, s - 1)); }
+
+  // Navigate to the step's route. We only navigate when the step
+  // index actually changes — re-running on every `loc.pathname` change
+  // would create a navigation loop if the route differs by a trailing
+  // segment we don't control.
+  useEffect(() => {
+    if (lastIRef.current === i) return;
+    lastIRef.current = i;
+    if (step.route && loc.pathname !== step.route) {
+      nav(step.route);
+    }
+  }, [i, step.route, loc.pathname, nav]);
+
+  // Find the anchor (poll up to ~2.5s for it to mount), scroll it into
+  // view, then capture its rect. Re-fires whenever the step changes or
+  // the route stabilizes.
+  useEffect(() => {
+    setRect(null);
+    if (!step.anchor) { setWaiting(false); return; }
+    // If the step requested a route and we haven't landed there yet,
+    // hold off — useEffect will re-run when the path matches.
+    if (step.route && loc.pathname !== step.route) {
+      setWaiting(true);
+      return;
+    }
+    setWaiting(true);
+    let cancelled = false;
+    let attempts = 0;
+    function tick() {
+      if (cancelled) return;
+      const el = document.querySelector(`[data-tour="${step.anchor}"]`) as HTMLElement | null;
+      if (el) {
+        try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch { /* */ }
+        // Wait one frame after the smooth scroll settles before measuring.
+        setTimeout(() => {
+          if (cancelled) return;
+          const r = el.getBoundingClientRect();
+          setRect(r);
+          setWaiting(false);
+        }, 380);
+        return;
+      }
+      attempts++;
+      if (attempts > 50) { setWaiting(false); return; }
+      setTimeout(tick, 50);
+    }
+    tick();
+    return () => { cancelled = true; };
+  }, [i, loc.pathname, step.anchor, step.route]);
+
+  // Keep the rect fresh on resize / scroll while the step is active.
+  useEffect(() => {
+    if (!step.anchor) return;
+    function update() {
+      const el = document.querySelector(`[data-tour="${step.anchor}"]`) as HTMLElement | null;
+      if (el) setRect(el.getBoundingClientRect());
+    }
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [step.anchor]);
+
+  // Keyboard navigation.
+  useEffect(() => {
+    function k(e: KeyboardEvent) {
+      if (e.key === "Escape") { e.preventDefault(); finish(); }
+      else if (e.key === "ArrowRight") { e.preventDefault(); next(); }
+      else if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
+    }
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i]);
+
+  const pos = computeTooltipPos(rect, step.side);
+  const showRing = !!rect && !waiting;
+  const isLast = i === STEPS.length - 1;
 
   return (
-    <div
-      className="fixed inset-0 z-[300] flex items-center justify-center p-6"
-      style={{ background: "rgba(0, 0, 0, 0.65)", backdropFilter: "blur(8px)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="onboarding-title"
-    >
-      {/* Drag handle so the user can still move the window during the tour */}
-      <div className="fixed inset-x-0 top-0 h-7 z-[301]" data-tauri-drag-region />
+    <div className="fixed inset-0 z-[500]" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+      {/* Tauri drag handle so the window stays movable during the tour */}
+      <div className="fixed inset-x-0 top-0 h-7 z-[501]" data-tauri-drag-region />
 
+      <SpotlightOverlay rect={showRing ? rect : null} />
+      {showRing && rect && <SpotlightRing rect={rect} />}
+
+      <TourCard
+        step={step}
+        index={i}
+        total={STEPS.length}
+        pos={pos}
+        isLast={isLast}
+        onNext={next}
+        onPrev={prev}
+        onClose={finish}
+      />
+    </div>
+  );
+}
+
+/* ─── Spotlight (SVG cutout overlay) ──────────────────────────────── */
+
+function SpotlightOverlay({ rect }: { rect: DOMRect | null }) {
+  const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  useEffect(() => {
+    function on() { setSize({ w: window.innerWidth, h: window.innerHeight }); }
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  return (
+    <svg
+      className="fixed inset-0 pointer-events-none"
+      width={size.w}
+      height={size.h}
+      style={{ width: "100vw", height: "100vh" }}
+    >
+      <defs>
+        <mask id="tour-mask">
+          <rect width="100%" height="100%" fill="white" />
+          {rect && (
+            <rect
+              x={Math.max(0, rect.x - RING_PAD)}
+              y={Math.max(0, rect.y - RING_PAD)}
+              width={rect.width + 2 * RING_PAD}
+              height={rect.height + 2 * RING_PAD}
+              rx={14}
+              ry={14}
+              fill="black"
+            />
+          )}
+        </mask>
+      </defs>
+      <rect
+        width="100%"
+        height="100%"
+        fill="rgba(0, 0, 0, 0.68)"
+        mask="url(#tour-mask)"
+        style={{ transition: "opacity 200ms ease" }}
+      />
+    </svg>
+  );
+}
+
+function SpotlightRing({ rect }: { rect: DOMRect }) {
+  return (
+    <>
       <div
-        className="relative w-full max-w-[540px] rounded-[22px] border overflow-hidden onboarding-card"
+        className="fixed pointer-events-none tour-ring"
         style={{
-          background: "var(--ds-bg-1)",
-          borderColor: "var(--ds-border)",
-          boxShadow: "0 40px 90px -10px rgba(0,0,0,0.6)",
+          left: rect.x - RING_PAD,
+          top: rect.y - RING_PAD,
+          width: rect.width + 2 * RING_PAD,
+          height: rect.height + 2 * RING_PAD,
+          borderRadius: 14,
+          zIndex: 5,
+        }}
+      />
+      <style>{`
+        .tour-ring {
+          box-shadow:
+            0 0 0 1px rgba(255, 255, 255, 0.85),
+            0 0 26px 5px rgba(255, 255, 255, 0.22);
+          animation: tour-ring-pulse 1.8s ease-in-out infinite;
+        }
+        @keyframes tour-ring-pulse {
+          0%, 100% {
+            box-shadow:
+              0 0 0 1px rgba(255, 255, 255, 0.78),
+              0 0 22px 5px rgba(255, 255, 255, 0.20);
+          }
+          50% {
+            box-shadow:
+              0 0 0 1px rgba(255, 255, 255, 1),
+              0 0 32px 9px rgba(255, 255, 255, 0.32);
+          }
+        }
+      `}</style>
+    </>
+  );
+}
+
+/* ─── Tooltip positioning ─────────────────────────────────────────── */
+
+function computeTooltipPos(rect: DOMRect | null, side: Step["side"]): Pos {
+  const W = typeof window !== "undefined" ? window.innerWidth : 1200;
+  const H = typeof window !== "undefined" ? window.innerHeight : 800;
+  if (!rect) {
+    return {
+      x: (W - CARD_W) / 2,
+      y: (H - CARD_H_EST) / 2,
+      arrow: "none",
+      centered: true,
+    };
+  }
+  type Side = "top" | "bottom" | "left" | "right";
+  let chosen: Side;
+  if (side && side !== "auto") {
+    chosen = side;
+  } else if (rect.right + GAP + CARD_W < W - 12) chosen = "right";
+  else if (rect.left - GAP - CARD_W > 12) chosen = "left";
+  else if (rect.bottom + GAP + CARD_H_EST < H - 12) chosen = "bottom";
+  else chosen = "top";
+  let x = 0, y = 0;
+  let arrow: Pos["arrow"] = "none";
+  if (chosen === "right") {
+    x = rect.right + GAP;
+    y = rect.top + (rect.height - CARD_H_EST) / 2;
+    arrow = "left";
+  } else if (chosen === "left") {
+    x = rect.left - GAP - CARD_W;
+    y = rect.top + (rect.height - CARD_H_EST) / 2;
+    arrow = "right";
+  } else if (chosen === "bottom") {
+    x = rect.left + (rect.width - CARD_W) / 2;
+    y = rect.bottom + GAP;
+    arrow = "top";
+  } else if (chosen === "top") {
+    x = rect.left + (rect.width - CARD_W) / 2;
+    y = rect.top - GAP - CARD_H_EST;
+    arrow = "bottom";
+  }
+  x = Math.max(12, Math.min(W - CARD_W - 12, x));
+  y = Math.max(20, Math.min(H - CARD_H_EST - 12, y));
+  return { x, y, arrow, centered: false };
+}
+
+/* ─── Tooltip card ────────────────────────────────────────────────── */
+
+function TourCard({
+  step, index, total, pos, isLast, onNext, onPrev, onClose,
+}: {
+  step: Step;
+  index: number;
+  total: number;
+  pos: Pos;
+  isLast: boolean;
+  onNext: () => void;
+  onPrev: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      key={index}
+      className="fixed pointer-events-auto tour-card"
+      style={{
+        left: pos.x,
+        top: pos.y,
+        width: CARD_W,
+        zIndex: 10,
+      }}
+    >
+      <div
+        className="ds-glass relative rounded-[16px] border p-5"
+        style={{
+          borderColor: "var(--ds-border-strong)",
+          boxShadow: "0 30px 80px -10px rgba(0, 0, 0, 0.65)",
         }}
       >
-        {/* Top-right skip */}
         <button
           type="button"
-          onClick={finish}
-          aria-label="Passer le tour"
-          title="Passer (Échap)"
-          className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
+          onClick={onClose}
+          aria-label="Fermer le tour"
+          title="Fermer (Échap)"
+          className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
           style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)" }}
         >
-          <X size={13} strokeWidth={2.4} />
+          <X size={11} strokeWidth={2.4} />
         </button>
 
-        {/* Visual */}
-        <div
-          className="px-7 pt-9 pb-5 flex items-center justify-center min-h-[200px]"
-          style={{ background: "var(--ds-bg-2)" }}
+        <p
+          className="text-[10px] font-bold tracking-[0.22em] uppercase mb-2"
+          style={{ color: "var(--ds-text-dim)" }}
         >
-          <div key={step} className="onboarding-visual w-full">{current.visual}</div>
-        </div>
-
-        {/* Body */}
-        <div className="px-7 pt-6 pb-5" key={`text-${step}`}>
-          <div className="onboarding-text">
-            <div className="flex items-center gap-2 mb-3">
-              <span
-                className="w-7 h-7 rounded-lg flex items-center justify-center overflow-hidden"
-                style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)" }}
-              >
-                {Icon
-                  ? <Icon size={13} strokeWidth={2} />
-                  : <img src={current.icon as string} alt="" className="w-full h-full object-cover" />}
-              </span>
-              <p
-                className="text-[10.5px] font-bold tracking-[0.22em] uppercase"
-                style={{ color: "var(--ds-text-dim)" }}
-              >
-                Étape {step + 1} / {steps.length}
-              </p>
-            </div>
-            <h2 id="onboarding-title" className="text-[22px] font-extrabold tracking-tight mb-2">
-              {current.title}
-            </h2>
-            <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--ds-text-mut)" }}>
-              {current.body}
-            </p>
-          </div>
-        </div>
-
-        {/* Footer: progress dots + nav */}
-        <div
-          className="px-7 py-4 border-t flex items-center gap-3"
-          style={{ borderColor: "var(--ds-border)" }}
+          Étape {index + 1} / {total}
+        </p>
+        <h2
+          id="tour-title"
+          className="text-[18px] font-extrabold tracking-tight mb-2 pr-7"
         >
+          {step.title}
+        </h2>
+        <p
+          className="text-[13px] leading-relaxed mb-5"
+          style={{ color: "var(--ds-text-mut)" }}
+        >
+          {step.body}
+        </p>
+
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={finish}
-            className="text-[11.5px] underline underline-offset-2 transition-opacity hover:opacity-70"
+            onClick={onClose}
+            className="text-[11.5px] underline underline-offset-2 transition-opacity hover:opacity-70 mr-auto"
             style={{ color: "var(--ds-text-dim)" }}
           >
             Passer
           </button>
 
-          <div className="flex-1 flex items-center justify-center gap-1.5">
-            {steps.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                aria-label={`Aller à l'étape ${i + 1}`}
-                onClick={() => setStep(i)}
+          <div className="flex items-center gap-1.5 mr-1">
+            {Array.from({ length: total }).map((_, di) => (
+              <span
+                key={di}
                 className="rounded-full transition-all"
                 style={{
-                  width: i === step ? 18 : 6,
-                  height: 6,
-                  background: i === step
+                  width: di === index ? 14 : 5,
+                  height: 5,
+                  background: di === index
                     ? "var(--ds-text)"
-                    : i < step
+                    : di < index
                       ? "var(--ds-text-mut)"
                       : "var(--ds-text-faint)",
                 }}
@@ -228,198 +536,56 @@ export function OnboardingTour({ onClose }: { onClose: () => void }) {
 
           <button
             type="button"
-            onClick={prev}
-            disabled={step === 0}
-            aria-label="Précédent"
-            className="w-9 h-9 rounded-full border flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-opacity hover:opacity-80"
+            onClick={onPrev}
+            disabled={index === 0}
+            aria-label="Étape précédente"
+            className="w-8 h-8 rounded-full border flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed transition-opacity hover:opacity-80"
             style={{ borderColor: "var(--ds-border)", color: "var(--ds-text-mut)" }}
           >
-            <ChevronLeft size={14} strokeWidth={2} />
+            <ChevronLeft size={13} strokeWidth={2} />
           </button>
           <button
             type="button"
-            onClick={next}
-            className="inline-flex items-center gap-1.5 px-4 h-9 rounded-full font-bold text-[12.5px] hover:opacity-90 active:scale-[0.99] transition-all"
-            style={{ background: "var(--ds-accent-bg)", color: "var(--ds-accent-fg)" }}
+            onClick={onNext}
+            className="inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full font-bold text-[12px] hover:opacity-90 active:scale-[0.99] transition-all"
+            style={{ background: "var(--ds-text)", color: "var(--ds-bg-1)" }}
           >
-            {isLast ? "Commencer" : "Suivant"}
-            {!isLast && <ChevronRight size={13} strokeWidth={2.4} />}
-            {isLast && <CheckCircle2 size={13} strokeWidth={2.4} />}
+            {isLast ? "Terminer" : "Suivant"}
+            {isLast ? <CheckCircle2 size={12} strokeWidth={2.4} /> : <ChevronRight size={12} strokeWidth={2.4} />}
           </button>
         </div>
-
-        <style>{`
-          .onboarding-card { animation: ob-card-in 380ms cubic-bezier(0.22, 1, 0.36, 1); }
-          @keyframes ob-card-in {
-            from { opacity: 0; transform: translateY(14px) scale(0.96); }
-            to   { opacity: 1; transform: translateY(0) scale(1); }
-          }
-          .onboarding-visual, .onboarding-text {
-            animation: ob-fade-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
-          }
-          @keyframes ob-fade-in {
-            from { opacity: 0; transform: translateY(6px); }
-            to   { opacity: 1; transform: translateY(0); }
-          }
-        `}</style>
       </div>
-    </div>
-  );
-}
 
-/* ─── Per-step visuals ──────────────────────────────────────────────── */
+      {pos.arrow !== "none" && !pos.centered && <Arrow side={pos.arrow} />}
 
-function WelcomeVisual() {
-  return (
-    <div className="relative flex items-center justify-center">
-      <div
-        className="w-[88px] h-[88px] rounded-[22px] flex items-center justify-center overflow-hidden onboarding-logo"
-        style={{
-          background: "var(--ds-bg-1)",
-          boxShadow: "0 0 0 1px var(--ds-border), 0 30px 80px -10px rgba(0,0,0,0.5)",
-        }}
-      >
-        <img src="/logo.png" alt="" className="w-full h-full object-contain" />
-      </div>
       <style>{`
-        .onboarding-logo { animation: ob-logo-pulse 2.4s ease-in-out infinite; }
-        @keyframes ob-logo-pulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.04); }
+        .tour-card {
+          animation: tour-card-in 320ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes tour-card-in {
+          from { opacity: 0; transform: translateY(6px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)  scale(1); }
         }
       `}</style>
     </div>
   );
 }
 
-function DashboardVisual() {
-  return (
-    <div className="w-full space-y-2.5">
-      <div
-        className="rounded-[14px] border p-3 flex items-center gap-3"
-        style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
-      >
-        <span className="w-[7px] h-[7px] rounded-full bg-emerald-400 shadow-[0_0_8px_rgb(74,222,128)]" />
-        <span className="text-[11.5px] font-bold tracking-[0.16em] uppercase text-emerald-400">
-          Tout fonctionne
-        </span>
-        <span className="ml-auto text-[11px]" style={{ color: "var(--ds-text-faint)" }}>
-          3 bots actifs
-        </span>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        <Tile label="ShardGuard" value="5" />
-        <Tile label="Shard"      value="3" />
-        <Tile label="Total"      value="8" tone="dim" />
-      </div>
-    </div>
-  );
-}
-
-function Tile({ label, value, tone }: { label: string; value: string; tone?: "dim" }) {
-  return (
-    <div
-      className="rounded-[12px] border px-3 py-2.5"
-      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
-    >
-      <p className="text-[9px] font-bold tracking-[0.22em] uppercase mb-0.5"
-         style={{ color: "var(--ds-text-dim)" }}>
-        {label}
-      </p>
-      <p className="text-[17px] font-bold leading-tight tabular-nums"
-         style={{ color: tone === "dim" ? "var(--ds-text-mut)" : "var(--ds-text)" }}>
-        {value}
-      </p>
-    </div>
-  );
-}
-
-function BotVisual({ kind }: { kind: "shardguard" | "shard" }) {
-  const botAvatar = kind === "shardguard" ? "/image/shardguard.png" : "/image/shard.png";
-  const name = kind === "shardguard" ? "Ma Communauté" : "Mon serveur Gaming";
-  return (
-    <div
-      className="rounded-[14px] border p-3 flex items-center gap-3 w-full"
-      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border-strong)" }}
-    >
-      <div
-        className="w-10 h-10 rounded-[10px] flex items-center justify-center text-[13px] font-bold"
-        style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)" }}
-      >
-        {name[0]}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13.5px] font-semibold leading-tight">{name}</p>
-        <p className="text-[11px] mt-0.5 inline-flex items-center gap-1.5"
-           style={{ color: "var(--ds-text-mut)" }}>
-          <img src={botAvatar} alt="" className="w-3 h-3 rounded-[3px] object-cover" />
-          {kind === "shardguard" ? "ShardGuard" : "Shard"}
-          <span style={{ color: "var(--ds-text-faint)" }}>·</span>
-          <span style={{ color: "rgb(74, 222, 128)" }}>Configuré</span>
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function RpcVisual() {
-  return (
-    <div
-      className="rounded-[14px] border p-4 w-full"
-      style={{ background: "#1e1f22", borderColor: "rgba(255,255,255,0.06)" }}
-    >
-      <div className="flex items-center gap-2 mb-2 text-[10px] font-bold uppercase tracking-wider text-white/40">
-        Joue à
-      </div>
-      <p className="font-semibold text-white text-[13.5px]">Shardtown</p>
-      <p className="text-[11.5px] text-white/55 mt-0.5">Configure ses bots Discord</p>
-      <p className="text-[11.5px] text-white/55">via Shardtown Desktop</p>
-      <p className="text-[10px] text-white/35 mt-2">Démarré il y a 3 minutes</p>
-    </div>
-  );
-}
-
-function PrefsVisual() {
-  return (
-    <div className="w-full grid grid-cols-3 gap-2">
-      <PrefTile icon={<Fingerprint size={15} strokeWidth={1.8} />} label="Touch ID" />
-      <PrefTile icon={<Bell size={15} strokeWidth={1.8} />} label="Sons" />
-      <PrefTile icon={<Sun size={15} strokeWidth={1.8} />} label="Thème" />
-    </div>
-  );
-}
-
-function PrefTile({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <div
-      className="rounded-[12px] border px-3 py-3 flex flex-col items-center gap-1.5"
-      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
-    >
-      <span style={{ color: "var(--ds-text-mut)" }}>{icon}</span>
-      <p className="text-[11px] font-semibold">{label}</p>
-    </div>
-  );
-}
-
-function DoneVisual() {
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <div
-        className="w-14 h-14 rounded-full flex items-center justify-center"
-        style={{
-          background: "rgba(74, 222, 128, 0.12)",
-          color: "rgb(74, 222, 128)",
-          border: "1px solid rgba(74, 222, 128, 0.3)",
-        }}
-      >
-        <CheckCircle2 size={22} strokeWidth={2} />
-      </div>
-      <p
-        className="text-[10.5px] font-bold tracking-[0.22em] uppercase"
-        style={{ color: "rgb(74, 222, 128)" }}
-      >
-        Tour terminé
-      </p>
-    </div>
-  );
+function Arrow({ side }: { side: "top" | "bottom" | "left" | "right" }) {
+  // 10x10 diamond positioned so half pokes out of the card edge.
+  const base: React.CSSProperties = {
+    position: "absolute",
+    width: 12,
+    height: 12,
+    transform: "rotate(45deg)",
+    background: "var(--ds-bg-1)",
+    border: "1px solid var(--ds-border-strong)",
+  };
+  const map: Record<string, React.CSSProperties> = {
+    top:    { top:    -6, left: "50%", marginLeft: -6, borderRight: "none", borderBottom: "none" },
+    bottom: { bottom: -6, left: "50%", marginLeft: -6, borderLeft:  "none", borderTop:    "none" },
+    left:   { left:   -6, top:  "50%", marginTop:  -6, borderRight: "none", borderTop:    "none" },
+    right:  { right:  -6, top:  "50%", marginTop:  -6, borderLeft:  "none", borderBottom: "none" },
+  };
+  return <span style={{ ...base, ...map[side] }} aria-hidden />;
 }

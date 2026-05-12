@@ -7,7 +7,7 @@ import {
   type SoundsConfig, type SoundEvent,
 } from "@/lib/sounds";
 import { SoundPicker } from "@/components/SoundPicker";
-import { OnboardingTour } from "@/components/OnboardingTour";
+import { startTour } from "@/components/OnboardingTour";
 import {
   getRevalMode, setRevalMode, getLastValidated, setLastValidated,
   describeMode, type RevalMode,
@@ -24,7 +24,6 @@ import { apiGet, ApiError } from "@/api/client";
  */
 export function DesktopPreferences() {
   const [cfg, setCfg] = useState<SoundsConfig>(loadSoundsConfig);
-  const [tourOpen, setTourOpen] = useState(false);
 
   useEffect(() => { saveSoundsConfig(cfg); }, [cfg]);
 
@@ -87,6 +86,7 @@ export function DesktopPreferences() {
         </div>
 
         {/* ─── Sons ──────────────────────────────────────────── */}
+        <div data-tour="prefs-sounds">
         <Section title="Sons de notification" icon={<Bell size={14} strokeWidth={2} />}>
           <div className="rounded-[14px] bg-white/[0.025] border border-white/[0.06] p-4 mb-3">
             <div className="flex items-center gap-3">
@@ -133,17 +133,18 @@ export function DesktopPreferences() {
             ))}
           </div>
         </Section>
+        </div>
 
         {/* ─── Tour ──────────────────────────────────────────── */}
         <Section title="Découverte" icon={<Sparkles size={14} strokeWidth={2} />}>
           <div className="rounded-[14px] bg-white/[0.025] border border-white/[0.06] p-4 flex items-center gap-3">
             <div className="flex-1">
               <p className="text-[13px] font-semibold mb-0.5">Revoir le tour guidé</p>
-              <p className="text-[12px] text-white/[0.62]">8 étapes, environ 1 minute. Présentation des modules.</p>
+              <p className="text-[12px] text-white/[0.62]">Visite interactive : on ouvre chaque page et on met en surbrillance les éléments.</p>
             </div>
             <button
               type="button"
-              onClick={() => setTourOpen(true)}
+              onClick={() => startTour()}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-[12px] font-semibold transition-opacity hover:opacity-80"
               style={{ borderColor: "var(--ds-border-strong)", color: "var(--ds-text)" }}
             >
@@ -154,6 +155,7 @@ export function DesktopPreferences() {
         </Section>
 
         {/* ─── Touch ID ──────────────────────────────────────── */}
+        <div data-tour="prefs-biometric">
         <Section title="Sécurité biométrique" icon={<Fingerprint size={14} strokeWidth={2} />}>
           <div className="rounded-[14px] bg-white/[0.025] border border-white/[0.06] p-4">
             <p className="text-[13px] font-semibold mb-1.5">Touch ID activé</p>
@@ -168,13 +170,15 @@ export function DesktopPreferences() {
             </div>
           </div>
         </Section>
+        </div>
 
         {/* ─── Token revalidation ──────────────────────────── */}
+        <div data-tour="prefs-token">
         <Section title="Sécurité du token" icon={<KeyRound size={14} strokeWidth={2} />}>
           <TokenRevalCard />
         </Section>
+        </div>
       </div>
-      {tourOpen && <OnboardingTour onClose={() => setTourOpen(false)} />}
     </AppLayout>
   );
 }

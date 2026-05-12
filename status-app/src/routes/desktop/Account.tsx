@@ -270,6 +270,7 @@ export function DesktopAccount() {
         <Separator />
 
         {/* ─── CONNECTIONS ─────────────────────────────────── */}
+        <div data-tour="account-connections">
         <Section
           title="Connexions"
           subtitle="Discord est nécessaire pour configurer les bots. Google et GitHub sont optionnels."
@@ -339,10 +340,12 @@ export function DesktopAccount() {
             />
           </CardList>
         </Section>
+        </div>
 
         <Separator />
 
         {/* ─── PASSKEYS ────────────────────────────────────── */}
+        <div data-tour="account-passkeys">
         <Section
           title="Clés de sécurité"
           subtitle="Connecte-toi avec Touch ID, Windows Hello ou une clé physique (YubiKey…) plutôt qu'un mot de passe."
@@ -379,6 +382,7 @@ export function DesktopAccount() {
             </CardList>
           )}
         </Section>
+        </div>
 
         <Separator />
 

@@ -137,6 +137,7 @@ export function DesktopRpc() {
         <div
           className="relative overflow-hidden rounded-[22px] border mb-5 rpc-hero"
           style={{ borderColor: "var(--ds-border)" }}
+          data-tour="rpc-activate"
         >
           <div className="absolute inset-0 rpc-hero-bg" />
           <div className="relative px-7 py-8">
@@ -288,6 +289,7 @@ export function DesktopRpc() {
           </Field>
         </Section>
 
+        <div data-tour="rpc-text">
         <Section title="Texte affiché">
           <Field label="Détails (1ère ligne)">
             <input type="text" value={settings.details} onChange={e => update("details", e.target.value)} maxLength={128} className={inputCls} />
@@ -313,6 +315,7 @@ export function DesktopRpc() {
             </div>
           </label>
         </Section>
+        </div>
 
         <Section title="Images" hint="Les noms doivent correspondre à des assets Rich Presence uploadés sur ton app Discord.">
           <div className="grid md:grid-cols-2 gap-2.5">
