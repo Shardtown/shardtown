@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, Cpu, Server, Users, Zap, RefreshCw } from "lucide-react";
+import { Activity, Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useStats } from "@/hooks/useStats";
 import type { Bot } from "@/lib/types";
@@ -14,13 +14,18 @@ function timeSince(ms: number) {
 }
 
 /**
- * Desktop status — rich, NordVPN-style rendering of the public /status page.
- * Hero banner with live pulse, KPI tiles with sparklines, service cards with
- * ping graphs and shard grids. Polls /api/stats every 30s.
+ * Desktop /statut — restrained system status page.
+ *
+ * Visual language matches /premium and /account (native billing-page vibe) :
+ * max-w-920 column, hairline separators, single cards with dense rows,
+ * green/red accents only. No mini sparklines, no rainbow KPI tiles, no
+ * pulsing aurora.
  */
 export function DesktopStatus() {
   const stats = useStats();
   const [, force] = useState(0);
+
+  // Re-render every 5s so the "il y a Xs" timestamp stays fresh.
   useEffect(() => {
     const id = setInterval(() => force(n => n + 1), 5000);
     return () => clearInterval(id);
@@ -31,450 +36,268 @@ export function DesktopStatus() {
 
   return (
     <AppLayout>
-      {/* ─── HERO ─────────────────────────────────────────────── */}
-      <div
-        className="relative overflow-hidden rounded-[22px] border mb-4 status-hero"
-        style={{ borderColor: "var(--ds-border)" }}
-        data-incident={incident ? "1" : "0"}
-      >
-        <div className="absolute inset-0 status-hero-bg" />
+      <div className="max-w-[920px] mx-auto">
+        <StatusHeader
+          incident={incident}
+          loading={stats.loading}
+          offlineShards={stats.offlineShards}
+          totalShards={stats.totalShards}
+          avgPing={stats.avgPing}
+          lastUpdate={lastUpdate}
+        />
+        <Separator />
 
-        <div className="relative px-8 py-10">
-          <p
-            className="text-[11px] font-bold tracking-[0.22em] uppercase mb-3"
-            style={{ color: "var(--ds-text-dim)" }}
-          >
-            Surveillance temps réel
-          </p>
+        <Section title="Vue d'ensemble" subtitle="État global de l'infrastructure en temps réel.">
+          {stats.loading ? <Skeleton h={84} /> : <Overview stats={stats} />}
+        </Section>
 
-          <div className="flex items-end gap-5 flex-wrap">
-            <div className="flex items-center gap-3.5">
-              {stats.loading ? (
-                <RefreshCw size={26} className="animate-spin" style={{ color: "var(--ds-text-dim)" }} />
-              ) : (
-                <span className={`live-pulse ${incident ? "is-bad" : "is-ok"}`} aria-hidden />
-              )}
-              <h1 className="text-[34px] font-black tracking-tight leading-[1] m-0">
-                {stats.loading
-                  ? "Chargement…"
-                  : incident
-                    ? "Incident en cours"
-                    : "Tous les systèmes opérationnels"}
-              </h1>
-            </div>
-          </div>
+        <Separator />
 
-          <p className="text-[13px] font-medium mt-3 max-w-2xl" style={{ color: "var(--ds-text-mut)" }}>
-            {stats.loading
-              ? "Connexion à l'API de monitoring…"
-              : incident
-                ? `${stats.offlineShards} shard${stats.offlineShards > 1 ? "s" : ""} hors ligne sur ${stats.totalShards}. ${
-                    stats.offlineBots > 0
-                      ? `${stats.offlineBots} cluster${stats.offlineBots > 1 ? "s" : ""} affecté${stats.offlineBots > 1 ? "s" : ""}. `
-                      : ""
-                  }Nos équipes sont informées.`
-                : `${stats.totalShards} shards actifs, ${stats.totalGuilds.toLocaleString("fr-FR")} serveurs, latence moyenne ${stats.avgPing} ms.`}
-          </p>
-
-          <div
-            className="mt-6 inline-flex items-center gap-2 text-[11.5px] font-semibold px-3 py-1.5 rounded-full"
-            style={{
-              background: "var(--ds-panel-2)",
-              color: "var(--ds-text-mut)",
-              border: "1px solid var(--ds-border)",
-            }}
-          >
-            <RefreshCw size={11} strokeWidth={2.4} className={stats.loading ? "animate-spin" : ""} />
-            Mis à jour {lastUpdate}
-          </div>
-        </div>
-
-        <style>{`
-          .status-hero {
-            background: linear-gradient(135deg, #101226 0%, #0d0e15 70%);
-          }
-          .status-hero[data-incident="1"] {
-            background: linear-gradient(135deg, #2a1216 0%, #110d0f 70%);
-          }
-          [data-theme="light"] .status-hero {
-            background: linear-gradient(135deg, #e7f5ee 0%, #f5f5f7 70%);
-          }
-          [data-theme="light"] .status-hero[data-incident="1"] {
-            background: linear-gradient(135deg, #fce6e9 0%, #f5f5f7 70%);
-          }
-          .status-hero-bg {
-            background-image:
-              radial-gradient(circle at 1px 1px, rgba(74, 222, 128, 0.30) 1px, transparent 0);
-            background-size: 24px 24px;
-            opacity: 0.35;
-            mask-image: radial-gradient(ellipse at 80% 50%, black 30%, transparent 70%);
-            -webkit-mask-image: radial-gradient(ellipse at 80% 50%, black 30%, transparent 70%);
-          }
-          .status-hero[data-incident="1"] .status-hero-bg {
-            background-image:
-              radial-gradient(circle at 1px 1px, rgba(248, 113, 113, 0.35) 1px, transparent 0);
-          }
-          [data-theme="light"] .status-hero-bg {
-            background-image:
-              radial-gradient(circle at 1px 1px, rgba(16, 185, 129, 0.45) 1px, transparent 0);
-          }
-          [data-theme="light"] .status-hero[data-incident="1"] .status-hero-bg {
-            background-image:
-              radial-gradient(circle at 1px 1px, rgba(220, 38, 38, 0.45) 1px, transparent 0);
-          }
-          .live-pulse {
-            width: 14px; height: 14px; border-radius: 999px; position: relative;
-            display: inline-block;
-          }
-          .live-pulse::after {
-            content: ""; position: absolute; inset: -6px; border-radius: 999px;
-            animation: pulse-ring 2s ease-out infinite;
-          }
-          .live-pulse.is-ok { background: rgb(74, 222, 128); box-shadow: 0 0 14px rgb(74, 222, 128); }
-          .live-pulse.is-ok::after { background: rgb(74, 222, 128); opacity: 0.35; }
-          .live-pulse.is-bad { background: rgb(248, 113, 113); box-shadow: 0 0 14px rgb(248, 113, 113); }
-          .live-pulse.is-bad::after { background: rgb(248, 113, 113); opacity: 0.35; }
-          @keyframes pulse-ring {
-            0%   { transform: scale(0.85); opacity: 0.55; }
-            70%  { transform: scale(1.6);  opacity: 0; }
-            100% { transform: scale(1.6);  opacity: 0; }
-          }
-        `}</style>
-      </div>
-
-      {/* ─── KPI STRIP ────────────────────────────────────────── */}
-      <p
-        className="text-[11px] font-bold tracking-[0.22em] uppercase mb-3 mt-8"
-        style={{ color: "var(--ds-text-dim)" }}
-      >
-        Vue d'ensemble
-      </p>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 mb-10">
-        {stats.loading ? (
-          Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-[120px] rounded-[16px] animate-pulse"
-              style={{ background: "var(--ds-panel)" }}
-            />
-          ))
-        ) : (
-          <>
-            <KpiTile
-              icon={<Cpu size={12} strokeWidth={2} />}
-              label="Clusters"
-              value={`${stats.onlineBots}/${stats.bots.length}`}
-              sub={stats.offlineBots > 0 ? `${stats.offlineBots} hors ligne` : "Tous opérationnels"}
-              bars={stats.liveHistory.clusters}
-              tone={stats.offlineBots > 0 ? "bad" : "ok"}
-            />
-            <KpiTile
-              icon={<Zap size={12} strokeWidth={2} />}
-              label="Shards"
-              value={`${stats.onlineShards}/${stats.totalShards}`}
-              sub={stats.offlineShards > 0 ? `${stats.offlineShards} hors ligne` : "Tous opérationnels"}
-              bars={stats.liveHistory.shards}
-              tone={stats.offlineShards > 0 ? "bad" : "ok"}
-            />
-            <KpiTile
-              icon={<Server size={12} strokeWidth={2} />}
-              label="Serveurs"
-              value={stats.totalGuilds.toLocaleString("fr-FR")}
-              sub={`Sur ${stats.bots.length} cluster${stats.bots.length > 1 ? "s" : ""}`}
-              bars={stats.liveHistory.guilds}
-              tone="blue"
-            />
-            <KpiTile
-              icon={<Users size={12} strokeWidth={2} />}
-              label="Membres"
-              value={
-                stats.totalMembers >= 1000
-                  ? `${(stats.totalMembers / 1000).toFixed(1)}k`
-                  : stats.totalMembers.toLocaleString("fr-FR")
-              }
-              sub="Total cumulés"
-              bars={stats.liveHistory.members}
-              tone="violet"
-            />
-            <KpiTile
-              icon={<Activity size={12} strokeWidth={2} />}
-              label="Latence"
-              value={stats.avgPing > 0 ? `${stats.avgPing} ms` : "—"}
-              sub={
-                stats.avgPing > 250
-                  ? "Latence élevée"
-                  : stats.avgPing > 100
-                    ? "Normal"
-                    : stats.avgPing > 0
-                      ? "Excellent"
-                      : "Aucune mesure"
-              }
-              bars={stats.liveHistory.latency}
-              tone={stats.avgPing > 250 ? "bad" : stats.avgPing > 100 ? "warn" : "ok"}
-            />
-          </>
-        )}
-      </div>
-
-      {/* ─── SERVICES ─────────────────────────────────────────── */}
-      <p
-        className="text-[11px] font-bold tracking-[0.22em] uppercase mb-3"
-        style={{ color: "var(--ds-text-dim)" }}
-      >
-        Détail par cluster
-      </p>
-
-      <div className="flex flex-col gap-3 mb-4">
-        {stats.loading ? (
-          Array.from({ length: 2 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-[150px] rounded-[18px] animate-pulse"
-              style={{ background: "var(--ds-panel)" }}
-            />
-          ))
-        ) : stats.bots.length === 0 ? (
-          <p className="text-[12.5px]" style={{ color: "var(--ds-text-dim)" }}>
-            Aucune donnée disponible.
-          </p>
-        ) : (
-          stats.bots.map(bot => (
-            <ServiceCard
-              key={bot.label}
-              bot={bot}
-              pingHistory={stats.pingHistory}
-            />
-          ))
-        )}
+        <Section title="Services" subtitle="Détail par cluster — un point par shard.">
+          {stats.loading ? (
+            <Skeleton h={120} />
+          ) : stats.bots.length === 0 ? (
+            <Empty label="Aucune donnée disponible." />
+          ) : (
+            <CardList>
+              {stats.bots.map(b => <ServiceRow key={b.label} bot={b} />)}
+            </CardList>
+          )}
+        </Section>
       </div>
     </AppLayout>
   );
 }
 
-/* ───────────────────────── KPI TILE ───────────────────────── */
+/* ──────────────────────── Status header ──────────────────────── */
 
-type Tone = "ok" | "warn" | "bad" | "blue" | "violet";
-const TONE_COLORS: Record<Tone, { text: string; bar: string; mute: string }> = {
-  ok:     { text: "rgb(74, 222, 128)",  bar: "rgb(74, 222, 128)",  mute: "rgba(74, 222, 128, 0.16)" },
-  warn:   { text: "rgb(251, 191, 36)",  bar: "rgb(251, 191, 36)",  mute: "rgba(251, 191, 36, 0.16)" },
-  bad:    { text: "rgb(248, 113, 113)", bar: "rgb(248, 113, 113)", mute: "rgba(248, 113, 113, 0.16)" },
-  blue:   { text: "rgb(96, 165, 250)",  bar: "rgb(96, 165, 250)",  mute: "rgba(96, 165, 250, 0.16)" },
-  violet: { text: "rgb(167, 139, 250)", bar: "rgb(167, 139, 250)", mute: "rgba(167, 139, 250, 0.16)" },
-};
-
-function KpiTile({
-  icon, label, value, sub, bars, tone,
+function StatusHeader({
+  incident, loading, offlineShards, totalShards, avgPing, lastUpdate,
 }: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub: string;
-  bars: number[];
-  tone: Tone;
+  incident: boolean;
+  loading: boolean;
+  offlineShards: number;
+  totalShards: number;
+  avgPing: number;
+  lastUpdate: string;
 }) {
-  const c = TONE_COLORS[tone];
-  const padded = bars.length === 0
-    ? Array(24).fill(0)
-    : bars.length < 24
-      ? Array(24 - bars.length).fill(0).concat(bars)
-      : bars.slice(-24);
+  return (
+    <div className="flex items-start justify-between gap-6 flex-wrap pt-1 pb-6">
+      <div className="flex items-center gap-4 min-w-0">
+        <div
+          className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0"
+          style={
+            loading
+              ? { background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }
+              : incident
+                ? { background: "rgba(239, 68, 68, 0.10)", border: "1px solid rgba(239, 68, 68, 0.32)", color: "rgb(248, 113, 113)" }
+                : { background: "rgba(74, 222, 128, 0.10)", border: "1px solid rgba(74, 222, 128, 0.32)", color: "rgb(74, 222, 128)" }
+          }
+        >
+          {loading
+            ? <Loader2 size={18} className="animate-spin" />
+            : <Activity size={18} strokeWidth={1.8} />}
+        </div>
+        <div className="min-w-0">
+          <p
+            className="text-[11px] font-bold tracking-[0.22em] uppercase mb-1.5 inline-flex items-center gap-2"
+            style={{
+              color: loading
+                ? "var(--ds-text-dim)"
+                : incident
+                  ? "rgb(248, 113, 113)"
+                  : "rgb(74, 222, 128)",
+            }}
+          >
+            {!loading && <StatusDot bad={incident} />}
+            {loading ? "Surveillance" : incident ? "Incident en cours" : "Tous systèmes opérationnels"}
+          </p>
+          <h1 className="text-[28px] font-black tracking-tight leading-[1.05] mb-1">
+            {loading
+              ? "Connexion à l'API…"
+              : incident
+                ? `${offlineShards} shard${offlineShards > 1 ? "s" : ""} hors ligne.`
+                : "Infrastructure stable."}
+          </h1>
+          <p className="text-[12.5px] font-medium" style={{ color: "var(--ds-text-mut)" }}>
+            {loading
+              ? "Récupération des données en cours."
+              : `${totalShards - offlineShards} / ${totalShards} shards · latence moyenne ${avgPing} ms · mis à jour ${lastUpdate}.`}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
+function StatusDot({ bad }: { bad: boolean }) {
+  return (
+    <span
+      className="w-1.5 h-1.5 rounded-full inline-block"
+      style={{
+        background: bad ? "rgb(248, 113, 113)" : "rgb(74, 222, 128)",
+        boxShadow: bad ? "0 0 8px rgba(248, 113, 113, 0.7)" : "0 0 8px rgba(74, 222, 128, 0.65)",
+      }}
+    />
+  );
+}
+
+/* ──────────────────────── Overview row ──────────────────────── */
+
+function Overview({ stats }: { stats: ReturnType<typeof useStats> }) {
+  const rows = [
+    { label: "Clusters",      value: `${stats.onlineBots}/${stats.bots.length}`,    down: stats.offlineBots > 0 },
+    { label: "Shards",        value: `${stats.onlineShards}/${stats.totalShards}`,  down: stats.offlineShards > 0 },
+    { label: "Serveurs",      value: stats.totalGuilds.toLocaleString("fr-FR"),     down: false },
+    { label: "Membres",       value: stats.totalMembers >= 1000 ? `${(stats.totalMembers / 1000).toFixed(1)}k` : stats.totalMembers.toLocaleString("fr-FR"), down: false },
+    { label: "Latence moy.",  value: stats.avgPing > 0 ? `${stats.avgPing} ms` : "—", down: false },
+  ];
+  // Use a 1px gap between cells with the parent bg showing through as the
+  // divider — works correctly on both 2-col mobile and 5-col desktop without
+  // having to track which cells are at the edge.
   return (
     <div
-      className="rounded-[16px] border p-4 transition-colors hover:border-[var(--ds-border-strong)]"
-      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+      className="rounded-[14px] border overflow-hidden grid grid-cols-2 md:grid-cols-5"
+      style={{
+        background: "var(--ds-border)",
+        borderColor: "var(--ds-border)",
+        gap: "1px",
+      }}
     >
-      <div
-        className="text-[10px] font-bold tracking-[0.18em] uppercase inline-flex items-center gap-1.5 mb-2"
-        style={{ color: "var(--ds-text-dim)" }}
-      >
-        {icon}{label}
-      </div>
-      <p
-        className="text-[24px] font-extrabold leading-none tracking-tight font-mono-num mb-1"
-        style={{ color: c.text }}
-      >
-        {value}
-      </p>
-      <p className="text-[11px] font-semibold mb-3" style={{ color: "var(--ds-text-dim)" }}>
-        {sub}
-      </p>
-      <MiniBars data={padded} color={c.bar} mute={c.mute} />
+      {rows.map(r => (
+        <div
+          key={r.label}
+          className="px-5 py-3.5"
+          style={{ background: "var(--ds-bg)" }}
+        >
+          <p
+            className="text-[10px] font-bold tracking-[0.18em] uppercase mb-1.5"
+            style={{ color: "var(--ds-text-dim)" }}
+          >
+            {r.label}
+          </p>
+          <p
+            className="text-[20px] font-black tracking-tight leading-none font-mono-num"
+            style={{ color: r.down ? "rgb(248, 113, 113)" : "var(--ds-text)" }}
+          >
+            {r.value}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
 
-function MiniBars({ data, color, mute }: { data: number[]; color: string; mute: string }) {
-  const max = Math.max(...data, 1);
-  return (
-    <div className="flex h-9 items-end gap-[2px]">
-      {data.map((v, i) => {
-        const h = (v / max) * 100;
-        const hi = h > 60;
-        return (
-          <span
-            key={i}
-            className="flex-1 rounded-t-[2px]"
-            style={{ height: `${Math.max(3, h)}%`, background: hi ? color : mute }}
-          />
-        );
-      })}
-    </div>
-  );
-}
+/* ──────────────────────── Service row ──────────────────────── */
 
-/* ───────────────────────── SERVICE CARD ───────────────────────── */
-
-function ServiceCard({
-  bot, pingHistory,
-}: {
-  bot: Bot;
-  pingHistory: Map<string, number[]>;
-}) {
+function ServiceRow({ bot }: { bot: Bot }) {
   const shards = bot.shards || [];
-  const online = shards.filter(s => s.status === "Online").length;
   const total = shards.length;
-  const onlinePings = shards.filter(s => s.status === "Online");
-  const ping = onlinePings.length > 0
-    ? Math.round(onlinePings.reduce((a, s) => a + (s.ping || 0), 0) / onlinePings.length)
+  const online = shards.filter(s => s.status === "Online").length;
+  const onlineShards = shards.filter(s => s.status === "Online");
+  const ping = onlineShards.length > 0
+    ? Math.round(onlineShards.reduce((a, s) => a + (s.ping || 0), 0) / onlineShards.length)
     : 0;
   const ok = bot.online && online === total;
   const iconSrc = bot.label.toLowerCase().includes("guard")
     ? "/image/shardguard.png"
     : "/image/shard.png";
 
-  // Aggregate ping history across shards of this bot
-  const agg: number[] = [];
-  for (const s of shards) {
-    const arr = pingHistory.get(`${bot.label}-${s.shard_id}`) || [];
-    for (let i = 0; i < arr.length; i++) {
-      agg[i] = (agg[i] || 0) + arr[i];
-    }
-  }
-  const avgPing = agg.map(v => Math.round(v / Math.max(shards.length, 1)));
-
   return (
-    <div
-      className="rounded-[18px] border overflow-hidden"
-      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
-    >
-      <div className="px-5 py-4 flex items-center gap-4 border-b" style={{ borderColor: "var(--ds-border)" }}>
-        <img
-          src={iconSrc}
-          alt=""
-          className="w-11 h-11 rounded-[12px] object-cover border flex-shrink-0"
-          style={{ borderColor: "var(--ds-border)" }}
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-[15px] font-extrabold tracking-tight">{bot.label}</p>
+    <div className="flex items-center gap-4 px-4 py-3.5">
+      <img
+        src={iconSrc}
+        alt=""
+        className="w-10 h-10 rounded-[11px] object-cover border flex-shrink-0"
+        style={{ borderColor: "var(--ds-border)" }}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <p className="text-[13.5px] font-bold truncate">{bot.label}</p>
+          <StatusDot bad={!ok} />
+        </div>
+        <p className="text-[11.5px] font-mono-num" style={{ color: "var(--ds-text-dim)" }}>
+          {online}/{total} shards · {bot.guilds.toLocaleString("fr-FR")} serveurs · {ping > 0 ? `${ping} ms` : "—"}
+        </p>
+      </div>
+      <div
+        className="flex flex-wrap gap-[3px] max-w-[180px] justify-end shrink-0"
+        title={`${online}/${total} shards en ligne`}
+      >
+        {shards.map(s => {
+          const isOk = s.status === "Online";
+          return (
             <span
-              className="text-[10px] font-bold tracking-[0.12em] uppercase px-2 py-0.5 rounded-full inline-flex items-center gap-1.5"
-              style={
-                ok
-                  ? { background: "rgba(74, 222, 128, 0.12)", color: "rgb(74, 222, 128)" }
-                  : { background: "rgba(248, 113, 113, 0.12)", color: "rgb(248, 113, 113)" }
-              }
-            >
-              <span
-                className="w-1.5 h-1.5 rounded-full"
-                style={{ background: ok ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)" }}
-              />
-              {ok ? "Opérationnel" : "Dégradé"}
-            </span>
-          </div>
-          <p className="text-[11.5px] font-medium mt-0.5" style={{ color: "var(--ds-text-mut)" }}>
-            Cluster Discord · {total} shard{total > 1 ? "s" : ""}
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_1.4fr] gap-0">
-        <Cell label="Shards en ligne" value={`${online}/${total}`} tone={online === total ? "ok" : "bad"} />
-        <Cell label="Serveurs" value={bot.guilds.toLocaleString("fr-FR")} />
-        <Cell label="Latence" value={ping > 0 ? `${ping} ms` : "—"} tone={ping > 250 ? "bad" : ping > 100 ? "warn" : ping > 0 ? "ok" : "neutral"} />
-        <Cell label="Ping (24 derniers ticks)" custom={<MiniBars data={padTo24(avgPing)} color="rgb(96, 165, 250)" mute="rgba(96, 165, 250, 0.16)" />} />
-      </div>
-
-      {/* Shard grid */}
-      <div className="px-5 py-4 border-t" style={{ borderColor: "var(--ds-border)" }}>
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
-            Shards
-          </p>
-          <p className="text-[11px] font-mono-num" style={{ color: "var(--ds-text-dim)" }}>
-            {online}/{total}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {shards.map(s => {
-            const isOk = s.status === "Online";
-            const ms = s.ping || 0;
-            return (
-              <div
-                key={s.shard_id}
-                title={`Shard ${s.shard_id} · ${s.status}${ms ? ` · ${ms} ms` : ""}`}
-                className="px-2 h-7 rounded-[8px] inline-flex items-center gap-1.5 text-[10.5px] font-bold font-mono-num"
-                style={{
-                  background: isOk ? "rgba(74, 222, 128, 0.08)" : "rgba(248, 113, 113, 0.10)",
-                  border: `1px solid ${isOk ? "rgba(74, 222, 128, 0.25)" : "rgba(248, 113, 113, 0.30)"}`,
-                  color: isOk ? "rgb(134, 239, 172)" : "rgb(252, 165, 165)",
-                }}
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: isOk ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)" }}
-                />
-                #{s.shard_id}
-                {isOk && ms > 0 && (
-                  <span style={{ color: "var(--ds-text-dim)" }}>· {ms}</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              key={s.shard_id}
+              title={`Shard ${s.shard_id} · ${s.status}${s.ping ? ` · ${s.ping} ms` : ""}`}
+              className="w-2 h-2 rounded-full"
+              style={{
+                background: isOk ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)",
+                opacity: isOk ? 1 : 0.85,
+              }}
+            />
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function padTo24(arr: number[]): number[] {
-  if (arr.length === 0) return Array(24).fill(0);
-  if (arr.length >= 24) return arr.slice(-24);
-  return Array(24 - arr.length).fill(0).concat(arr);
+/* ──────────────────────── Shared primitives ──────────────────────── */
+
+function Section({
+  title, subtitle, children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="py-7">
+      <div className="mb-4">
+        <h2 className="text-[15.5px] font-extrabold tracking-tight mb-1">{title}</h2>
+        {subtitle && (
+          <p className="text-[12px]" style={{ color: "var(--ds-text-mut)" }}>{subtitle}</p>
+        )}
+      </div>
+      {children}
+    </section>
+  );
 }
 
-function Cell({
-  label, value, tone = "neutral", custom,
-}: {
-  label: string;
-  value?: string;
-  tone?: "ok" | "warn" | "bad" | "neutral";
-  custom?: React.ReactNode;
-}) {
-  const color =
-    tone === "ok"   ? "rgb(74, 222, 128)" :
-    tone === "warn" ? "rgb(251, 191, 36)" :
-    tone === "bad"  ? "rgb(248, 113, 113)" :
-    "var(--ds-text)";
+function Separator() {
+  return <div className="h-px w-full" style={{ background: "var(--ds-border)" }} />;
+}
+
+function CardList({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="px-5 py-4 border-r last:border-r-0 border-b md:border-b-0"
-      style={{ borderColor: "var(--ds-border)" }}
+      className="rounded-[14px] border overflow-hidden"
+      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
     >
-      <p
-        className="text-[10px] font-bold tracking-[0.18em] uppercase mb-1.5"
-        style={{ color: "var(--ds-text-dim)" }}
-      >
-        {label}
-      </p>
-      {custom ? (
-        custom
-      ) : (
-        <p className="text-[18px] font-extrabold leading-none tracking-tight font-mono-num" style={{ color }}>
-          {value}
-        </p>
-      )}
+      <div className="divide-y" style={{ borderColor: "var(--ds-border)" }}>
+        {children}
+      </div>
     </div>
+  );
+}
+
+function Empty({ label }: { label: string }) {
+  return (
+    <div
+      className="rounded-[14px] border px-4 py-5 text-center text-[12px]"
+      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)", color: "var(--ds-text-dim)" }}
+    >
+      {label}
+    </div>
+  );
+}
+
+function Skeleton({ h }: { h: number }) {
+  return (
+    <div
+      className="rounded-[14px] animate-pulse"
+      style={{ height: h, background: "var(--ds-panel)" }}
+    />
   );
 }
