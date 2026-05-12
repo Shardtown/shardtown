@@ -168,7 +168,7 @@ function Overview({ stats }: { stats: ReturnType<typeof useStats> }) {
         <div
           key={r.label}
           className="px-5 py-3.5"
-          style={{ background: "var(--ds-bg)" }}
+          style={{ background: "var(--ds-panel)" }}
         >
           <p
             className="text-[10px] font-bold tracking-[0.18em] uppercase mb-1.5"
