@@ -1147,6 +1147,22 @@ app.use('/updates', express.static(UPDATES_DIR, {
     },
 }));
 
+// Stable "give me the latest macOS build" URL — reads the version out of
+// latest.json on disk and 302-redirects to the versioned .dmg. Used by the
+// website's download CTA so the marketing page never needs to know which
+// build is current. Best-effort: if latest.json is missing/broken we send
+// the user to the GitHub releases page instead.
+app.get('/download/mac', (_req, res) => {
+    try {
+        const manifest = JSON.parse(fs.readFileSync(path.join(UPDATES_DIR, 'latest.json'), 'utf8'));
+        const v = String(manifest.version || '').replace(/^v/, '').trim();
+        if (!/^\d+\.\d+\.\d+/.test(v)) throw new Error('bad version');
+        return res.redirect(302, `/updates/Shardtown_${v}_aarch64.dmg`);
+    } catch {
+        return res.redirect(302, 'https://github.com/Shardtown/shardtown/releases/latest');
+    }
+});
+
 // Lightweight session info for the React app
 app.get('/api/me', async (req, res) => {
     // Prefer the new accounts session (email/password / OAuth). When a

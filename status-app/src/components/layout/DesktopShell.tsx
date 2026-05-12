@@ -164,16 +164,16 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           <img src="/image/favicon.png" alt="Shardtown" className="w-10 h-10 object-contain" />
         </Link>
 
-        <nav className="flex flex-col gap-1.5 w-10">
+        <nav className="flex flex-col gap-3 w-12">
           {groups.map((group, gi) => (
-            <div key={gi} className="flex flex-col gap-1.5">
-              {gi > 0 && (
-                <div
-                  className="mx-auto w-6 h-px my-2"
-                  style={{ background: "var(--ds-border)" }}
-                  aria-hidden
-                />
-              )}
+            <div
+              key={gi}
+              className="flex flex-col gap-1 p-1 rounded-[16px] border"
+              style={{
+                background: "var(--ds-panel)",
+                borderColor: "var(--ds-border)",
+              }}
+            >
               {group.items.map(item => (
                 <RailItem
                   key={item.to}
