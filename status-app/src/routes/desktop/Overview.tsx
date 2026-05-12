@@ -342,13 +342,14 @@ function RecentCard({ guild }: { guild: GuildSummary & { bots: ("shardguard" | "
 }
 
 function StatCard({
-  icon, label, value, sub, tone, to,
+  icon, label, to,
 }: {
   icon: React.ReactNode;
   label: string;
-  value: string;
-  sub: string;
-  tone: "ok" | "off";
+  /** @deprecated kept for backward compat with parents that still pass it. */
+  value?: string;
+  sub?: string;
+  tone?: "ok" | "off";
   to: string;
 }) {
   return (
@@ -363,21 +364,7 @@ function StatCard({
       >
         {icon}
       </div>
-      <div className="flex flex-col items-center gap-1.5 w-full">
-        <div className="flex items-center justify-center gap-2 flex-wrap">
-          <p className="text-[15px] font-bold">{label}</p>
-          <span
-            className="text-[10px] font-bold tracking-[0.12em] uppercase px-2 py-0.5 rounded-full"
-            style={tone === "ok"
-              ? { background: "rgba(74, 222, 128, 0.10)", color: "rgb(74, 222, 128)" }
-              : { background: "var(--ds-panel-2)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
-          >
-            {tone === "ok" ? "Actif" : "Inactif"}
-          </span>
-        </div>
-        <p className="text-[26px] font-extrabold tracking-tight font-mono-num leading-none">{value}</p>
-        <p className="text-[11.5px] font-semibold" style={{ color: "var(--ds-text-dim)" }}>{sub}</p>
-      </div>
+      <p className="text-[15px] font-bold">{label}</p>
     </Link>
   );
 }
