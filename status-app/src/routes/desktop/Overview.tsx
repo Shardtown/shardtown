@@ -128,7 +128,7 @@ export function DesktopOverview() {
                   ? "Tous les bots opérationnels"
                   : totalServers === 0
                     ? "Aucun serveur lié"
-                    : `${totalConfigured} / ${totalServers} actifs`}
+                    : "Bots prêts à être configurés"}
               </p>
             </div>
           </div>

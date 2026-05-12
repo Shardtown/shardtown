@@ -205,41 +205,57 @@ export function DesktopAccount() {
   return (
     <AppLayout>
       <div className="max-w-[920px] mx-auto">
-        {/* ─── STATUS HEADER ───────────────────────────────── */}
-        <div className="flex items-start justify-between gap-6 flex-wrap pt-1 pb-6">
-          <div className="flex items-center gap-4 min-w-0">
-            <div
-              className="w-12 h-12 rounded-[14px] overflow-hidden flex items-center justify-center flex-shrink-0"
-              style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
-            >
-              {avatarUrl
-                ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-                : <UserIcon size={20} strokeWidth={1.8} style={{ color: "var(--ds-text-mut)" }} />}
-            </div>
-            <div className="min-w-0">
-              <p
-                className="text-[11px] font-bold tracking-[0.22em] uppercase mb-1.5"
-                style={{ color: "var(--ds-text-dim)" }}
+        {/* ─── HERO CARD ─────────────────────────────────────── */}
+        <div
+          className="relative overflow-hidden rounded-[22px] border mb-6"
+          style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+        >
+          {/* Subtle indigo dot pattern to match the dashboard hero card. */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: "radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.16) 1px, transparent 0)",
+              backgroundSize: "24px 24px",
+              opacity: 0.5,
+              maskImage: "radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%)",
+              WebkitMaskImage: "radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%)",
+            }}
+          />
+          <div className="relative px-7 py-7 flex items-start justify-between gap-6 flex-wrap">
+            <div className="flex items-center gap-4 min-w-0">
+              <div
+                className="w-14 h-14 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
+                style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
               >
-                Mon compte
-              </p>
-              <h1 className="text-[28px] font-black tracking-tight leading-[1.05] mb-1 truncate">
-                {account.pseudo}
-              </h1>
-              <p className="text-[12.5px] font-medium" style={{ color: "var(--ds-text-mut)" }}>
-                {account.email} · Inscrit le {new Date(account.created_at).toLocaleDateString("fr-FR")}
-              </p>
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+                  : <UserIcon size={22} strokeWidth={1.8} style={{ color: "var(--ds-text-mut)" }} />}
+              </div>
+              <div className="min-w-0">
+                <p
+                  className="text-[10.5px] font-bold tracking-[0.22em] uppercase mb-1.5"
+                  style={{ color: "var(--ds-text-dim)" }}
+                >
+                  Mon compte
+                </p>
+                <h1 className="text-[26px] font-black tracking-tight leading-[1.05] mb-1 truncate">
+                  {account.pseudo}
+                </h1>
+                <p className="text-[12.5px] font-medium" style={{ color: "var(--ds-text-mut)" }}>
+                  {account.email} <span style={{ color: "var(--ds-text-faint)" }}>·</span> Inscrit le {new Date(account.created_at).toLocaleDateString("fr-FR")}
+                </p>
+              </div>
             </div>
-          </div>
 
-          <button
-            type="button"
-            onClick={logout}
-            className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full text-[12px] font-bold transition-colors hover:bg-[var(--ds-panel-2)]"
-            style={{ background: "var(--ds-panel)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
-          >
-            <LogOut size={11} strokeWidth={2.2} /> Déconnexion
-          </button>
+            <button
+              type="button"
+              onClick={logout}
+              className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full text-[12px] font-bold transition-colors hover:bg-[var(--ds-panel-2)] shrink-0"
+              style={{ background: "var(--ds-panel-2)", color: "var(--ds-text-mut)", border: "1px solid var(--ds-border)" }}
+            >
+              <LogOut size={11} strokeWidth={2.2} /> Déconnexion
+            </button>
+          </div>
         </div>
 
         {/* ─── BANNER ──────────────────────────────────────── */}
@@ -266,8 +282,6 @@ export function DesktopAccount() {
             <span>Email non vérifié — vérifie le lien envoyé à <b>{account.email}</b>.</span>
           </div>
         )}
-
-        <Separator />
 
         {/* ─── CONNECTIONS ─────────────────────────────────── */}
         <div data-tour="account-connections">
