@@ -10,7 +10,7 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const {
-    Client, GatewayIntentBits, ActivityType,
+    Client, GatewayIntentBits,
     SlashCommandBuilder, REST, Routes, MessageFlags,
 } = require('discord.js');
 
@@ -73,21 +73,8 @@ async function registerCommands() {
 
 client.once('clientReady', () => {
     console.log(`[Shardtown] Connecté en tant que ${client.user.tag} (shard ${client.shard?.ids?.[0] ?? '?'}).`);
-    client.user.setPresence({
-        activities: [{ name: 'shardtwn.fr', type: ActivityType.Watching }],
-        status: 'online',
-    });
     registerCommands();
 });
-
-// Refresh presence every 10 min in case Discord drops it.
-setInterval(() => {
-    if (!client.user) return;
-    client.user.setPresence({
-        activities: [{ name: 'shardtwn.fr', type: ActivityType.Watching }],
-        status: 'online',
-    });
-}, 10 * 60 * 1000).unref?.();
 
 /* ─── Interactions ─────────────────────────────────────────────────── */
 
