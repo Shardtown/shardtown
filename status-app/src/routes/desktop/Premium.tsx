@@ -91,51 +91,68 @@ export function DesktopPremium() {
 
 function StatusHeader({ isPremium, guildCount }: { isPremium: boolean; guildCount: number }) {
   return (
-    <div className="flex items-start justify-between gap-6 flex-wrap pt-1 pb-6">
-      <div className="flex items-center gap-4 min-w-0">
-        <div
-          className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0"
-          style={
-            isPremium
-              ? { background: "rgba(251, 191, 36, 0.12)", border: "1px solid rgba(251, 191, 36, 0.32)", color: "rgb(251, 191, 36)" }
-              : { background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }
-          }
-        >
-          <Crown size={20} strokeWidth={1.8} />
-        </div>
-        <div className="min-w-0">
-          <p
-            className="text-[11px] font-bold tracking-[0.22em] uppercase mb-1.5 inline-flex items-center gap-2"
-            style={{ color: isPremium ? "rgb(251, 191, 36)" : "var(--ds-text-dim)" }}
+    <div
+      className="relative overflow-hidden rounded-[22px] border mb-6"
+      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+    >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: isPremium
+            ? "radial-gradient(circle at 1px 1px, rgba(251, 191, 36, 0.18) 1px, transparent 0)"
+            : "radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.16) 1px, transparent 0)",
+          backgroundSize: "24px 24px",
+          opacity: 0.5,
+          maskImage: "radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%)",
+          WebkitMaskImage: "radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%)",
+        }}
+      />
+      <div className="relative px-7 py-7 flex items-start justify-between gap-6 flex-wrap">
+        <div className="flex items-center gap-4 min-w-0">
+          <div
+            className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0"
+            style={
+              isPremium
+                ? { background: "rgba(251, 191, 36, 0.12)", border: "1px solid rgba(251, 191, 36, 0.32)", color: "rgb(251, 191, 36)" }
+                : { background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }
+            }
           >
-            {isPremium && <GoldDot />}
-            {isPremium ? "Membre Premium" : "Plan Basique"}
-          </p>
-          <h1 className="text-[28px] font-black tracking-tight leading-[1.05] mb-1">
-            {isPremium
-              ? guildCount > 0
-                ? `Premium actif sur ${guildCount} serveur${guildCount > 1 ? "s" : ""}.`
-                : "Premium actif."
-              : "Tu utilises Shardtown gratuitement."}
-          </h1>
-          <p className="text-[13px] font-medium" style={{ color: "var(--ds-text-mut)" }}>
-            {isPremium
-              ? "Toutes les fonctionnalités avancées sont débloquées."
-              : "Passe en Premium pour anti-raid, backups, modules avancés et support prioritaire."}
-          </p>
+            <Crown size={22} strokeWidth={1.8} />
+          </div>
+          <div className="min-w-0">
+            <p
+              className="text-[10.5px] font-bold tracking-[0.22em] uppercase mb-1.5 inline-flex items-center gap-2"
+              style={{ color: isPremium ? "rgb(251, 191, 36)" : "var(--ds-text-dim)" }}
+            >
+              {isPremium && <GoldDot />}
+              {isPremium ? "Membre Premium" : "Plan Basique"}
+            </p>
+            <h1 className="text-[26px] font-black tracking-tight leading-[1.05] mb-1">
+              {isPremium
+                ? guildCount > 0
+                  ? `Premium actif sur ${guildCount} serveur${guildCount > 1 ? "s" : ""}.`
+                  : "Premium actif."
+                : "Tu utilises Shardtown gratuitement."}
+            </h1>
+            <p className="text-[12.5px] font-medium max-w-[520px]" style={{ color: "var(--ds-text-mut)" }}>
+              {isPremium
+                ? "Toutes les fonctionnalités avancées sont débloquées."
+                : "Passe en Premium pour anti-raid, backups, modules avancés et support prioritaire."}
+            </p>
+          </div>
         </div>
-      </div>
 
-      {!isPremium && (
-        <button
-          type="button"
-          onClick={() => openExternal("https://shardtwn.fr/premium").catch(() => {})}
-          className="inline-flex items-center gap-1.5 px-4 h-10 rounded-full text-[12.5px] font-bold transition-opacity hover:opacity-90 shrink-0"
-          style={{ background: "rgb(251, 191, 36)", color: "#1a1300" }}
-        >
-          Passer en Premium <ArrowUpRight size={12} strokeWidth={2.4} />
-        </button>
-      )}
+        {!isPremium && (
+          <button
+            type="button"
+            onClick={() => openExternal("https://shardtwn.fr/premium").catch(() => {})}
+            className="inline-flex items-center gap-1.5 px-4 h-10 rounded-full text-[12.5px] font-bold transition-opacity hover:opacity-90 shrink-0"
+            style={{ background: "rgb(251, 191, 36)", color: "#1a1300" }}
+          >
+            Passer en Premium <ArrowUpRight size={12} strokeWidth={2.4} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

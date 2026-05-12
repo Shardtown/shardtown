@@ -133,46 +133,57 @@ export function DesktopRpc() {
   return (
     <AppLayout>
       <div className="max-w-[920px] mx-auto">
-        {/* ─── STATUS HEADER ────────────────────────────────────── */}
+        {/* ─── HERO CARD ─────────────────────────────────────── */}
         <div
-          className="flex items-start justify-between gap-6 flex-wrap pt-1 pb-6"
+          className="relative overflow-hidden rounded-[22px] border mb-6"
+          style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
           data-tour="rpc-activate"
         >
-          <div className="flex items-center gap-4 min-w-0">
-            <div
-              className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0"
-              style={
-                active
-                  ? { background: "rgba(74, 222, 128, 0.10)", border: "1px solid rgba(74, 222, 128, 0.32)", color: "rgb(74, 222, 128)" }
-                  : { background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }
-              }
-            >
-              <Sparkles size={18} strokeWidth={1.8} />
-            </div>
-            <div className="min-w-0">
-              <p
-                className="text-[11px] font-bold tracking-[0.22em] uppercase mb-1.5 inline-flex items-center gap-2"
-                style={{ color: active ? "rgb(74, 222, 128)" : "var(--ds-text-dim)" }}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: "radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.16) 1px, transparent 0)",
+              backgroundSize: "24px 24px",
+              opacity: 0.5,
+              maskImage: "radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%)",
+              WebkitMaskImage: "radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%)",
+            }}
+          />
+          <div className="relative px-7 py-7 flex items-start justify-between gap-6 flex-wrap">
+            <div className="flex items-center gap-4 min-w-0">
+              <div
+                className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0"
+                style={
+                  active
+                    ? { background: "rgba(74, 222, 128, 0.10)", border: "1px solid rgba(74, 222, 128, 0.32)", color: "rgb(74, 222, 128)" }
+                    : { background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }
+                }
               >
-                {active && (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full inline-block"
-                    style={{ background: "rgb(74, 222, 128)", boxShadow: "0 0 8px rgba(74, 222, 128, 0.65)" }}
-                  />
-                )}
-                Discord Rich Presence
-              </p>
-              <h1 className="text-[28px] font-black tracking-tight leading-[1.05] mb-1">
-                {active ? "Connecté à Discord." : "Inactif."}
-              </h1>
-              <p className="text-[12.5px] font-medium max-w-[520px]" style={{ color: "var(--ds-text-mut)" }}>
-                Personnalise ton statut Discord depuis l'app. Discord doit être ouvert pour que la connexion IPC fonctionne.
-              </p>
+                <Sparkles size={20} strokeWidth={1.8} />
+              </div>
+              <div className="min-w-0">
+                <p
+                  className="text-[10.5px] font-bold tracking-[0.22em] uppercase mb-1.5 inline-flex items-center gap-2"
+                  style={{ color: active ? "rgb(74, 222, 128)" : "var(--ds-text-dim)" }}
+                >
+                  {active && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full inline-block"
+                      style={{ background: "rgb(74, 222, 128)", boxShadow: "0 0 8px rgba(74, 222, 128, 0.65)" }}
+                    />
+                  )}
+                  Discord Rich Presence
+                </p>
+                <h1 className="text-[26px] font-black tracking-tight leading-[1.05] mb-1">
+                  {active ? "Connecté à Discord." : "Inactif."}
+                </h1>
+                <p className="text-[12.5px] font-medium max-w-[520px]" style={{ color: "var(--ds-text-mut)" }}>
+                  Personnalise ton statut Discord depuis l'app. Discord doit être ouvert pour la connexion IPC.
+                </p>
+              </div>
             </div>
           </div>
         </div>
-
-        <div className="h-px w-full mb-6" style={{ background: "var(--ds-border)" }} />
 
         <div className="mb-6 flex items-center gap-2.5 flex-wrap">
           {active ? (
@@ -274,23 +285,6 @@ export function DesktopRpc() {
           <Field label="État (2ème ligne)">
             <input type="text" value={settings.state} onChange={e => update("state", e.target.value)} maxLength={128} className={inputCls} />
           </Field>
-          <label
-            className="flex items-center gap-2.5 px-4 py-3 rounded-[12px] cursor-pointer transition-colors"
-            style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)" }}
-          >
-            <input
-              type="checkbox"
-              checked={settings.show_elapsed}
-              onChange={e => update("show_elapsed", e.target.checked)}
-              className="w-4 h-4 accent-white"
-            />
-            <div>
-              <p className="text-[13px] font-semibold">Afficher le temps écoulé</p>
-              <p className="text-[11.5px]" style={{ color: "var(--ds-text-dim)" }}>
-                Démarre un compteur "il y a X minutes" sur ton statut.
-              </p>
-            </div>
-          </label>
         </Section>
         </div>
 

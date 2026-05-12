@@ -45,7 +45,6 @@ export function DesktopStatus() {
           avgPing={stats.avgPing}
           lastUpdate={lastUpdate}
         />
-        <Separator />
 
         <Section title="Vue d'ensemble" subtitle="État global de l'infrastructure en temps réel.">
           {stats.loading ? <Skeleton h={84} /> : <Overview stats={stats} />}
@@ -72,7 +71,7 @@ export function DesktopStatus() {
 /* ──────────────────────── Status header ──────────────────────── */
 
 function StatusHeader({
-  incident, loading, offlineShards, totalShards, avgPing, lastUpdate,
+  incident, loading,
 }: {
   incident: boolean;
   loading: boolean;
@@ -81,49 +80,61 @@ function StatusHeader({
   avgPing: number;
   lastUpdate: string;
 }) {
+  const accentDot = loading ? "rgba(91, 109, 255, 0.16)" : incident ? "rgba(239, 68, 68, 0.20)" : "rgba(74, 222, 128, 0.20)";
   return (
-    <div className="flex items-start justify-between gap-6 flex-wrap pt-1 pb-6" data-tour="status-header">
-      <div className="flex items-center gap-4 min-w-0">
-        <div
-          className="w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0"
-          style={
-            loading
-              ? { background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }
-              : incident
-                ? { background: "rgba(239, 68, 68, 0.10)", border: "1px solid rgba(239, 68, 68, 0.32)", color: "rgb(248, 113, 113)" }
-                : { background: "rgba(74, 222, 128, 0.10)", border: "1px solid rgba(74, 222, 128, 0.32)", color: "rgb(74, 222, 128)" }
-          }
-        >
-          {loading
-            ? <Loader2 size={18} className="animate-spin" />
-            : <Activity size={18} strokeWidth={1.8} />}
-        </div>
-        <div className="min-w-0">
-          <p
-            className="text-[11px] font-bold tracking-[0.22em] uppercase mb-1.5 inline-flex items-center gap-2"
-            style={{
-              color: loading
-                ? "var(--ds-text-dim)"
+    <div
+      className="relative overflow-hidden rounded-[22px] border mb-6"
+      style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
+      data-tour="status-header"
+    >
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, ${accentDot} 1px, transparent 0)`,
+          backgroundSize: "24px 24px",
+          opacity: 0.5,
+          maskImage: "radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%)",
+          WebkitMaskImage: "radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%)",
+        }}
+      />
+      <div className="relative px-7 py-7 flex items-start justify-between gap-6 flex-wrap">
+        <div className="flex items-center gap-4 min-w-0">
+          <div
+            className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0"
+            style={
+              loading
+                ? { background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }
                 : incident
-                  ? "rgb(248, 113, 113)"
-                  : "rgb(74, 222, 128)",
-            }}
+                  ? { background: "rgba(239, 68, 68, 0.10)", border: "1px solid rgba(239, 68, 68, 0.32)", color: "rgb(248, 113, 113)" }
+                  : { background: "rgba(74, 222, 128, 0.10)", border: "1px solid rgba(74, 222, 128, 0.32)", color: "rgb(74, 222, 128)" }
+            }
           >
-            {!loading && <StatusDot bad={incident} />}
-            {loading ? "Surveillance" : incident ? "Incident en cours" : "Tous systèmes opérationnels"}
-          </p>
-          <h1 className="text-[28px] font-black tracking-tight leading-[1.05] mb-1">
             {loading
-              ? "Connexion à l'API…"
-              : incident
-                ? `${offlineShards} shard${offlineShards > 1 ? "s" : ""} hors ligne.`
-                : "Infrastructure stable."}
-          </h1>
-          <p className="text-[12.5px] font-medium" style={{ color: "var(--ds-text-mut)" }}>
-            {loading
-              ? "Récupération des données en cours."
-              : `${totalShards - offlineShards} / ${totalShards} shards · latence moyenne ${avgPing} ms · mis à jour ${lastUpdate}.`}
-          </p>
+              ? <Loader2 size={20} className="animate-spin" />
+              : <Activity size={20} strokeWidth={1.8} />}
+          </div>
+          <div className="min-w-0">
+            <p
+              className="text-[10.5px] font-bold tracking-[0.22em] uppercase mb-1.5 inline-flex items-center gap-2"
+              style={{
+                color: loading
+                  ? "var(--ds-text-dim)"
+                  : incident
+                    ? "rgb(248, 113, 113)"
+                    : "rgb(74, 222, 128)",
+              }}
+            >
+              {!loading && <StatusDot bad={incident} />}
+              {loading ? "Surveillance" : incident ? "Incident en cours" : "Tous systèmes opérationnels"}
+            </p>
+            <h1 className="text-[26px] font-black tracking-tight leading-[1.05]">
+              {loading
+                ? "Connexion à l'API…"
+                : incident
+                  ? "Incident détecté."
+                  : "Infrastructure stable."}
+            </h1>
+          </div>
         </div>
       </div>
     </div>

@@ -114,22 +114,25 @@ export function DesktopOverview() {
               <p className="text-[26px] font-black tracking-tight leading-[1.05]">
                 Salut, {displayName}.
               </p>
-              <p
-                className="text-[13px] font-semibold mt-1 inline-flex items-center gap-1.5"
-                style={{ color: allOk ? "rgb(74, 222, 128)" : "var(--ds-text-mut)" }}
-              >
-                <span className="w-1.5 h-1.5 rounded-full"
-                  style={{
-                    background: allOk ? "rgb(74, 222, 128)" : "var(--ds-text-dim)",
-                    boxShadow: allOk ? "0 0 8px rgb(74, 222, 128)" : "none",
-                  }}
-                />
-                {allOk
-                  ? "Tous les bots opérationnels"
-                  : totalServers === 0
-                    ? "Aucun serveur lié"
-                    : "Bots prêts à être configurés"}
-              </p>
+              {allOk && (
+                <p
+                  className="text-[13px] font-semibold mt-1 inline-flex items-center gap-1.5"
+                  style={{ color: "rgb(74, 222, 128)" }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full"
+                    style={{
+                      background: "rgb(74, 222, 128)",
+                      boxShadow: "0 0 8px rgb(74, 222, 128)",
+                    }}
+                  />
+                  Tous les bots opérationnels
+                </p>
+              )}
+              {!allOk && totalServers === 0 && (
+                <p className="text-[13px] font-semibold mt-1" style={{ color: "var(--ds-text-mut)" }}>
+                  Aucun serveur lié
+                </p>
+              )}
             </div>
           </div>
 
