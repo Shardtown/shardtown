@@ -5061,8 +5061,10 @@ function verifyAdminPassword(input) {
     const hasHash = process.env.ADMIN_PASSWORD_HASH && process.env.ADMIN_PASSWORD_HASH.includes(':');
     const hasPlaintext = !!process.env.ADMIN_PASSWORD;
     if (!hasHash && !hasPlaintext) {
-        console.error('❌ Aucun ADMIN_PASSWORD_HASH ni ADMIN_PASSWORD défini — login admin impossible.');
-        return;
+        console.error('❌ Aucun ADMIN_PASSWORD_HASH ni ADMIN_PASSWORD défini — abandon du boot.');
+        console.error('   Génère un hash : node -e "const c=require(\'crypto\'),s=c.randomBytes(16).toString(\'hex\');' +
+            'console.log(s+\':\'+c.scryptSync(process.argv[1],s,64).toString(\'hex\'))" "TON_MOT_DE_PASSE"');
+        process.exit(1);
     }
     if (!hasHash && hasPlaintext) {
         console.warn('━'.repeat(72));

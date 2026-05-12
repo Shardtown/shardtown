@@ -639,6 +639,17 @@ function inlineMd(line: string) {
   out = out.replace(/\*([^*]+)\*/g, "<em>$1</em>");
   out = out.replace(/__([^_]+)__/g, "<u>$1</u>");
   out = out.replace(/~~([^~]+)~~/g, "<s>$1</s>");
-  out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" style="color:#00a8fc;text-decoration:none;" target="_blank" rel="noreferrer">$1</a>');
+  out = out.replace(/\[([^\]]+)\]\(([^\s)]+)\)/g, (match, text, rawUrl) => {
+    // Defense in depth: even though escapeHtml ran first, parse the URL
+    // and only allow http(s) so javascript:/data: never slip in via a
+    // future change to the regex or to escapeHtml.
+    try {
+      const u = new URL(rawUrl);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return match;
+    } catch {
+      return match;
+    }
+    return `<a href="${rawUrl}" style="color:#00a8fc;text-decoration:none;" target="_blank" rel="noreferrer">${text}</a>`;
+  });
   return out;
 }

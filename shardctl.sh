@@ -58,18 +58,23 @@ confirm() {
     [[ "$answer" == "o" || "$answer" == "O" ]]
 }
 
-# Recupere un champ JSON d'un process PM2 par son nom
+# Recupere un champ JSON d'un process PM2 par son nom.
+# Les arguments sont passes via sys.argv (et non interpoles dans le code
+# Python) pour eviter toute injection si un appelant futur passe une
+# valeur contenant une apostrophe ou autre.
 pm2_field() {
     local name=$1
     local path=$2
     pm2 jlist 2>/dev/null | python3 -c "
 import sys, json
+name = sys.argv[1]
+path = sys.argv[2]
 try:
     data = json.load(sys.stdin)
     for p in data:
-        if p.get('name') == '$name':
+        if p.get('name') == name:
             cur = p
-            for key in '$path'.split('.'):
+            for key in path.split('.'):
                 if isinstance(cur, dict):
                     cur = cur.get(key)
                 else:
@@ -80,7 +85,7 @@ try:
     print('-')
 except Exception:
     print('-')
-" 2>/dev/null
+" "$name" "$path" 2>/dev/null
 }
 
 status_text() {
