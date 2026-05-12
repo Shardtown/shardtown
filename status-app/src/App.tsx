@@ -5,6 +5,8 @@ import { apiGet } from "@/api/client";
 import type { DiscordUser } from "@/api/types";
 import { IS_DESKTOP } from "@/lib/desktop";
 import { DesktopGate } from "@/components/DesktopGate";
+import { TourHost } from "@/components/OnboardingTour";
+import { PostUpdateNotes } from "@/components/PostUpdateNotes";
 import { Status } from "@/routes/Status";
 import { Index } from "@/routes/Index";
 import { Wiki } from "@/routes/Wiki";
@@ -110,9 +112,24 @@ export function App() {
               <Route path="/account" element={IS_DESKTOP ? <DesktopAccount /> : <Account />} />
               <Route path="*" element={<Navigate to={HOME_ROUTE} replace />} />
             </Routes>
+            {/* Persistent overlays that must survive route changes. AppLayout
+                (and therefore DesktopShell) is *inside* each route, so they
+                remount on every navigation — the tour modal, post-update
+                notes etc. would lose their state. Mount them once here, at
+                the Routes sibling level, so they stay alive throughout. */}
+            {IS_DESKTOP && <PersistentOverlays />}
           </ErrorBoundary>
         </BrowserRouter>
       </DesktopGate>
     </AuthContext.Provider>
+  );
+}
+
+function PersistentOverlays() {
+  return (
+    <>
+      <TourHost />
+      <PostUpdateNotes />
+    </>
   );
 }

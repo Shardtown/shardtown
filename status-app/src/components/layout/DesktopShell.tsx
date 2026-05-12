@@ -6,9 +6,10 @@ import {
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
-import { PostUpdateNotes } from "@/components/PostUpdateNotes";
+// TourHost + PostUpdateNotes were here before but they're now mounted at
+// the App level (above <Routes>) so they survive route changes — otherwise
+// every navigation remounts DesktopShell and kills the tour mid-step.
 import { GreetingToast } from "@/components/GreetingToast";
-import { TourHost } from "@/components/OnboardingTour";
 import {
   PresenceProvider, PresenceStack, FieldPresenceLayer,
   FollowBanner, GhostCursors,
@@ -266,15 +267,11 @@ export function DesktopShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* Post-update brief — pops once after each new version install */}
-      <PostUpdateNotes />
-
-      {/* Bonjour / Bonsoir — pops once par lancement avec le prénom */}
+      {/* Bonjour / Bonsoir — pops once par lancement avec le prénom.
+          (PostUpdateNotes + TourHost ont été remontés au niveau App.tsx
+          pour survivre aux changements de route — sinon chaque navigation
+          remount DesktopShell et la modale du tour disparaît mid-step.) */}
       <GreetingToast />
-
-      {/* Tour interactif — listens for startTour() event, navigates pages,
-          spotlights real DOM anchors via [data-tour="…"] */}
-      <TourHost />
 
       {/* Live presence — floating avatar + lock overlay on each input a
           peer is editing, ghost cursors for peers in fast mode, and a

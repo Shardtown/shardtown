@@ -180,13 +180,22 @@ const STEPS: Step[] = [
  */
 export function TourHost() {
   const [open, setOpen] = useState(false);
+  // Generation counter — bumped each time startTour() fires so the tour
+  // ALWAYS remounts from a clean state, even when the user calls it again
+  // while the modal is already up (e.g. clicking "Revoir le tour" twice
+  // in a row). Also ensures any previous spotlight class on the DOM is
+  // cleared before the new tour starts.
+  const [gen, setGen] = useState(0);
   useEffect(() => {
-    const fn = () => setOpen(true);
+    const fn = () => {
+      setGen(g => g + 1);
+      setOpen(true);
+    };
     window.addEventListener(EVENT_NAME, fn);
     return () => window.removeEventListener(EVENT_NAME, fn);
   }, []);
   if (!open) return null;
-  return <InteractiveTour onClose={() => setOpen(false)} />;
+  return <InteractiveTour key={gen} onClose={() => setOpen(false)} />;
 }
 
 /* ─── Backward-compatible export for legacy callers ───────────────── */
