@@ -298,10 +298,17 @@ function RailItem({
       to={to}
       title={label}
       aria-label={label}
-      className="w-10 h-10 rounded-[12px] flex items-center justify-center transition-colors group"
+      className={
+        active
+          ? "ds-glass w-10 h-10 rounded-[12px] flex items-center justify-center transition-colors group"
+          : "w-10 h-10 rounded-[12px] flex items-center justify-center transition-colors group"
+      }
       style={
         active
-          ? { background: "var(--ds-panel-hi)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }
+          ? {
+              color: "var(--ds-text)",
+              border: "1px solid var(--ds-border-strong)",
+            }
           : { color: "var(--ds-text-dim)" }
       }
     >
