@@ -7,6 +7,7 @@ import { IS_DESKTOP } from "@/lib/desktop";
 import { DesktopGate } from "@/components/DesktopGate";
 import { TourHost } from "@/components/OnboardingTour";
 import { PostUpdateNotes } from "@/components/PostUpdateNotes";
+import { VerifyAllNotifier } from "@/components/VerifyAllNotifier";
 import { Status } from "@/routes/Status";
 import { Index } from "@/routes/Index";
 import { Wiki } from "@/routes/Wiki";
@@ -130,6 +131,7 @@ function PersistentOverlays() {
     <>
       <TourHost />
       <PostUpdateNotes />
+      <VerifyAllNotifier />
     </>
   );
 }

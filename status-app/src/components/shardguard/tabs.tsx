@@ -175,7 +175,7 @@ type VerifyState =
   | { kind: "idle" }
   | { kind: "confirming" }
   | { kind: "loading" }
-  | { kind: "success"; granted: number; skipped: number }
+  | { kind: "queued" }
   | { kind: "error"; message: string };
 
 function VerifyAllPanel({ hasVerifiedRole }: { hasVerifiedRole: boolean }) {
@@ -183,16 +183,28 @@ function VerifyAllPanel({ hasVerifiedRole }: { hasVerifiedRole: boolean }) {
 
   async function fire() {
     setState({ kind: "loading" });
+    const match = window.location.pathname.match(/\/shardguard\/guild\/([^/]+)/);
+    const guildId = match?.[1] || "";
     try {
-      const d = await apiPost<{ success?: boolean; error?: string; granted?: number; skipped?: number }>(
+      const d = await apiPost<{ success?: boolean; error?: string; queued?: boolean }>(
         window.location.pathname.replace("/shardguard/guild/", "/shardguard/api/guild/") + "/verify-all",
       );
       if (d.success) {
-        setState({ kind: "success", granted: d.granted ?? 0, skipped: d.skipped ?? 0 });
-        // Quietly trigger a parent refresh so the stats counters catch up.
-        // Dispatched as a window event so we don't have to thread a callback
-        // through every nested component.
-        window.dispatchEvent(new Event("shardtown:guild-refresh"));
+        // The HTTP request returns immediately; the actual role-granting
+        // loop runs server-side in the background. Persist the active job
+        // so the global VerifyAllNotifier polls until it's done — even if
+        // the user navigates to another page or another guild in the
+        // meantime.
+        if (guildId) {
+          try {
+            localStorage.setItem(
+              "shardtown.verify-job.active",
+              JSON.stringify({ guildId, startedAt: Date.now() }),
+            );
+          } catch { /* */ }
+          window.dispatchEvent(new Event("shardtown:verify-job-started"));
+        }
+        setState({ kind: "queued" });
       } else {
         setState({ kind: "error", message: d.error || "Erreur inconnue" });
       }
@@ -270,9 +282,9 @@ function VerifyAllModal({
           className="h-[3px] w-full"
           style={{
             background:
-              state.kind === "success" ? "rgb(74, 222, 128)" :
-              state.kind === "error"   ? "rgb(239, 68, 68)" :
-                                         "rgb(74, 222, 128)",
+              state.kind === "queued" ? "rgb(74, 222, 128)" :
+              state.kind === "error"  ? "rgb(239, 68, 68)" :
+                                        "rgb(74, 222, 128)",
           }}
         />
         {closable && (
@@ -340,15 +352,12 @@ function VerifyAllModal({
                 <Loader2 className="w-5 h-5 animate-spin" />
               </div>
               <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(74, 222, 128)" }}>
-                En cours
+                Démarrage
               </p>
-              <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Attribution des rôles…</h3>
-              <p className="text-[13px] leading-relaxed" style={{ color: "var(--ds-text-mut)" }}>
-                Chaque membre reçoit le rôle un par un pour respecter les limites Discord. Garde cette fenêtre ouverte jusqu'à la fin.
-              </p>
+              <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Envoi de la requête…</h3>
             </div>
           )}
-          {state.kind === "success" && (
+          {state.kind === "queued" && (
             <>
               <div
                 className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
@@ -361,41 +370,19 @@ function VerifyAllModal({
                 <CheckCircle2 className="w-5 h-5" />
               </div>
               <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(74, 222, 128)" }}>
-                Vérification terminée
+                Lancée
               </p>
-              <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Tout le monde est vérifié.</h3>
-              <div className="grid grid-cols-2 gap-2.5 mb-6">
-                <div
-                  className="rounded-[14px] border px-4 py-3"
-                  style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
-                >
-                  <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
-                    Rôles ajoutés
-                  </p>
-                  <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "rgb(74, 222, 128)" }}>
-                    {state.granted}
-                  </p>
-                </div>
-                <div
-                  className="rounded-[14px] border px-4 py-3"
-                  style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
-                >
-                  <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
-                    Ignorés
-                  </p>
-                  <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "var(--ds-text)" }}>
-                    {state.skipped}
-                  </p>
-                  <p className="text-[10.5px] mt-1" style={{ color: "var(--ds-text-dim)" }}>déjà vérifiés / bots</p>
-                </div>
-              </div>
+              <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Vérification en arrière-plan.</h3>
+              <p className="text-[13px] leading-relaxed mb-6" style={{ color: "var(--ds-text-mut)" }}>
+                L'attribution des rôles se fait par vagues pour respecter les limites Discord — ça peut prendre une à deux minutes. Tu peux fermer cette fenêtre et continuer à utiliser l'app, une notification apparaîtra quand c'est terminé.
+              </p>
               <button
                 type="button"
                 onClick={onClose}
                 className="w-full h-11 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90"
                 style={{ background: "rgb(74, 222, 128)", color: "#062e16" }}
               >
-                OK
+                OK, je continue
               </button>
             </>
           )}

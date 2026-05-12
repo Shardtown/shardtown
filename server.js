@@ -4507,11 +4507,24 @@ app.post('/shardguard/api/guild/:guildID/panic', checkAuth, async (req, res) => 
     } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
 });
 
+// In-memory job tracker for mass verifications. Keyed by guildId. The
+// frontend polls /verify-all/status to know when the background job is
+// done, since the HTTP request itself returns immediately (Nginx kills
+// requests > 60s).
+const verifyJobs = new Map();
+const VERIFY_JOB_TTL = 30 * 60 * 1000; // 30 min — purged after that.
+setInterval(() => {
+    const now = Date.now();
+    for (const [k, j] of verifyJobs) {
+        if (j.doneAt && now - j.doneAt > VERIFY_JOB_TTL) verifyJobs.delete(k);
+    }
+}, 5 * 60 * 1000).unref?.();
+
 // Mass-assign the configured verified role to every non-bot member of the
-// guild. Iterates the member list page by page, adds the role on those who
-// don't have it, and inserts a `Success` log entry per user so the
-// verifiedCount stat catches up. Limited to guild admins — same gate as
-// the rest of the dashboard mutations.
+// guild. Fire-and-forget : we respond to the HTTP request immediately and
+// keep iterating the Discord API in the background, since the full run on
+// a multi-thousand member guild takes minutes. The client polls
+// /verify-all/status to know when it's done.
 app.post('/shardguard/api/guild/:guildID/verify-all', checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
@@ -4519,68 +4532,108 @@ app.post('/shardguard/api/guild/:guildID/verify-all', checkAuth, async (req, res
 
     const headers = { Authorization: `Bot ${process.env.DISCORD_TOKEN}`, 'Content-Type': 'application/json' };
 
-    try {
-        const [settingsRows] = await db.execute('SELECT verifiedRole FROM settings WHERE guildId = ?', [guildID]);
-        const verifiedRole = settingsRows[0]?.verifiedRole;
-        if (!verifiedRole) {
-            return res.status(400).json({
-                success: false,
-                error: 'Rôle vérifié non configuré dans les paramètres ShardGuard.',
-            });
-        }
-
-        // Paginate the Discord member list (max 1000 per page, capped at 10
-        // pages = 10 000 members to keep the request bounded). Real big-guild
-        // owners should run this twice if they hit the cap.
-        let after = '0';
-        let granted = 0;
-        let skipped = 0;
-        const MAX_PAGES = 10;
-        for (let page = 0; page < MAX_PAGES; page++) {
-            const r = await axios.get(
-                `https://discord.com/api/v10/guilds/${guildID}/members?limit=1000&after=${after}`,
-                { headers },
-            );
-            const batch = r.data || [];
-            if (batch.length === 0) break;
-
-            for (const m of batch) {
-                if (m.user?.bot) { skipped++; continue; }
-                const userId = m.user?.id;
-                if (!userId) continue;
-                const hasRole = Array.isArray(m.roles) && m.roles.includes(verifiedRole);
-                if (hasRole) { skipped++; continue; }
-                try {
-                    await axios.put(
-                        `https://discord.com/api/v10/guilds/${guildID}/members/${userId}/roles/${verifiedRole}`,
-                        {},
-                        { headers },
-                    );
-                    granted++;
-                    // Log the success so verifiedCount in /api/shardguard/guild
-                    // reflects the bulk verification without redesigning the
-                    // counting query.
-                    try {
-                        await db.execute(
-                            `INSERT IGNORE INTO logs (guildId, userId, status, details, timestamp)
-                             VALUES (?, ?, 'Success', 'Mass verification by admin', NOW())`,
-                            [guildID, userId],
-                        );
-                    } catch { /* schema variant — best-effort */ }
-                    // Discord rate limit safety
-                    await new Promise(r => setTimeout(r, 60));
-                } catch { /* member may have left, role hierarchy issue, etc */ }
-            }
-
-            after = batch[batch.length - 1].user?.id || after;
-            if (batch.length < 1000) break;
-        }
-
-        res.json({ success: true, granted, skipped });
-    } catch (err) {
-        console.error('[verify-all] error:', err.response?.data || err.message);
-        res.status(500).json({ success: false, error: 'Erreur serveur lors de la vérification de masse.' });
+    const [settingsRows] = await db.execute('SELECT verifiedRole FROM settings WHERE guildId = ?', [guildID]);
+    const verifiedRole = settingsRows[0]?.verifiedRole;
+    if (!verifiedRole) {
+        return res.status(400).json({
+            success: false,
+            error: 'Rôle vérifié non configuré dans les paramètres ShardGuard.',
+        });
     }
+
+    // If a job is already running for this guild, just return its current
+    // state — don't queue a parallel one.
+    const existing = verifyJobs.get(guildID);
+    if (existing && existing.running) {
+        return res.json({
+            success: true,
+            queued: true,
+            running: true,
+            granted: existing.granted,
+            skipped: existing.skipped,
+        });
+    }
+
+    const job = {
+        running: true,
+        startedAt: Date.now(),
+        doneAt: null,
+        granted: 0,
+        skipped: 0,
+        error: null,
+    };
+    verifyJobs.set(guildID, job);
+
+    // Respond IMMEDIATELY so Nginx doesn't time out.
+    res.json({ success: true, queued: true });
+
+    // Background job — runs after the response has been sent.
+    (async () => {
+        try {
+            let after = '0';
+            const MAX_PAGES = 10;
+            for (let page = 0; page < MAX_PAGES; page++) {
+                const r = await axios.get(
+                    `https://discord.com/api/v10/guilds/${guildID}/members?limit=1000&after=${after}`,
+                    { headers },
+                );
+                const batch = r.data || [];
+                if (batch.length === 0) break;
+
+                for (const m of batch) {
+                    if (m.user?.bot) { job.skipped++; continue; }
+                    const userId = m.user?.id;
+                    if (!userId) continue;
+                    const hasRole = Array.isArray(m.roles) && m.roles.includes(verifiedRole);
+                    if (hasRole) { job.skipped++; continue; }
+                    try {
+                        await axios.put(
+                            `https://discord.com/api/v10/guilds/${guildID}/members/${userId}/roles/${verifiedRole}`,
+                            {},
+                            { headers },
+                        );
+                        job.granted++;
+                        try {
+                            await db.execute(
+                                `INSERT IGNORE INTO logs (guildId, userId, status, details, timestamp)
+                                 VALUES (?, ?, 'Success', 'Mass verification by admin', NOW())`,
+                                [guildID, userId],
+                            );
+                        } catch { /* schema variant — best-effort */ }
+                        await new Promise(r => setTimeout(r, 60));
+                    } catch { /* member left, role hierarchy issue, etc */ }
+                }
+
+                after = batch[batch.length - 1].user?.id || after;
+                if (batch.length < 1000) break;
+            }
+        } catch (err) {
+            console.error('[verify-all] bg error:', err.response?.data || err.message);
+            job.error = err.response?.data?.message || err.message || 'Erreur inconnue';
+        } finally {
+            job.running = false;
+            job.doneAt = Date.now();
+        }
+    })();
+});
+
+// Frontend polling endpoint. Returns the current state of the most recent
+// verification job for that guild (running counts, doneAt, error).
+app.get('/shardguard/api/guild/:guildID/verify-all/status', checkAuth, (req, res) => {
+    const guildID = req.params.guildID;
+    const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
+    if (!userGuild) return res.status(403).json({ error: 'Accès refusé' });
+    const j = verifyJobs.get(guildID);
+    if (!j) return res.json({ exists: false });
+    res.json({
+        exists: true,
+        running: j.running,
+        granted: j.granted,
+        skipped: j.skipped,
+        startedAt: j.startedAt,
+        doneAt: j.doneAt,
+        error: j.error,
+    });
 });
 
 app.post('/shardguard/api/guild/:guildID/deploy', checkAuth, async (req, res) => {
