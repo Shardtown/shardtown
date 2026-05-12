@@ -104,11 +104,20 @@ export function ShardGuild() {
     setSaveError(null);
     try {
       await apiPost(`/shard/guild/${guildId}/config`, draft);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3500);
-      // Silent refresh — pas de loading state ni de reset du draft local
-      // pour ne pas re-render brutalement la page après chaque sauvegarde.
-      await refresh(true);
+      // Re-fetch authoritatively sans flip du loading state. Le draft est
+      // recalé sur la valeur serveur — si une option a été silencieusement
+      // ignorée côté server, on la voit revertir visuellement plutôt que
+      // d'afficher un faux "Enregistré" avec des valeurs locales menteuses.
+      try {
+        const fresh = await apiGet<ShardGuildData>(`/api/shard/guild/${guildId}`);
+        setData(fresh);
+        setDraft(fresh.settings);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3500);
+      } catch {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3500);
+      }
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Erreur réseau");
     } finally {

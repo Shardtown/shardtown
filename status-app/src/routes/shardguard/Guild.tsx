@@ -108,13 +108,23 @@ export function ShardGuardGuild() {
     setSaveError(null);
     try {
       await apiPost(`/shardguard/guild/${guildId}/config`, draft);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3500);
-      // Silent refresh — only re-syncs volatile parts (stats, channels, roles)
-      // without flipping `loading` back to true. The current draft IS the
-      // truth post-save, so we don't reset it from the server response.
-      // This kills the "page reloads" feel when saving on desktop.
-      await refresh(true);
+      // Re-fetch authoritatively but WITHOUT flipping the loading state:
+      // we want the page to stay live (no skeleton flash) and trust the
+      // server's persisted values. If anything was silently dropped server
+      // side, the draft will visibly revert to the persisted state — much
+      // better than a fake "Saved" + stale local values.
+      try {
+        const fresh = await apiGet<ShardGuardGuildData>(`/api/shardguard/guild/${guildId}`);
+        setData(fresh);
+        setDraft(fresh.settings);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3500);
+      } catch {
+        // Save succeeded but we couldn't re-fetch (network blip) — keep the
+        // local draft, still claim saved since the POST returned 2xx.
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3500);
+      }
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Erreur réseau");
     } finally {
