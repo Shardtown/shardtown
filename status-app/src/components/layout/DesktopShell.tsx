@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutGrid, Sparkles, Settings, HelpCircle,
-  Search, Bell, User, LogOut, X, MessageCircle, Activity, Download, Loader2,
+  Search, Bell, User, LogOut, X, MessageCircle, Activity, Download, Loader2, RefreshCw,
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
 import {
@@ -578,18 +578,26 @@ function UpdateButton() {
   const [available, setAvailable] = useState<UpdateInfo | null>(null);
   const [progress, setProgress] = useState<UpdateProgress>({ kind: "idle" });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [lastChecked, setLastChecked] = useState<number | null>(null);
+
+  const poll = useCallback(async () => {
+    setChecking(true);
+    try {
+      const u = await checkForUpdate();
+      setAvailable(u);
+      setLastChecked(Date.now());
+    } finally {
+      setChecking(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!IS_DESKTOP) return;
-    let cancelled = false;
-    async function poll() {
-      const u = await checkForUpdate();
-      if (!cancelled) setAvailable(u);
-    }
     poll();
     const id = setInterval(poll, 30 * 60_000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
+    return () => clearInterval(id);
+  }, [poll]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -602,12 +610,14 @@ function UpdateButton() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  if (!IS_DESKTOP || !available) return null;
+  if (!IS_DESKTOP) return null;
 
   const isBusy =
     progress.kind === "checking" ||
     progress.kind === "downloading" ||
     progress.kind === "installing";
+
+  const hasUpdate = !!available;
 
   async function install() {
     setMenuOpen(false);
@@ -623,20 +633,31 @@ function UpdateButton() {
       ? Math.round((progress.downloaded / progress.total) * 100)
       : null;
 
+  // Color logic:
+  //   - update available → green
+  //   - no update         → neutral (same as bell)
+  //   - busy              → neutral (loader visible)
+  const accentColor = hasUpdate
+    ? "rgb(74, 222, 128)"
+    : "var(--ds-text-mut)";
+  const accentBorder = hasUpdate
+    ? "rgba(74, 222, 128, 0.35)"
+    : "var(--ds-border)";
+
   return (
     <div className="relative">
       <button
         type="button"
         data-update-btn
-        aria-label={`Mise à jour ${available.version} disponible`}
-        title={`Mise à jour ${available.version} disponible`}
+        aria-label={hasUpdate ? `Mise à jour ${available.version} disponible` : "Mises à jour"}
+        title={hasUpdate ? `Mise à jour ${available.version} disponible` : "Mises à jour"}
         disabled={isBusy}
         onClick={() => setMenuOpen(o => !o)}
         className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--ds-panel-2)] disabled:cursor-wait"
         style={{
           background: "var(--ds-panel)",
-          border: "1px solid var(--ds-border)",
-          color: "rgb(74, 222, 128)",
+          border: `1px solid ${accentBorder}`,
+          color: accentColor,
         }}
       >
         {isBusy ? (
@@ -656,58 +677,114 @@ function UpdateButton() {
             boxShadow: "0 28px 64px -16px rgba(0,0,0,0.6)",
           }}
         >
-          {/* Accent strip */}
-          <div className="h-[3px] w-full" style={{ background: "rgb(74, 222, 128)" }} />
+          {/* Accent strip — green if update, neutral otherwise */}
+          <div
+            className="h-[3px] w-full"
+            style={{ background: hasUpdate ? "rgb(74, 222, 128)" : "var(--ds-border-strong)" }}
+          />
 
-          <div className="px-5 pt-5 pb-4">
-            <div className="flex items-center gap-3 mb-3">
-              <div
-                className="w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0"
-                style={{ background: "rgba(74, 222, 128, 0.12)", border: "1px solid rgba(74, 222, 128, 0.28)", color: "rgb(74, 222, 128)" }}
-              >
-                <Download size={16} strokeWidth={2.2} />
+          {hasUpdate ? (
+            <>
+              <div className="px-5 pt-5 pb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(74, 222, 128, 0.12)", border: "1px solid rgba(74, 222, 128, 0.28)", color: "rgb(74, 222, 128)" }}
+                  >
+                    <Download size={16} strokeWidth={2.2} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="text-[10px] font-bold tracking-[0.22em] uppercase"
+                      style={{ color: "rgb(74, 222, 128)" }}
+                    >
+                      Mise à jour disponible
+                    </p>
+                    <p className="text-[17px] font-extrabold tracking-tight font-mono-num leading-tight">
+                      v{available.version}
+                    </p>
+                  </div>
+                </div>
+                {available.notes && (
+                  <p
+                    className="text-[12px] font-medium leading-relaxed whitespace-pre-line line-clamp-5"
+                    style={{ color: "var(--ds-text-mut)" }}
+                  >
+                    {available.notes}
+                  </p>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p
-                  className="text-[10px] font-bold tracking-[0.22em] uppercase"
-                  style={{ color: "rgb(74, 222, 128)" }}
+
+              <div className="px-4 pb-4 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={install}
+                  className="w-full h-10 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2"
+                  style={{ background: "rgb(74, 222, 128)", color: "#062e16" }}
                 >
-                  Mise à jour disponible
-                </p>
-                <p className="text-[17px] font-extrabold tracking-tight font-mono-num leading-tight">
-                  v{available.version}
-                </p>
+                  <Download size={13} strokeWidth={2.6} />
+                  Installer maintenant
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(false)}
+                  className="w-full h-8 rounded-full text-[12px] font-bold transition-colors hover:bg-[var(--ds-panel)]"
+                  style={{ color: "var(--ds-text-dim)" }}
+                >
+                  Plus tard
+                </button>
               </div>
-            </div>
-            {available.notes && (
-              <p
-                className="text-[12px] font-medium leading-relaxed whitespace-pre-line line-clamp-5"
-                style={{ color: "var(--ds-text-mut)" }}
-              >
-                {available.notes}
-              </p>
-            )}
-          </div>
+            </>
+          ) : (
+            <>
+              <div className="px-5 pt-5 pb-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div
+                    className="w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0"
+                    style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
+                  >
+                    <Download size={16} strokeWidth={2.2} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className="text-[10px] font-bold tracking-[0.22em] uppercase"
+                      style={{ color: "var(--ds-text-dim)" }}
+                    >
+                      À jour
+                    </p>
+                    <p className="text-[15px] font-extrabold tracking-tight leading-tight">
+                      Aucune mise à jour
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[11.5px]" style={{ color: "var(--ds-text-mut)" }}>
+                  Tu utilises la dernière version. Les nouvelles mises à jour sont vérifiées automatiquement toutes les 30 min.
+                </p>
+                {lastChecked && (
+                  <p className="text-[10.5px] font-mono-num mt-1.5" style={{ color: "var(--ds-text-faint)" }}>
+                    Dernière vérification : {new Date(lastChecked).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                )}
+              </div>
 
-          <div className="px-4 pb-4 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={install}
-              className="w-full h-10 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2"
-              style={{ background: "rgb(74, 222, 128)", color: "#062e16" }}
-            >
-              <Download size={13} strokeWidth={2.6} />
-              Installer maintenant
-            </button>
-            <button
-              type="button"
-              onClick={() => setMenuOpen(false)}
-              className="w-full h-8 rounded-full text-[12px] font-bold transition-colors hover:bg-[var(--ds-panel)]"
-              style={{ color: "var(--ds-text-dim)" }}
-            >
-              Plus tard
-            </button>
-          </div>
+              <div className="px-4 pb-4">
+                <button
+                  type="button"
+                  onClick={poll}
+                  disabled={checking}
+                  className="w-full h-10 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-wait"
+                  style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text)" }}
+                >
+                  {checking ? (
+                    <Loader2 size={13} className="animate-spin" />
+                  ) : (
+                    <RefreshCw size={12} strokeWidth={2.4} />
+                  )}
+                  {checking ? "Vérification…" : "Rechercher une mise à jour"}
+                </button>
+              </div>
+            </>
+          )}
 
           <style>{`
             .update-pop { animation: update-in 180ms cubic-bezier(0.22, 1, 0.36, 1); transform-origin: top right; }

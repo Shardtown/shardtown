@@ -63,6 +63,8 @@ struct RpcActivityPayload {
     small_text: Option<String>,
     button_label: Option<String>,
     button_url: Option<String>,
+    button2_label: Option<String>,
+    button2_url: Option<String>,
     show_elapsed: Option<bool>,
 }
 
@@ -122,11 +124,23 @@ fn rpc_set(state: tauri::State<'_, RpcState>, app_id: String, activity: RpcActiv
         payload = payload.timestamps(activity::Timestamps::new().start(now));
     }
 
+    // Discord allows up to 2 buttons per activity. Build the list dynamically
+    // so users can configure just one, the other, or both.
+    let mut buttons: Vec<activity::Button> = Vec::new();
     if let (Some(label), Some(url)) = (
         empty_to_none(activity.button_label.as_deref()),
         empty_to_none(activity.button_url.as_deref()),
     ) {
-        payload = payload.buttons(vec![activity::Button::new(label, url)]);
+        buttons.push(activity::Button::new(label, url));
+    }
+    if let (Some(label), Some(url)) = (
+        empty_to_none(activity.button2_label.as_deref()),
+        empty_to_none(activity.button2_url.as_deref()),
+    ) {
+        buttons.push(activity::Button::new(label, url));
+    }
+    if !buttons.is_empty() {
+        payload = payload.buttons(buttons);
     }
 
     client.set_activity(payload).map_err(|e| format!("Envoi RPC: {e}"))?;

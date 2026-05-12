@@ -27,6 +27,8 @@ interface RpcSettings {
   small_text: string;
   button_label: string;
   button_url: string;
+  button2_label: string;
+  button2_url: string;
   show_elapsed: boolean;
 }
 
@@ -40,6 +42,8 @@ const DEFAULTS: RpcSettings = {
   small_text: "",
   button_label: "Découvrir Shardtown",
   button_url: "https://shardtwn.fr",
+  button2_label: "",
+  button2_url: "",
   show_elapsed: true,
 };
 
@@ -92,6 +96,8 @@ export function DesktopRpc() {
           small_text: settings.small_text,
           button_label: settings.button_label,
           button_url: settings.button_url,
+          button2_label: settings.button2_label,
+          button2_url: settings.button2_url,
           show_elapsed: settings.show_elapsed,
         },
       });
@@ -325,14 +331,24 @@ export function DesktopRpc() {
           </div>
         </Section>
 
-        <Section title="Bouton" hint="Un seul bouton supporté pour le moment. Les deux champs doivent être remplis ou vides.">
-          <div className="grid md:grid-cols-2 gap-2.5">
-            <Field label="Libellé">
-              <input type="text" value={settings.button_label} onChange={e => update("button_label", e.target.value)} maxLength={32} className={inputCls} />
-            </Field>
-            <Field label="URL">
-              <input type="url" value={settings.button_url} onChange={e => update("button_url", e.target.value)} placeholder="https://…" className={inputCls} />
-            </Field>
+        <Section title="Boutons" hint="Jusqu'à 2 boutons. Pour chaque ligne, libellé ET URL doivent être remplis — sinon la ligne est ignorée.">
+          <div className="flex flex-col gap-3">
+            <div className="grid md:grid-cols-[1fr_2fr] gap-2.5 items-end">
+              <Field label="Bouton 1 — Libellé">
+                <input type="text" value={settings.button_label} onChange={e => update("button_label", e.target.value)} maxLength={32} className={inputCls} />
+              </Field>
+              <Field label="URL">
+                <input type="url" value={settings.button_url} onChange={e => update("button_url", e.target.value)} placeholder="https://…" className={inputCls} />
+              </Field>
+            </div>
+            <div className="grid md:grid-cols-[1fr_2fr] gap-2.5 items-end">
+              <Field label="Bouton 2 — Libellé">
+                <input type="text" value={settings.button2_label} onChange={e => update("button2_label", e.target.value)} maxLength={32} placeholder="Optionnel" className={inputCls} />
+              </Field>
+              <Field label="URL">
+                <input type="url" value={settings.button2_url} onChange={e => update("button2_url", e.target.value)} placeholder="https://…" className={inputCls} />
+              </Field>
+            </div>
           </div>
         </Section>
 
