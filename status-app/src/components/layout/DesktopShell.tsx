@@ -184,12 +184,12 @@ export function DesktopShell({ children }: { children: ReactNode }) {
 
       {/* ─── RIGHT PANE: TOP BAR + CONTENT ─────────────────────────── */}
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* Top bar */}
+        {/* Top bar — search bar absolutely centered, right cluster pinned right */}
         <header
-          className="h-[64px] flex-shrink-0 flex items-center gap-3 px-6 border-b"
-          style={{ borderColor: "var(--ds-border)", background: "var(--ds-bg)" }}
+          className="relative h-[64px] flex-shrink-0 flex items-center justify-end gap-3 px-6"
+          style={{ background: "var(--ds-bg)" }}
         >
-          <div className="flex-1 flex justify-center">
+          <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
             <SearchBox open={searchOpen} setOpen={setSearchOpen} onNavigate={nav} />
           </div>
           <UpdateButton />
