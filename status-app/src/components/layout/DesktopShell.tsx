@@ -423,11 +423,11 @@ function MenuRow({
   accent?: "premium";
 }) {
   const text =
-    danger              ? "rgb(248, 113, 113)" :
+    danger              ? "var(--ds-status-err)" :
     accent === "premium" ? "rgb(251, 191, 36)" :
     "var(--ds-text)";
   const iconColor =
-    danger              ? "rgb(248, 113, 113)" :
+    danger              ? "var(--ds-status-err)" :
     accent === "premium" ? "rgb(251, 191, 36)" :
     "var(--ds-text-mut)";
   return (
@@ -733,10 +733,10 @@ function UpdateButton() {
   //   - no update         → neutral (same as bell)
   //   - busy              → neutral (loader visible)
   const accentColor = hasUpdate
-    ? "rgb(74, 222, 128)"
+    ? "var(--ds-status-ok)"
     : "var(--ds-text-mut)";
   const accentBorder = hasUpdate
-    ? "rgba(74, 222, 128, 0.35)"
+    ? "rgba(var(--ds-status-ok-rgb), 0.35)"
     : "var(--ds-border)";
 
   return (
@@ -771,7 +771,7 @@ function UpdateButton() {
           {/* Accent strip — green if update, neutral otherwise */}
           <div
             className="h-[3px] w-full"
-            style={{ background: hasUpdate ? "rgb(74, 222, 128)" : "var(--ds-border-strong)" }}
+            style={{ background: hasUpdate ? "var(--ds-status-ok)" : "var(--ds-border-strong)" }}
           />
 
           {hasUpdate ? (
@@ -780,14 +780,14 @@ function UpdateButton() {
                 <div className="flex items-center gap-3 mb-3">
                   <div
                     className="w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(74, 222, 128, 0.12)", border: "1px solid rgba(74, 222, 128, 0.28)", color: "rgb(74, 222, 128)" }}
+                    style={{ background: "rgba(var(--ds-status-ok-rgb), 0.12)", border: "1px solid rgba(var(--ds-status-ok-rgb), 0.28)", color: "var(--ds-status-ok)" }}
                   >
                     <Download size={16} strokeWidth={2.2} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
                       className="text-[10px] font-bold tracking-[0.22em] uppercase"
-                      style={{ color: "rgb(74, 222, 128)" }}
+                      style={{ color: "var(--ds-status-ok)" }}
                     >
                       Mise à jour disponible
                     </p>
@@ -811,7 +811,7 @@ function UpdateButton() {
                   type="button"
                   onClick={install}
                   className="w-full h-10 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2"
-                  style={{ background: "rgb(74, 222, 128)", color: "#062e16" }}
+                  style={{ background: "var(--ds-status-ok)", color: "#062e16" }}
                 >
                   <Download size={13} strokeWidth={2.6} />
                   Installer maintenant
@@ -902,7 +902,7 @@ function UpdateButton() {
                   : "Vérification"}
             </p>
             {pct !== null && (
-              <p className="text-[12px] font-mono-num font-bold" style={{ color: "rgb(74, 222, 128)" }}>
+              <p className="text-[12px] font-mono-num font-bold" style={{ color: "var(--ds-status-ok)" }}>
                 {pct}%
               </p>
             )}
@@ -912,7 +912,7 @@ function UpdateButton() {
               className="h-full transition-[width] duration-200"
               style={{
                 width: pct !== null ? `${pct}%` : "40%",
-                background: "rgb(74, 222, 128)",
+                background: "var(--ds-status-ok)",
                 animation: pct === null ? "update-indeterm 1.4s ease-in-out infinite" : undefined,
               }}
             />

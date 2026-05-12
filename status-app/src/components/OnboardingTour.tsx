@@ -470,17 +470,17 @@ function TourCard({
             tracks the current step / total. */}
         <div
           className="relative h-[3px] w-full"
-          style={{ background: "rgba(91, 109, 255, 0.12)" }}
+          style={{ background: "rgba(var(--ds-accent-rgb), 0.12)" }}
         >
           <div
             className="absolute inset-y-0 left-0"
             style={{
               width: `${((index + 1) / total) * 100}%`,
-              background: "linear-gradient(90deg, rgb(91, 109, 255) 0%, rgb(165, 180, 252) 100%)",
+              background: "linear-gradient(90deg, var(--ds-accent) 0%, rgb(165, 180, 252) 100%)",
               transition: "width 380ms cubic-bezier(0.22, 1, 0.36, 1)",
               borderTopRightRadius: index + 1 < total ? 3 : 0,
               borderBottomRightRadius: index + 1 < total ? 3 : 0,
-              boxShadow: "0 0 12px rgba(91, 109, 255, 0.45)",
+              boxShadow: "0 0 12px rgba(var(--ds-accent-rgb), 0.45)",
             }}
           />
         </div>
@@ -502,8 +502,8 @@ function TourCard({
             <span
               className="w-7 h-7 rounded-[9px] flex items-center justify-center"
               style={{
-                background: "rgba(91, 109, 255, 0.14)",
-                border: "1px solid rgba(91, 109, 255, 0.30)",
+                background: "rgba(var(--ds-accent-rgb), 0.14)",
+                border: "1px solid rgba(var(--ds-accent-rgb), 0.30)",
                 color: "rgb(165, 180, 252)",
               }}
             >
@@ -583,7 +583,7 @@ function TourCard({
               type="button"
               onClick={onNext}
               className="inline-flex items-center gap-1.5 px-3.5 h-8 rounded-full font-bold text-[12px] hover:opacity-90 active:scale-[0.99] transition-all whitespace-nowrap"
-              style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+              style={{ background: "var(--ds-accent)", color: "#fff" }}
             >
               {isLast ? "Terminer" : "Suivant"}
               {isLast ? <CheckCircle2 size={12} strokeWidth={2.4} /> : <ChevronRight size={12} strokeWidth={2.4} />}

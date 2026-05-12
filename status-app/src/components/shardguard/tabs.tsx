@@ -236,9 +236,9 @@ function VerifyAllPanel({ hasVerifiedRole }: { hasVerifiedRole: boolean }) {
         disabled={!hasVerifiedRole}
         className="px-5 h-11 rounded-full font-bold text-[13px] transition-colors inline-flex items-center gap-2 disabled:opacity-45 disabled:cursor-not-allowed"
         style={{
-          background: "rgba(74, 222, 128, 0.12)",
-          border: "1px solid rgba(74, 222, 128, 0.35)",
-          color: "rgb(74, 222, 128)",
+          background: "rgba(var(--ds-status-ok-rgb), 0.12)",
+          border: "1px solid rgba(var(--ds-status-ok-rgb), 0.35)",
+          color: "var(--ds-status-ok)",
         }}
       >
         <CheckCircle2 className="w-4 h-4" />
@@ -282,9 +282,9 @@ function VerifyAllModal({
           className="h-[3px] w-full"
           style={{
             background:
-              state.kind === "queued" ? "rgb(74, 222, 128)" :
+              state.kind === "queued" ? "var(--ds-status-ok)" :
               state.kind === "error"  ? "rgb(239, 68, 68)" :
-                                        "rgb(74, 222, 128)",
+                                        "var(--ds-status-ok)",
           }}
         />
         {closable && (
@@ -304,14 +304,14 @@ function VerifyAllModal({
               <div
                 className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
                 style={{
-                  background: "rgba(74, 222, 128, 0.12)",
-                  border: "1px solid rgba(74, 222, 128, 0.32)",
-                  color: "rgb(74, 222, 128)",
+                  background: "rgba(var(--ds-status-ok-rgb), 0.12)",
+                  border: "1px solid rgba(var(--ds-status-ok-rgb), 0.32)",
+                  color: "var(--ds-status-ok)",
                 }}
               >
                 <CheckCircle2 className="w-5 h-5" />
               </div>
-              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(74, 222, 128)" }}>
+              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "var(--ds-status-ok)" }}>
                 Vérification massive
               </p>
               <h3 className="text-[20px] font-extrabold tracking-tight mb-2">Vérifier tout le monde ?</h3>
@@ -331,7 +331,7 @@ function VerifyAllModal({
                   type="button"
                   onClick={onConfirm}
                   className="flex-1 h-11 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90 inline-flex items-center justify-center gap-2"
-                  style={{ background: "rgb(74, 222, 128)", color: "#062e16" }}
+                  style={{ background: "var(--ds-status-ok)", color: "#062e16" }}
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Vérifier
@@ -344,14 +344,14 @@ function VerifyAllModal({
               <div
                 className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
                 style={{
-                  background: "rgba(74, 222, 128, 0.12)",
-                  border: "1px solid rgba(74, 222, 128, 0.28)",
-                  color: "rgb(74, 222, 128)",
+                  background: "rgba(var(--ds-status-ok-rgb), 0.12)",
+                  border: "1px solid rgba(var(--ds-status-ok-rgb), 0.28)",
+                  color: "var(--ds-status-ok)",
                 }}
               >
                 <Loader2 className="w-5 h-5 animate-spin" />
               </div>
-              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(74, 222, 128)" }}>
+              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "var(--ds-status-ok)" }}>
                 Démarrage
               </p>
               <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Envoi de la requête…</h3>
@@ -362,14 +362,14 @@ function VerifyAllModal({
               <div
                 className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
                 style={{
-                  background: "rgba(74, 222, 128, 0.12)",
-                  border: "1px solid rgba(74, 222, 128, 0.32)",
-                  color: "rgb(74, 222, 128)",
+                  background: "rgba(var(--ds-status-ok-rgb), 0.12)",
+                  border: "1px solid rgba(var(--ds-status-ok-rgb), 0.32)",
+                  color: "var(--ds-status-ok)",
                 }}
               >
                 <CheckCircle2 className="w-5 h-5" />
               </div>
-              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(74, 222, 128)" }}>
+              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "var(--ds-status-ok)" }}>
                 Lancée
               </p>
               <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Vérification en arrière-plan.</h3>
@@ -380,7 +380,7 @@ function VerifyAllModal({
                 type="button"
                 onClick={onClose}
                 className="w-full h-11 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90"
-                style={{ background: "rgb(74, 222, 128)", color: "#062e16" }}
+                style={{ background: "var(--ds-status-ok)", color: "#062e16" }}
               >
                 OK, je continue
               </button>
@@ -393,12 +393,12 @@ function VerifyAllModal({
                 style={{
                   background: "rgba(239, 68, 68, 0.10)",
                   border: "1px solid rgba(239, 68, 68, 0.28)",
-                  color: "rgb(248, 113, 113)",
+                  color: "var(--ds-status-err)",
                 }}
               >
                 <AlertTriangle className="w-5 h-5" />
               </div>
-              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(248, 113, 113)" }}>
+              <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "var(--ds-status-err)" }}>
                 Échec
               </p>
               <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Vérification non effectuée.</h3>
@@ -725,9 +725,9 @@ export function PanicTab({ settings }: { settings: SGSettings }) {
         <div
           className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
           style={{
-            background: active ? "rgba(74, 222, 128, 0.12)" : "rgba(239, 68, 68, 0.10)",
-            border: active ? "1px solid rgba(74, 222, 128, 0.32)" : "1px solid rgba(239, 68, 68, 0.25)",
-            color: active ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)",
+            background: active ? "rgba(var(--ds-status-ok-rgb), 0.12)" : "rgba(239, 68, 68, 0.10)",
+            border: active ? "1px solid rgba(var(--ds-status-ok-rgb), 0.32)" : "1px solid rgba(239, 68, 68, 0.25)",
+            color: active ? "var(--ds-status-ok)" : "var(--ds-status-err)",
           }}
         >
           <ShieldOff className="w-5 h-5" />
@@ -749,14 +749,14 @@ export function PanicTab({ settings }: { settings: SGSettings }) {
           style={
             active
               ? {
-                  background: "rgba(74, 222, 128, 0.12)",
-                  border: "1px solid rgba(74, 222, 128, 0.35)",
-                  color: "rgb(74, 222, 128)",
+                  background: "rgba(var(--ds-status-ok-rgb), 0.12)",
+                  border: "1px solid rgba(var(--ds-status-ok-rgb), 0.35)",
+                  color: "var(--ds-status-ok)",
                 }
               : {
                   background: "rgba(239, 68, 68, 0.12)",
                   border: "1px solid rgba(239, 68, 68, 0.35)",
-                  color: "rgb(248, 113, 113)",
+                  color: "var(--ds-status-err)",
                 }
           }
         >
@@ -812,9 +812,9 @@ function PanicModal({
           className="h-[3px] w-full"
           style={{
             background:
-              state.kind === "success" ? "rgb(74, 222, 128)" :
+              state.kind === "success" ? "var(--ds-status-ok)" :
               state.kind === "error"   ? "rgb(239, 68, 68)" :
-                                         "rgb(248, 113, 113)",
+                                         "var(--ds-status-err)",
           }}
         />
 
@@ -869,9 +869,9 @@ function ConfirmingBody({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const accent = activate ? "rgb(248, 113, 113)" : "rgb(74, 222, 128)";
-  const accentBg = activate ? "rgba(239, 68, 68, 0.10)" : "rgba(74, 222, 128, 0.12)";
-  const accentBorder = activate ? "rgba(239, 68, 68, 0.28)" : "rgba(74, 222, 128, 0.32)";
+  const accent = activate ? "var(--ds-status-err)" : "var(--ds-status-ok)";
+  const accentBg = activate ? "rgba(239, 68, 68, 0.10)" : "rgba(var(--ds-status-ok-rgb), 0.12)";
+  const accentBorder = activate ? "rgba(239, 68, 68, 0.28)" : "rgba(var(--ds-status-ok-rgb), 0.32)";
   const dotColor = accent;
 
   return (
@@ -932,7 +932,7 @@ function ConfirmingBody({
           style={
             activate
               ? { background: "rgb(239, 68, 68)", color: "#fff" }
-              : { background: "rgb(74, 222, 128)", color: "#062e16" }
+              : { background: "var(--ds-status-ok)", color: "#062e16" }
           }
         >
           <ShieldOff className="w-4 h-4" />
@@ -951,12 +951,12 @@ function LoadingBody() {
         style={{
           background: "rgba(239, 68, 68, 0.10)",
           border: "1px solid rgba(239, 68, 68, 0.28)",
-          color: "rgb(248, 113, 113)",
+          color: "var(--ds-status-err)",
         }}
       >
         <Loader2 className="w-5 h-5 animate-spin" />
       </div>
-      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(248, 113, 113)" }}>
+      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "var(--ds-status-err)" }}>
         Lockdown en cours
       </p>
       <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Verrouillage du serveur…</h3>
@@ -968,7 +968,7 @@ function LoadingBody() {
           className="h-full rounded-full"
           style={{
             width: "40%",
-            background: "rgb(248, 113, 113)",
+            background: "var(--ds-status-err)",
             animation: "panic-loader 1.4s ease-in-out infinite",
           }}
         />
@@ -996,14 +996,14 @@ function SuccessBody({
       <div
         className="inline-flex items-center justify-center w-12 h-12 rounded-[14px] mb-4"
         style={{
-          background: "rgba(74, 222, 128, 0.12)",
-          border: "1px solid rgba(74, 222, 128, 0.32)",
-          color: "rgb(74, 222, 128)",
+          background: "rgba(var(--ds-status-ok-rgb), 0.12)",
+          border: "1px solid rgba(var(--ds-status-ok-rgb), 0.32)",
+          color: "var(--ds-status-ok)",
         }}
       >
         <CheckCircle2 className="w-5 h-5" />
       </div>
-      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(74, 222, 128)" }}>
+      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "var(--ds-status-ok)" }}>
         {activated ? "Lockdown actif" : "Lockdown levé"}
       </p>
       <h3 className="text-[20px] font-extrabold tracking-tight mb-3">
@@ -1018,7 +1018,7 @@ function SuccessBody({
             <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
               Salons
             </p>
-            <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "rgb(74, 222, 128)" }}>
+            <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "var(--ds-status-ok)" }}>
               {channels}
             </p>
             <p className="text-[10.5px] mt-1" style={{ color: "var(--ds-text-dim)" }}>
@@ -1033,7 +1033,7 @@ function SuccessBody({
               <p className="text-[10px] font-bold tracking-[0.18em] uppercase" style={{ color: "var(--ds-text-dim)" }}>
                 Invitations
               </p>
-              <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "rgb(74, 222, 128)" }}>
+              <p className="text-[22px] font-extrabold font-mono-num leading-none mt-1" style={{ color: "var(--ds-status-ok)" }}>
                 {invites}
               </p>
               <p className="text-[10.5px] mt-1" style={{ color: "var(--ds-text-dim)" }}>supprimées</p>
@@ -1051,7 +1051,7 @@ function SuccessBody({
         type="button"
         onClick={onClose}
         className="w-full h-11 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90"
-        style={{ background: "rgb(74, 222, 128)", color: "#062e16" }}
+        style={{ background: "var(--ds-status-ok)", color: "#062e16" }}
       >
         OK
       </button>
@@ -1067,12 +1067,12 @@ function ErrorBody({ message, onClose }: { message: string; onClose: () => void 
         style={{
           background: "rgba(239, 68, 68, 0.10)",
           border: "1px solid rgba(239, 68, 68, 0.28)",
-          color: "rgb(248, 113, 113)",
+          color: "var(--ds-status-err)",
         }}
       >
         <AlertTriangle className="w-5 h-5" />
       </div>
-      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "rgb(248, 113, 113)" }}>
+      <p className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1" style={{ color: "var(--ds-status-err)" }}>
         Échec
       </p>
       <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Mode panic non activé.</h3>

@@ -57,7 +57,7 @@ export function SoundPicker({
           ? <VolumeX size={11} strokeWidth={2} style={{ color: "var(--ds-text-faint)" }} />
           : <span
               className="w-1.5 h-1.5 rounded-full"
-              style={{ background: "rgb(74, 222, 128)", boxShadow: "0 0 6px rgb(74, 222, 128)" }}
+              style={{ background: "var(--ds-status-ok)", boxShadow: "0 0 6px var(--ds-status-ok)" }}
             />}
         <span className="flex-1 text-left truncate">{current.label}</span>
         <ChevronDown

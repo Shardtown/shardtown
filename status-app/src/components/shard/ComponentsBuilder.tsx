@@ -227,7 +227,7 @@ function InsertSlot({ onPick }: { onPick: (k: BlockKind) => void }) {
         className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity"
         style={{ pointerEvents: "none" }}
       >
-        <div className="flex-1 h-px" style={{ background: "rgba(91, 109, 255, 0.3)" }} />
+        <div className="flex-1 h-px" style={{ background: "rgba(var(--ds-accent-rgb), 0.3)" }} />
       </div>
       <button
         type="button"
@@ -292,7 +292,7 @@ function BlockShell({
       className={`relative rounded-lg my-1 transition-all ${editing ? "" : "cursor-pointer hover:bg-white/[0.025]"}`}
       style={{
         outline: editing ? "1px solid #5b6dff" : "1px solid transparent",
-        background: editing ? "rgba(91, 109, 255, 0.04)" : undefined,
+        background: editing ? "rgba(var(--ds-accent-rgb), 0.04)" : undefined,
       }}
       onClick={(e) => {
         if (editing) return;

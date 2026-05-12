@@ -142,7 +142,7 @@ export function DesktopRpc() {
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: "radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.16) 1px, transparent 0)",
+              backgroundImage: "radial-gradient(circle at 1px 1px, rgba(var(--ds-accent-rgb), 0.16) 1px, transparent 0)",
               backgroundSize: "24px 24px",
               opacity: 0.5,
               maskImage: "radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%)",
@@ -155,7 +155,7 @@ export function DesktopRpc() {
                 className="w-14 h-14 rounded-[16px] flex items-center justify-center flex-shrink-0"
                 style={
                   active
-                    ? { background: "rgba(74, 222, 128, 0.10)", border: "1px solid rgba(74, 222, 128, 0.32)", color: "rgb(74, 222, 128)" }
+                    ? { background: "rgba(var(--ds-status-ok-rgb), 0.10)", border: "1px solid rgba(var(--ds-status-ok-rgb), 0.32)", color: "var(--ds-status-ok)" }
                     : { background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }
                 }
               >
@@ -164,12 +164,12 @@ export function DesktopRpc() {
               <div className="min-w-0">
                 <p
                   className="text-[10.5px] font-bold tracking-[0.22em] uppercase mb-1.5 inline-flex items-center gap-2"
-                  style={{ color: active ? "rgb(74, 222, 128)" : "var(--ds-text-dim)" }}
+                  style={{ color: active ? "var(--ds-status-ok)" : "var(--ds-text-dim)" }}
                 >
                   {active && (
                     <span
                       className="w-1.5 h-1.5 rounded-full inline-block"
-                      style={{ background: "rgb(74, 222, 128)", boxShadow: "0 0 8px rgba(74, 222, 128, 0.65)" }}
+                      style={{ background: "var(--ds-status-ok)", boxShadow: "0 0 8px rgba(var(--ds-status-ok-rgb), 0.65)" }}
                     />
                   )}
                   Discord Rich Presence
@@ -193,7 +193,7 @@ export function DesktopRpc() {
                 onClick={activate}
                 disabled={busy}
                 className="inline-flex items-center gap-1.5 px-5 h-[40px] rounded-full font-bold text-[12.5px] transition-all disabled:opacity-45 disabled:cursor-not-allowed"
-                style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+                style={{ background: "var(--ds-accent)", color: "#fff" }}
               >
                 {busy ? <Loader2 size={13} strokeWidth={2.4} className="animate-spin" /> : <Sparkles size={13} strokeWidth={2.2} />}
                 Mettre à jour
@@ -223,7 +223,7 @@ export function DesktopRpc() {
               onClick={activate}
               disabled={busy || !settings.app_id.trim()}
               className="inline-flex items-center gap-1.5 px-6 h-[44px] rounded-full font-bold text-[13.5px] transition-all disabled:opacity-45 disabled:cursor-not-allowed"
-              style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+              style={{ background: "var(--ds-accent)", color: "#fff" }}
             >
               {busy ? <Loader2 size={13} strokeWidth={2.4} className="animate-spin" /> : <Sparkles size={13} strokeWidth={2.2} />}
               Activer le RPC
@@ -234,7 +234,7 @@ export function DesktopRpc() {
         {info && (
           <div
             className="mb-5 px-4 py-2.5 rounded-xl text-[12.5px] font-semibold"
-            style={{ background: "rgba(74, 222, 128, 0.08)", border: "1px solid rgba(74, 222, 128, 0.25)", color: "rgb(74, 222, 128)" }}
+            style={{ background: "rgba(var(--ds-status-ok-rgb), 0.08)", border: "1px solid rgba(var(--ds-status-ok-rgb), 0.25)", color: "var(--ds-status-ok)" }}
           >
             {info}
           </div>

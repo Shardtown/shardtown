@@ -80,7 +80,7 @@ function StatusHeader({
   avgPing: number;
   lastUpdate: string;
 }) {
-  const accentDot = loading ? "rgba(91, 109, 255, 0.16)" : incident ? "rgba(239, 68, 68, 0.20)" : "rgba(74, 222, 128, 0.20)";
+  const accentDot = loading ? "rgba(var(--ds-accent-rgb), 0.16)" : incident ? "rgba(239, 68, 68, 0.20)" : "rgba(var(--ds-status-ok-rgb), 0.20)";
   return (
     <div
       className="relative overflow-hidden rounded-[22px] border mb-6"
@@ -105,8 +105,8 @@ function StatusHeader({
               loading
                 ? { background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }
                 : incident
-                  ? { background: "rgba(239, 68, 68, 0.10)", border: "1px solid rgba(239, 68, 68, 0.32)", color: "rgb(248, 113, 113)" }
-                  : { background: "rgba(74, 222, 128, 0.10)", border: "1px solid rgba(74, 222, 128, 0.32)", color: "rgb(74, 222, 128)" }
+                  ? { background: "rgba(239, 68, 68, 0.10)", border: "1px solid rgba(239, 68, 68, 0.32)", color: "var(--ds-status-err)" }
+                  : { background: "rgba(var(--ds-status-ok-rgb), 0.10)", border: "1px solid rgba(var(--ds-status-ok-rgb), 0.32)", color: "var(--ds-status-ok)" }
             }
           >
             {loading
@@ -120,8 +120,8 @@ function StatusHeader({
                 color: loading
                   ? "var(--ds-text-dim)"
                   : incident
-                    ? "rgb(248, 113, 113)"
-                    : "rgb(74, 222, 128)",
+                    ? "var(--ds-status-err)"
+                    : "var(--ds-status-ok)",
               }}
             >
               {!loading && <StatusDot bad={incident} />}
@@ -146,8 +146,8 @@ function StatusDot({ bad }: { bad: boolean }) {
     <span
       className="w-1.5 h-1.5 rounded-full inline-block"
       style={{
-        background: bad ? "rgb(248, 113, 113)" : "rgb(74, 222, 128)",
-        boxShadow: bad ? "0 0 8px rgba(248, 113, 113, 0.7)" : "0 0 8px rgba(74, 222, 128, 0.65)",
+        background: bad ? "var(--ds-status-err)" : "var(--ds-status-ok)",
+        boxShadow: bad ? "0 0 8px rgba(var(--ds-status-err-rgb), 0.7)" : "0 0 8px rgba(var(--ds-status-ok-rgb), 0.65)",
       }}
     />
   );
@@ -189,7 +189,7 @@ function Overview({ stats }: { stats: ReturnType<typeof useStats> }) {
           </p>
           <p
             className="text-[20px] font-black tracking-tight leading-none font-mono-num"
-            style={{ color: r.down ? "rgb(248, 113, 113)" : "var(--ds-text)" }}
+            style={{ color: r.down ? "var(--ds-status-err)" : "var(--ds-text)" }}
           >
             {r.value}
           </p>
@@ -243,7 +243,7 @@ function ServiceRow({ bot }: { bot: Bot }) {
               title={`Shard ${s.shard_id} · ${s.status}${s.ping ? ` · ${s.ping} ms` : ""}`}
               className="w-2 h-2 rounded-full"
               style={{
-                background: isOk ? "rgb(74, 222, 128)" : "rgb(248, 113, 113)",
+                background: isOk ? "var(--ds-status-ok)" : "var(--ds-status-err)",
                 opacity: isOk ? 1 : 0.85,
               }}
             />

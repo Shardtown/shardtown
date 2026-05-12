@@ -214,7 +214,7 @@ export function DesktopAccount() {
           <div
             className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: "radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.16) 1px, transparent 0)",
+              backgroundImage: "radial-gradient(circle at 1px 1px, rgba(var(--ds-accent-rgb), 0.16) 1px, transparent 0)",
               backgroundSize: "24px 24px",
               opacity: 0.5,
               maskImage: "radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%)",
@@ -264,7 +264,7 @@ export function DesktopAccount() {
             className="rounded-[12px] border px-4 py-2.5 flex items-start gap-2.5 text-[12.5px] font-semibold mb-4"
             style={
               banner.kind === "ok"
-                ? { background: "rgba(74, 222, 128, 0.08)", borderColor: "rgba(74, 222, 128, 0.32)", color: "rgb(134, 239, 172)" }
+                ? { background: "rgba(var(--ds-status-ok-rgb), 0.08)", borderColor: "rgba(var(--ds-status-ok-rgb), 0.32)", color: "rgb(134, 239, 172)" }
                 : { background: "rgba(239, 68, 68, 0.08)", borderColor: "rgba(239, 68, 68, 0.32)", color: "rgb(252, 165, 165)" }
             }
           >
@@ -524,7 +524,7 @@ export function DesktopAccount() {
             style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
           >
             {tokenCopied
-              ? <Check size={13} style={{ color: "rgb(74, 222, 128)" }} />
+              ? <Check size={13} style={{ color: "var(--ds-status-ok)" }} />
               : <Copy size={13} style={{ color: "var(--ds-text-mut)" }} />}
           </button>
         </div>
@@ -532,7 +532,7 @@ export function DesktopAccount() {
           type="button"
           onClick={() => setRevealedToken(null)}
           className="w-full h-10 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90"
-          style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+          style={{ background: "var(--ds-accent)", color: "#fff" }}
         >
           J'ai copié
         </button>
@@ -651,7 +651,7 @@ function ConnectionRow({
           {linked && (
             <span
               className="w-1.5 h-1.5 rounded-full inline-block"
-              style={{ background: "rgb(74, 222, 128)", boxShadow: "0 0 6px rgba(74, 222, 128, 0.65)" }}
+              style={{ background: "var(--ds-status-ok)", boxShadow: "0 0 6px rgba(var(--ds-status-ok-rgb), 0.65)" }}
               aria-label="Lié"
             />
           )}
@@ -759,7 +759,7 @@ function ItemRow({
         onClick={onDelete}
         aria-label="Supprimer"
         className="w-8 h-8 rounded-[8px] flex items-center justify-center shrink-0 transition-colors"
-        style={{ background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.22)", color: "rgb(248, 113, 113)" }}
+        style={{ background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.22)", color: "var(--ds-status-err)" }}
       >
         <Trash2 size={12} strokeWidth={2.2} />
       </button>
@@ -819,9 +819,9 @@ function ModalHeader({
 }) {
   const c =
     danger
-      ? { bg: "rgba(239, 68, 68, 0.10)", border: "rgba(239, 68, 68, 0.25)", color: "rgb(248, 113, 113)" }
+      ? { bg: "rgba(239, 68, 68, 0.10)", border: "rgba(239, 68, 68, 0.25)", color: "var(--ds-status-err)" }
       : tone === "emerald"
-        ? { bg: "rgba(74, 222, 128, 0.10)", border: "rgba(74, 222, 128, 0.25)", color: "rgb(74, 222, 128)" }
+        ? { bg: "rgba(var(--ds-status-ok-rgb), 0.10)", border: "rgba(var(--ds-status-ok-rgb), 0.25)", color: "var(--ds-status-ok)" }
         : { bg: "var(--ds-panel-2)", border: "var(--ds-border)", color: "var(--ds-text-mut)" };
   return (
     <>
@@ -833,7 +833,7 @@ function ModalHeader({
       </div>
       <p
         className="text-[10px] font-bold tracking-[0.22em] uppercase mb-1"
-        style={{ color: danger ? "rgba(248, 113, 113, 0.85)" : tone === "emerald" ? "rgb(74, 222, 128)" : "var(--ds-text-dim)" }}
+        style={{ color: danger ? "rgba(var(--ds-status-err-rgb), 0.85)" : tone === "emerald" ? "var(--ds-status-ok)" : "var(--ds-text-dim)" }}
       >
         {kicker}
       </p>
@@ -868,7 +868,7 @@ function ModalActions({
         style={
           danger
             ? { background: "rgb(239, 68, 68)", color: "#fff" }
-            : { background: "rgb(91, 109, 255)", color: "#fff" }
+            : { background: "var(--ds-accent)", color: "#fff" }
         }
       >
         {confirmLabel}

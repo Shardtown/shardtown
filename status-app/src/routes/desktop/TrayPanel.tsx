@@ -414,8 +414,8 @@ function TrayStyles() {
         display: flex; align-items: flex-start; gap: 12px;
         padding: 14px 14px 14px;
         border-radius: 14px;
-        background: rgba(74, 222, 128, 0.06);
-        border: 1px solid rgba(74, 222, 128, 0.22);
+        background: rgba(var(--ds-status-ok-rgb), 0.06);
+        border: 1px solid rgba(var(--ds-status-ok-rgb), 0.22);
         margin-bottom: 8px;
       }
       .tray-hero.warn {
@@ -425,8 +425,8 @@ function TrayStyles() {
       .tray-hero-icon {
         width: 36px; height: 36px;
         border-radius: 11px;
-        background: rgba(74, 222, 128, 0.12);
-        color: rgb(74, 222, 128);
+        background: rgba(var(--ds-status-ok-rgb), 0.12);
+        color: var(--ds-status-ok);
         display: flex; align-items: center; justify-content: center;
         flex-shrink: 0;
       }
@@ -586,7 +586,7 @@ function TrayStyles() {
         color: rgba(255, 255, 255, 0.45);
         font-weight: 600;
       }
-      .tray-bot-state.ok { color: rgb(74, 222, 128); }
+      .tray-bot-state.ok { color: var(--ds-status-ok); }
       .tray-bot-arrow {
         color: rgba(255, 255, 255, 0.22);
         flex-shrink: 0;
@@ -646,7 +646,7 @@ function TrayStyles() {
         color: rgba(255, 255, 255, 0.42);
         display: flex; align-items: center; gap: 4px;
       }
-      .tray-row-ok { color: rgb(74, 222, 128); }
+      .tray-row-ok { color: var(--ds-status-ok); }
       .tray-bot-avatar { width: 18px; height: 18px; border-radius: 5px; object-fit: cover; }
       .tray-bot-avatar-xs { width: 10px; height: 10px; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
       .tray-row-arrow { color: rgba(255, 255, 255, 0.22); flex-shrink: 0; }
@@ -674,14 +674,14 @@ function TrayStyles() {
       }
       .tray-online {
         display: inline-flex; align-items: center; gap: 5px;
-        color: rgb(74, 222, 128);
+        color: var(--ds-status-ok);
         font-weight: 600;
       }
       .tray-dot {
         width: 5px; height: 5px;
         border-radius: 50%;
-        background: rgb(74, 222, 128);
-        box-shadow: 0 0 6px rgba(74, 222, 128, 0.7);
+        background: var(--ds-status-ok);
+        box-shadow: 0 0 6px rgba(var(--ds-status-ok-rgb), 0.7);
       }
       .tray-sep { color: rgba(255, 255, 255, 0.18); }
       .tray-foot-version { margin-left: auto; font-family: ui-monospace, "SF Mono", monospace; font-size: 10px; }

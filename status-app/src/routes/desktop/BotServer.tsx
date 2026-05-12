@@ -152,7 +152,7 @@ export function DesktopBotServer({ kind }: Props) {
           }
           .botserver-hero-bg {
             background-image:
-              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.16) 1px, transparent 0);
+              radial-gradient(circle at 1px 1px, rgba(var(--ds-accent-rgb), 0.16) 1px, transparent 0);
             background-size: 22px 22px;
             opacity: 0.5;
             mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
@@ -160,7 +160,7 @@ export function DesktopBotServer({ kind }: Props) {
           }
           [data-theme="light"] .botserver-hero-bg {
             background-image:
-              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.22) 1px, transparent 0);
+              radial-gradient(circle at 1px 1px, rgba(var(--ds-accent-rgb), 0.22) 1px, transparent 0);
           }
         `}</style>
       </div>
@@ -319,7 +319,7 @@ function ConfiguredCard({ guild, kind }: { guild: Guild; kind: "shardguard" | "s
       <div className="flex-1 min-w-0">
         <p className="font-bold text-[13.5px] truncate">{guild.name}</p>
         <p className="text-[11.5px] font-semibold mt-0.5 inline-flex items-center gap-1.5" style={{ color: "var(--ds-text-mut)" }}>
-          <CheckCircle2 size={11} strokeWidth={2.2} style={{ color: "rgb(74, 222, 128)" }} />
+          <CheckCircle2 size={11} strokeWidth={2.2} style={{ color: "var(--ds-status-ok)" }} />
           Configuré
         </p>
       </div>

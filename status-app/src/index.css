@@ -43,6 +43,20 @@
     --ds-panel-2: rgba(255, 255, 255, 0.05);
     --ds-accent-bg: #ffffff;
     --ds-accent-fg: #000000;
+
+    /* Brand + status palette — centralisé pour ne plus avoir
+       `rgb(91, 109, 255)` et 3 nuances de vert / rouge hardcodées dans
+       chaque page. Utiliser `var(--ds-accent)` pour la couleur pleine,
+       `rgba(var(--ds-accent-rgb), 0.16)` quand on a besoin d'alpha. */
+    --ds-accent-rgb: 91, 109, 255;
+    --ds-accent: rgb(var(--ds-accent-rgb));
+    --ds-accent-on: #ffffff;
+    --ds-status-ok-rgb: 74, 222, 128;
+    --ds-status-ok: rgb(var(--ds-status-ok-rgb));
+    --ds-status-warn-rgb: 250, 204, 21;
+    --ds-status-warn: rgb(var(--ds-status-warn-rgb));
+    --ds-status-err-rgb: 248, 113, 113;
+    --ds-status-err: rgb(var(--ds-status-err-rgb));
   }
 
   [data-theme="light"] {

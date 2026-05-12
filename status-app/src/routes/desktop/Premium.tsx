@@ -100,7 +100,7 @@ function StatusHeader({ isPremium, guildCount }: { isPremium: boolean; guildCoun
         style={{
           backgroundImage: isPremium
             ? "radial-gradient(circle at 1px 1px, rgba(251, 191, 36, 0.18) 1px, transparent 0)"
-            : "radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.16) 1px, transparent 0)",
+            : "radial-gradient(circle at 1px 1px, rgba(var(--ds-accent-rgb), 0.16) 1px, transparent 0)",
           backgroundSize: "24px 24px",
           opacity: 0.5,
           maskImage: "radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%)",

@@ -122,9 +122,9 @@ export function VerifyAllNotifier() {
   if (!notif) return null;
 
   const isError = notif.kind === "error";
-  const accent = isError ? "rgb(248, 113, 113)" : "rgb(74, 222, 128)";
-  const accentBg = isError ? "rgba(239, 68, 68, 0.12)" : "rgba(74, 222, 128, 0.12)";
-  const accentBorder = isError ? "rgba(239, 68, 68, 0.32)" : "rgba(74, 222, 128, 0.32)";
+  const accent = isError ? "var(--ds-status-err)" : "var(--ds-status-ok)";
+  const accentBg = isError ? "rgba(239, 68, 68, 0.12)" : "rgba(var(--ds-status-ok-rgb), 0.12)";
+  const accentBorder = isError ? "rgba(239, 68, 68, 0.32)" : "rgba(var(--ds-status-ok-rgb), 0.32)";
 
   return (
     <div

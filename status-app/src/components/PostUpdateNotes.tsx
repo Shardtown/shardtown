@@ -98,8 +98,8 @@ export function PostUpdateNotes() {
         <div
           className="inline-flex items-center justify-center w-10 h-10 rounded-[12px] mb-3"
           style={{
-            background: "rgba(91, 109, 255, 0.14)",
-            border: "1px solid rgba(91, 109, 255, 0.3)",
+            background: "rgba(var(--ds-accent-rgb), 0.14)",
+            border: "1px solid rgba(var(--ds-accent-rgb), 0.3)",
             color: "rgb(165, 180, 252)",
           }}
         >
@@ -131,7 +131,7 @@ export function PostUpdateNotes() {
           type="button"
           onClick={() => setInfo(null)}
           className="w-full h-10 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90"
-          style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+          style={{ background: "var(--ds-accent)", color: "#fff" }}
         >
           Compris
         </button>

@@ -69,7 +69,7 @@ export function DesktopPreferences() {
             }
             .prefs-hero-bg {
               background-image:
-                radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.16) 1px, transparent 0);
+                radial-gradient(circle at 1px 1px, rgba(var(--ds-accent-rgb), 0.16) 1px, transparent 0);
               background-size: 22px 22px;
               opacity: 0.5;
               mask-image: radial-gradient(ellipse at 75% 50%, black 30%, transparent 70%);
@@ -77,7 +77,7 @@ export function DesktopPreferences() {
             }
             [data-theme="light"] .prefs-hero-bg {
               background-image:
-                radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.22) 1px, transparent 0);
+                radial-gradient(circle at 1px 1px, rgba(var(--ds-accent-rgb), 0.22) 1px, transparent 0);
             }
           `}</style>
         </div>
@@ -296,8 +296,8 @@ function TokenRevalCard() {
             <span
               className="w-4 h-4 rounded-full flex-shrink-0 mt-0.5 inline-flex items-center justify-center"
               style={{
-                background: mode === m.value ? "rgb(91, 109, 255)" : "transparent",
-                border: `1.5px solid ${mode === m.value ? "rgb(91, 109, 255)" : "var(--ds-border-strong)"}`,
+                background: mode === m.value ? "var(--ds-accent)" : "transparent",
+                border: `1.5px solid ${mode === m.value ? "var(--ds-accent)" : "var(--ds-border-strong)"}`,
               }}
             >
               {mode === m.value && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
@@ -334,7 +334,7 @@ function TokenRevalCard() {
           className="mt-3 inline-flex items-start gap-2 text-[11.5px] px-3 py-2 rounded-[10px] font-semibold"
           style={
             feedback.kind === "ok"
-              ? { background: "rgba(74, 222, 128, 0.08)", border: "1px solid rgba(74, 222, 128, 0.28)", color: "rgb(134, 239, 172)" }
+              ? { background: "rgba(var(--ds-status-ok-rgb), 0.08)", border: "1px solid rgba(var(--ds-status-ok-rgb), 0.28)", color: "rgb(134, 239, 172)" }
               : { background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.28)", color: "rgb(252, 165, 165)" }
           }
         >

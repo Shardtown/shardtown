@@ -117,12 +117,12 @@ export function DesktopOverview() {
               {allOk && (
                 <p
                   className="text-[13px] font-semibold mt-1 inline-flex items-center gap-1.5"
-                  style={{ color: "rgb(74, 222, 128)" }}
+                  style={{ color: "var(--ds-status-ok)" }}
                 >
                   <span className="w-1.5 h-1.5 rounded-full"
                     style={{
-                      background: "rgb(74, 222, 128)",
-                      boxShadow: "0 0 8px rgb(74, 222, 128)",
+                      background: "var(--ds-status-ok)",
+                      boxShadow: "0 0 8px var(--ds-status-ok)",
                     }}
                   />
                   Tous les bots opérationnels
@@ -140,7 +140,7 @@ export function DesktopOverview() {
             <Link
               to="/shardguard/server"
               className="inline-flex items-center justify-center px-6 h-[44px] rounded-full font-bold text-[13.5px] hero-cta"
-              style={{ background: "rgb(91, 109, 255)", color: "#fff" }}
+              style={{ background: "var(--ds-accent)", color: "#fff" }}
             >
               Configurer mes serveurs
             </Link>
@@ -168,7 +168,7 @@ export function DesktopOverview() {
              kept faint so the surface stays calm. */
           .hero-bg {
             background-image:
-              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.16) 1px, transparent 0);
+              radial-gradient(circle at 1px 1px, rgba(var(--ds-accent-rgb), 0.16) 1px, transparent 0);
             background-size: 24px 24px;
             opacity: 0.5;
             mask-image: radial-gradient(ellipse at 70% 50%, black 30%, transparent 70%);
@@ -176,7 +176,7 @@ export function DesktopOverview() {
           }
           [data-theme="light"] .hero-bg {
             background-image:
-              radial-gradient(circle at 1px 1px, rgba(91, 109, 255, 0.22) 1px, transparent 0);
+              radial-gradient(circle at 1px 1px, rgba(var(--ds-accent-rgb), 0.22) 1px, transparent 0);
           }
           .hero-shield {
             background: var(--ds-panel-2);
@@ -210,7 +210,7 @@ export function DesktopOverview() {
           <Link
             to="/rpc"
             className="text-[12px] font-bold transition-opacity hover:opacity-80"
-            style={{ color: "rgb(91, 109, 255)" }}
+            style={{ color: "var(--ds-accent)" }}
           >
             Activer
           </Link>
