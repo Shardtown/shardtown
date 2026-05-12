@@ -101,7 +101,6 @@ export function DesktopBotServer({ kind }: Props) {
 
   const configured = filtered.filter(g => g.bot_present);
   const available = filtered.filter(g => !g.bot_present);
-  const totalConfigured = guilds.filter(g => g.bot_present).length;
 
   return (
     <AppLayout>
@@ -133,33 +132,6 @@ export function DesktopBotServer({ kind }: Props) {
                 {meta.tag}
               </p>
             </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mb-6">
-            <span className="inline-flex items-baseline gap-2">
-              <span className="text-[24px] font-extrabold tabular-nums">{totalConfigured}</span>
-              <span className="text-[11.5px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--ds-text-dim)" }}>
-                actifs
-              </span>
-            </span>
-            <span className="w-px h-5" style={{ background: "var(--ds-border)" }} />
-            <span className="inline-flex items-baseline gap-2">
-              <span className="text-[24px] font-extrabold tabular-nums" style={{ color: "var(--ds-text-mut)" }}>
-                {guilds.length - totalConfigured}
-              </span>
-              <span className="text-[11.5px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--ds-text-dim)" }}>
-                à inviter
-              </span>
-            </span>
-            <span className="w-px h-5" style={{ background: "var(--ds-border)" }} />
-            <span className="inline-flex items-baseline gap-2">
-              <span className="text-[24px] font-extrabold tabular-nums" style={{ color: "var(--ds-text-mut)" }}>
-                {guilds.length}
-              </span>
-              <span className="text-[11.5px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--ds-text-dim)" }}>
-                admin
-              </span>
-            </span>
           </div>
 
           <button
