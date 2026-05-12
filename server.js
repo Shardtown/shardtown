@@ -1253,7 +1253,7 @@ app.post('/api/presence/heartbeat', (req, res) => {
         c = { x: cursor.x, y: cursor.y };
     }
     presence.heartbeat(scope, user, { field: f, path: p, cursor: c });
-    res.json({ ok: true });
+    res.json({ success: true });
 });
 
 app.post('/api/presence/leave', (req, res) => {
@@ -1261,7 +1261,7 @@ app.post('/api/presence/leave', (req, res) => {
     if (!user) return res.status(401).json({ error: 'auth' });
     const { scope } = req.body || {};
     if (typeof scope === 'string' && scope) presence.leave(scope, user.id);
-    res.json({ ok: true });
+    res.json({ success: true });
 });
 
 app.get('/api/presence', (req, res) => {
@@ -1558,13 +1558,13 @@ app.post('/api/chatbot/message', chatbotRateLimit, async (req, res) => {
             // Soit timeout, soit client a fermé la connexion. Dans le 2e cas
             // res est déjà fermé, write devient no-op.
             console.error(`[chatbot] Ollama abort (timeout ou client fermé)`);
-            try { sse('error', { error: "L'IA met trop de temps à répondre. Réessaie." }); } catch {}
+            try { sse('error', { error: "L'IA met trop de temps à répondre. Réessaie." }); } catch (sseErr) { console.error('[chatbot] SSE write failed:', sseErr.message); }
         } else {
             const msg = err?.cause?.code || err.message || 'unknown';
             console.error('[chatbot] Ollama error:', msg);
-            try { sse('error', { error: "L'assistant est hors-ligne. Réessaie plus tard ou écris à contact@shardtwn.fr." }); } catch {}
+            try { sse('error', { error: "L'assistant est hors-ligne. Réessaie plus tard ou écris à contact@shardtwn.fr." }); } catch (sseErr) { console.error('[chatbot] SSE write failed:', sseErr.message); }
         }
-        try { res.end(); } catch {}
+        try { res.end(); } catch (endErr) { console.error('[chatbot] res.end failed:', endErr.message); }
     }
 });
 

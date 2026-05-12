@@ -69,7 +69,7 @@ const SECTIONS: Section[] = [
       "Tu peux n'installer qu'un seul bot si tu n'as besoin que d'une moitié des fonctionnalités, mais ils sont conçus pour cohabiter sans conflit.",
     ],
     steps: [
-      "Connecte-toi sur shardtwn.xyz avec ton compte Discord (le même qui administre le serveur cible).",
+      "Connecte-toi sur shardtwn.fr avec ton compte Discord (le même qui administre le serveur cible).",
       "Va dans le Dashboard → onglet Mes serveurs et clique sur « Inviter le bot ».",
       "Discord ouvre un écran d'autorisation : confirme avec ton serveur sélectionné dans le menu déroulant.",
       "Garde la case « Administrateur » cochée si elle apparaît — elle évite les erreurs de permission au lancement.",
