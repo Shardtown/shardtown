@@ -62,7 +62,9 @@ export function DesktopPremium() {
   return (
     <AppLayout>
       <div className="max-w-[920px] mx-auto">
-        <StatusHeader isPremium={isPremium} guildCount={guilds.length} />
+        <div data-tour="premium-status">
+          <StatusHeader isPremium={isPremium} guildCount={guilds.length} />
+        </div>
         <Separator />
 
         {isPremium ? (

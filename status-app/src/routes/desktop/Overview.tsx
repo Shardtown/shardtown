@@ -94,6 +94,7 @@ export function DesktopOverview() {
       <div
         className="relative overflow-hidden rounded-[22px] border mb-4 hero-card"
         style={{ borderColor: "var(--ds-border)" }}
+        data-tour="hero"
       >
         {/* Background pattern — radial dots evoking the NordVPN map */}
         <div className="absolute inset-0 hero-bg" />
@@ -230,7 +231,7 @@ export function DesktopOverview() {
 
       {/* ─── BOTS ──────────────────────────────────────────────── */}
       <SectionHead title="Bots" />
-      <div className="grid md:grid-cols-2 gap-3 mb-10">
+      <div className="grid md:grid-cols-2 gap-3 mb-10" data-tour="bots-stats">
         <StatCard
           icon={<img src="/image/shardguard.png" alt="" className="w-full h-full object-cover" />}
           label="ShardGuard"
@@ -251,7 +252,10 @@ export function DesktopOverview() {
 
       {/* ─── RECENTS ───────────────────────────────────────────── */}
       <SectionHead title="Récents" linkTo="/shardguard/server" linkLabel="Tous les serveurs" muted />
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2.5 mb-10">
+      <div
+        className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2.5 mb-10"
+        data-tour="recents"
+      >
         {g.loading
           ? Array.from({ length: 5 }).map((_, i) => (
               <div

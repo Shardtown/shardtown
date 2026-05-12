@@ -109,6 +109,7 @@ export function DesktopBotServer({ kind }: Props) {
       <div
         className="relative overflow-hidden rounded-[22px] border mb-4 botserver-hero"
         style={{ borderColor: "var(--ds-border)" }}
+        data-tour="bot-server-grid"
       >
         <div className="absolute inset-0 botserver-hero-bg" />
 

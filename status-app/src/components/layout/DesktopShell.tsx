@@ -8,6 +8,7 @@ import { useAuth, avatarUrl } from "@/api/auth";
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
 import { PostUpdateNotes } from "@/components/PostUpdateNotes";
 import { GreetingToast } from "@/components/GreetingToast";
+import { TourHost } from "@/components/OnboardingTour";
 import {
   tokenClear, biometricConfirm, openExternal, IS_DESKTOP,
   checkForUpdate, downloadAndInstallUpdate,
@@ -165,7 +166,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           <img src="/image/favicon.png" alt="Shardtown" className="w-10 h-10 object-contain" />
         </Link>
 
-        <nav className="flex flex-col gap-3 w-12">
+        <nav className="flex flex-col gap-3 w-12" data-tour="sidebar">
           {groups.map((group, gi) => (
             <div
               key={gi}
@@ -206,7 +207,10 @@ export function DesktopShell({ children }: { children: ReactNode }) {
         <header
           className="relative h-[72px] flex-shrink-0 flex items-center justify-end gap-3 px-6"
         >
-          <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2"
+            data-tour="search"
+          >
             <SearchBox open={searchOpen} setOpen={setSearchOpen} onNavigate={nav} />
           </div>
           <UpdateButton />
@@ -218,7 +222,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           >
             <Bell size={15} strokeWidth={1.8} />
           </button>
-          <div className="relative">
+          <div className="relative" data-tour="profile">
             <button
               type="button"
               onClick={() => setProfileOpen(o => !o)}
@@ -258,6 +262,10 @@ export function DesktopShell({ children }: { children: ReactNode }) {
 
       {/* Bonjour / Bonsoir — pops once par lancement avec le prénom */}
       <GreetingToast />
+
+      {/* Tour interactif — listens for startTour() event, navigates pages,
+          spotlights real DOM anchors via [data-tour="…"] */}
+      <TourHost />
     </div>
   );
 }
