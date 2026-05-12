@@ -1240,12 +1240,19 @@ function presenceIdentify(req) {
 app.post('/api/presence/heartbeat', (req, res) => {
     const user = presenceIdentify(req);
     if (!user) return res.status(401).json({ error: 'auth' });
-    const { scope, field } = req.body || {};
+    const { scope, field, path, cursor } = req.body || {};
     if (typeof scope !== 'string' || !scope || scope.length > 200) {
         return res.status(400).json({ error: 'scope' });
     }
     const f = typeof field === 'string' && field.length > 0 && field.length <= 80 ? field : null;
-    presence.heartbeat(scope, user, f);
+    const p = typeof path === 'string' && path.length > 0 && path.length <= 500 ? path : null;
+    let c = null;
+    if (cursor && typeof cursor === 'object'
+        && typeof cursor.x === 'number' && cursor.x >= 0 && cursor.x <= 100
+        && typeof cursor.y === 'number' && cursor.y >= 0 && cursor.y <= 100) {
+        c = { x: cursor.x, y: cursor.y };
+    }
+    presence.heartbeat(scope, user, { field: f, path: p, cursor: c });
     res.json({ ok: true });
 });
 

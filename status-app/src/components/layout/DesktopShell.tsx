@@ -11,6 +11,7 @@ import { GreetingToast } from "@/components/GreetingToast";
 import { TourHost } from "@/components/OnboardingTour";
 import {
   PresenceProvider, PresenceStack, FieldPresenceLayer,
+  FollowBanner, GhostCursors,
 } from "@/components/Presence";
 import {
   tokenClear, biometricConfirm, openExternal, IS_DESKTOP,
@@ -272,10 +273,13 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           spotlights real DOM anchors via [data-tour="…"] */}
       <TourHost />
 
-      {/* Live presence — floating avatar pinned to each input a peer is
-          editing, Canva-style. PresenceStack in the top bar shows who's
-          on the same guild scope. */}
+      {/* Live presence — floating avatar + lock overlay on each input a
+          peer is editing, ghost cursors for peers in fast mode, and a
+          "Following X" banner when a follow session is active.
+          PresenceStack in the top bar shows the per-guild stack. */}
       <FieldPresenceLayer />
+      <GhostCursors />
+      <FollowBanner />
     </div>
     </PresenceProvider>
   );

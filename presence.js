@@ -29,8 +29,9 @@ function pruneScope(m) {
     }
 }
 
-function heartbeat(scope, user, field) {
+function heartbeat(scope, user, extras) {
     const m = getScope(scope);
+    const ex = extras || {};
     m.set(user.id, {
         user: {
             id: user.id,
@@ -38,7 +39,9 @@ function heartbeat(scope, user, field) {
             global_name: user.global_name || user.username || '',
             avatar: user.avatar || null,
         },
-        field: field || null,
+        field: ex.field || null,
+        path: ex.path || null,
+        cursor: ex.cursor || null,
         lastSeen: Date.now(),
     });
 }
@@ -55,7 +58,12 @@ function peers(scope, excludeUserId) {
     const out = [];
     for (const [id, v] of m) {
         if (id === excludeUserId) continue;
-        out.push({ ...v.user, field: v.field });
+        out.push({
+            ...v.user,
+            field: v.field,
+            path: v.path,
+            cursor: v.cursor,
+        });
     }
     return out;
 }
