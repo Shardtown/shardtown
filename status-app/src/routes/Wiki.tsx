@@ -366,21 +366,6 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    id: "scheduled",
-    group: "Shard",
-    title: "Annonces planifiées",
-    tagline: "Messages récurrents toutes les N heures.",
-    intro: [
-      "Crée des annonces qui se répètent automatiquement à un intervalle défini en heures. Pratique pour rappeler les règles, pour pinger les inscrits à un événement hebdo, ou pour les mises à jour roleplay.",
-    ],
-    steps: [
-      "Sélectionne le salon et tape le contenu du message.",
-      "Définis l'intervalle en heures (24 = quotidien, 168 = hebdomadaire).",
-      "Clique « Programmer ». Le premier envoi a lieu ~60 secondes après création.",
-      "La liste des annonces actives apparaît en dessous ; clic poubelle pour supprimer.",
-    ],
-  },
-  {
     id: "levels",
     group: "Shard",
     title: "Niveaux & XP",

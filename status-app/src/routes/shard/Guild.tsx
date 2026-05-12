@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, MessageSquare, UserPlus, Cake, Calendar, Award, Coins,
+  ArrowLeft, MessageSquare, UserPlus, Cake, Award, Coins,
   Gift, Vote, Volume2, Code2, Smile, MessageCircleHeart,
   Layers, Heart,
 } from "lucide-react";
@@ -13,7 +13,7 @@ import { isOn, parseObjects } from "@/api/shard";
 import type { ShardGuildData, ShardSettings } from "@/api/shard";
 import { SaveBar } from "@/components/shardguard/SaveBar";
 import {
-  WelcomeTab, AutoRoleTab, BirthdaysTab, ScheduledTab, LevelsTab, EconomyTab,
+  WelcomeTab, AutoRoleTab, BirthdaysTab, LevelsTab, EconomyTab,
   GiveawaysTab, PollsTab, TempVoiceTab, EmbedBuilderTab, ReactionsTab, TicketsTab,
 } from "@/components/shard/tabs";
 
@@ -21,7 +21,6 @@ const TABS = [
   { key: "welcome",   label: "Arrivée & Départ",     icon: MessageSquare,      group: "Communauté" },
   { key: "autorole",  label: "Auto Rôle",            icon: UserPlus,           group: "Communauté" },
   { key: "birthdays", label: "Anniversaires",        icon: Cake,               group: "Communauté" },
-  { key: "scheduled", label: "Annonces planifiées",  icon: Calendar,           group: "Communauté" },
   { key: "levels",    label: "Niveaux",              icon: Award,              group: "Engagement" },
   { key: "economy",   label: "Économie",             icon: Coins,              group: "Engagement" },
   { key: "giveaways", label: "Giveaways",            icon: Gift,               group: "Engagement" },
@@ -303,13 +302,6 @@ export function ShardGuild() {
             sublabel={livePolls > 0 ? "ouverts" : "aucun ouvert"}
           />
           <PulseCard
-            label="Annonces planifiées"
-            value={scheduledCount}
-            icon={Calendar}
-            accent="blue"
-            sublabel={scheduledCount > 0 ? "récurrentes" : "aucune"}
-          />
-          <PulseCard
             label="Réactions auto"
             value={reactionsCount}
             icon={Smile}
@@ -365,7 +357,6 @@ export function ShardGuild() {
             {tab === "welcome" && <WelcomeTab {...tabProps} />}
             {tab === "autorole" && <AutoRoleTab {...tabProps} />}
             {tab === "birthdays" && <BirthdaysTab {...tabProps} />}
-            {tab === "scheduled" && <ScheduledTab {...tabProps} />}
             {tab === "levels" && <LevelsTab {...tabProps} />}
             {tab === "economy" && <EconomyTab {...tabProps} />}
             {tab === "giveaways" && <GiveawaysTab {...tabProps} />}

@@ -144,9 +144,6 @@ export function AutoRoleTab({ settings, update, roles }: TabBase) {
 export function BirthdaysTab({ settings, update, channels, roles }: TabBase) {
   return (
     <SectionCard title="Anniversaires" description="Annonces automatiques pour les membres ayant renseigné leur date.">
-      <div className="text-center mb-4">
-        <Cake className="inline-block w-8 h-8 text-pink-400" />
-      </div>
       <div className="grid md:grid-cols-2 gap-4">
         <Field label="Salon des annonces"><Select options={channelOpts(channels)} value={settings.birthdayChannelId} onChange={v => update({ birthdayChannelId: v })} /></Field>
         <Field label="Rôle anniversaire (24h)"><Select options={roleOpts(roles)} value={settings.birthdayRoleId} onChange={v => update({ birthdayRoleId: v })} /></Field>
@@ -430,8 +427,9 @@ export function GiveawaysTab({ guildId, channels, roles }: TabBase & { giveaways
           <Field label="Niveau minimum"><NumberInput min={0} value={form.minLevel} onChange={e => setForm(f => ({ ...f, minLevel: Number(e.target.value) }))} /></Field>
         </div>
         <button type="button" onClick={create} disabled={busy || !form.channelId || !form.prize}
-          className="bg-gradient-to-r from-amber-400 to-amber-500 text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
-          {busy ? "Création…" : "🎉 Lancer"}
+          className="px-5 py-2 rounded-full font-bold text-xs transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ background: "#fff", color: "#000" }}>
+          {busy ? "Création…" : "Lancer"}
         </button>
       </SectionCard>
 
@@ -574,8 +572,8 @@ export function EmbedBuilderTab({ guildId, channels }: TabBase) {
         <Field label="URL de l'image"><TextInput value={form.image} onChange={e => setForm(f => ({ ...f, image: e.target.value }))} placeholder="https://…" /></Field>
         <Field label="Couleur"><ColorPicker value={form.color} onChange={v => setForm(f => ({ ...f, color: v }))} /></Field>
         <button type="button" onClick={send} disabled={busy || !form.channelId}
-          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50 inline-flex items-center gap-2">
-          <Send className="w-3 h-3" /> {busy ? "Envoi…" : "Envoyer l'embed"}
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
+          {busy ? "Envoi…" : "Envoyer l'embed"}
         </button>
         {result && <p className="text-xs text-emerald-400 mt-2">{result}</p>}
       </SectionCard>
@@ -597,6 +595,33 @@ export function EmbedBuilderTab({ guildId, channels }: TabBase) {
 }
 
 /* ========== AUTO REACTIONS ========== */
+
+/**
+ * Renders an emoji string as Discord renders it :
+ *  - Custom static emoji  `<:name:id>`  → <img src=".../emojis/id.png">
+ *  - Custom animated emoji `<a:name:id>` → <img src=".../emojis/id.gif">
+ *  - Anything else (unicode emoji, plain text) → display as text
+ */
+function EmojiPreview({ value }: { value: string }) {
+  const m = value.match(/^<(a?):([A-Za-z0-9_]+):(\d+)>$/);
+  if (m) {
+    const animated = m[1] === "a";
+    const name = m[2];
+    const id = m[3];
+    const ext = animated ? "gif" : "png";
+    return (
+      <img
+        src={`https://cdn.discordapp.com/emojis/${id}.${ext}?size=32&quality=lossless`}
+        alt={`:${name}:`}
+        title={`:${name}:`}
+        className="w-6 h-6 object-contain"
+        style={{ imageRendering: "auto" }}
+      />
+    );
+  }
+  return <span className="text-2xl leading-none">{value}</span>;
+}
+
 export function ReactionsTab({ guildId, settings, update }: TabBase) {
   const reactions = (settings.autoReactions || []).filter(r => r && r.text);
   const [text, setText] = useState("");
@@ -615,7 +640,7 @@ export function ReactionsTab({ guildId, settings, update }: TabBase) {
           <div key={i} className="flex items-center gap-2 py-2 border-b border-white/[0.04] last:border-0">
             <code className="px-2 py-1 rounded bg-white/[0.05] text-xs font-mono-num">{r.text}</code>
             <span className="text-white/40 text-xs">→</span>
-            <span className="text-2xl">{r.emoji}</span>
+            <EmojiPreview value={r.emoji} />
             <span className="flex-1" />
             <button type="button" onClick={() => setReactions(reactions.filter((_, j) => j !== i))}
               className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/15 flex items-center justify-center">
@@ -624,12 +649,13 @@ export function ReactionsTab({ guildId, settings, update }: TabBase) {
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-[1fr_120px_auto] gap-2 pt-3">
+      <div className="grid grid-cols-[1fr_140px_auto_auto] gap-2 pt-3 items-center">
         <TextInput value={text} onChange={e => setText(e.target.value)} placeholder="Texte du message…" />
-        <TextInput value={emoji} onChange={e => setEmoji(e.target.value)} placeholder="🎉" />
+        <TextInput value={emoji} onChange={e => setEmoji(e.target.value)} placeholder="🎉 ou <:name:id>" />
+        {emoji && <EmojiPreview value={emoji} />}
         <button type="button"
           onClick={() => { if (text && emoji) { setReactions([...reactions, { text, emoji }]); setText(""); setEmoji(""); } }}
-          className="bg-white text-black px-3 rounded-lg font-bold text-xs hover:opacity-90">
+          className="bg-white text-black px-3 h-9 rounded-lg font-bold text-xs hover:opacity-90">
           <Plus className="w-3.5 h-3.5 inline" />
         </button>
       </div>
