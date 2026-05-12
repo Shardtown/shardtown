@@ -106,7 +106,9 @@ export function ShardGuild() {
       await apiPost(`/shard/guild/${guildId}/config`, draft);
       setSaved(true);
       setTimeout(() => setSaved(false), 3500);
-      await refresh();
+      // Silent refresh — pas de loading state ni de reset du draft local
+      // pour ne pas re-render brutalement la page après chaque sauvegarde.
+      await refresh(true);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Erreur réseau");
     } finally {

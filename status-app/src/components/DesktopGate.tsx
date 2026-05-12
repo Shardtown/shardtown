@@ -5,6 +5,7 @@ import { apiGet, ApiError, setBearerToken } from "@/api/client";
 import { OnboardingTour, shouldShowOnboarding } from "@/components/OnboardingTour";
 import { AuroraBackground } from "@/components/AuroraBackground";
 import { DEMO_TOKEN, isDemoToken, enableDemoMode, disableDemoMode } from "@/lib/demo";
+import { shouldRevalidate, setLastValidated } from "@/lib/tokenReval";
 
 type State =
   | { kind: "boot" }
@@ -68,15 +69,27 @@ export function DesktopGate({ children }: { children: ReactNode }) {
         next = { kind: "ready" };
       } else {
         setBearerToken(token);
-        try {
-          await apiGet<unknown>("/api/account/me");
+        // Respect the user's "Sécurité du token" preference. Default is
+        // "never" — we trust the keychain blindly so updates / reinstalls
+        // don't kick the user back to the login screen. Only re-hit the
+        // server when the configured window has lapsed.
+        if (shouldRevalidate()) {
+          try {
+            await apiGet<unknown>("/api/account/me");
+            setLastValidated(Date.now());
+            next = { kind: "ready" };
+          } catch (err) {
+            // Network down → assume the token is still good (offline-first).
+            // Only forcibly send back to login on an explicit 401.
+            if (err instanceof ApiError && err.status === 401) {
+              setBearerToken(null);
+              next = { kind: "login", reason: "Token expiré ou révoqué." };
+            } else {
+              next = { kind: "ready" };
+            }
+          }
+        } else {
           next = { kind: "ready" };
-        } catch (err) {
-          setBearerToken(null);
-          const reason = err instanceof ApiError && err.status === 401
-            ? "Token expiré ou révoqué."
-            : "Connexion impossible. Vérifie ton réseau.";
-          next = { kind: "login", reason };
         }
       }
       await introDone;

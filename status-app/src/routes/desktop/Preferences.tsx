@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Volume2, VolumeX, Bell, Fingerprint, Sparkles, PlayCircle, Settings } from "lucide-react";
+import { Volume2, VolumeX, Bell, Fingerprint, Sparkles, PlayCircle, Settings, KeyRound, RefreshCw, Loader2, CheckCircle2 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
   EVENTS,
@@ -8,6 +8,11 @@ import {
 } from "@/lib/sounds";
 import { SoundPicker } from "@/components/SoundPicker";
 import { OnboardingTour } from "@/components/OnboardingTour";
+import {
+  getRevalMode, setRevalMode, getLastValidated, setLastValidated,
+  describeMode, type RevalMode,
+} from "@/lib/tokenReval";
+import { apiGet, ApiError } from "@/api/client";
 
 /**
  * Desktop-only Preferences page. Currently hosts:
@@ -163,6 +168,11 @@ export function DesktopPreferences() {
             </div>
           </div>
         </Section>
+
+        {/* ─── Token revalidation ──────────────────────────── */}
+        <Section title="Sécurité du token" icon={<KeyRound size={14} strokeWidth={2} />}>
+          <TokenRevalCard />
+        </Section>
       </div>
       {tourOpen && <OnboardingTour onClose={() => setTourOpen(false)} />}
     </AppLayout>
@@ -216,5 +226,121 @@ function Pill({ children }: { children: React.ReactNode }) {
     <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.06] text-[11px] font-semibold text-white/[0.62]">
       {children}
     </span>
+  );
+}
+
+/* ──────────────────────── Token revalidation card ──────────────────────── */
+
+const MODES: { value: RevalMode; label: string; hint: string }[] = [
+  { value: "never",  label: "Jamais",        hint: "Le token reste valable indéfiniment, même après une mise à jour." },
+  { value: "30d",    label: "Tous les 30 jours", hint: "Vérification automatique au-delà de 30 jours." },
+  { value: "90d",    label: "Tous les 90 jours", hint: "Vérification automatique au-delà de 90 jours." },
+  { value: "launch", label: "À chaque lancement", hint: "Vérification systématique au démarrage de l'app." },
+];
+
+function TokenRevalCard() {
+  const [mode, setMode] = useState<RevalMode>(() => getRevalMode());
+  const [lastChecked, setLastChecked] = useState<number | null>(() => getLastValidated());
+  const [checking, setChecking] = useState(false);
+  const [feedback, setFeedback] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+
+  function choose(next: RevalMode) {
+    setMode(next);
+    setRevalMode(next);
+  }
+
+  async function checkNow() {
+    setChecking(true);
+    setFeedback(null);
+    try {
+      await apiGet<unknown>("/api/account/me");
+      const now = Date.now();
+      setLastValidated(now);
+      setLastChecked(now);
+      setFeedback({ kind: "ok", text: "Token valide." });
+    } catch (e) {
+      const msg = e instanceof ApiError && e.status === 401
+        ? "Token expiré ou révoqué. Tu seras redéconnecté."
+        : e instanceof Error ? e.message : "Erreur réseau.";
+      setFeedback({ kind: "error", text: msg });
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  return (
+    <div className="rounded-[14px] bg-white/[0.025] border border-white/[0.06] p-4">
+      <p className="text-[13px] font-semibold mb-1.5">Re-vérifier le token Shardtown</p>
+      <p className="text-[12px] text-white/[0.62] leading-relaxed mb-4">
+        Par défaut, l'app fait confiance au token enregistré dans le Keychain — tu n'as à le saisir qu'à l'installation. Si tu préfères forcer une revérification périodique, change l'intervalle ci-dessous.
+      </p>
+
+      <div className="flex flex-col gap-1.5 mb-4">
+        {MODES.map(m => (
+          <label
+            key={m.value}
+            className="flex items-start gap-3 px-3 py-2.5 rounded-[10px] cursor-pointer transition-colors"
+            style={{
+              background: mode === m.value ? "var(--ds-panel-2)" : "transparent",
+              border: `1px solid ${mode === m.value ? "var(--ds-border-strong)" : "var(--ds-border)"}`,
+            }}
+          >
+            <input
+              type="radio"
+              name="reval-mode"
+              checked={mode === m.value}
+              onChange={() => choose(m.value)}
+              className="sr-only"
+            />
+            <span
+              className="w-4 h-4 rounded-full flex-shrink-0 mt-0.5 inline-flex items-center justify-center"
+              style={{
+                background: mode === m.value ? "rgb(91, 109, 255)" : "transparent",
+                border: `1.5px solid ${mode === m.value ? "rgb(91, 109, 255)" : "var(--ds-border-strong)"}`,
+              }}
+            >
+              {mode === m.value && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+            </span>
+            <span className="flex-1 min-w-0">
+              <p className="text-[12.5px] font-bold">{m.label}</p>
+              <p className="text-[11px] mt-0.5" style={{ color: "var(--ds-text-mut)" }}>{m.hint}</p>
+            </span>
+          </label>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-[11px] font-mono-num" style={{ color: "var(--ds-text-dim)" }}>
+          {lastChecked
+            ? `Dernière vérif. : ${new Date(lastChecked).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}`
+            : "Jamais vérifié sur cette installation."}
+          <span className="ml-2" style={{ color: "var(--ds-text-faint)" }}>{describeMode(mode)}</span>
+        </p>
+        <button
+          type="button"
+          onClick={checkNow}
+          disabled={checking}
+          className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-[12px] font-bold transition-colors hover:bg-[var(--ds-panel-2)] disabled:opacity-60 disabled:cursor-wait"
+          style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text)" }}
+        >
+          {checking ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} strokeWidth={2.4} />}
+          Re-vérifier maintenant
+        </button>
+      </div>
+
+      {feedback && (
+        <div
+          className="mt-3 inline-flex items-start gap-2 text-[11.5px] px-3 py-2 rounded-[10px] font-semibold"
+          style={
+            feedback.kind === "ok"
+              ? { background: "rgba(74, 222, 128, 0.08)", border: "1px solid rgba(74, 222, 128, 0.28)", color: "rgb(134, 239, 172)" }
+              : { background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.28)", color: "rgb(252, 165, 165)" }
+          }
+        >
+          {feedback.kind === "ok" ? <CheckCircle2 size={12} /> : <Sparkles size={12} />}
+          {feedback.text}
+        </div>
+      )}
+    </div>
   );
 }

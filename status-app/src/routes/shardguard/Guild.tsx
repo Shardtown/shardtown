@@ -110,7 +110,11 @@ export function ShardGuardGuild() {
       await apiPost(`/shardguard/guild/${guildId}/config`, draft);
       setSaved(true);
       setTimeout(() => setSaved(false), 3500);
-      await refresh();
+      // Silent refresh — only re-syncs volatile parts (stats, channels, roles)
+      // without flipping `loading` back to true. The current draft IS the
+      // truth post-save, so we don't reset it from the server response.
+      // This kills the "page reloads" feel when saving on desktop.
+      await refresh(true);
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Erreur réseau");
     } finally {
