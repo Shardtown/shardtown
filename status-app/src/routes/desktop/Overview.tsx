@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Activity, ChevronRight, RefreshCw,
+  ChevronRight, RefreshCw,
   X, Sparkles, User as UserIcon,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -356,18 +356,18 @@ function StatCard({
   return (
     <Link
       to={to}
-      className="rounded-[16px] border p-5 flex items-start gap-4 transition-colors hover:bg-[var(--ds-panel-2)]"
+      className="rounded-[16px] border p-6 flex flex-col items-center text-center gap-3 transition-colors hover:bg-[var(--ds-panel-2)]"
       style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
     >
       <div
-        className="w-11 h-11 rounded-[12px] overflow-hidden flex items-center justify-center flex-shrink-0"
+        className="w-14 h-14 rounded-[14px] overflow-hidden flex items-center justify-center"
         style={{ background: "var(--ds-panel-2)", color: "var(--ds-text)", border: "1px solid var(--ds-border)" }}
       >
         {icon}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1.5">
-          <p className="text-[14px] font-bold">{label}</p>
+      <div className="flex flex-col items-center gap-1.5 w-full">
+        <div className="flex items-center justify-center gap-2 flex-wrap">
+          <p className="text-[15px] font-bold">{label}</p>
           <span
             className="text-[10px] font-bold tracking-[0.12em] uppercase px-2 py-0.5 rounded-full"
             style={tone === "ok"
@@ -377,10 +377,9 @@ function StatCard({
             {tone === "ok" ? "Actif" : "Inactif"}
           </span>
         </div>
-        <p className="text-[20px] font-extrabold tracking-tight">{value}</p>
-        <p className="text-[11.5px] font-semibold mt-0.5" style={{ color: "var(--ds-text-dim)" }}>{sub}</p>
+        <p className="text-[26px] font-extrabold tracking-tight font-mono-num leading-none">{value}</p>
+        <p className="text-[11.5px] font-semibold" style={{ color: "var(--ds-text-dim)" }}>{sub}</p>
       </div>
-      <Activity size={13} strokeWidth={2} style={{ color: "var(--ds-text-faint)" }} />
     </Link>
   );
 }
