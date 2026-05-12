@@ -744,12 +744,8 @@ function Modal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6" onClick={onClose}>
       <div className="absolute inset-0" style={{ background: "rgba(0, 0, 0, 0.55)", backdropFilter: "blur(8px)" }} />
       <div
-        className={`relative rounded-[18px] border w-full ${wide ? "max-w-md" : "max-w-sm"} p-6`}
-        style={{
-          background: "var(--ds-bg-1)",
-          borderColor: "var(--ds-border-strong)",
-          boxShadow: "0 24px 60px -12px rgba(0,0,0,0.55)",
-        }}
+        className={`ds-glass relative rounded-[18px] border w-full ${wide ? "max-w-md" : "max-w-sm"} p-6`}
+        style={{ borderColor: "var(--ds-border-strong)" }}
         onClick={e => e.stopPropagation()}
       >
         <button

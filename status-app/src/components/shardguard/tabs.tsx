@@ -510,12 +510,8 @@ function PanicModal({
     >
       <div className="absolute inset-0" style={{ background: "rgba(0, 0, 0, 0.55)", backdropFilter: "blur(10px)" }} />
       <div
-        className="relative w-full max-w-md rounded-[20px] border overflow-hidden panic-modal"
-        style={{
-          background: "var(--ds-bg-1)",
-          borderColor: "var(--ds-border-strong)",
-          boxShadow: "0 32px 80px -16px rgba(0,0,0,0.6)",
-        }}
+        className="ds-glass relative w-full max-w-md rounded-[20px] border overflow-hidden panic-modal"
+        style={{ borderColor: "var(--ds-border-strong)" }}
         onClick={e => e.stopPropagation()}
       >
         {/* Accent strip */}

@@ -3,6 +3,7 @@ import { Loader2, KeyRound, ExternalLink } from "lucide-react";
 import { IS_DESKTOP, tokenGet, tokenSet, openExternal } from "@/lib/desktop";
 import { apiGet, ApiError, setBearerToken } from "@/api/client";
 import { OnboardingTour, shouldShowOnboarding } from "@/components/OnboardingTour";
+import { AuroraBackground } from "@/components/AuroraBackground";
 import { DEMO_TOKEN, isDemoToken, enableDemoMode, disableDemoMode } from "@/lib/demo";
 
 type State =
@@ -128,7 +129,8 @@ function BootScreen({ leaving = false }: { leaving?: boolean }) {
     <>
       <div className="fixed inset-x-0 top-0 h-7 z-50" data-tauri-drag-region />
       <div className={`boot-stage ${leaving ? "boot-stage-leaving" : ""}`}>
-        <div className="boot-stack">
+        <AuroraBackground />
+        <div className="boot-stack" style={{ position: "relative", zIndex: 1 }}>
           <div className="boot-logo">
             <div className="boot-logo-card">
               <img src="/logo.png" alt="" />
@@ -328,7 +330,9 @@ function DesktopLogin({
   return (
     <>
       <div className="fixed inset-x-0 top-0 h-7 z-50" data-tauri-drag-region />
-      <div className="login-stage h-screen w-screen flex flex-col items-center justify-center px-9 bg-black">
+      <div className="login-stage h-screen w-screen flex flex-col items-center justify-center px-9 relative" style={{ background: "#0a0b0e" }}>
+        <AuroraBackground />
+        <div className="relative z-10 flex flex-col items-center w-full">
         <div className="flex flex-col items-center mb-9">
           <img
             src="/logo.png"
@@ -388,6 +392,7 @@ function DesktopLogin({
             Pas de compte ? Essayer en mode démo
           </button>
         </form>
+        </div>
 
         <style>{`
           .login-stage {

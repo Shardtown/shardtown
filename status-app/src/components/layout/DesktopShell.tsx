@@ -298,12 +298,8 @@ function ProfileMenu({
   return (
     <div
       data-profile-menu
-      className="absolute z-50 right-0 top-[calc(100%+10px)] w-[280px] rounded-[16px] border overflow-hidden profile-pop"
-      style={{
-        background: "var(--ds-bg-1)",
-        borderColor: "var(--ds-border-strong)",
-        boxShadow: "0 24px 60px -12px rgba(0,0,0,0.55)",
-      }}
+      className="ds-glass absolute z-50 right-0 top-[calc(100%+10px)] w-[280px] rounded-[16px] border overflow-hidden profile-pop"
+      style={{ borderColor: "var(--ds-border-strong)" }}
     >
       {/* NordVPN-style header: avatar + name + handle + plan badge */}
       <div className="px-4 pt-4 pb-4 flex items-center gap-3 border-b" style={{ borderColor: "var(--ds-border)" }}>
@@ -721,12 +717,8 @@ function UpdateButton() {
       {menuOpen && !isBusy && (
         <div
           data-update-menu
-          className="absolute z-50 right-0 top-[calc(100%+12px)] w-[320px] rounded-[18px] border overflow-hidden update-pop"
-          style={{
-            background: "var(--ds-bg-1)",
-            borderColor: "var(--ds-border-strong)",
-            boxShadow: "0 28px 64px -16px rgba(0,0,0,0.6)",
-          }}
+          className="ds-glass absolute z-50 right-0 top-[calc(100%+12px)] w-[320px] rounded-[18px] border overflow-hidden update-pop"
+          style={{ borderColor: "var(--ds-border-strong)" }}
         >
           {/* Accent strip — green if update, neutral otherwise */}
           <div
@@ -850,12 +842,8 @@ function UpdateButton() {
       {/* Progress popover during download */}
       {isBusy && (
         <div
-          className="absolute z-50 right-0 top-[calc(100%+12px)] w-[300px] rounded-[18px] border px-5 py-4 update-pop"
-          style={{
-            background: "var(--ds-bg-1)",
-            borderColor: "var(--ds-border-strong)",
-            boxShadow: "0 28px 64px -16px rgba(0,0,0,0.6)",
-          }}
+          className="ds-glass absolute z-50 right-0 top-[calc(100%+12px)] w-[300px] rounded-[18px] border px-5 py-4 update-pop"
+          style={{ borderColor: "var(--ds-border-strong)" }}
         >
           <div className="flex items-center justify-between mb-3">
             <p className="text-[13px] font-bold">
