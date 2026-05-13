@@ -374,7 +374,6 @@ function DesktopLogin({
           <div className="dl-blob b3"></div>
           <div className="dl-blob b4"></div>
         </div>
-        <div className="dl-grain"></div>
         <div className="dl-vignette"></div>
 
         <div className="dl-content">
@@ -496,15 +495,6 @@ function DesktopLogin({
             background: radial-gradient(circle, rgba(236, 72, 153, 0.38), transparent 65%);
             animation: dl-blob4 24s ease-in-out infinite;
           }
-          .dl-grain {
-            position: absolute;
-            inset: 0;
-            opacity: 0.05;
-            pointer-events: none;
-            background-image:
-              radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.7) 1px, transparent 0);
-            background-size: 3px 3px;
-          }
           .dl-vignette {
             position: absolute;
             inset: 0;
@@ -599,21 +589,76 @@ function DesktopLogin({
             line-height: 1.5;
           }
 
-          /* ─── Glass card ────────────────────────────────────────── */
+          /* ─── Liquid glass card ─────────────────────────────────── */
           .dl-card {
+            position: relative;
             width: 100%;
             display: flex;
             flex-direction: column;
             gap: 12px;
-            padding: 22px;
+            padding: 24px;
             border-radius: 22px;
-            background: rgba(15, 16, 22, 0.7);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background:
+              linear-gradient(
+                145deg,
+                rgba(255, 255, 255, 0.10) 0%,
+                rgba(255, 255, 255, 0.04) 35%,
+                rgba(255, 255, 255, 0.02) 70%,
+                rgba(255, 255, 255, 0.06) 100%
+              );
+            border: 1px solid rgba(255, 255, 255, 0.12);
             box-shadow:
+              /* outer drop shadow for depth */
               0 30px 90px -20px rgba(0, 0, 0, 0.7),
-              inset 0 1px 0 rgba(255, 255, 255, 0.06);
-            backdrop-filter: blur(28px) saturate(140%);
-            -webkit-backdrop-filter: blur(28px) saturate(140%);
+              0 0 0 1px rgba(255, 255, 255, 0.03),
+              /* inner top highlight (glass refraction) */
+              inset 0 1px 0 rgba(255, 255, 255, 0.18),
+              /* inner bottom dark line (glass thickness) */
+              inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            overflow: hidden;
+            isolation: isolate;
+          }
+          /* Soft sheen sweep that mimics light catching on glass —
+             slow and subtle, never distracting. */
+          .dl-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -30%;
+            width: 60%;
+            height: 200%;
+            background: linear-gradient(
+              115deg,
+              transparent 30%,
+              rgba(255, 255, 255, 0.08) 50%,
+              transparent 70%
+            );
+            transform: rotate(8deg);
+            pointer-events: none;
+            animation: dl-glass-sheen 8s ease-in-out infinite;
+          }
+          /* Inner reflective rim on top, for the convex-glass illusion. */
+          .dl-card::after {
+            content: '';
+            position: absolute;
+            inset: 1px;
+            border-radius: 21px;
+            pointer-events: none;
+            background: linear-gradient(
+              180deg,
+              rgba(255, 255, 255, 0.06) 0%,
+              transparent 18%,
+              transparent 82%,
+              rgba(0, 0, 0, 0.18) 100%
+            );
+          }
+          .dl-card > * { position: relative; z-index: 1; }
+
+          @keyframes dl-glass-sheen {
+            0%, 100% { transform: translateX(0)     rotate(8deg); opacity: 0.6; }
+            50%      { transform: translateX(280px) rotate(8deg); opacity: 1; }
           }
           .dl-field-label {
             font-size: 10.5px;
