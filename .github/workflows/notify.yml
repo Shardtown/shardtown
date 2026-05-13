@@ -77,11 +77,15 @@ jobs:
 
               # Build a compact list — title + sha + author per commit, capped
               # at 8 entries so we don't spam.
+              # author.username is null when the commit email doesn't map to a
+              # GitHub user (bot pushes, custom emails…). Fall back to author.name,
+              # then a literal "unknown" — jq's `+` on a null operand would
+              # otherwise abort the whole step under bash -e.
               COMMIT_LINES=$(echo "$EV" | jq -r '
                 .commits[:8] | map(
                   "[`" + (.id[:7]) + "`](" + .url + ") " +
                   (.message | split("\n")[0]) +
-                  " — *" + .author.username + "*"
+                  " — *" + (.author.username // .author.name // "unknown") + "*"
                 ) | join("\n")
               ')
               if [ "$COMMIT_COUNT" -gt 8 ]; then
