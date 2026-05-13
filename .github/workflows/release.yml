@@ -50,6 +50,9 @@ jobs:
 
       - name: Discord — build started
         id: discord_start
+        # Notif optionnelle : ne doit JAMAIS bloquer le build si Discord
+        # est down, le bot révoqué, ou un rate-limit pète.
+        continue-on-error: true
         if: env.BOT_TOKEN != '' && env.CHANNEL_ID != ''
         env:
           BOT_TOKEN: ${{ secrets.SHARDTOWN_BOT_TOKEN }}
@@ -204,6 +207,7 @@ jobs:
             desktop-tauri/staging/latest.json
 
       - name: Discord — update final status
+        continue-on-error: true
         if: always() && env.BOT_TOKEN != '' && env.CHANNEL_ID != '' && env.MSG_ID != ''
         env:
           BOT_TOKEN: ${{ secrets.SHARDTOWN_BOT_TOKEN }}
