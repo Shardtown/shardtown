@@ -380,7 +380,7 @@ function DesktopLogin({
         <div className="dl-content">
           {/* Brand block — massive wordmark, mirrors the splash */}
           <div className="dl-brand">
-            <p className="dl-label">Studio Shardtown</p>
+            <p className="dl-label">Studio</p>
             <h1 className="dl-wordmark">SHARDTOWN</h1>
             <p className="dl-tag">Connecte ton compte pour accéder à l'environnement.</p>
           </div>
@@ -559,8 +559,12 @@ function DesktopLogin({
           }
           .dl-wordmark {
             position: relative;
+            /* Match the homepage wordmark — Plus Jakarta Sans extrabold,
+               uppercase, very tight tracking. */
+            font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
             font-size: clamp(56px, 10vw, 104px);
-            font-weight: 900;
+            font-weight: 800;
+            text-transform: uppercase;
             letter-spacing: -0.055em;
             line-height: 0.88;
             margin: 0;
@@ -658,20 +662,20 @@ function DesktopLogin({
             cursor: pointer;
             font-size: 13.5px;
             font-weight: 700;
-            color: #fff;
-            background: linear-gradient(135deg, rgb(91, 109, 255) 0%, rgb(168, 85, 247) 100%);
+            color: #000;
+            background: #fff;
             box-shadow:
-              0 14px 36px -10px rgba(91, 109, 255, 0.7),
-              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+              0 14px 36px -10px rgba(255, 255, 255, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.5);
             transition: transform 120ms ease, opacity 120ms ease, box-shadow 200ms ease;
           }
           .dl-cta:hover:not(:disabled) {
             box-shadow:
-              0 18px 44px -10px rgba(168, 85, 247, 0.75),
-              inset 0 1px 0 rgba(255, 255, 255, 0.25);
+              0 18px 44px -10px rgba(255, 255, 255, 0.35),
+              inset 0 1px 0 rgba(255, 255, 255, 0.65);
           }
           .dl-cta:active:not(:disabled) { transform: scale(0.99); }
-          .dl-cta:disabled { opacity: 0.45; cursor: not-allowed; }
+          .dl-cta:disabled { opacity: 0.4; cursor: not-allowed; }
 
           .dl-divider {
             display: flex;

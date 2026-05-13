@@ -6,6 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SHARDTOWN</title>
     <!--
+      Preload Plus Jakarta Sans so the splash wordmark renders in the
+      site's font from the very first paint. Without these `<link>`s the
+      splash would briefly use the system fallback before PJS swaps in,
+      and the "S" feels off.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&display=swap">
+    <!--
       Splash screen — inline so the first paint of the WebView already
       shows the brand + ambient motion. Aurora gradients, massive
       wordmark with running shimmer, shimmer sweep on the logo, slim
@@ -17,7 +26,7 @@
         margin: 0;
         background: #050608;
         color: #fff;
-        font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+        font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
         -webkit-font-smoothing: antialiased;
       }
       #shardtown-splash {
@@ -111,8 +120,12 @@
       }
       #shardtown-splash .ss-wordmark {
         position: relative;
+        /* Match the homepage SHARDTOWN wordmark: Plus Jakarta Sans
+           extrabold uppercase, very tight tracking. */
+        font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
         font-size: clamp(72px, 13vw, 156px);
-        font-weight: 900;
+        font-weight: 800;
+        text-transform: uppercase;
         letter-spacing: -0.055em;
         line-height: 0.9;
         margin: 0;
@@ -227,7 +240,7 @@
       <div class="ss-vignette"></div>
 
       <div class="ss-stack">
-        <p class="ss-label">Studio Shardtown</p>
+        <p class="ss-label">Studio</p>
         <h1 class="ss-wordmark">SHARDTOWN</h1>
         <p class="ss-tag">Ouverture de l'environnement…</p>
       </div>
