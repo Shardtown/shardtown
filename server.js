@@ -3362,6 +3362,68 @@ app.get('/api/shard/server', checkAuthShard, async (req, res) => {
     }
 });
 
+// Recent server-activity events for the desktop notification feed: giveaways
+// and polls that have ended in the last 24 h on guilds the user can admin.
+// The client passes `?since=<unix-ms>` and we only return events strictly
+// newer than that, so each native notification fires exactly once.
+app.get('/api/notifications/recent', checkAuthShard, async (req, res) => {
+    const shardUser = req.session.shardUser;
+    const adminGuildIds = (shardUser.guilds || [])
+        .filter(g => hasGuildAdmin(g))
+        .map(g => g.id);
+    if (adminGuildIds.length === 0) return res.json({ events: [] });
+
+    const sinceMs = Math.max(0, Number.parseInt(req.query.since, 10) || 0);
+    // Hard floor at -24h so a fresh client doesn't get a flood of historical
+    // events on first poll.
+    const floorMs = Date.now() - 24 * 60 * 60 * 1000;
+    const sinceDate = new Date(Math.max(sinceMs, floorMs));
+
+    const placeholders = adminGuildIds.map(() => '?').join(',');
+    try {
+        const [giveaways] = await db.execute(
+            `SELECT id, guildId, prize, endsAt FROM shard_giveaways
+             WHERE ended = 1 AND endsAt > ? AND guildId IN (${placeholders})
+             ORDER BY endsAt DESC LIMIT 20`,
+            [sinceDate, ...adminGuildIds],
+        ).catch(() => [[]]);
+        const [polls] = await db.execute(
+            `SELECT id, guildId, question, endsAt FROM shard_polls
+             WHERE ended = 1 AND endsAt IS NOT NULL AND endsAt > ? AND guildId IN (${placeholders})
+             ORDER BY endsAt DESC LIMIT 20`,
+            [sinceDate, ...adminGuildIds],
+        ).catch(() => [[]]);
+
+        const guildNameById = new Map(
+            (shardUser.guilds || []).map(g => [g.id, g.name || g.id]),
+        );
+
+        const events = [
+            ...giveaways.map(g => ({
+                id: `giveaway-${g.id}`,
+                type: 'giveaway',
+                title: g.prize,
+                guildId: g.guildId,
+                guildName: guildNameById.get(g.guildId) || g.guildId,
+                timestamp: new Date(g.endsAt).getTime(),
+            })),
+            ...polls.map(p => ({
+                id: `poll-${p.id}`,
+                type: 'poll',
+                title: p.question,
+                guildId: p.guildId,
+                guildName: guildNameById.get(p.guildId) || p.guildId,
+                timestamp: new Date(p.endsAt).getTime(),
+            })),
+        ].sort((a, b) => b.timestamp - a.timestamp);
+
+        res.json({ events });
+    } catch (err) {
+        console.error('Erreur /api/notifications/recent:', err.message);
+        res.status(500).json({ events: [], error: 'Erreur serveur' });
+    }
+});
+
 // Shard guild config — consumed by React /shard/guild/:id
 app.get('/api/shard/guild/:guildID', checkAuthShard, async (req, res) => {
     const guildID = req.params.guildID;

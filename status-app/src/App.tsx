@@ -8,6 +8,8 @@ import { DesktopGate } from "@/components/DesktopGate";
 import { TourHost } from "@/components/OnboardingTour";
 import { PostUpdateNotes } from "@/components/PostUpdateNotes";
 import { VerifyAllNotifier } from "@/components/VerifyAllNotifier";
+import { BotStateMonitor } from "@/components/BotStateMonitor";
+import { ServerActivityMonitor } from "@/components/ServerActivityMonitor";
 import { Status } from "@/routes/Status";
 import { Index } from "@/routes/Index";
 import { Wiki } from "@/routes/Wiki";
@@ -138,6 +140,8 @@ function PersistentOverlays() {
       <TourHost />
       <PostUpdateNotes />
       <VerifyAllNotifier />
+      <BotStateMonitor />
+      <ServerActivityMonitor />
     </>
   );
 }

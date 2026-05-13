@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, X, AlertTriangle } from "lucide-react";
 import { apiGet } from "@/api/client";
+import { notify } from "@/lib/notifications";
 
 const STORAGE_KEY = "shardtown.verify-job.active";
 const POLL_INTERVAL_MS = 6000;
@@ -80,11 +81,19 @@ export function VerifyAllNotifier() {
         clearJob();
         if (status.error) {
           setNotif({ kind: "error", message: status.error });
+          void notify({
+            category: "long-actions",
+            title: "Vérification échouée",
+            body: status.error,
+          });
         } else {
-          setNotif({
-            kind: "success",
-            granted: status.granted ?? 0,
-            skipped: status.skipped ?? 0,
+          const granted = status.granted ?? 0;
+          const skipped = status.skipped ?? 0;
+          setNotif({ kind: "success", granted, skipped });
+          void notify({
+            category: "long-actions",
+            title: "Vérification terminée",
+            body: `${granted} rôle${granted > 1 ? "s" : ""} attribué${granted > 1 ? "s" : ""}${skipped > 0 ? ` · ${skipped} ignoré${skipped > 1 ? "s" : ""}` : ""}.`,
           });
           // Ask the active Guild page to re-fetch stats so the verified
           // counter, % and non-verified counts catch up.
