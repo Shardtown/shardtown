@@ -113,10 +113,12 @@ jobs:
         working-directory: desktop-tauri
         run: npm ci --no-audit --no-fund
 
-      # Pas de signing identity, pas de notarisation, pas d'updater key :
-      # `tauri build` produit un .app + .dmg ad-hoc-signés, ce qui suffit
-      # à valider que tout compile. La vraie release reste pilotée par
-      # release.yml sur tag push.
-      - name: Build Tauri bundle (unsigned)
+      # `--no-bundle` saute toute l'étape de bundling (et donc la génération
+      # de l'artefact updater qui requiert TAURI_SIGNING_PRIVATE_KEY, absent
+      # ici). On valide juste que tout le Rust compile et que la SPA est
+      # bundlée par `beforeBuildCommand`. La vraie release (signée + notarisée
+      # + universal) reste pilotée par release.yml sur tag push / branche
+      # release-trigger-*.
+      - name: Compile Tauri (Rust + frontend, no bundle)
         working-directory: desktop-tauri
-        run: npx tauri build --target aarch64-apple-darwin --bundles app
+        run: npx tauri build --target aarch64-apple-darwin --no-bundle
