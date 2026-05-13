@@ -564,21 +564,24 @@ function DesktopLogin({
             color: transparent;
           }
           .dl-wordmark::after {
+            /* Same shimmer pattern as the splash — animate background-position,
+               not transform, otherwise the pseudo-element drifts and we see
+               two overlapping "SHARDTOWN" strings. */
             content: 'SHARDTOWN';
             position: absolute;
             inset: 0;
             background: linear-gradient(110deg,
               transparent 35%,
               rgba(255, 255, 255, 0.95) 50%,
-              transparent 65%);
+              transparent 65%) -100% 0 / 200% 100% no-repeat;
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
             animation: dl-shimmer 4s ease-in-out 0.6s infinite;
           }
           @keyframes dl-shimmer {
-            0%   { transform: translateX(-100%); }
-            55%, 100% { transform: translateX(100%); }
+            0%   { background-position: -100% 0; }
+            55%, 100% { background-position: 200% 0; }
           }
           .dl-tag {
             font-size: 13.5px;

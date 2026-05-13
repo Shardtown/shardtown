@@ -127,13 +127,19 @@
         animation: ss-fadein 1.2s ease-out 0.05s both;
       }
       #shardtown-splash .ss-wordmark::after {
+        /* Shimmer sweep — same text shape on top of the parent, with a
+           moving gradient clipped to it. We animate `background-position`
+           on a static (non-translated) element so the wordmark never
+           drifts out of alignment with the parent text. Previous version
+           used `transform: translateX(...)` and showed two overlapping
+           SHARDTOWNs offset by the translate distance. */
         content: 'SHARDTOWN';
         position: absolute;
         inset: 0;
         background: linear-gradient(110deg,
           transparent 35%,
           rgba(255, 255, 255, 0.95) 50%,
-          transparent 65%);
+          transparent 65%) -100% 0 / 200% 100% no-repeat;
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
@@ -187,8 +193,8 @@
         to   { opacity: 1; transform: translateY(0); }
       }
       @keyframes ss-shimmer {
-        0%   { transform: translateX(-100%); }
-        50%, 100% { transform: translateX(100%); }
+        0%   { background-position: -100% 0; }
+        55%, 100% { background-position: 200% 0; }
       }
       @keyframes ss-progress {
         0%   { transform: translateX(-50%); }
@@ -238,22 +244,12 @@
       <div class="ss-progress"></div>
     </div>
     <div id="root"></div>
-    <script>
-      // Min display ~700ms so the shimmer sweep has time to actually
-      // land at least once. Without it the splash blink-disappears on
-      // fast cold launches.
-      window.__SHARDTOWN_SPLASH_START = Date.now();
-      window.__shardtownHideSplash = function () {
-        var el = document.getElementById('shardtown-splash');
-        if (!el) return;
-        var elapsed = Date.now() - (window.__SHARDTOWN_SPLASH_START || 0);
-        var remaining = Math.max(0, 700 - elapsed);
-        setTimeout(function () {
-          el.classList.add('is-leaving');
-          setTimeout(function () { el.remove(); }, 420);
-        }, remaining);
-      };
-    </script>
+    <!--
+      Splash lifecycle helper as an external file — Tauri's CSP enforces
+      `script-src 'self'` so inline <script> tags are blocked in the
+      packaged app. A local file at /splash.js satisfies that.
+    -->
+    <script src="/splash.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
