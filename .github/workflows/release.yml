@@ -74,6 +74,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Cache cargo target
         uses: actions/cache@v4
@@ -82,8 +84,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             desktop-tauri/src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('desktop-tauri/src-tauri/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-universal-${{ hashFiles('desktop-tauri/src-tauri/Cargo.lock') }}
           restore-keys: |
+            ${{ runner.os }}-cargo-universal-
             ${{ runner.os }}-cargo-
 
       - name: Install status-app deps
@@ -94,26 +97,56 @@ jobs:
         working-directory: desktop-tauri
         run: npm install --no-audit --no-fund
 
-      - name: Build Tauri bundle (signs via env vars)
+      # Imports the Developer ID Application cert into a temporary keychain on
+      # the runner so `tauri build` can codesign the .app + .dmg. The action
+      # is skipped if the secret is empty — Tauri then ad-hoc signs and the
+      # build still produces an (un-notarized) bundle.
+      - name: Import Apple Developer ID certificate
+        if: ${{ secrets.APPLE_CERTIFICATE != '' }}
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Write App Store Connect API key to disk
+        if: ${{ secrets.APPLE_API_KEY_CONTENT != '' }}
+        env:
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+          APPLE_API_KEY_PATH: ${{ runner.temp }}/apple_api_key.p8
+        run: |
+          printf '%s' "$APPLE_API_KEY_CONTENT" > "$APPLE_API_KEY_PATH"
+          chmod 600 "$APPLE_API_KEY_PATH"
+
+      - name: Build Tauri bundle (universal, signed + notarized)
         working-directory: desktop-tauri
         env:
+          # Tauri Updater signing (ed25519, embedded pubkey)
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npm run tauri:build
+          # Apple Developer ID code signing (cert imported above into keychain)
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # Apple notarization (App Store Connect API key — preferred over Apple ID + app-specific password)
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_PATH: ${{ runner.temp }}/apple_api_key.p8
+        run: npx tauri build --target universal-apple-darwin
 
       - name: Stage release artifacts
         working-directory: desktop-tauri
         run: |
           VERSION="${{ steps.meta.outputs.version }}"
+          BUNDLE_DIR="src-tauri/target/universal-apple-darwin/release/bundle"
           mkdir -p staging
-          cp "src-tauri/target/release/bundle/dmg/Shardtown_${VERSION}_aarch64.dmg"   "staging/Shardtown_${VERSION}_aarch64.dmg"
-          cp  src-tauri/target/release/bundle/macos/Shardtown.app.tar.gz             "staging/Shardtown_${VERSION}.app.tar.gz"
-          cp  src-tauri/target/release/bundle/macos/Shardtown.app.tar.gz.sig         "staging/Shardtown_${VERSION}.app.tar.gz.sig"
+          cp "$BUNDLE_DIR/dmg/Shardtown_${VERSION}_universal.dmg"   "staging/Shardtown_${VERSION}_universal.dmg"
+          cp "$BUNDLE_DIR/macos/Shardtown.app.tar.gz"               "staging/Shardtown_${VERSION}.app.tar.gz"
+          cp "$BUNDLE_DIR/macos/Shardtown.app.tar.gz.sig"           "staging/Shardtown_${VERSION}.app.tar.gz.sig"
+          DOWNLOAD_URL="https://shardtwn.fr/updates/Shardtown_${VERSION}.app.tar.gz"
           node scripts/make-manifest.mjs \
             --version "$VERSION" \
             --notes "Release $VERSION" \
-            --sig-path src-tauri/target/release/bundle/macos/Shardtown.app.tar.gz.sig \
-            --download-url-darwin-aarch64 "https://shardtwn.fr/updates/Shardtown_${VERSION}.app.tar.gz" \
+            --sig-path "$BUNDLE_DIR/macos/Shardtown.app.tar.gz.sig" \
+            --download-url-darwin-aarch64 "$DOWNLOAD_URL" \
+            --download-url-darwin-x86_64 "$DOWNLOAD_URL" \
             --out staging/latest.json
           ls -la staging
 
@@ -141,7 +174,7 @@ jobs:
           name: Shardtown ${{ steps.meta.outputs.version }}
           generate_release_notes: true
           files: |
-            desktop-tauri/staging/Shardtown_${{ steps.meta.outputs.version }}_aarch64.dmg
+            desktop-tauri/staging/Shardtown_${{ steps.meta.outputs.version }}_universal.dmg
             desktop-tauri/staging/Shardtown_${{ steps.meta.outputs.version }}.app.tar.gz
             desktop-tauri/staging/Shardtown_${{ steps.meta.outputs.version }}.app.tar.gz.sig
             desktop-tauri/staging/latest.json

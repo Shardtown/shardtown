@@ -31,7 +31,11 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ vars.NOTIFY_DISABLE != 'true' }}   # kill-switch via repo var
     steps:
+      # A notification must never block CI. continue-on-error: true ensures the
+      # check shows green on the PR even if the step crashes for any reason
+      # (transient infra issue, malformed payload, Discord 5xx…).
       - name: Build payload + send
+        continue-on-error: true
         env:
           BOT_TOKEN: ${{ secrets.SHARDTOWN_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.SHARDTOWN_RELEASE_CHANNEL_ID }}
@@ -41,7 +45,14 @@ jobs:
           ACTOR_URL: https://github.com/${{ github.actor }}
           REF: ${{ github.ref_name }}
           PAYLOAD_JSON: ${{ toJSON(github.event) }}
+        # Keep `-e` to surface the failing line in the log, but trap ERR to
+        # exit 0 — a notification workflow must never fail the CI run. We
+        # also drop `pipefail` since some jq pipelines below tolerate
+        # intermediate failures.
+        shell: bash -e {0}
         run: |
+          trap 'rc=$?; echo "notify.yml: step error at line $LINENO (rc=$rc) — exiting cleanly"; exit 0' ERR
+
           if [ -z "$BOT_TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
             echo "Bot token or channel id missing — skipping."
             exit 0
@@ -77,11 +88,15 @@ jobs:
 
               # Build a compact list — title + sha + author per commit, capped
               # at 8 entries so we don't spam.
+              # author.username is null when the commit email doesn't map to a
+              # GitHub user (bot pushes, custom emails…). Fall back to author.name,
+              # then a literal "unknown" — jq's `+` on a null operand would
+              # otherwise abort the whole step under bash -e.
               COMMIT_LINES=$(echo "$EV" | jq -r '
                 .commits[:8] | map(
                   "[`" + (.id[:7]) + "`](" + .url + ") " +
                   (.message | split("\n")[0]) +
-                  " — *" + .author.username + "*"
+                  " — *" + (.author.username // .author.name // "unknown") + "*"
                 ) | join("\n")
               ')
               if [ "$COMMIT_COUNT" -gt 8 ]; then

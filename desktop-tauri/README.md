@@ -27,7 +27,10 @@ npm run tauri:build            # build SPA puis bundle DMG
 → DMG produit dans `src-tauri/target/release/bundle/dmg/Shardtown_<version>_<arch>.dmg`.
 Première compile Rust : 3-8 min. Ensuite c'est instantané.
 
-DMG non-signé. Premier lancement : clic-droit → *Ouvrir*.
+Build local = signature ad-hoc (Gatekeeper bloque). Pour un build **universal**
+**signé Developer ID + notarisé** (distribution publique), passer par la CI
+(`tag git v*` → workflow `.github/workflows/release.yml`) ou exporter les
+vars d'env Apple — voir [RELEASE.md](./RELEASE.md).
 
 ## Dev
 
@@ -84,7 +87,15 @@ Tous derrière `Authorization: Bearer st_…` :
 
 ## Distribution
 
-DMG privé. Pour signer/notariser publiquement :
-- Apple Developer ID ($99/an)
-- `tauri.conf.json > bundle.macOS.signingIdentity` = nom du certificat
-- `bundle.macOS.entitlements` + workflow notarytool
+DMG universel (Apple Silicon + Intel), signé Developer ID Apple et
+notarisé via App Store Connect API key. Produit automatiquement par la
+CI sur push de tag `v*` (voir [RELEASE.md](./RELEASE.md)).
+
+- `tauri.conf.json > bundle.macOS.signingIdentity = "-"` : fallback
+  ad-hoc en local ; surchargé en CI par la variable d'env
+  `APPLE_SIGNING_IDENTITY` qui pointe vers le cert importé dans le
+  trousseau du runner.
+- `tauri.conf.json > bundle.macOS.hardenedRuntime = true` + `entitlements.plist` :
+  obligatoires pour la notarisation.
+- Notarisation via clé API App Store Connect (`.p8`) — plus sûr qu'un
+  mot de passe spécifique à l'application.
