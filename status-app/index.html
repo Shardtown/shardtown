@@ -7,15 +7,15 @@
     <title>SHARDTOWN</title>
     <!--
       Splash screen — inline so the first paint of the WebView already
-      shows the brand + a "we're alive" animation. Without this there's
-      a ~300-800 ms blank black window on cold launch (Tauri opens the
-      window before the SPA bundle has parsed). React calls
+      shows the brand + ambient motion. Aurora gradients, massive
+      wordmark with running shimmer, shimmer sweep on the logo, slim
+      progress sweeper at the bottom. React calls
       `window.__shardtownHideSplash()` once auth has resolved.
     -->
     <style>
       html, body {
         margin: 0;
-        background: #000;
+        background: #050608;
         color: #fff;
         font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
         -webkit-font-smoothing: antialiased;
@@ -24,106 +24,152 @@
         position: fixed;
         inset: 0;
         z-index: 99999;
+        background: #050608;
+        overflow: hidden;
+        animation: ss-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      #shardtown-splash.is-leaving {
+        animation: ss-out 420ms cubic-bezier(0.4, 0, 1, 1) both;
+        pointer-events: none;
+      }
+
+      /* ─── Aurora — 4 huge blurred blobs slowly drifting ──────────── */
+      #shardtown-splash .ss-aurora {
+        position: absolute;
+        inset: -200px;
+        overflow: hidden;
+        pointer-events: none;
+      }
+      #shardtown-splash .ss-blob {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(90px);
+        mix-blend-mode: screen;
+        will-change: transform;
+      }
+      #shardtown-splash .ss-blob.b1 {
+        top: -10%; left: -10%;
+        width: 780px; height: 780px;
+        background: radial-gradient(circle, rgba(91, 109, 255, 0.85), transparent 60%);
+        animation: ss-blob1 22s ease-in-out infinite;
+      }
+      #shardtown-splash .ss-blob.b2 {
+        bottom: -15%; right: -10%;
+        width: 720px; height: 720px;
+        background: radial-gradient(circle, rgba(168, 85, 247, 0.7), transparent 60%);
+        animation: ss-blob2 26s ease-in-out infinite;
+      }
+      #shardtown-splash .ss-blob.b3 {
+        top: 35%; left: 50%;
+        transform: translateX(-50%);
+        width: 520px; height: 520px;
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.55), transparent 65%);
+        animation: ss-blob3 19s ease-in-out infinite;
+      }
+      #shardtown-splash .ss-blob.b4 {
+        top: 60%; left: 12%;
+        width: 380px; height: 380px;
+        background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent 65%);
+        animation: ss-blob4 24s ease-in-out infinite;
+      }
+      #shardtown-splash .ss-grain {
+        position: absolute;
+        inset: 0;
+        opacity: 0.05;
+        pointer-events: none;
+        background-image:
+          radial-gradient(circle at 1px 1px, rgba(255,255,255,0.7) 1px, transparent 0);
+        background-size: 3px 3px;
+      }
+      #shardtown-splash .ss-vignette {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(ellipse at center, transparent 0%, transparent 50%, rgba(0,0,0,0.6) 100%);
+      }
+
+      /* ─── Centre stack ──────────────────────────────────────────── */
+      #shardtown-splash .ss-stack {
+        position: absolute;
+        inset: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 24px;
-        background: #000;
-        overflow: hidden;
-        animation: ss-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        gap: 32px;
+        z-index: 2;
       }
-      #shardtown-splash.is-leaving {
-        animation: ss-out 360ms cubic-bezier(0.4, 0, 1, 1) both;
-        pointer-events: none;
+      #shardtown-splash .ss-label {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.4em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.42);
+        margin: 0;
+        animation: ss-fadein 1.2s ease-out 0.2s both;
       }
-      #shardtown-splash .ss-orb {
-        position: absolute;
-        width: 520px;
-        height: 520px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(91, 109, 255, 0.45) 0%, rgba(91, 109, 255, 0.18) 35%, transparent 70%);
-        filter: blur(60px);
-        animation: ss-orb 6s ease-in-out infinite;
-        pointer-events: none;
+      #shardtown-splash .ss-wordmark {
+        position: relative;
+        font-size: clamp(72px, 13vw, 156px);
+        font-weight: 900;
+        letter-spacing: -0.055em;
+        line-height: 0.9;
+        margin: 0;
+        background: linear-gradient(180deg, #ffffff 10%, rgba(255, 255, 255, 0.45) 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: ss-fadein 1.2s ease-out 0.05s both;
       }
-      #shardtown-splash .ss-orb-2 {
-        position: absolute;
-        width: 360px;
-        height: 360px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, transparent 65%);
-        filter: blur(70px);
-        animation: ss-orb-2 8s ease-in-out infinite;
-        pointer-events: none;
-      }
-      #shardtown-splash .ss-noise {
+      #shardtown-splash .ss-wordmark::after {
+        content: 'SHARDTOWN';
         position: absolute;
         inset: 0;
-        opacity: 0.04;
-        pointer-events: none;
-        background-image:
-          radial-gradient(circle at 1px 1px, rgba(255,255,255,0.6) 1px, transparent 0);
-        background-size: 3px 3px;
-      }
-      #shardtown-splash .ss-logo-wrap {
-        position: relative;
-        z-index: 2;
-      }
-      #shardtown-splash .ss-logo-halo {
-        position: absolute;
-        inset: -24px;
-        border-radius: 32px;
-        background: radial-gradient(circle, rgba(91, 109, 255, 0.5), transparent 60%);
-        filter: blur(28px);
-        animation: ss-halo 3.5s ease-in-out infinite;
-      }
-      #shardtown-splash .ss-logo {
-        position: relative;
-        width: 92px;
-        height: 92px;
-        border-radius: 24px;
-        object-fit: cover;
-        box-shadow:
-          0 22px 70px rgba(91, 109, 255, 0.45),
-          0 0 0 1px rgba(255, 255, 255, 0.08) inset;
-        animation: ss-logo 3.5s ease-in-out infinite;
-      }
-      #shardtown-splash .ss-brand {
-        position: relative;
-        z-index: 2;
-        font-size: 24px;
-        font-weight: 800;
-        letter-spacing: -0.025em;
-        line-height: 1;
-        margin: 0;
+        background: linear-gradient(110deg,
+          transparent 35%,
+          rgba(255, 255, 255, 0.95) 50%,
+          transparent 65%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: ss-shimmer 3.6s ease-in-out 0.8s infinite;
       }
       #shardtown-splash .ss-tag {
-        position: relative;
-        z-index: 2;
-        font-size: 10.5px;
-        font-weight: 700;
-        letter-spacing: 0.24em;
-        text-transform: uppercase;
-        color: rgba(255, 255, 255, 0.38);
-        margin: 4px 0 0 0;
+        font-size: 13px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.55);
+        margin: 0;
+        letter-spacing: -0.005em;
+        animation: ss-fadein 1.2s ease-out 0.4s both;
       }
-      #shardtown-splash .ss-dots {
-        position: relative;
-        z-index: 2;
-        display: flex;
-        gap: 8px;
-        margin-top: 12px;
+
+      /* ─── Progress bar (sweep, indeterminate) ──────────────────── */
+      #shardtown-splash .ss-progress {
+        position: absolute;
+        left: 0; right: 0; bottom: 0;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.04);
+        overflow: hidden;
+        z-index: 3;
       }
-      #shardtown-splash .ss-dots span {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.55);
-        animation: ss-dot 1.4s ease-in-out infinite;
+      #shardtown-splash .ss-progress::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0;
+        height: 100%;
+        width: 38%;
+        background: linear-gradient(90deg,
+          transparent 0%,
+          rgba(91, 109, 255, 0.6) 35%,
+          #a855f7 50%,
+          rgba(91, 109, 255, 0.6) 65%,
+          transparent 100%);
+        box-shadow: 0 0 24px rgba(168, 85, 247, 0.7);
+        animation: ss-progress 2.4s cubic-bezier(0.5, 0, 0.5, 1) infinite;
       }
-      #shardtown-splash .ss-dots span:nth-child(2) { animation-delay: 0.18s; }
-      #shardtown-splash .ss-dots span:nth-child(3) { animation-delay: 0.36s; }
+
+      /* ─── Animations ───────────────────────────────────────────── */
       @keyframes ss-in {
         from { opacity: 0; }
         to   { opacity: 1; }
@@ -132,26 +178,35 @@
         from { opacity: 1; }
         to   { opacity: 0; visibility: hidden; }
       }
-      @keyframes ss-orb {
-        0%, 100% { transform: translate(-12%, -8%) scale(0.95); opacity: 0.6; }
-        50%      { transform: translate(8%, 6%)  scale(1.08);  opacity: 0.9; }
+      @keyframes ss-fadein {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
       }
-      @keyframes ss-orb-2 {
-        0%, 100% { transform: translate(16%, 14%) scale(1.05); opacity: 0.5; }
-        50%      { transform: translate(-10%, -6%) scale(0.9); opacity: 0.85; }
+      @keyframes ss-shimmer {
+        0%   { transform: translateX(-100%); }
+        50%, 100% { transform: translateX(100%); }
       }
-      @keyframes ss-halo {
-        0%, 100% { opacity: 0.55; transform: scale(0.92); }
-        50%      { opacity: 1;    transform: scale(1.08); }
+      @keyframes ss-progress {
+        0%   { transform: translateX(-50%); }
+        100% { transform: translateX(250%); }
       }
-      @keyframes ss-logo {
-        0%, 100% { transform: scale(1) rotate(0deg); }
-        50%      { transform: scale(1.04) rotate(0.3deg); }
+      @keyframes ss-blob1 {
+        0%, 100% { transform: translate(0, 0)        scale(1); }
+        50%      { transform: translate(80px, 60px)  scale(1.15); }
       }
-      @keyframes ss-dot {
-        0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
-        40%           { opacity: 1;    transform: scale(1.15); }
+      @keyframes ss-blob2 {
+        0%, 100% { transform: translate(0, 0)        scale(1); }
+        50%      { transform: translate(-100px, -60px) scale(1.1); }
       }
+      @keyframes ss-blob3 {
+        0%, 100% { transform: translateX(-50%) translateY(0)    scale(1); }
+        50%      { transform: translateX(-50%) translateY(-80px) scale(1.2); }
+      }
+      @keyframes ss-blob4 {
+        0%, 100% { transform: translate(0, 0)        scale(1); }
+        50%      { transform: translate(140px, -40px) scale(1.18); }
+      }
+
       @media (prefers-reduced-motion: reduce) {
         #shardtown-splash *,
         #shardtown-splash.is-leaving {
@@ -162,33 +217,37 @@
   </head>
   <body>
     <div id="shardtown-splash" aria-hidden="true">
-      <div class="ss-orb"></div>
-      <div class="ss-orb-2"></div>
-      <div class="ss-noise"></div>
-      <div class="ss-logo-wrap">
-        <div class="ss-logo-halo"></div>
-        <img src="/logo.png" alt="" class="ss-logo" />
+      <div class="ss-aurora">
+        <div class="ss-blob b1"></div>
+        <div class="ss-blob b2"></div>
+        <div class="ss-blob b3"></div>
+        <div class="ss-blob b4"></div>
       </div>
-      <div style="text-align: center;">
-        <p class="ss-brand">Shardtown</p>
-        <p class="ss-tag">Chargement</p>
+      <div class="ss-grain"></div>
+      <div class="ss-vignette"></div>
+
+      <div class="ss-stack">
+        <p class="ss-label">Studio Shardtown</p>
+        <h1 class="ss-wordmark">SHARDTOWN</h1>
+        <p class="ss-tag">Ouverture de l'environnement…</p>
       </div>
-      <div class="ss-dots"><span></span><span></span><span></span></div>
+
+      <div class="ss-progress"></div>
     </div>
     <div id="root"></div>
     <script>
-      // Track the splash open time so we can enforce a minimum display
-      // duration (~600 ms) — without it the splash blink-disappears on
-      // hot reload / fast cold launches and the brand never lands.
+      // Min display ~700ms so the shimmer sweep has time to actually
+      // land at least once. Without it the splash blink-disappears on
+      // fast cold launches.
       window.__SHARDTOWN_SPLASH_START = Date.now();
       window.__shardtownHideSplash = function () {
         var el = document.getElementById('shardtown-splash');
         if (!el) return;
         var elapsed = Date.now() - (window.__SHARDTOWN_SPLASH_START || 0);
-        var remaining = Math.max(0, 600 - elapsed);
+        var remaining = Math.max(0, 700 - elapsed);
         setTimeout(function () {
           el.classList.add('is-leaving');
-          setTimeout(function () { el.remove(); }, 360);
+          setTimeout(function () { el.remove(); }, 420);
         }, remaining);
       };
     </script>
