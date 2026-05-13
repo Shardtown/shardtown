@@ -14,6 +14,7 @@ import {
   PresenceProvider, PresenceStack, FieldPresenceLayer,
   FollowBanner, GhostCursors,
 } from "@/components/Presence";
+import { notify } from "@/lib/notifications";
 import {
   tokenClear, biometricConfirm, openExternal, IS_DESKTOP,
   checkForUpdate, downloadAndInstallUpdate,
@@ -680,7 +681,18 @@ function UpdateButton() {
     setChecking(true);
     try {
       const u = await checkForUpdate();
-      setAvailable(u);
+      // Native notif on transition null → available, so the user finds out
+      // even if the app is in the background or another desktop space.
+      setAvailable(prev => {
+        if (!prev && u) {
+          void notify({
+            category: "updates",
+            title: "Mise à jour Shardtown disponible",
+            body: `Version ${u.version} prête à être installée.`,
+          });
+        }
+        return u;
+      });
       setLastChecked(Date.now());
     } finally {
       setChecking(false);
@@ -719,7 +731,13 @@ function UpdateButton() {
     try {
       await downloadAndInstallUpdate(setProgress);
     } catch (e) {
-      setProgress({ kind: "error", message: (e as Error)?.message || "Erreur d'installation" });
+      const message = (e as Error)?.message || "Erreur d'installation";
+      setProgress({ kind: "error", message });
+      void notify({
+        category: "updates",
+        title: "Mise à jour Shardtown échouée",
+        body: message,
+      });
     }
   }
 

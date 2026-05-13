@@ -20,21 +20,10 @@ const {
     generateAuthenticationOptions,
     verifyAuthenticationResponse,
 } = require('@simplewebauthn/server');
+const helmet = require('helmet');
 const { SHARDTOWN_KNOWLEDGE } = require('./chatbot-knowledge');
 const presence = require('./presence');
-
-// Fisher-Yates with crypto.randomInt — replaces the buggy
-// `arr.sort(() => Math.random() - 0.5)` shuffle, which is both
-// statistically biased and not cryptographically random. Used for
-// giveaway winner draws where users pay (Premium) for a fair lottery.
-function cryptoShuffle(arr) {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = crypto.randomInt(0, i + 1);
-        [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-}
+const { cryptoShuffle, timingSafeEqual, verifyAdminPassword } = require('./lib/security');
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -45,6 +34,24 @@ if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
     console.error('❌ SESSION_SECRET manquant ou trop court (>=32 chars requis).');
     process.exit(1);
 }
+
+// CSP is disabled because the app serves a mix of EJS templates, a Vite SPA,
+// inline styles from the visual editor and assets from cdn.discordapp.com /
+// shardtwn.fr; tuning a one-size-fits-all policy at this layer would block
+// legitimate traffic. The desktop Tauri wrapper enforces its own strict CSP
+// (see desktop-tauri/src-tauri/tauri.conf.json), and the SPA itself escapes
+// untrusted HTML before injection.
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// Catch errors that escaped every try/catch and would otherwise crash the
+// process. We log and keep running — PM2 will still restart on hard exits,
+// but a single rogue promise rejection no longer takes the whole server down.
+process.on('uncaughtException', (err, origin) => {
+    console.error('[uncaughtException]', origin, err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[unhandledRejection]', reason, promise);
+});
 
 let db;
 async function connectDB() {
@@ -1213,7 +1220,7 @@ app.get('/download/mac', (_req, res) => {
         const manifest = JSON.parse(fs.readFileSync(path.join(UPDATES_DIR, 'latest.json'), 'utf8'));
         const v = String(manifest.version || '').replace(/^v/, '').trim();
         if (!/^\d+\.\d+\.\d+/.test(v)) throw new Error('bad version');
-        return res.redirect(302, `/updates/Shardtown_${v}_aarch64.dmg`);
+        return res.redirect(302, `/updates/Shardtown_${v}_universal.dmg`);
     } catch {
         return res.redirect(302, 'https://github.com/Shardtown/shardtown/releases/latest');
     }
@@ -3352,6 +3359,68 @@ app.get('/api/shard/server', checkAuthShard, async (req, res) => {
     } catch (error) {
         console.error('Erreur /api/shard/server:', error.response?.data || error.message);
         res.json({ user: userPayload, guilds: adminGuilds, botGuildIds: [], clientId: process.env.SHARD_CLIENT_ID || '' });
+    }
+});
+
+// Recent server-activity events for the desktop notification feed: giveaways
+// and polls that have ended in the last 24 h on guilds the user can admin.
+// The client passes `?since=<unix-ms>` and we only return events strictly
+// newer than that, so each native notification fires exactly once.
+app.get('/api/notifications/recent', checkAuthShard, async (req, res) => {
+    const shardUser = req.session.shardUser;
+    const adminGuildIds = (shardUser.guilds || [])
+        .filter(g => hasGuildAdmin(g))
+        .map(g => g.id);
+    if (adminGuildIds.length === 0) return res.json({ events: [] });
+
+    const sinceMs = Math.max(0, Number.parseInt(req.query.since, 10) || 0);
+    // Hard floor at -24h so a fresh client doesn't get a flood of historical
+    // events on first poll.
+    const floorMs = Date.now() - 24 * 60 * 60 * 1000;
+    const sinceDate = new Date(Math.max(sinceMs, floorMs));
+
+    const placeholders = adminGuildIds.map(() => '?').join(',');
+    try {
+        const [giveaways] = await db.execute(
+            `SELECT id, guildId, prize, endsAt FROM shard_giveaways
+             WHERE ended = 1 AND endsAt > ? AND guildId IN (${placeholders})
+             ORDER BY endsAt DESC LIMIT 20`,
+            [sinceDate, ...adminGuildIds],
+        ).catch(() => [[]]);
+        const [polls] = await db.execute(
+            `SELECT id, guildId, question, endsAt FROM shard_polls
+             WHERE ended = 1 AND endsAt IS NOT NULL AND endsAt > ? AND guildId IN (${placeholders})
+             ORDER BY endsAt DESC LIMIT 20`,
+            [sinceDate, ...adminGuildIds],
+        ).catch(() => [[]]);
+
+        const guildNameById = new Map(
+            (shardUser.guilds || []).map(g => [g.id, g.name || g.id]),
+        );
+
+        const events = [
+            ...giveaways.map(g => ({
+                id: `giveaway-${g.id}`,
+                type: 'giveaway',
+                title: g.prize,
+                guildId: g.guildId,
+                guildName: guildNameById.get(g.guildId) || g.guildId,
+                timestamp: new Date(g.endsAt).getTime(),
+            })),
+            ...polls.map(p => ({
+                id: `poll-${p.id}`,
+                type: 'poll',
+                title: p.question,
+                guildId: p.guildId,
+                guildName: guildNameById.get(p.guildId) || p.guildId,
+                timestamp: new Date(p.endsAt).getTime(),
+            })),
+        ].sort((a, b) => b.timestamp - a.timestamp);
+
+        res.json({ events });
+    } catch (err) {
+        console.error('Erreur /api/notifications/recent:', err.message);
+        res.status(500).json({ events: [], error: 'Erreur serveur' });
     }
 });
 
@@ -5662,29 +5731,6 @@ const BOTS = [
     { token: process.env.DISCORD_TOKEN, label: 'ShardGuard' },
     { token: process.env.SHARD_TOKEN, label: 'Shard' }
 ];
-
-function timingSafeEqual(a, b) {
-    const hA = crypto.createHash('sha256').update(String(a)).digest();
-    const hB = crypto.createHash('sha256').update(String(b)).digest();
-    const equal = crypto.timingSafeEqual(hA, hB);
-    return equal && String(a).length === String(b).length;
-}
-
-function verifyAdminPassword(input) {
-    const stored = process.env.ADMIN_PASSWORD_HASH;
-    if (stored && stored.includes(':')) {
-        const [salt, hash] = stored.split(':');
-        if (!salt || !hash) return false;
-        try {
-            const expected = Buffer.from(hash, 'hex');
-            const test = crypto.scryptSync(String(input || ''), salt, expected.length);
-            return test.length === expected.length && crypto.timingSafeEqual(test, expected);
-        } catch { return false; }
-    }
-    const fallback = process.env.ADMIN_PASSWORD;
-    if (!fallback) return false;
-    return timingSafeEqual(String(input || ''), fallback);
-}
 
 // Boot-time check: warn loudly if the admin password is sitting in
 // plaintext in the env. We don't refuse to start (would brick existing
