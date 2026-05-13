@@ -16,6 +16,13 @@ jobs:
     runs-on: macos-14   # Apple Silicon runner → produces aarch64 builds
     permissions:
       contents: write   # required to create the GitHub Release
+    # Step-level `if:` cannot reference the `secrets` context directly
+    # (GHA rejects it as "Unrecognized named-value: 'secrets'"). We bounce
+    # the presence test through job-level env, which IS allowed to read
+    # secrets, then steps gate on env.* instead.
+    env:
+      HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE != '' && 'true' || 'false' }}
+      HAS_APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_CONTENT != '' && 'true' || 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -102,14 +109,14 @@ jobs:
       # is skipped if the secret is empty — Tauri then ad-hoc signs and the
       # build still produces an (un-notarized) bundle.
       - name: Import Apple Developer ID certificate
-        if: ${{ secrets.APPLE_CERTIFICATE != '' }}
+        if: env.HAS_APPLE_CERT == 'true'
         uses: apple-actions/import-codesign-certs@v3
         with:
           p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
           p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
 
       - name: Write App Store Connect API key to disk
-        if: ${{ secrets.APPLE_API_KEY_CONTENT != '' }}
+        if: env.HAS_APPLE_API_KEY == 'true'
         env:
           APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
           APPLE_API_KEY_PATH: ${{ runner.temp }}/apple_api_key.p8
