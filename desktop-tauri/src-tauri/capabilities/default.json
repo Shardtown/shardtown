@@ -20,6 +20,10 @@
     "updater:default",
     "process:default",
     "process:allow-restart",
-    "notification:default"
+    "notification:default",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled",
+    "deep-link:default"
   ]
 }
