@@ -31,7 +31,11 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ vars.NOTIFY_DISABLE != 'true' }}   # kill-switch via repo var
     steps:
+      # A notification must never block CI. continue-on-error: true ensures the
+      # check shows green on the PR even if the step crashes for any reason
+      # (transient infra issue, malformed payload, Discord 5xx…).
       - name: Build payload + send
+        continue-on-error: true
         env:
           BOT_TOKEN: ${{ secrets.SHARDTOWN_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.SHARDTOWN_RELEASE_CHANNEL_ID }}
