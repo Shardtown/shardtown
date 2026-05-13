@@ -1220,7 +1220,7 @@ app.get('/download/mac', (_req, res) => {
         const manifest = JSON.parse(fs.readFileSync(path.join(UPDATES_DIR, 'latest.json'), 'utf8'));
         const v = String(manifest.version || '').replace(/^v/, '').trim();
         if (!/^\d+\.\d+\.\d+/.test(v)) throw new Error('bad version');
-        return res.redirect(302, `/updates/Shardtown_${v}_aarch64.dmg`);
+        return res.redirect(302, `/updates/Shardtown_${v}_universal.dmg`);
     } catch {
         return res.redirect(302, 'https://github.com/Shardtown/shardtown/releases/latest');
     }
