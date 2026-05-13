@@ -41,7 +41,14 @@ jobs:
           ACTOR_URL: https://github.com/${{ github.actor }}
           REF: ${{ github.ref_name }}
           PAYLOAD_JSON: ${{ toJSON(github.event) }}
+        # Keep `-e` to surface the failing line in the log, but trap ERR to
+        # exit 0 — a notification workflow must never fail the CI run. We
+        # also drop `pipefail` since some jq pipelines below tolerate
+        # intermediate failures.
+        shell: bash -e {0}
         run: |
+          trap 'rc=$?; echo "notify.yml: step error at line $LINENO (rc=$rc) — exiting cleanly"; exit 0' ERR
+
           if [ -z "$BOT_TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
             echo "Bot token or channel id missing — skipping."
             exit 0
