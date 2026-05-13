@@ -16,14 +16,13 @@ const KEYCHAIN_ACCOUNT: &str = "default";
 
 /// File-based token store path: ~/Library/Application Support/fr.shardtwn.dashboard/token.dat
 ///
-/// Why not just Keychain? Macros : every unsigned (or ad-hoc-signed) build
-/// has a different code-signing identity, so the Keychain ACL refuses to
-/// share the entry between the old binary and the new one after an
-/// auto-update. The user gets thrown back to the login screen on every
-/// release. Falling back to a plain file under Application Support is
-/// strictly less secure than Keychain but it survives identity changes,
-/// which matters way more for UX. A future Apple-Developer-signed build
-/// could re-enable the Keychain path.
+/// Historically the source of truth because every unsigned / ad-hoc-signed
+/// build had a different code-signing identity, so the Keychain ACL refused
+/// to share the entry between the old binary and the new one after an
+/// auto-update. Since v0.1.30 the app is signed with a stable Apple
+/// Developer ID, so the Keychain is back as the canonical store — the file
+/// only stays around as a migration fallback for users still on the older
+/// unsigned build (it's cleaned up on first successful Keychain write).
 fn token_file_path() -> Result<PathBuf, String> {
     // dirs is already pulled in transitively by other deps. Fall back to
     // $HOME if anything goes wrong — last resort.
@@ -46,24 +45,31 @@ fn entry() -> Result<Entry, String> {
 
 #[tauri::command]
 fn token_get() -> Result<Option<String>, String> {
-    // 1. Try the file first — that's our persistent home post-update.
+    // 1. Keychain first — that's the canonical store now that we're signed
+    // with a stable identity.
+    if let Ok(entry) = entry() {
+        if let Ok(t) = entry.get_password() {
+            // Old build wrote to the file too — clean it up so the on-disk
+            // copy can't desync from the Keychain.
+            if let Ok(path) = token_file_path() {
+                let _ = fs::remove_file(&path);
+            }
+            return Ok(Some(t));
+        }
+    }
+    // 2. Migration : user is on an upgrade path from an old unsigned build
+    // whose token only lives in the file. Lift it into the Keychain, then
+    // delete the file.
     if let Ok(path) = token_file_path() {
         if let Ok(s) = fs::read_to_string(&path) {
             let trimmed = s.trim().to_string();
             if !trimmed.is_empty() {
+                if let Ok(entry) = entry() {
+                    let _ = entry.set_password(&trimmed);
+                }
+                let _ = fs::remove_file(&path);
                 return Ok(Some(trimmed));
             }
-        }
-    }
-    // 2. Migration : if the user is upgrading from a previous build that
-    // wrote to the Keychain, lift the token out of there and re-save it
-    // to the file so the next launch finds it instantly.
-    if let Ok(entry) = entry() {
-        if let Ok(t) = entry.get_password() {
-            if let Ok(path) = token_file_path() {
-                let _ = write_token_file(&path, &t);
-            }
-            return Ok(Some(t));
         }
     }
     Ok(None)
@@ -71,39 +77,27 @@ fn token_get() -> Result<Option<String>, String> {
 
 #[tauri::command]
 fn token_set(token: String) -> Result<(), String> {
-    let path = token_file_path()?;
-    write_token_file(&path, &token)?;
-    // Best-effort mirror to Keychain so it stays in sync for anything that
-    // might still read it directly. Failure is non-fatal — the file is
-    // the source of truth.
-    if let Ok(entry) = entry() {
-        let _ = entry.set_password(&token);
+    // Keychain is the source of truth.
+    let entry = entry()?;
+    entry.set_password(&token).map_err(|e| e.to_string())?;
+    // Clean up any lingering file from the legacy store so a future read
+    // can't fall back to a stale value.
+    if let Ok(path) = token_file_path() {
+        let _ = fs::remove_file(&path);
     }
     Ok(())
 }
 
 #[tauri::command]
 fn token_clear() -> Result<(), String> {
-    if let Ok(path) = token_file_path() {
-        let _ = fs::remove_file(&path);
-    }
     if let Ok(entry) = entry() {
         match entry.delete_credential() {
             Ok(_) | Err(keyring::Error::NoEntry) => (),
             Err(e) => return Err(e.to_string()),
         }
     }
-    Ok(())
-}
-
-fn write_token_file(path: &PathBuf, token: &str) -> Result<(), String> {
-    fs::write(path, token).map_err(|e| format!("write token: {e}"))?;
-    // chmod 600 — readable only by the current user. Best-effort; on a
-    // misbehaving FS we still want the write to succeed.
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o600));
+    if let Ok(path) = token_file_path() {
+        let _ = fs::remove_file(&path);
     }
     Ok(())
 }
@@ -572,6 +566,17 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
+        // Auto-launch at login. The plugin handles the LaunchAgent plist on
+        // macOS and the registry key on Windows — JS toggles via
+        // `enable()` / `disable()` from @tauri-apps/plugin-autostart.
+        .plugin(tauri_plugin_autostart::Builder::new()
+            .app_name("Shardtown")
+            .build())
+        // Custom URL scheme `shardtwn://` — declared in tauri.conf.json
+        // under plugins.deep-link.desktop.schemes. The JS side listens
+        // through `onOpenUrl` to react to deep links (PAT activation
+        // links, "Open in app" buttons, etc.).
+        .plugin(tauri_plugin_deep_link::init())
         .manage(RpcState(Mutex::new(RpcInner { client: None, app_id: None })))
         .invoke_handler(tauri::generate_handler![
             token_get, token_set, token_clear,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Volume2, VolumeX, Bell, Fingerprint, Sparkles, PlayCircle, Settings, KeyRound, RefreshCw, Loader2, CheckCircle2 } from "lucide-react";
+import { Volume2, VolumeX, Bell, Fingerprint, Sparkles, PlayCircle, Settings, KeyRound, RefreshCw, Loader2, CheckCircle2, Power } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import {
   EVENTS,
@@ -12,6 +12,7 @@ import {
   getRevalMode, setRevalMode, getLastValidated, setLastValidated,
   describeMode, type RevalMode,
 } from "@/lib/tokenReval";
+import { isAutostartEnabled, setAutostart } from "@/lib/desktop";
 import { apiGet, ApiError } from "@/api/client";
 
 /**
@@ -24,8 +25,26 @@ import { apiGet, ApiError } from "@/api/client";
  */
 export function DesktopPreferences() {
   const [cfg, setCfg] = useState<SoundsConfig>(loadSoundsConfig);
+  const [autostart, setAutostartState] = useState<boolean | null>(null);
 
   useEffect(() => { saveSoundsConfig(cfg); }, [cfg]);
+
+  // Read the LaunchAgent registration once on mount so the toggle reflects
+  // the current OS state, not a guess.
+  useEffect(() => {
+    let cancelled = false;
+    isAutostartEnabled().then(v => { if (!cancelled) setAutostartState(v); });
+    return () => { cancelled = true; };
+  }, []);
+
+  async function toggleAutostart(next: boolean) {
+    setAutostartState(next);  // optimistic
+    await setAutostart(next);
+    // Re-read to verify the OS accepted the change (permission, sandboxed
+    // fs, etc.) — revert the toggle if it didn't take.
+    const actual = await isAutostartEnabled();
+    setAutostartState(actual);
+  }
 
   function setEventPreset(event: SoundEvent, presetId: string) {
     setCfg(c => ({ ...c, perEvent: { ...c.perEvent, [event]: presetId } }));
@@ -147,6 +166,33 @@ export function DesktopPreferences() {
             >
               <PlayCircle size={13} strokeWidth={2} />
               Lancer le tour
+            </button>
+          </div>
+        </Section>
+
+        {/* ─── Lancement automatique ─────────────────────────── */}
+        <Section title="Démarrage" icon={<Power size={14} strokeWidth={2} />}>
+          <div className="rounded-[14px] bg-white/[0.025] border border-white/[0.06] p-4 flex items-center gap-3">
+            <div className="flex-1">
+              <p className="text-[13px] font-semibold mb-0.5">Lancer Shardtown au démarrage</p>
+              <p className="text-[12px] text-white/[0.62]">L'app démarre dans le menu-bar à la connexion macOS, sans ouvrir la fenêtre principale.</p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autostart === true}
+              disabled={autostart === null}
+              onClick={() => toggleAutostart(!autostart)}
+              className="relative inline-flex h-6 w-11 items-center rounded-full border transition-colors disabled:opacity-40"
+              style={{
+                background: autostart ? "var(--ds-accent)" : "var(--ds-panel-2)",
+                borderColor: "var(--ds-border-strong)",
+              }}
+            >
+              <span
+                className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                style={{ transform: autostart ? "translateX(22px)" : "translateX(4px)" }}
+              />
             </button>
           </div>
         </Section>

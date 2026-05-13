@@ -54,6 +54,11 @@
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc3Q0E3RkRBM0RBMTg5NTAKUldSUWlhRTkybi9LZHc2RGFFLzZnSG9oMzV4M0dtNHZOcGtXY1c5aXRxMm5YY2JyRFRET240NWMK",
       "windows": { "installMode": "passive" }
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": ["shardtwn"]
+      }
     }
   }
 }

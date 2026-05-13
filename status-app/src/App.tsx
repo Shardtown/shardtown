@@ -10,6 +10,7 @@ import { PostUpdateNotes } from "@/components/PostUpdateNotes";
 import { VerifyAllNotifier } from "@/components/VerifyAllNotifier";
 import { BotStateMonitor } from "@/components/BotStateMonitor";
 import { ServerActivityMonitor } from "@/components/ServerActivityMonitor";
+import { DeepLinkHandler } from "@/components/DeepLinkHandler";
 import { Status } from "@/routes/Status";
 import { Index } from "@/routes/Index";
 import { Wiki } from "@/routes/Wiki";
@@ -142,6 +143,7 @@ function PersistentOverlays() {
       <VerifyAllNotifier />
       <BotStateMonitor />
       <ServerActivityMonitor />
+      <DeepLinkHandler />
     </>
   );
 }

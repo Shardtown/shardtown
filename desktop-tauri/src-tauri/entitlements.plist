@@ -2,27 +2,36 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!-- App Sandbox stays disabled for non-App-Store distribution: the
+       sandbox blocks the custom Keychain service, Discord RPC's UNIX socket
+       and the auto-updater's relaunch helper. A separate sandboxed target
+       will be built for App Store submission. -->
   <key>com.apple.security.app-sandbox</key>
   <false/>
 
+  <!-- WebKit's JS engine needs JIT pages. Required, not negotiable. -->
   <key>com.apple.security.cs.allow-jit</key>
   <true/>
 
+  <!-- Required by WebKit alongside allow-jit on macOS: some JIT regions
+       (regex compiler, B3 backend) still need RWX pages. -->
   <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
   <true/>
 
+  <!-- Tauri loads bundled dylibs (WebKit, system frameworks). Apple's
+       library validation would reject our own dylibs if they're not
+       signed by exactly the same identity, which breaks our universal
+       build pipeline. Kept on. -->
   <key>com.apple.security.cs.disable-library-validation</key>
   <true/>
 
-  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
-  <true/>
-
+  <!-- Outbound HTTPS to shardtwn.fr + Discord CDN + GitHub API. -->
   <key>com.apple.security.network.client</key>
   <true/>
 
-  <key>com.apple.security.network.server</key>
-  <true/>
-
+  <!-- AppleScript / Apple events needed by Discord RPC IPC (Discord
+       client listens on a Unix socket but the activity payload uses
+       Apple Events on some macOS versions). -->
   <key>com.apple.security.automation.apple-events</key>
   <true/>
 </dict>

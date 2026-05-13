@@ -209,3 +209,64 @@ export async function downloadAndInstallUpdate(
   await relaunch();
   return true;
 }
+
+/* ─── Autostart at login ─────────────────────────────────────────────── */
+
+/**
+ * Whether the app is currently registered to launch at user login. Returns
+ * false in web mode and on plugin error.
+ */
+export async function isAutostartEnabled(): Promise<boolean> {
+  if (!IS_DESKTOP) return false;
+  try {
+    const { isEnabled } = await import("@tauri-apps/plugin-autostart");
+    return await isEnabled();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Enable / disable launching at user login. Writes a LaunchAgent plist
+ * under ~/Library/LaunchAgents on macOS; no-op in web mode. Errors are
+ * swallowed — the caller should re-read `isAutostartEnabled()` after the
+ * call to confirm the new state.
+ */
+export async function setAutostart(enabled: boolean): Promise<void> {
+  if (!IS_DESKTOP) return;
+  try {
+    const { enable, disable } = await import("@tauri-apps/plugin-autostart");
+    if (enabled) await enable();
+    else await disable();
+  } catch (e) {
+    console.warn("[autostart] toggle failed:", e);
+  }
+}
+
+/* ─── Deep links (shardtwn://) ────────────────────────────────────────── */
+
+/**
+ * Subscribe to `shardtwn://` URL events. The handler fires once for the
+ * URL that opened the app (cold-launch) and again for every subsequent
+ * deep link sent while the app is already running.
+ *
+ * Returns a cleanup function that detaches the listener. Resolves to a
+ * no-op cleanup in web mode.
+ */
+export async function onDeepLink(handler: (url: string) => void): Promise<() => void> {
+  if (!IS_DESKTOP) return () => {};
+  try {
+    const { onOpenUrl, getCurrent } = await import("@tauri-apps/plugin-deep-link");
+    const initial = await getCurrent();
+    if (initial && initial.length > 0) {
+      for (const u of initial) handler(u);
+    }
+    const unlisten = await onOpenUrl(urls => {
+      for (const u of urls) handler(u);
+    });
+    return unlisten;
+  } catch (e) {
+    console.warn("[deep-link] subscribe failed:", e);
+    return () => {};
+  }
+}
