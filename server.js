@@ -24,6 +24,7 @@ const helmet = require('helmet');
 const { SHARDTOWN_KNOWLEDGE } = require('./chatbot-knowledge');
 const presence = require('./presence');
 const { cryptoShuffle, timingSafeEqual, verifyAdminPassword } = require('./lib/security');
+const apns = require('./lib/apns');
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -152,6 +153,21 @@ async function connectDB() {
                     action VARCHAR(255),
                     details TEXT,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            // Device tokens collected from the Tauri desktop app for APNs
+            // remote pushes. One row per (account, device) pair — the
+            // UNIQUE constraint lets us upsert on re-registration.
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS push_device_tokens (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    account_id INT NOT NULL,
+                    device_token VARCHAR(255) NOT NULL,
+                    platform VARCHAR(20) NOT NULL DEFAULT 'macos',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_account_token (account_id, device_token),
+                    KEY idx_account (account_id)
                 )
             `);
             // Table Warnings
@@ -3422,6 +3438,99 @@ app.get('/api/notifications/recent', checkAuthShard, async (req, res) => {
         console.error('Erreur /api/notifications/recent:', err.message);
         res.status(500).json({ events: [], error: 'Erreur serveur' });
     }
+});
+
+// ─── APNs push notifications ────────────────────────────────────────────
+// Tokens registered by the Tauri desktop after the OS hands them back via
+// `application:didRegisterForRemoteNotificationsWithDeviceToken:`. Stored
+// per Shardtown account so we can push to every device the user has
+// signed in on.
+
+function currentAccountId(req) {
+    return req.session?.account?.id || null;
+}
+
+app.post('/api/push/register', async (req, res) => {
+    const accountId = currentAccountId(req);
+    if (!accountId) return res.status(401).json({ error: 'Auth requise' });
+    const { deviceToken, platform } = req.body || {};
+    if (typeof deviceToken !== 'string' || !/^[0-9a-fA-F]{40,200}$/.test(deviceToken)) {
+        return res.status(400).json({ error: 'deviceToken invalide' });
+    }
+    const plat = platform === 'ios' ? 'ios' : 'macos';
+    try {
+        await db.execute(
+            `INSERT INTO push_device_tokens (account_id, device_token, platform)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE last_used_at = NOW(), platform = VALUES(platform)`,
+            [accountId, deviceToken, plat],
+        );
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('Erreur /api/push/register:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/api/push/unregister', async (req, res) => {
+    const accountId = currentAccountId(req);
+    if (!accountId) return res.status(401).json({ error: 'Auth requise' });
+    const { deviceToken } = req.body || {};
+    if (typeof deviceToken !== 'string' || !deviceToken) {
+        return res.status(400).json({ error: 'deviceToken requis' });
+    }
+    try {
+        await db.execute(
+            `DELETE FROM push_device_tokens WHERE account_id = ? AND device_token = ?`,
+            [accountId, deviceToken],
+        );
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('Erreur /api/push/unregister:', e.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+/**
+ * Push helper used by the rest of server.js — sends one notification to
+ * every device the given Shardtown account has registered. Tokens that
+ * come back permanently dead (410 / BadDeviceToken / Unregistered) are
+ * deleted from the store on the same pass.
+ */
+async function pushToAccount(accountId, { title, body, extra }) {
+    if (!apns.isConfigured()) return { sent: 0, dead: 0, skipped: 'APNS_NOT_CONFIGURED' };
+    try {
+        const [rows] = await db.execute(
+            `SELECT device_token FROM push_device_tokens WHERE account_id = ?`,
+            [accountId],
+        );
+        if (rows.length === 0) return { sent: 0, dead: 0 };
+        const tokens = rows.map(r => r.device_token);
+        const results = await apns.sendPushBatch(tokens, { title, body, extra });
+        const dead = results.filter(r => apns.isDeadToken(r)).map(r => r.deviceToken);
+        if (dead.length > 0) {
+            await db.execute(
+                `DELETE FROM push_device_tokens WHERE account_id = ? AND device_token IN (${dead.map(() => '?').join(',')})`,
+                [accountId, ...dead],
+            );
+        }
+        return { sent: results.filter(r => r.ok).length, dead: dead.length };
+    } catch (e) {
+        console.error('Erreur pushToAccount:', e.message);
+        return { sent: 0, dead: 0, error: e.message };
+    }
+}
+
+// Self-service test push — handy to verify the pipeline end-to-end once
+// the Rust side is wired and a device has registered a token.
+app.post('/api/push/test', async (req, res) => {
+    const accountId = currentAccountId(req);
+    if (!accountId) return res.status(401).json({ error: 'Auth requise' });
+    const result = await pushToAccount(accountId, {
+        title: 'Shardtown',
+        body: 'Test de notification push — si tu lis ça, le pipeline marche.',
+    });
+    res.json(result);
 });
 
 // Shard guild config — consumed by React /shard/guild/:id
