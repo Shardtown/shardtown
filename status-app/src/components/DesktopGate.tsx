@@ -326,8 +326,8 @@ function DesktopLogin({
     e?.preventDefault();
     const trimmed = token.trim();
     if (!trimmed) return;
-    if (!trimmed.startsWith("st_")) {
-      setError("Format invalide. Le token commence par st_.");
+    if (!trimmed.startsWith("jr_")) {
+      setError("Format invalide. Le token commence par jr_.");
       return;
     }
     setBusy(true);
@@ -395,7 +395,7 @@ function DesktopLogin({
               autoFocus
               type="password"
               value={token}
-              placeholder="st_…"
+              placeholder="jr_…"
               onChange={e => setToken(e.target.value)}
               spellCheck={false}
               autoCapitalize="off"

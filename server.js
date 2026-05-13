@@ -1994,7 +1994,7 @@ app.post('/api/account/logout', (req, res) => {
 // Used by desktop / CLI / third-party tools to authenticate without a session
 // cookie. The plaintext is shown ONCE at creation; only a SHA-256 hash is
 // stored. Bearer auth skips CSRF (see middleware above).
-const TOKEN_PREFIX = 'st_';
+const TOKEN_PREFIX = 'jr_';
 const TOKEN_BYTES = 32;
 
 app.post('/api/account/tokens', requireAccount, async (req, res) => {
