@@ -1,0 +1,282 @@
+name: Discord Notify (Repo Activity)
+
+# Sends a Components V2 message in the Discord release channel for every
+# meaningful repo event — commits, issues, pull requests, reviews, comments,
+# discussions. Releases are NOT handled here (see release.yml for the build
+# pipeline that already announces those).
+#
+# Required secrets (same as release.yml):
+#   SHARDTOWN_BOT_TOKEN          — bot token with "Send Messages" in channel
+#   SHARDTOWN_RELEASE_CHANNEL_ID — target channel ID
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["**"]   # tags are announced by release.yml, skip them here
+  issues:
+    types: [opened, closed, reopened, edited, transferred, deleted]
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [opened, closed, reopened, ready_for_review, converted_to_draft]
+  pull_request_review:
+    types: [submitted]
+  discussion:
+    types: [created, answered, deleted]
+  workflow_dispatch:       # let me test manually from the Actions UI
+
+jobs:
+  notify:
+    name: Post to Discord
+    runs-on: ubuntu-latest
+    if: ${{ vars.NOTIFY_DISABLE != 'true' }}   # kill-switch via repo var
+    steps:
+      # A notification must never block CI. continue-on-error: true ensures the
+      # check shows green on the PR even if the step crashes for any reason
+      # (transient infra issue, malformed payload, Discord 5xx…).
+      - name: Build payload + send
+        continue-on-error: true
+        env:
+          BOT_TOKEN: ${{ secrets.SHARDTOWN_BOT_TOKEN }}
+          CHANNEL_ID: ${{ secrets.SHARDTOWN_RELEASE_CHANNEL_ID }}
+          EVENT_NAME: ${{ github.event_name }}
+          REPO: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          ACTOR_URL: https://github.com/${{ github.actor }}
+          REF: ${{ github.ref_name }}
+          PAYLOAD_JSON: ${{ toJSON(github.event) }}
+        # Keep `-e` to surface the failing line in the log, but trap ERR to
+        # exit 0 — a notification workflow must never fail the CI run. We
+        # also drop `pipefail` since some jq pipelines below tolerate
+        # intermediate failures.
+        shell: bash -e {0}
+        run: |
+          trap 'rc=$?; echo "notify.yml: step error at line $LINENO (rc=$rc) — exiting cleanly"; exit 0' ERR
+
+          if [ -z "$BOT_TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
+            echo "Bot token or channel id missing — skipping."
+            exit 0
+          fi
+
+          # Truncate a string to N chars (default 1200) for Discord text
+          # components. Pure bash to keep the YAML block scalar happy.
+          truncate_md() {
+            local s="$1"
+            local n="${2:-1200}"
+            if [ "${#s}" -gt "$n" ]; then
+              printf '%s…' "${s:0:$n}"
+            else
+              printf '%s' "$s"
+            fi
+          }
+
+          EV=$(echo "$PAYLOAD_JSON" | jq -c .)
+
+          case "$EVENT_NAME" in
+            push)
+              # Skip empty deletions and tag pushes (filter is also in `on:` but
+              # belt-and-braces — `tags-ignore` won't catch a delete event for
+              # a branch).
+              DELETED=$(echo "$EV" | jq -r '.deleted // false')
+              if [ "$DELETED" = "true" ]; then echo "Skipping deletion event"; exit 0; fi
+
+              COMMIT_COUNT=$(echo "$EV" | jq '.commits | length')
+              if [ "$COMMIT_COUNT" = "0" ]; then echo "No commits in push"; exit 0; fi
+
+              COMPARE=$(echo "$EV" | jq -r '.compare')
+              BRANCH=$(echo "$EV" | jq -r '.ref' | sed 's|refs/heads/||')
+
+              # Build a compact list — title + sha + author per commit, capped
+              # at 8 entries so we don't spam.
+              # author.username is null when the commit email doesn't map to a
+              # GitHub user (bot pushes, custom emails…). Fall back to author.name,
+              # then a literal "unknown" — jq's `+` on a null operand would
+              # otherwise abort the whole step under bash -e.
+              COMMIT_LINES=$(echo "$EV" | jq -r '
+                .commits[:8] | map(
+                  "[`" + (.id[:7]) + "`](" + .url + ") " +
+                  (.message | split("\n")[0]) +
+                  " — *" + (.author.username // .author.name // "unknown") + "*"
+                ) | join("\n")
+              ')
+              if [ "$COMMIT_COUNT" -gt 8 ]; then
+                COMMIT_LINES="${COMMIT_LINES}"$'\n'"… et $((COMMIT_COUNT - 8)) autre(s) commit(s)"
+              fi
+
+              SUFFIX="s"
+              [ "$COMMIT_COUNT" = "1" ] && SUFFIX=""
+              HEADER="## $COMMIT_COUNT nouveau commit$SUFFIX sur \`$BRANCH\`"
+              BODY="$COMMIT_LINES"
+              ACCENT=5763719   # green
+              ACTION_LABEL="Voir le diff"
+              ACTION_URL="$COMPARE"
+              ;;
+
+            issues)
+              ACTION=$(echo "$EV" | jq -r '.action')
+              NUM=$(echo "$EV" | jq -r '.issue.number')
+              TITLE=$(echo "$EV" | jq -r '.issue.title')
+              URL=$(echo "$EV" | jq -r '.issue.html_url')
+              USER=$(echo "$EV" | jq -r '.issue.user.login')
+              BODY_TEXT=$(echo "$EV" | jq -r '.issue.body // ""')
+              BODY_TEXT=$(truncate_md "$BODY_TEXT" 800)
+              case "$ACTION" in
+                opened)   HEADER="## Issue #$NUM ouverte"; ACCENT=5763719 ;;
+                closed)   HEADER="## Issue #$NUM fermée"; ACCENT=10038562 ;;  # purple-ish
+                reopened) HEADER="## Issue #$NUM réouverte"; ACCENT=15844367 ;; # amber
+                edited)   HEADER="## Issue #$NUM modifiée"; ACCENT=3447003 ;; # blue
+                *)        HEADER="## Issue #$NUM ($ACTION)"; ACCENT=3447003 ;;
+              esac
+              BODY="**$TITLE** — par *$USER*"
+              [ -n "$BODY_TEXT" ] && BODY="${BODY}"$'\n\n'"$BODY_TEXT"
+              ACTION_LABEL="Ouvrir l'issue"
+              ACTION_URL="$URL"
+              ;;
+
+            issue_comment)
+              NUM=$(echo "$EV" | jq -r '.issue.number')
+              IS_PR=$(echo "$EV" | jq -r '.issue.pull_request // false')
+              URL=$(echo "$EV" | jq -r '.comment.html_url')
+              USER=$(echo "$EV" | jq -r '.comment.user.login')
+              COMMENT=$(echo "$EV" | jq -r '.comment.body // ""')
+              COMMENT=$(truncate_md "$COMMENT" 1000)
+              KIND="issue"
+              [ "$IS_PR" != "false" ] && KIND="PR"
+              HEADER="## Nouveau commentaire sur $KIND #$NUM"
+              BODY="*$USER* a écrit :"$'\n\n'"$COMMENT"
+              ACCENT=3447003   # blue
+              ACTION_LABEL="Voir le commentaire"
+              ACTION_URL="$URL"
+              ;;
+
+            pull_request)
+              ACTION=$(echo "$EV" | jq -r '.action')
+              NUM=$(echo "$EV" | jq -r '.pull_request.number')
+              TITLE=$(echo "$EV" | jq -r '.pull_request.title')
+              URL=$(echo "$EV" | jq -r '.pull_request.html_url')
+              USER=$(echo "$EV" | jq -r '.pull_request.user.login')
+              MERGED=$(echo "$EV" | jq -r '.pull_request.merged // false')
+              DRAFT=$(echo "$EV" | jq -r '.pull_request.draft // false')
+              case "$ACTION" in
+                opened)
+                  if [ "$DRAFT" = "true" ]; then
+                    HEADER="## PR #$NUM ouverte en brouillon"
+                    ACCENT=9807270  # grey
+                  else
+                    HEADER="## PR #$NUM ouverte"
+                    ACCENT=5763719
+                  fi
+                  ;;
+                closed)
+                  if [ "$MERGED" = "true" ]; then
+                    HEADER="## PR #$NUM mergée"
+                    ACCENT=10038562
+                  else
+                    HEADER="## PR #$NUM fermée sans merge"
+                    ACCENT=15548997
+                  fi
+                  ;;
+                reopened)            HEADER="## PR #$NUM réouverte"; ACCENT=15844367 ;;
+                ready_for_review)    HEADER="## PR #$NUM prête pour review"; ACCENT=5763719 ;;
+                converted_to_draft)  HEADER="## PR #$NUM repassée en brouillon"; ACCENT=9807270 ;;
+                *)                   HEADER="## PR #$NUM ($ACTION)"; ACCENT=3447003 ;;
+              esac
+              BODY="**$TITLE** — par *$USER*"
+              ACTION_LABEL="Voir la PR"
+              ACTION_URL="$URL"
+              ;;
+
+            pull_request_review)
+              STATE=$(echo "$EV" | jq -r '.review.state')
+              NUM=$(echo "$EV" | jq -r '.pull_request.number')
+              TITLE=$(echo "$EV" | jq -r '.pull_request.title')
+              URL=$(echo "$EV" | jq -r '.review.html_url')
+              USER=$(echo "$EV" | jq -r '.review.user.login')
+              COMMENT=$(echo "$EV" | jq -r '.review.body // ""')
+              COMMENT=$(truncate_md "$COMMENT" 800)
+              case "$STATE" in
+                approved)          HEADER="## Review approuvée sur PR #$NUM"; ACCENT=5763719 ;;
+                changes_requested) HEADER="## Changements demandés sur PR #$NUM"; ACCENT=15844367 ;;
+                commented)         HEADER="## Commentaire de review sur PR #$NUM"; ACCENT=3447003 ;;
+                *)                 HEADER="## Review ($STATE) sur PR #$NUM"; ACCENT=3447003 ;;
+              esac
+              BODY="**$TITLE** — *$USER*"
+              [ -n "$COMMENT" ] && BODY="${BODY}"$'\n\n'"$COMMENT"
+              ACTION_LABEL="Voir la review"
+              ACTION_URL="$URL"
+              ;;
+
+            discussion)
+              ACTION=$(echo "$EV" | jq -r '.action')
+              NUM=$(echo "$EV" | jq -r '.discussion.number')
+              TITLE=$(echo "$EV" | jq -r '.discussion.title')
+              URL=$(echo "$EV" | jq -r '.discussion.html_url')
+              USER=$(echo "$EV" | jq -r '.discussion.user.login')
+              case "$ACTION" in
+                created)  HEADER="## Discussion #$NUM ouverte"; ACCENT=5763719 ;;
+                answered) HEADER="## Discussion #$NUM marquée résolue"; ACCENT=10038562 ;;
+                deleted)  HEADER="## Discussion #$NUM supprimée"; ACCENT=15548997 ;;
+                *)        HEADER="## Discussion #$NUM ($ACTION)"; ACCENT=3447003 ;;
+              esac
+              BODY="**$TITLE** — *$USER*"
+              ACTION_LABEL="Ouvrir la discussion"
+              ACTION_URL="$URL"
+              ;;
+
+            workflow_dispatch)
+              HEADER="## Ping manuel"
+              BODY="Test du webhook depuis l'onglet Actions par *$ACTOR*."
+              ACCENT=3447003
+              ACTION_LABEL="Voir le repo"
+              ACTION_URL="https://github.com/$REPO"
+              ;;
+
+            *)
+              echo "Event $EVENT_NAME not handled — skipping."
+              exit 0
+              ;;
+          esac
+
+          # Compose the Components V2 payload. The container wraps a Section
+          # (type 9) whose left side is the header + body text, and the
+          # accessory slot on the right hosts the link button — that's the
+          # only way to get a button to render *to the right* of the embed
+          # in Discord's V2 layout system.
+          PAYLOAD=$(jq -n \
+            --arg header "$HEADER" \
+            --arg body "$BODY" \
+            --arg repo "$REPO" \
+            --arg actor "$ACTOR" \
+            --arg actorUrl "$ACTOR_URL" \
+            --argjson accent "$ACCENT" \
+            --arg actionLabel "$ACTION_LABEL" \
+            --arg actionUrl "$ACTION_URL" \
+            '{
+              flags: 32768,
+              components: [
+                { type: 17, accent_color: $accent, components: [
+                  { type: 9, components: [
+                    { type: 10, content: $header },
+                    { type: 10, content: $body }
+                  ], accessory: {
+                    type: 2, style: 5, label: $actionLabel, url: $actionUrl
+                  }},
+                  { type: 14, divider: true, spacing: 1 },
+                  { type: 10, content: ("`" + $repo + "` · par [" + $actor + "](" + $actorUrl + ")") }
+                ]}
+              ]
+            }')
+
+          # POST. We swallow non-2xx but log them so the action stays green
+          # even if the channel is misconfigured (the build pipeline must
+          # not depend on the notif working).
+          HTTP=$(curl -sS -o /tmp/discord.resp -w "%{http_code}" \
+            -X POST "https://discord.com/api/v10/channels/$CHANNEL_ID/messages" \
+            -H "Authorization: Bot $BOT_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD")
+          echo "Discord response: $HTTP"
+          if [ "$HTTP" -lt 200 ] || [ "$HTTP" -ge 300 ]; then
+            cat /tmp/discord.resp
+            exit 0
+          fi
