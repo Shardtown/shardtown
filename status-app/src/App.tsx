@@ -57,6 +57,12 @@ export function App() {
   return <AppMain />;
 }
 
+declare global {
+  interface Window {
+    __shardtownHideSplash?: () => void;
+  }
+}
+
 function AppMain() {
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,6 +75,11 @@ function AppMain() {
       setUser(null);
     } finally {
       setLoading(false);
+      // Tear down the inline splash declared in index.html now that
+      // React has hydrated *and* /api/me has returned (success or 401).
+      // The function enforces its own min-display duration so it never
+      // blinks; safe to call as soon as the data is in.
+      window.__shardtownHideSplash?.();
     }
   }, []);
 

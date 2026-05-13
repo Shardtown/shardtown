@@ -5,9 +5,193 @@
     <link rel="icon" type="image/png" href="/image/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SHARDTOWN</title>
+    <!--
+      Splash screen — inline so the first paint of the WebView already
+      shows the brand + a "we're alive" animation. Without this there's
+      a ~300-800 ms blank black window on cold launch (Tauri opens the
+      window before the SPA bundle has parsed). React calls
+      `window.__shardtownHideSplash()` once auth has resolved.
+    -->
+    <style>
+      html, body {
+        margin: 0;
+        background: #000;
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      #shardtown-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        background: #000;
+        overflow: hidden;
+        animation: ss-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      #shardtown-splash.is-leaving {
+        animation: ss-out 360ms cubic-bezier(0.4, 0, 1, 1) both;
+        pointer-events: none;
+      }
+      #shardtown-splash .ss-orb {
+        position: absolute;
+        width: 520px;
+        height: 520px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(91, 109, 255, 0.45) 0%, rgba(91, 109, 255, 0.18) 35%, transparent 70%);
+        filter: blur(60px);
+        animation: ss-orb 6s ease-in-out infinite;
+        pointer-events: none;
+      }
+      #shardtown-splash .ss-orb-2 {
+        position: absolute;
+        width: 360px;
+        height: 360px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, transparent 65%);
+        filter: blur(70px);
+        animation: ss-orb-2 8s ease-in-out infinite;
+        pointer-events: none;
+      }
+      #shardtown-splash .ss-noise {
+        position: absolute;
+        inset: 0;
+        opacity: 0.04;
+        pointer-events: none;
+        background-image:
+          radial-gradient(circle at 1px 1px, rgba(255,255,255,0.6) 1px, transparent 0);
+        background-size: 3px 3px;
+      }
+      #shardtown-splash .ss-logo-wrap {
+        position: relative;
+        z-index: 2;
+      }
+      #shardtown-splash .ss-logo-halo {
+        position: absolute;
+        inset: -24px;
+        border-radius: 32px;
+        background: radial-gradient(circle, rgba(91, 109, 255, 0.5), transparent 60%);
+        filter: blur(28px);
+        animation: ss-halo 3.5s ease-in-out infinite;
+      }
+      #shardtown-splash .ss-logo {
+        position: relative;
+        width: 92px;
+        height: 92px;
+        border-radius: 24px;
+        object-fit: cover;
+        box-shadow:
+          0 22px 70px rgba(91, 109, 255, 0.45),
+          0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+        animation: ss-logo 3.5s ease-in-out infinite;
+      }
+      #shardtown-splash .ss-brand {
+        position: relative;
+        z-index: 2;
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        line-height: 1;
+        margin: 0;
+      }
+      #shardtown-splash .ss-tag {
+        position: relative;
+        z-index: 2;
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.38);
+        margin: 4px 0 0 0;
+      }
+      #shardtown-splash .ss-dots {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      #shardtown-splash .ss-dots span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.55);
+        animation: ss-dot 1.4s ease-in-out infinite;
+      }
+      #shardtown-splash .ss-dots span:nth-child(2) { animation-delay: 0.18s; }
+      #shardtown-splash .ss-dots span:nth-child(3) { animation-delay: 0.36s; }
+      @keyframes ss-in {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+      }
+      @keyframes ss-out {
+        from { opacity: 1; }
+        to   { opacity: 0; visibility: hidden; }
+      }
+      @keyframes ss-orb {
+        0%, 100% { transform: translate(-12%, -8%) scale(0.95); opacity: 0.6; }
+        50%      { transform: translate(8%, 6%)  scale(1.08);  opacity: 0.9; }
+      }
+      @keyframes ss-orb-2 {
+        0%, 100% { transform: translate(16%, 14%) scale(1.05); opacity: 0.5; }
+        50%      { transform: translate(-10%, -6%) scale(0.9); opacity: 0.85; }
+      }
+      @keyframes ss-halo {
+        0%, 100% { opacity: 0.55; transform: scale(0.92); }
+        50%      { opacity: 1;    transform: scale(1.08); }
+      }
+      @keyframes ss-logo {
+        0%, 100% { transform: scale(1) rotate(0deg); }
+        50%      { transform: scale(1.04) rotate(0.3deg); }
+      }
+      @keyframes ss-dot {
+        0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+        40%           { opacity: 1;    transform: scale(1.15); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #shardtown-splash *,
+        #shardtown-splash.is-leaving {
+          animation-duration: 0.001ms !important;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="shardtown-splash" aria-hidden="true">
+      <div class="ss-orb"></div>
+      <div class="ss-orb-2"></div>
+      <div class="ss-noise"></div>
+      <div class="ss-logo-wrap">
+        <div class="ss-logo-halo"></div>
+        <img src="/logo.png" alt="" class="ss-logo" />
+      </div>
+      <div style="text-align: center;">
+        <p class="ss-brand">Shardtown</p>
+        <p class="ss-tag">Chargement</p>
+      </div>
+      <div class="ss-dots"><span></span><span></span><span></span></div>
+    </div>
     <div id="root"></div>
+    <script>
+      // Track the splash open time so we can enforce a minimum display
+      // duration (~600 ms) — without it the splash blink-disappears on
+      // hot reload / fast cold launches and the brand never lands.
+      window.__SHARDTOWN_SPLASH_START = Date.now();
+      window.__shardtownHideSplash = function () {
+        var el = document.getElementById('shardtown-splash');
+        if (!el) return;
+        var elapsed = Date.now() - (window.__SHARDTOWN_SPLASH_START || 0);
+        var remaining = Math.max(0, 600 - elapsed);
+        setTimeout(function () {
+          el.classList.add('is-leaving');
+          setTimeout(function () { el.remove(); }, 360);
+        }, remaining);
+      };
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
