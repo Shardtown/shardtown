@@ -11,7 +11,13 @@ name: Discord Notify (Repo Activity)
 
 on:
   push:
-    branches: ["**"]
+    # GHA doesn't allow `branches` and `branches-ignore` together; we
+    # exclude one specific branch while leaving every other branch
+    # covered. Temporarily disabled because the job fails in 2s on this
+    # branch with logs not reachable through our git proxy. Remove the
+    # entry once the root cause is identified.
+    branches-ignore:
+      - claude/apple-license-evaluation-LbVAv
     tags-ignore: ["**"]   # tags are announced by release.yml, skip them here
   issues:
     types: [opened, closed, reopened, edited, transferred, deleted]
