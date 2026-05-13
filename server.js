@@ -1211,6 +1211,14 @@ app.get('/_legacy/', async (req, res) => {
 // React SPA: assets are served at /assets/* (Vite output base = "/")
 const SPA_DIST = path.join(__dirname, 'status-app', 'dist');
 app.use('/assets', express.static(path.join(SPA_DIST, 'assets'), { maxAge: '1y', immutable: true }));
+// Root-level files copied from `status-app/public/` at build time —
+// splash.js (splash lifecycle helper), logo.png, favicon.svg, sounds/,
+// etc. Without this they 404 → catch-all serves index.html as text →
+// the browser tries to execute index.html as JS and throws / falls
+// silently. `index: false` keeps the SPA catch-all in charge of `/`,
+// `fallthrough: true` lets unknown paths drop through to the next
+// middleware (API routes, catch-all) instead of returning a 404 here.
+app.use(express.static(SPA_DIST, { index: false, fallthrough: true, maxAge: '1h' }));
 
 // Auto-updater payloads (latest.json + .app.tar.gz + .sig + .dmg).
 // Pushed here by the GitHub Actions release workflow via rsync over SSH.
