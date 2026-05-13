@@ -1,13 +1,19 @@
 name: Release Desktop App
 
-# Triggered on git tags v0.1.2, v0.2.0, etc. The tag's version *must* match
-# the version declared in desktop-tauri/src-tauri/tauri.conf.json + Cargo.toml.
+# Triggers:
+# - Push of a git tag matching `v*` (the canonical flow) — the tag's version
+#   *must* match the version declared in tauri.conf.json + Cargo.toml.
+# - Push to a `release-trigger-*` branch — the workflow reads the version
+#   from tauri.conf.json and creates the tag for you. Useful when the runner
+#   can't push tags directly (proxied git remotes, etc.).
+# - Manual dispatch from the Actions tab.
 
 on:
   push:
     tags:
       - "v*"
-  # Lets you trigger manually from the Actions tab for reruns/tests
+    branches:
+      - "release-trigger-*"
   workflow_dispatch:
 
 jobs:
@@ -27,12 +33,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract version from tag
+      - name: Extract version
         id: meta
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          # On a tag push the ref looks like "v0.1.31" — strip the leading "v".
+          # On a `release-trigger-*` branch push (or manual dispatch) we read
+          # the version from tauri.conf.json so the workflow is self-contained
+          # and doesn't depend on how it was triggered.
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION=$(node -p "require('./desktop-tauri/src-tauri/tauri.conf.json').version")
+          fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Releasing version $VERSION"
+          echo "Releasing version $VERSION (triggered by $GITHUB_REF_TYPE $GITHUB_REF_NAME)"
 
       - name: Discord — build started
         id: discord_start
@@ -177,7 +191,10 @@ jobs:
       - name: Create / update private GitHub Release (record-keeping)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          # Always tag `vX.Y.Z` regardless of whether we were triggered from
+          # a tag or a branch — the action creates the tag at the current
+          # SHA if it doesn't exist yet.
+          tag_name: v${{ steps.meta.outputs.version }}
           name: Shardtown ${{ steps.meta.outputs.version }}
           generate_release_notes: true
           files: |
