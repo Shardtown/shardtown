@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { useAuth } from "@/api/auth";
 import { IS_DESKTOP } from "@/lib/desktop";
+import { notify } from "@/lib/notifications";
 
 const SHOWN_KEY = "shardtown.greeting-shown";
 
@@ -12,9 +13,12 @@ function greetingFor(date: Date): { text: string; evening: boolean } {
 }
 
 /**
- * Slides in once per app launch with a "Bonjour/Bonsoir, {name}" card.
- * Gated on IS_DESKTOP + authenticated user. Dedup via sessionStorage so
- * navigations or auth refreshes inside the same launch don't retrigger.
+ * Fires once per app launch with a "Bonjour/Bonsoir, {name}" notification.
+ * Prefers the native macOS Notification Center; only falls back to the
+ * in-app slide-in toast when the user has refused the notifications
+ * permission or muted the "greeting" category. Gated on IS_DESKTOP +
+ * authenticated user. Dedup via sessionStorage so navigations or auth
+ * refreshes inside the same launch don't retrigger.
  */
 export function GreetingToast() {
   const { user, loading } = useAuth();
@@ -28,11 +32,28 @@ export function GreetingToast() {
       sessionStorage.setItem(SHOWN_KEY, "1");
     } catch { /* sessionStorage may be unavailable — still show once */ }
 
-    setGreeting(greetingFor(new Date()));
-    const tIn = setTimeout(() => setPhase("in"), 550);
-    const tOut = setTimeout(() => setPhase("out"), 5400);
-    const tGone = setTimeout(() => setPhase("idle"), 5800);
-    return () => { clearTimeout(tIn); clearTimeout(tOut); clearTimeout(tGone); };
+    const g = greetingFor(new Date());
+    const name = user.global_name || user.username || "ami";
+    let cancelled = false;
+    const timers: number[] = [];
+
+    void notify({
+      category: "greeting",
+      title: `${g.text}, ${name}.`,
+      body: "Heureux de te revoir sur Shardtown.",
+    }).then(delivered => {
+      // Native notification took it — no need to render the in-app card.
+      if (cancelled || delivered) return;
+      setGreeting(g);
+      timers.push(window.setTimeout(() => setPhase("in"), 100));
+      timers.push(window.setTimeout(() => setPhase("out"), 5000));
+      timers.push(window.setTimeout(() => setPhase("idle"), 5400));
+    });
+
+    return () => {
+      cancelled = true;
+      for (const t of timers) window.clearTimeout(t);
+    };
   }, [user, loading]);
 
   if (phase === "idle" || !greeting) return null;

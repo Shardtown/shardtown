@@ -12,7 +12,7 @@
 
 import { IS_DESKTOP } from "./desktop";
 
-export type NotifCategory = "updates" | "bot-state" | "long-actions" | "server-activity";
+export type NotifCategory = "updates" | "bot-state" | "long-actions" | "server-activity" | "greeting";
 
 export interface NotifPrefs {
     /** Master switch — when false nothing is ever sent. */
@@ -30,6 +30,7 @@ const DEFAULT_PREFS: NotifPrefs = {
         "bot-state": true,
         "long-actions": true,
         "server-activity": true,
+        "greeting": true,
     },
 };
 
@@ -87,20 +88,27 @@ export interface NotifyArgs {
  * Post a native notification, respecting user preferences. Safe to call
  * in web mode — silently does nothing.
  *
+ * Returns `true` if the notification was actually handed to the OS, `false`
+ * if it was suppressed (web mode, prefs disabled, permission denied,
+ * plugin error). Callers that previously rendered an in-app toast should
+ * branch on the return value and only fall back when it's `false`.
+ *
  * Errors are swallowed; a missed notification must never break the calling
  * feature.
  */
-export async function notify({ category, title, body }: NotifyArgs): Promise<void> {
-    if (!IS_DESKTOP) return;
+export async function notify({ category, title, body }: NotifyArgs): Promise<boolean> {
+    if (!IS_DESKTOP) return false;
     const prefs = loadNotifPrefs();
-    if (!prefs.enabled) return;
-    if (!prefs.perCategory[category]) return;
+    if (!prefs.enabled) return false;
+    if (!prefs.perCategory[category]) return false;
     try {
         const granted = await ensurePermission();
-        if (!granted) return;
+        if (!granted) return false;
         const { sendNotification } = await import("@tauri-apps/plugin-notification");
         sendNotification({ title, body });
+        return true;
     } catch (e) {
         console.warn("[notifications] send failed:", e);
+        return false;
     }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Sparkles, X } from "lucide-react";
 import { IS_DESKTOP } from "@/lib/desktop";
+import { notify } from "@/lib/notifications";
 
 const SEEN_KEY = "shardtown.last-seen-version.v1";
 const MANIFEST_URL = "https://shardtwn.fr/updates/latest.json";
@@ -58,9 +59,24 @@ export function PostUpdateNotes() {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const m: Manifest = await r.json();
         const notes = (m.notes || "").trim();
-        if (!cancelled && notes) {
-          setInfo({ version: current, notes });
-        }
+        if (cancelled || !notes) return;
+
+        // Prefer the macOS Notification Center. The native banner can't
+        // render the full markdown changelog so we surface the first
+        // non-empty line as the body (capped at 200 chars) and trust the
+        // user to open the app to read the rest.
+        const firstLine = notes.split(/\r?\n/).find(l => l.trim()) ?? notes;
+        const body = firstLine.length > 200 ? firstLine.slice(0, 197) + "…" : firstLine;
+        const delivered = await notify({
+          category: "updates",
+          title: `Shardtown mis à jour vers v${current}`,
+          body,
+        });
+        if (cancelled || delivered) return;
+
+        // User refused permissions or muted the "updates" category — fall
+        // back to the in-app modal that shows the full notes.
+        setInfo({ version: current, notes });
       } catch {
         // Network unavailable / manifest missing — silent acknowledge.
       }

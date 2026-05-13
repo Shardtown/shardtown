@@ -77,23 +77,30 @@ export function VerifyAllNotifier() {
           timerRef.current = window.setTimeout(tick, POLL_INTERVAL_MS);
           return;
         }
-        // Done. Surface the result and clear the flag.
+        // Done. Surface the result and clear the flag. Prefer the macOS
+        // Notification Center; only fall back to the in-app toast when the
+        // user refused permissions or muted the category.
         clearJob();
         if (status.error) {
-          setNotif({ kind: "error", message: status.error });
-          void notify({
+          const errMsg = status.error;
+          notify({
             category: "long-actions",
             title: "Vérification échouée",
-            body: status.error,
+            body: errMsg,
+          }).then(delivered => {
+            if (cancelled || delivered) return;
+            setNotif({ kind: "error", message: errMsg });
           });
         } else {
           const granted = status.granted ?? 0;
           const skipped = status.skipped ?? 0;
-          setNotif({ kind: "success", granted, skipped });
-          void notify({
+          notify({
             category: "long-actions",
             title: "Vérification terminée",
             body: `${granted} rôle${granted > 1 ? "s" : ""} attribué${granted > 1 ? "s" : ""}${skipped > 0 ? ` · ${skipped} ignoré${skipped > 1 ? "s" : ""}` : ""}.`,
+          }).then(delivered => {
+            if (cancelled || delivered) return;
+            setNotif({ kind: "success", granted, skipped });
           });
           // Ask the active Guild page to re-fetch stats so the verified
           // counter, % and non-verified counts catch up.
