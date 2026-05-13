@@ -20,21 +20,10 @@ const {
     generateAuthenticationOptions,
     verifyAuthenticationResponse,
 } = require('@simplewebauthn/server');
+const helmet = require('helmet');
 const { SHARDTOWN_KNOWLEDGE } = require('./chatbot-knowledge');
 const presence = require('./presence');
-
-// Fisher-Yates with crypto.randomInt — replaces the buggy
-// `arr.sort(() => Math.random() - 0.5)` shuffle, which is both
-// statistically biased and not cryptographically random. Used for
-// giveaway winner draws where users pay (Premium) for a fair lottery.
-function cryptoShuffle(arr) {
-    const a = arr.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-        const j = crypto.randomInt(0, i + 1);
-        [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-}
+const { cryptoShuffle, timingSafeEqual, verifyAdminPassword } = require('./lib/security');
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -45,6 +34,24 @@ if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
     console.error('❌ SESSION_SECRET manquant ou trop court (>=32 chars requis).');
     process.exit(1);
 }
+
+// CSP is disabled because the app serves a mix of EJS templates, a Vite SPA,
+// inline styles from the visual editor and assets from cdn.discordapp.com /
+// shardtwn.fr; tuning a one-size-fits-all policy at this layer would block
+// legitimate traffic. The desktop Tauri wrapper enforces its own strict CSP
+// (see desktop-tauri/src-tauri/tauri.conf.json), and the SPA itself escapes
+// untrusted HTML before injection.
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// Catch errors that escaped every try/catch and would otherwise crash the
+// process. We log and keep running — PM2 will still restart on hard exits,
+// but a single rogue promise rejection no longer takes the whole server down.
+process.on('uncaughtException', (err, origin) => {
+    console.error('[uncaughtException]', origin, err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[unhandledRejection]', reason, promise);
+});
 
 let db;
 async function connectDB() {
@@ -5662,29 +5669,6 @@ const BOTS = [
     { token: process.env.DISCORD_TOKEN, label: 'ShardGuard' },
     { token: process.env.SHARD_TOKEN, label: 'Shard' }
 ];
-
-function timingSafeEqual(a, b) {
-    const hA = crypto.createHash('sha256').update(String(a)).digest();
-    const hB = crypto.createHash('sha256').update(String(b)).digest();
-    const equal = crypto.timingSafeEqual(hA, hB);
-    return equal && String(a).length === String(b).length;
-}
-
-function verifyAdminPassword(input) {
-    const stored = process.env.ADMIN_PASSWORD_HASH;
-    if (stored && stored.includes(':')) {
-        const [salt, hash] = stored.split(':');
-        if (!salt || !hash) return false;
-        try {
-            const expected = Buffer.from(hash, 'hex');
-            const test = crypto.scryptSync(String(input || ''), salt, expected.length);
-            return test.length === expected.length && crypto.timingSafeEqual(test, expected);
-        } catch { return false; }
-    }
-    const fallback = process.env.ADMIN_PASSWORD;
-    if (!fallback) return false;
-    return timingSafeEqual(String(input || ''), fallback);
-}
 
 // Boot-time check: warn loudly if the admin password is sitting in
 // plaintext in the env. We don't refuse to start (would brick existing
