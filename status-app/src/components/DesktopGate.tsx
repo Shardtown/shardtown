@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Loader2, KeyRound, ExternalLink } from "lucide-react";
 import { IS_DESKTOP, tokenGet, tokenSet, openExternal, onboardingDone } from "@/lib/desktop";
 import { apiGet, ApiError, setBearerToken } from "@/api/client";
-import { shouldShowOnboarding, startTour } from "@/components/OnboardingTour";
+import { shouldShowOnboarding, startTour } from "@/components/OnboardingTour.api";
 import { AuroraBackground } from "@/components/AuroraBackground";
 import { DEMO_TOKEN, isDemoToken, enableDemoMode, disableDemoMode } from "@/lib/demo";
 import { shouldRevalidate, setLastValidated } from "@/lib/tokenReval";
@@ -126,6 +126,10 @@ export function DesktopGate({ children }: { children: ReactNode }) {
       }
     })();
     return () => { cancelled = true; };
+    // refreshAuth comes from the auth context and is stable for the
+    // lifetime of the provider; intentionally empty deps so the boot
+    // sequence runs exactly once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

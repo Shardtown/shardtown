@@ -92,7 +92,7 @@ export function DesktopBotServer({ kind }: Props) {
   const meta = BOT_LABEL[kind];
   const botAvatar = kind === "shardguard" ? "/image/shardguard.png" : "/image/shard.png";
 
-  const guilds = data?.guilds ?? [];
+  const guilds = useMemo(() => data?.guilds ?? [], [data?.guilds]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return guilds;

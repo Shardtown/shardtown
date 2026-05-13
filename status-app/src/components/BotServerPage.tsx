@@ -107,7 +107,7 @@ export function BotServerPage({
   function inviteBot(guildId: string) {
     const url = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=${encodeURIComponent(inviteScopes)}&guild_id=${guildId}`;
     if (showBotPicker) {
-      window.location.href = url;
+      window.location.assign(url);
     } else {
       window.open(url, "_blank");
     }

@@ -250,10 +250,10 @@ export function Admin() {
   );
 
   const q = query.trim().toLowerCase();
-  const matchesQuery = (s: string) => s.toLowerCase().includes(q);
 
   const visibleBots = useMemo(() => {
     if (!data) return [];
+    const matchesQuery = (s: string) => s.toLowerCase().includes(q);
     return data.bots
       .filter(b => !activeBotId || b.id === activeBotId)
       .map(b => {
@@ -270,6 +270,7 @@ export function Admin() {
   const visibleBlocked = useMemo(() => {
     if (!data) return [];
     if (tab === "active") return [];
+    const matchesQuery = (s: string) => s.toLowerCase().includes(q);
     return data.blockedGuilds.filter(b => {
       if (!q) return true;
       return matchesQuery(b.guild_name || "") || matchesQuery(b.guild_id);

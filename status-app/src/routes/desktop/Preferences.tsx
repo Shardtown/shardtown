@@ -7,7 +7,7 @@ import {
   type SoundsConfig, type SoundEvent,
 } from "@/lib/sounds";
 import { SoundPicker } from "@/components/SoundPicker";
-import { startTour } from "@/components/OnboardingTour";
+import { startTour } from "@/components/OnboardingTour.api";
 import {
   getRevalMode, setRevalMode, getLastValidated, setLastValidated,
   describeMode, type RevalMode,

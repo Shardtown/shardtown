@@ -30,13 +30,13 @@ function extractAuthError(err: unknown): AuthErrorPayload {
   try {
     const j = JSON.parse(raw);
     if (j && typeof j === "object") return j as AuthErrorPayload;
-  } catch {}
+  } catch { /* not JSON */ }
   const m = raw.match(/^\d{3}\s+(.+)$/);
   if (m) {
     try {
       const j = JSON.parse(m[1]);
       if (j && typeof j === "object") return j as AuthErrorPayload;
-    } catch {}
+    } catch { /* not JSON */ }
     return { error: m[1] };
   }
   return { error: raw.length > 200 ? "Erreur serveur" : raw };

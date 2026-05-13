@@ -63,7 +63,7 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function usePresenceCtx() { return useContext(PresenceCtx); }
+function usePresenceCtx() { return useContext(PresenceCtx); }
 
 function scopeForPath(pathname: string): string | null {
   const m = /^\/(shard|shardguard)\/guild\/([\w-]+)/.exec(pathname);

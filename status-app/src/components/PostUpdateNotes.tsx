@@ -31,7 +31,7 @@ export function PostUpdateNotes() {
 
     (async () => {
       // Fetch the running app's version through Tauri's runtime API.
-      let current: string | null = null;
+      let current: string;
       try {
         const { getVersion } = await import("@tauri-apps/api/app");
         current = await getVersion();

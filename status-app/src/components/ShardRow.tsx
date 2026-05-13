@@ -31,7 +31,7 @@ export function ShardRow({ shard, pingHistory, externalQuery }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const isOnline = shard.status === "Online";
-  const guildsList = shard.guilds_list || [];
+  const guildsList = useMemo(() => shard.guilds_list || [], [shard.guilds_list]);
   const guilds = shard.guild_count || guildsList.length;
 
   useEffect(() => {

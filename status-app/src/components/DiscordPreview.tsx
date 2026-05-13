@@ -198,7 +198,7 @@ function substitute(text: string, user: string, server: string, memberCount: num
  */
 function linkify(s: string): React.ReactNode {
   const parts: Array<string | React.ReactNode> = [];
-  let remaining = s;
+  const remaining = s;
   const mentionRe = /__MENTION__(.+?)__\/MENTION__/g;
   const urlRe = /(https?:\/\/[^\s]+)/g;
 

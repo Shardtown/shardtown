@@ -376,5 +376,5 @@ export const MetalButton = React.forwardRef<
 });
  
 MetalButton.displayName = "MetalButton";
-export { Button, buttonVariants, liquidbuttonVariants, LiquidButton }
+export { Button, LiquidButton }
 

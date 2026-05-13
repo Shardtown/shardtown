@@ -25,6 +25,12 @@ export default defineConfig([
       // risk — keep it as a warning so real new offenders show up without
       // failing the lint gate.
       'react-hooks/set-state-in-effect': 'warn',
+      // Allow `_`-prefixed args/vars to opt out of unused-vars — standard convention.
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        caughtErrorsIgnorePattern: '^_',
+      }],
     },
   },
 ])
