@@ -326,8 +326,8 @@ function DesktopLogin({
     e?.preventDefault();
     const trimmed = token.trim();
     if (!trimmed) return;
-    if (!trimmed.startsWith("st_")) {
-      setError("Format invalide. Le token commence par st_.");
+    if (!trimmed.startsWith("jr_")) {
+      setError("Format invalide. Le token commence par jr_.");
       return;
     }
     setBusy(true);
@@ -365,78 +365,408 @@ function DesktopLogin({
   return (
     <>
       <div className="fixed inset-x-0 top-0 h-7 z-50" data-tauri-drag-region />
-      <div className="login-stage h-screen w-screen flex flex-col items-center justify-center px-9 relative" style={{ background: "#0a0b0e" }}>
-        <AuroraBackground />
-        <div className="relative z-10 flex flex-col items-center w-full">
-        <div className="flex flex-col items-center mb-9">
-          <img
-            src="/logo.png"
-            alt=""
-            className="w-14 h-14 rounded-2xl border border-white/10 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.7)]"
-          />
-          <p className="mt-3 text-[10.5px] font-bold tracking-[0.32em] uppercase text-white/35">
-            Shardtown
-          </p>
+      <div className="dl-stage">
+        {/* Aurora drift — same DNA as the boot splash so the transition
+            from boot → login reads as one continuous environment. */}
+        <div className="dl-aurora">
+          <div className="dl-blob b1"></div>
+          <div className="dl-blob b2"></div>
+          <div className="dl-blob b3"></div>
+          <div className="dl-blob b4"></div>
         </div>
-        <h1 className="text-[26px] font-extrabold tracking-tight mb-1.5 text-center">Connexion</h1>
-        <p className="text-[13px] text-white/55 mb-7 text-center max-w-xs">
-          Colle ton token d'accès personnel.
-        </p>
-        <form onSubmit={submit} className="w-full max-w-sm flex flex-col gap-3">
-          <input
-            autoFocus
-            type="password"
-            value={token}
-            placeholder="st_…"
-            onChange={e => setToken(e.target.value)}
-            spellCheck={false}
-            autoCapitalize="off"
-            autoCorrect="off"
-            className="w-full px-4 py-3.5 rounded-2xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 outline-none text-white font-mono text-[13px] transition-colors placeholder:text-white/20"
-          />
-          {error && (
-            <div className="px-4 py-2.5 rounded-xl bg-red-500/[0.08] border border-red-500/25 text-red-300 text-xs leading-relaxed">
-              {error}
-            </div>
-          )}
-          <button
-            type="submit"
-            disabled={busy || !token.trim()}
-            className="w-full px-4 py-3.5 rounded-full bg-white text-black font-bold text-[13.5px] hover:opacity-90 active:scale-[0.99] transition-all disabled:opacity-45 disabled:cursor-not-allowed inline-flex items-center justify-center gap-1.5"
-          >
-            {busy
-              ? <><Loader2 size={13} strokeWidth={2.4} className="animate-spin" /> Vérification…</>
-              : <><KeyRound size={13} strokeWidth={2.4} /> Continuer</>}
-          </button>
-          <button
-            type="button"
-            onClick={() => openExternal("https://shardtwn.fr/account")}
-            className="text-[12px] text-white/55 hover:text-white underline underline-offset-[3px] inline-flex items-center justify-center gap-1.5 mt-2 mx-auto"
-          >
-            Générer un token <ExternalLink size={11} strokeWidth={2} />
-          </button>
+        <div className="dl-vignette"></div>
 
-          {/* Demo hint — easy to overlook for real users, easy to find for
-              the curious. Click pre-fills the magic offline token. */}
-          <button
-            type="button"
-            onClick={() => setToken(DEMO_TOKEN)}
-            className="text-[10.5px] text-white/30 hover:text-white/65 mx-auto mt-1 transition-colors"
-            title="Mode démo offline — pré-remplit la clé de test"
-          >
-            Pas de compte ? Essayer en mode démo
-          </button>
-        </form>
+        <div className="dl-content">
+          {/* Brand block — massive wordmark, mirrors the splash */}
+          <div className="dl-brand">
+            <p className="dl-label">Studio</p>
+            <h1 className="dl-wordmark">SHARDTOWN</h1>
+            <p className="dl-tag">Connecte ton compte pour accéder à l'environnement.</p>
+          </div>
+
+          {/* Glass card hosting the actual token form */}
+          <form onSubmit={submit} className="dl-card">
+            <label className="dl-field-label" htmlFor="dl-token-input">
+              Token d'accès personnel
+            </label>
+            <input
+              id="dl-token-input"
+              autoFocus
+              type="password"
+              value={token}
+              placeholder="jr_…"
+              onChange={e => setToken(e.target.value)}
+              spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
+              className="dl-input"
+            />
+            {error && (
+              <div className="dl-error" role="alert">
+                {error}
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={busy || !token.trim()}
+              className="dl-cta"
+            >
+              {busy
+                ? <><Loader2 size={14} strokeWidth={2.4} className="animate-spin" /> Vérification…</>
+                : <><KeyRound size={14} strokeWidth={2.4} /> Continuer</>}
+            </button>
+
+            <div className="dl-divider"><span>ou</span></div>
+
+            <button
+              type="button"
+              onClick={() => openExternal("https://shardtwn.fr/account")}
+              className="dl-link"
+            >
+              Générer un token sur shardtwn.fr <ExternalLink size={12} strokeWidth={2} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setToken(DEMO_TOKEN)}
+              className="dl-demo"
+              title="Mode démo offline — pré-remplit la clé de test"
+            >
+              Pas encore de compte ? Essaie le mode démo
+            </button>
+          </form>
         </div>
 
         <style>{`
-          .login-stage {
-            animation: login-enter 700ms cubic-bezier(0.22, 1, 0.36, 1);
+          .dl-stage {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: #050608;
+            color: #fff;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: dl-enter 720ms cubic-bezier(0.22, 1, 0.36, 1);
           }
-          @keyframes login-enter {
-            0%   { opacity: 0; transform: scale(0.985) translateY(8px); filter: blur(6px); }
-            60%  { filter: blur(0px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
+          @keyframes dl-enter {
+            0%   { opacity: 0; transform: scale(0.985); filter: blur(6px); }
+            60%  { filter: blur(0); }
+            100% { opacity: 1; transform: scale(1);     filter: blur(0); }
+          }
+
+          /* ─── Aurora background ────────────────────────────────── */
+          .dl-aurora {
+            position: absolute;
+            inset: -200px;
+            overflow: hidden;
+            pointer-events: none;
+          }
+          .dl-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(90px);
+            mix-blend-mode: screen;
+            will-change: transform;
+          }
+          .dl-blob.b1 {
+            top: -10%; left: -10%;
+            width: 780px; height: 780px;
+            background: radial-gradient(circle, rgba(91, 109, 255, 0.85), transparent 60%);
+            animation: dl-blob1 22s ease-in-out infinite;
+          }
+          .dl-blob.b2 {
+            bottom: -15%; right: -10%;
+            width: 720px; height: 720px;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.7), transparent 60%);
+            animation: dl-blob2 26s ease-in-out infinite;
+          }
+          .dl-blob.b3 {
+            top: 35%; left: 50%;
+            transform: translateX(-50%);
+            width: 520px; height: 520px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.5), transparent 65%);
+            animation: dl-blob3 19s ease-in-out infinite;
+          }
+          .dl-blob.b4 {
+            top: 60%; left: 12%;
+            width: 380px; height: 380px;
+            background: radial-gradient(circle, rgba(236, 72, 153, 0.38), transparent 65%);
+            animation: dl-blob4 24s ease-in-out infinite;
+          }
+          .dl-vignette {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+              radial-gradient(ellipse at center, transparent 0%, transparent 45%, rgba(0,0,0,0.65) 100%);
+          }
+
+          @keyframes dl-blob1 {
+            0%, 100% { transform: translate(0, 0)         scale(1);    }
+            50%      { transform: translate(80px, 60px)   scale(1.15); }
+          }
+          @keyframes dl-blob2 {
+            0%, 100% { transform: translate(0, 0)             scale(1);   }
+            50%      { transform: translate(-100px, -60px)    scale(1.1); }
+          }
+          @keyframes dl-blob3 {
+            0%, 100% { transform: translateX(-50%) translateY(0)    scale(1);   }
+            50%      { transform: translateX(-50%) translateY(-80px) scale(1.2); }
+          }
+          @keyframes dl-blob4 {
+            0%, 100% { transform: translate(0, 0)         scale(1);    }
+            50%      { transform: translate(140px, -40px) scale(1.18); }
+          }
+
+          /* ─── Content stack ─────────────────────────────────────── */
+          .dl-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 38px;
+            padding: 40px 32px;
+            width: 100%;
+            max-width: 520px;
+          }
+          .dl-brand {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            text-align: center;
+          }
+          .dl-label {
+            font-size: 10.5px;
+            font-weight: 800;
+            letter-spacing: 0.38em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.42);
+            margin: 0;
+          }
+          .dl-wordmark {
+            position: relative;
+            /* Match the homepage wordmark — Plus Jakarta Sans extrabold,
+               uppercase, very tight tracking. */
+            font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
+            font-size: clamp(56px, 10vw, 104px);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: -0.055em;
+            line-height: 0.88;
+            margin: 0;
+            background: linear-gradient(180deg, #ffffff 10%, rgba(255, 255, 255, 0.45) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+          }
+          .dl-wordmark::after {
+            content: 'SHARDTOWN';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(110deg,
+              transparent 35%,
+              rgba(255, 255, 255, 0.95) 50%,
+              transparent 65%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: dl-shimmer 4s ease-in-out 0.6s infinite;
+          }
+          @keyframes dl-shimmer {
+            0%   { transform: translateX(-100%); }
+            55%, 100% { transform: translateX(100%); }
+          }
+          .dl-tag {
+            font-size: 13.5px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.55);
+            margin: 0;
+            max-width: 360px;
+            line-height: 1.5;
+          }
+
+          /* ─── Liquid glass card ─────────────────────────────────── */
+          .dl-card {
+            position: relative;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 24px;
+            border-radius: 22px;
+            background:
+              linear-gradient(
+                145deg,
+                rgba(255, 255, 255, 0.10) 0%,
+                rgba(255, 255, 255, 0.04) 35%,
+                rgba(255, 255, 255, 0.02) 70%,
+                rgba(255, 255, 255, 0.06) 100%
+              );
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow:
+              /* outer drop shadow for depth */
+              0 30px 90px -20px rgba(0, 0, 0, 0.7),
+              0 0 0 1px rgba(255, 255, 255, 0.03),
+              /* inner top highlight (glass refraction) */
+              inset 0 1px 0 rgba(255, 255, 255, 0.18),
+              /* inner bottom dark line (glass thickness) */
+              inset 0 -1px 0 rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            overflow: hidden;
+            isolation: isolate;
+          }
+          /* Soft sheen sweep that mimics light catching on glass —
+             slow and subtle, never distracting. */
+          .dl-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -30%;
+            width: 60%;
+            height: 200%;
+            background: linear-gradient(
+              115deg,
+              transparent 30%,
+              rgba(255, 255, 255, 0.08) 50%,
+              transparent 70%
+            );
+            transform: rotate(8deg);
+            pointer-events: none;
+            animation: dl-glass-sheen 8s ease-in-out infinite;
+          }
+          /* Inner reflective rim on top, for the convex-glass illusion. */
+          .dl-card::after {
+            content: '';
+            position: absolute;
+            inset: 1px;
+            border-radius: 21px;
+            pointer-events: none;
+            background: linear-gradient(
+              180deg,
+              rgba(255, 255, 255, 0.06) 0%,
+              transparent 18%,
+              transparent 82%,
+              rgba(0, 0, 0, 0.18) 100%
+            );
+          }
+          .dl-card > * { position: relative; z-index: 1; }
+
+          @keyframes dl-glass-sheen {
+            0%, 100% { transform: translateX(0)     rotate(8deg); opacity: 0.6; }
+            50%      { transform: translateX(280px) rotate(8deg); opacity: 1; }
+          }
+          .dl-field-label {
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+            margin: 0 4px 2px;
+          }
+          .dl-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+            font-size: 13.5px;
+            transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+            outline: none;
+          }
+          .dl-input::placeholder { color: rgba(255, 255, 255, 0.22); }
+          .dl-input:focus {
+            border-color: rgba(91, 109, 255, 0.55);
+            background: rgba(0, 0, 0, 0.6);
+            box-shadow: 0 0 0 3px rgba(91, 109, 255, 0.15);
+          }
+          .dl-error {
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            color: rgb(252, 165, 165);
+            font-size: 12.5px;
+            line-height: 1.5;
+          }
+          .dl-cta {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 0;
+            cursor: pointer;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #000;
+            background: #fff;
+            box-shadow:
+              0 14px 36px -10px rgba(255, 255, 255, 0.25),
+              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            transition: transform 120ms ease, opacity 120ms ease, box-shadow 200ms ease;
+          }
+          .dl-cta:hover:not(:disabled) {
+            box-shadow:
+              0 18px 44px -10px rgba(255, 255, 255, 0.35),
+              inset 0 1px 0 rgba(255, 255, 255, 0.65);
+          }
+          .dl-cta:active:not(:disabled) { transform: scale(0.99); }
+          .dl-cta:disabled { opacity: 0.4; cursor: not-allowed; }
+
+          .dl-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 6px 0 2px;
+            color: rgba(255, 255, 255, 0.32);
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+          }
+          .dl-divider::before, .dl-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+          }
+
+          .dl-link, .dl-demo {
+            background: transparent;
+            border: 0;
+            color: rgba(255, 255, 255, 0.65);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            transition: color 180ms ease;
+          }
+          .dl-link:hover { color: #fff; }
+          .dl-demo {
+            color: rgba(255, 255, 255, 0.32);
+            font-size: 11.5px;
+            font-weight: 500;
+            margin-top: -4px;
+          }
+          .dl-demo:hover { color: rgba(255, 255, 255, 0.7); }
+
+          @media (prefers-reduced-motion: reduce) {
+            .dl-stage, .dl-wordmark::after, .dl-blob {
+              animation: none !important;
+            }
           }
         `}</style>
       </div>

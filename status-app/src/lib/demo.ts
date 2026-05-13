@@ -13,7 +13,7 @@
 import type { Account } from "@/api/account";
 import type { DiscordUser } from "@/api/types";
 
-export const DEMO_TOKEN = "st_demo_shardtown_2026";
+export const DEMO_TOKEN = "jr_demo_shardtown_2026";
 const DEMO_FLAG_KEY = "shardtown.demo.v1";
 
 export function isDemoToken(token: string): boolean {

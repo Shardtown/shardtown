@@ -6,3 +6,6 @@ node_modules/
 updates/
 desktop-tauri/staging/
 desktop-tauri/latest.json
+
+# Local screenshot captures (Playwright debugging) — never in git
+.captures/
