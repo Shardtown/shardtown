@@ -22,13 +22,21 @@
       `window.__shardtownHideSplash()` once auth has resolved.
     -->
     <style>
-      html, body {
+      /* Only style <html>, not <body>. The SPA's index.css applies
+         `body { background: hsl(var(--background)) }` inside @layer base,
+         which has *lower* cascade priority than rules outside any layer
+         (i.e. this <style>). If we set body background here, it would
+         override the design-system background everywhere → flat black
+         dashboard / account page. Style html instead — it only shows
+         during the brief moment before body's CSS lands. */
+      html {
         margin: 0;
         background: #050608;
         color: #fff;
         font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
         -webkit-font-smoothing: antialiased;
       }
+      body { margin: 0; }
       #shardtown-splash {
         position: fixed;
         inset: 0;
