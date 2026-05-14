@@ -51,7 +51,7 @@ const commands = [
         .toJSON(),
     new SlashCommandBuilder()
         .setName('release')
-        .setDescription('Bump + build de l\'app desktop (owner only).')
+        .setDescription('Bump + build de l\'app desktop.')
         .toJSON(),
 ];
 
