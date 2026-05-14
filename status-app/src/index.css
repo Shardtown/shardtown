@@ -107,17 +107,16 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Backdrop coloré du site web — radials qui transpercent les 40% de
-     transparence du wrapper aurora (opacity-60) pour qu'aux extrêmes
-     d'animation des blobs on ne retombe pas sur du noir pur. Scopé via
+  /* Backdrop subtil du site web — radials légers qui transpercent les
+     40% de transparence du wrapper aurora pour adoucir les zones où
+     les blobs ne passent pas. Volontairement discret. Scopé via
      html:not(.is-desktop) pour rester strictement plat dans le shell
      Tauri. Désactivé aussi en thèmes "noir" et "light". */
   html:not(.is-desktop):not([data-theme="noir"]):not([data-theme="light"]) body {
     background-image:
-      radial-gradient(ellipse 120% 80% at 50% 0%, rgba(91, 109, 255, 0.75) 0%, rgba(91, 109, 255, 0.15) 50%, transparent 80%),
-      radial-gradient(ellipse 100% 70% at 85% 100%, rgba(168, 85, 247, 0.65) 0%, rgba(168, 85, 247, 0.12) 50%, transparent 80%),
-      radial-gradient(ellipse 90% 70% at 15% 80%, rgba(59, 130, 246, 0.55) 0%, transparent 60%),
-      linear-gradient(180deg, rgba(40, 25, 90, 0.5) 0%, rgba(15, 10, 35, 0.3) 100%);
+      radial-gradient(ellipse 90% 60% at 50% 0%, rgba(91, 109, 255, 0.22) 0%, transparent 60%),
+      radial-gradient(ellipse 70% 50% at 85% 100%, rgba(168, 85, 247, 0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 15% 70%, rgba(59, 130, 246, 0.16) 0%, transparent 60%);
     background-attachment: fixed;
   }
 }
