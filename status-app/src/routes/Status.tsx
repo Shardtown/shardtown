@@ -1,291 +1,340 @@
 import { useEffect, useState } from "react";
-import { Activity, Cpu, Search, Server, Users, Zap, RefreshCw, X } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Admonition } from "@/components/ui/admonition";
-import { BotSection } from "@/components/BotSection";
 import { useStats } from "@/hooks/useStats";
+import type { Bot } from "@/lib/types";
 
 function timeSince(ms: number) {
   const s = Math.floor((Date.now() - ms) / 1000);
-  if (s < 10) return "il y a quelques secondes";
+  if (s < 10) return "à l'instant";
   if (s < 60) return `il y a ${s} s`;
   const m = Math.floor(s / 60);
   if (m < 60) return `il y a ${m} min`;
   return `il y a ${Math.floor(m / 60)} h`;
 }
 
+const HISTORY_LEN = 24;          // 24 ticks × 30s = 12 minutes
+const WINDOW_LABEL = "12 dernières min";
+
+/** Pad/truncate a series to HISTORY_LEN entries. */
+function pad(series: number[]): number[] {
+  if (series.length === 0) return Array(HISTORY_LEN).fill(NaN);
+  if (series.length >= HISTORY_LEN) return series.slice(-HISTORY_LEN);
+  return Array(HISTORY_LEN - series.length).fill(NaN).concat(series);
+}
+
+type Health = "ok" | "degraded" | "down" | "unknown";
+
+function uptimePercent(states: Health[]): number {
+  const known = states.filter(s => s !== "unknown");
+  if (known.length === 0) return 100;
+  const ok = known.filter(s => s === "ok").length;
+  return (ok / known.length) * 100;
+}
+
 export function Status() {
   const stats = useStats();
-  const [query, setQuery] = useState("");
   const reduce = useReducedMotion();
   const heroEase = [0.22, 1, 0.36, 1] as const;
 
-  const canSearch = stats.bots.some(b => b.shards.some(s => (s.guilds_list || []).length > 0));
-
-  // Re-render every 5s for "il y a Xs" freshness
+  // Re-render every 5s for fresh "il y a Xs"
   const [, force] = useState(0);
   useEffect(() => {
     const id = setInterval(() => force(n => n + 1), 5000);
     return () => clearInterval(id);
   }, []);
 
-  const lastUpdateText = stats.lastFetch ? timeSince(stats.lastFetch) : "-";
-
+  const lastUpdate = stats.lastFetch ? timeSince(stats.lastFetch) : "—";
   const incident = !stats.allOnline && !stats.loading;
 
   return (
     <AppLayout>
-      {/* Aurora bleed for depth */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[640px] -z-10 opacity-65">
-        <div className={`absolute -top-32 left-[18%] w-[600px] h-[600px] rounded-full blur-3xl ${
-          incident ? "bg-red-500/12" : "bg-emerald-500/10"
-        }`} />
-        <div className="absolute -top-20 right-[18%] w-[500px] h-[500px] rounded-full blur-3xl bg-blue-500/10" />
-      </div>
-
-      <section className="container-wide pt-32 md:pt-40 pb-32 overflow-hidden">
-        {/* Hero — same editorial home pattern */}
-        <header className="text-center max-w-3xl mx-auto mb-16">
+      <section className="container-wide pt-32 md:pt-40 pb-32">
+        {/* Hero */}
+        <header className="text-center max-w-3xl mx-auto mb-12">
           <motion.p
-            className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
+            className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6"
             initial={{ opacity: 0, y: reduce ? 0 : 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.05, ease: heroEase }}
           >
-            Surveillance
+            Statut Shardtown
           </motion.p>
           <motion.h1
-            className="font-extrabold leading-[0.9] tracking-tight uppercase mb-10"
-            style={{ fontSize: "clamp(3rem, 9vw, 7rem)" }}
+            className="font-extrabold leading-[0.95] tracking-tight uppercase mb-6"
+            style={{ fontSize: "clamp(2.5rem, 7vw, 5rem)" }}
             initial={{
               opacity: 0,
-              x: reduce ? 0 : -120,
+              x: reduce ? 0 : -80,
               filter: reduce ? "blur(0px)" : "blur(8px)",
             }}
             animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-            transition={{ duration: 0.95, delay: 0.15, ease: heroEase }}
+            transition={{ duration: 0.9, delay: 0.15, ease: heroEase }}
           >
-            STATUT
+            État du système
           </motion.h1>
-          <motion.p
-            className="text-xl md:text-2xl text-white/60 max-w-2xl mx-auto leading-relaxed"
-            initial={{ opacity: 0, x: reduce ? 0 : 80 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
-          >
-            État <span className="text-white">temps réel</span> de l'infrastructure
-            Shardtown : clusters, shards, latence, charge. Mis à jour toutes les
-            30 secondes.
-          </motion.p>
         </header>
 
-        <div className="h-px w-full bg-white/[0.06] mb-12" />
-
-
-        {/* Global health banner */}
-        <div className="mb-10">
-          {stats.loading ? (
-            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 flex items-center gap-3">
-              <RefreshCw className="w-4 h-4 animate-spin text-white/40" />
-              <p className="text-sm text-white/60">Connexion à l'API…</p>
-            </div>
-          ) : incident ? (
-            <Admonition type="danger" title="Incident en cours" animate={false}>
-              {stats.offlineShards} shard{stats.offlineShards > 1 ? "s" : ""} hors ligne sur {stats.totalShards}.
-              {stats.offlineBots > 0 && ` ${stats.offlineBots} cluster${stats.offlineBots > 1 ? "s" : ""} affecté${stats.offlineBots > 1 ? "s" : ""}.`}{" "}
-              Nos équipes sont informées · Dernière mise à jour : {lastUpdateText}.
-            </Admonition>
-          ) : (
-            <div className="relative rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] px-5 py-4 backdrop-blur-sm shadow-[0_0_28px_-12px_rgba(16,185,129,0.5)] flex items-center gap-4 flex-wrap">
-              <span className="live-dot" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-emerald-200">Tous les systèmes opérationnels</p>
-                <p className="text-[12px] text-emerald-300/70 mt-0.5">
-                  {stats.totalShards} shards en ligne · latence moyenne {stats.avgPing} ms · aucun incident détecté
-                </p>
-              </div>
-              <p className="text-[11px] text-white/40 flex items-center gap-1.5">
-                <RefreshCw className="w-3 h-3" /> {lastUpdateText}
-              </p>
-            </div>
-          )}
+        {/* Banner global */}
+        <div className="max-w-3xl mx-auto mb-10">
+          <GlobalBanner
+            loading={stats.loading}
+            incident={incident}
+            offlineShards={stats.offlineShards}
+            totalShards={stats.totalShards}
+            offlineBots={stats.offlineBots}
+            lastUpdate={lastUpdate}
+          />
         </div>
 
-        {/* KPI grid — 5 ScreenTimeCards (responsive : 1 col mobile, 2 col tablet, 5 col desktop) */}
-        <p className="text-sm font-bold tracking-[0.22em] text-white/40 uppercase mb-3">Vue d'ensemble</p>
-        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-6">Systèmes</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 mb-14">
-          {stats.loading ? (
-            Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 animate-pulse h-44" />
-            ))
-          ) : (
-            <>
-              <KpiTile
-                icon={Cpu}
-                label="Clusters"
-                total={`${stats.onlineBots}/${stats.bots.length}`}
-                sub={stats.offlineBots > 0 ? `${stats.offlineBots} hors ligne` : "Tous opérationnels"}
-                bars={stats.liveHistory.clusters}
-                accent={stats.offlineBots > 0 ? "red" : "emerald"}
-              />
-              <KpiTile
-                icon={Zap}
-                label="Shards"
-                total={`${stats.onlineShards}/${stats.totalShards}`}
-                sub={stats.offlineShards > 0 ? `${stats.offlineShards} hors ligne` : "Tous opérationnels"}
-                bars={stats.liveHistory.shards}
-                accent={stats.offlineShards > 0 ? "red" : "emerald"}
-              />
-              <KpiTile
-                icon={Server}
-                label="Serveurs"
-                total={stats.totalGuilds.toLocaleString("fr-FR")}
-                sub={`Sur ${stats.bots.length} cluster${stats.bots.length > 1 ? "s" : ""}`}
-                bars={stats.liveHistory.guilds}
-                accent="blue"
-              />
-              <KpiTile
-                icon={Users}
-                label="Membres"
-                total={stats.totalMembers >= 1000
-                  ? `${(stats.totalMembers / 1000).toFixed(1)}k`
-                  : stats.totalMembers.toLocaleString("fr-FR")}
-                sub="Total cumulés"
-                bars={stats.liveHistory.members}
-                accent="violet"
-              />
-              <KpiTile
-                icon={Activity}
-                label={`Latence (${stats.avgPing || "-"} ms)`}
-                total={stats.avgPing > 0 ? `${stats.avgPing}` : "-"}
-                sub={
-                  stats.avgPing > 250 ? "Latence élevée"
-                  : stats.avgPing > 100 ? "Normal"
-                  : stats.avgPing > 0 ? "Excellent"
-                  : "Aucune mesure"
-                }
-                bars={stats.liveHistory.latency}
-                accent={stats.avgPing > 250 ? "red" : stats.avgPing > 100 ? "amber" : "emerald"}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Activity / per-bot detail */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold tracking-[0.22em] text-white/40 uppercase mb-2">Activité</p>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Détail par cluster</h2>
+        {/* Services */}
+        <div className="max-w-3xl mx-auto">
+          <div className="flex items-center justify-between mb-3 px-1">
+            <p className="text-[10px] font-bold tracking-[0.22em] text-white/40 uppercase">
+              Services
+            </p>
+            <p className="text-[11px] text-white/35 inline-flex items-center gap-1.5">
+              <RefreshCw className="w-3 h-3" /> {lastUpdate}
+            </p>
           </div>
-          {canSearch && (
-            <div className="relative w-full md:w-80">
-              <Search className="w-4 h-4 text-white/35 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="search"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                placeholder="ID ou nom de serveur…"
-                className="w-full pl-9 pr-9 py-2.5 text-sm bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-white/30 outline-none focus:border-white/20 focus:bg-white/[0.05] transition-colors font-mono-num"
-              />
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery("")}
-                  aria-label="Effacer"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md text-white/40 hover:text-white hover:bg-white/[0.06]"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
 
-        <div className="flex flex-col gap-4">
-          {stats.loading ? (
-            <>
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 animate-pulse h-32" />
-              <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 animate-pulse h-32" />
-            </>
-          ) : stats.bots.length === 0 ? (
-            <div className="text-center py-12 text-white/30 text-xs font-bold uppercase tracking-widest">
-              Aucune donnée disponible
-            </div>
-          ) : (
-            stats.bots.map(bot => (
-              <BotSection
-                key={bot.label}
-                bot={bot}
-                query={query}
-                pingHistoryByKey={stats.pingHistory}
-              />
-            ))
-          )}
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm overflow-hidden divide-y divide-white/[0.06]">
+            {stats.loading ? (
+              <>
+                <ServiceRowSkeleton />
+                <ServiceRowSkeleton />
+                <ServiceRowSkeleton />
+              </>
+            ) : (
+              <>
+                {stats.bots.map(bot => (
+                  <ClusterRow
+                    key={bot.label}
+                    bot={bot}
+                    history={stats.liveHistory.shards}
+                  />
+                ))}
+                <ApiRow latencyHistory={stats.liveHistory.latency} avgPing={stats.avgPing} />
+              </>
+            )}
+          </div>
+
+          {/* KPI compact row */}
+          <div className="grid grid-cols-2 md:grid-cols-5 mt-8 rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm overflow-hidden">
+            <Kpi label="Clusters"  value={stats.loading ? "—" : `${stats.onlineBots}/${stats.bots.length}`}  down={stats.offlineBots > 0} />
+            <Kpi label="Shards"    value={stats.loading ? "—" : `${stats.onlineShards}/${stats.totalShards}`} down={stats.offlineShards > 0} />
+            <Kpi label="Serveurs"  value={stats.loading ? "—" : stats.totalGuilds.toLocaleString("fr-FR")} />
+            <Kpi label="Membres"   value={stats.loading ? "—" : stats.totalMembers >= 1000 ? `${(stats.totalMembers / 1000).toFixed(1)}k` : stats.totalMembers.toLocaleString("fr-FR")} />
+            <Kpi label="Latence"   value={stats.loading ? "—" : stats.avgPing > 0 ? `${stats.avgPing} ms` : "—"} down={stats.avgPing > 250} />
+          </div>
         </div>
       </section>
     </AppLayout>
   );
 }
 
-/* ─────────── KPI tile (compact ScreenTimeCard variant) ─────────── */
+/* ────────────────────────────── Banner ────────────────────────────── */
 
-const ACCENT: Record<string, { text: string; bar: string; mute: string }> = {
-  emerald: { text: "text-emerald-300", bar: "bg-gradient-to-t from-emerald-500 to-emerald-400/80", mute: "bg-emerald-500/15" },
-  blue:    { text: "text-blue-300",    bar: "bg-gradient-to-t from-blue-500 to-blue-400/80",       mute: "bg-blue-500/15" },
-  violet:  { text: "text-violet-300",  bar: "bg-gradient-to-t from-violet-500 to-violet-400/80",   mute: "bg-violet-500/15" },
-  amber:   { text: "text-amber-300",   bar: "bg-gradient-to-t from-amber-500 to-amber-400/80",     mute: "bg-amber-500/15" },
-  red:     { text: "text-red-300",     bar: "bg-gradient-to-t from-red-500 to-red-400/80",         mute: "bg-red-500/15" },
-};
-
-function KpiTile({
-  icon: Icon,
-  label,
-  total,
-  sub,
-  bars,
-  accent,
+function GlobalBanner({
+  loading, incident, offlineShards, totalShards, offlineBots, lastUpdate,
 }: {
-  icon: typeof Cpu;
-  label: string;
-  total: string;
-  sub: string;
-  bars: number[];
-  accent: keyof typeof ACCENT;
+  loading: boolean;
+  incident: boolean;
+  offlineShards: number;
+  totalShards: number;
+  offlineBots: number;
+  lastUpdate: string;
 }) {
-  const a = ACCENT[accent];
-  // Pad/truncate to 24 bars for a consistent rhythm
-  const padded = bars.length === 0 ? Array(24).fill(0) : bars.length < 24 ? Array(24 - bars.length).fill(0).concat(bars) : bars.slice(-24);
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-6 py-5 flex items-center gap-3">
+        <RefreshCw className="w-4 h-4 animate-spin text-white/40" />
+        <p className="text-sm text-white/60 font-semibold">Connexion à l'API…</p>
+      </div>
+    );
+  }
+
+  if (incident) {
+    return (
+      <div className="relative rounded-2xl overflow-hidden border border-red-500/40 px-6 py-6 shadow-[0_0_40px_-12px_rgba(239,68,68,0.4)]"
+        style={{ background: "linear-gradient(135deg, rgba(220, 38, 38, 0.95), rgba(185, 28, 28, 0.92))" }}
+      >
+        <div className="flex items-center gap-4">
+          <div className="relative flex w-3 h-3 flex-shrink-0">
+            <span className="absolute inset-0 rounded-full bg-white animate-ping opacity-60" />
+            <span className="relative w-3 h-3 rounded-full bg-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-lg md:text-xl font-extrabold text-white tracking-tight">
+              Incident en cours
+            </p>
+            <p className="text-[13px] text-white/85 mt-0.5">
+              {offlineShards} shard{offlineShards > 1 ? "s" : ""} hors ligne sur {totalShards}
+              {offlineBots > 0 ? ` · ${offlineBots} cluster${offlineBots > 1 ? "s" : ""} affecté${offlineBots > 1 ? "s" : ""}` : ""}
+              {" · "}MAJ {lastUpdate}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-sm p-4 hover:border-white/15 transition-colors">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/40 inline-flex items-center gap-1.5">
-          <Icon className="w-3 h-3" /> {label}
-        </p>
+    <div className="relative rounded-2xl overflow-hidden border border-emerald-500/40 px-6 py-6 shadow-[0_0_40px_-12px_rgba(16,185,129,0.4)]"
+      style={{ background: "linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.92))" }}
+    >
+      <div className="flex items-center gap-4">
+        <div className="relative flex w-3 h-3 flex-shrink-0">
+          <span className="absolute inset-0 rounded-full bg-white animate-ping opacity-60" />
+          <span className="relative w-3 h-3 rounded-full bg-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-lg md:text-xl font-extrabold text-white tracking-tight">
+            Tous les systèmes opérationnels
+          </p>
+          <p className="text-[13px] text-white/85 mt-0.5">
+            {totalShards} shard{totalShards > 1 ? "s" : ""} en ligne · MAJ {lastUpdate}
+          </p>
+        </div>
       </div>
-      <div className={`text-[26px] font-extrabold leading-none mb-1 font-mono-num ${a.text}`}>{total}</div>
-      <p className="text-[10px] text-white/40 font-medium mb-2.5">{sub}</p>
-      <ScreenTimeCardCompact data={padded} barClass={a.bar} muteClass={a.mute} />
     </div>
   );
 }
 
-/* Inline mini bar graph — uses same styling language as ScreenTimeCard but compact */
-function ScreenTimeCardCompact({ data, barClass, muteClass }: { data: number[]; barClass: string; muteClass: string }) {
-  const max = Math.max(...data, 1);
+/* ──────────────────────────── Service rows ──────────────────────────── */
+
+function ClusterRow({ bot, history }: { bot: Bot; history: number[] }) {
+  const total = bot.shards.length;
+  const online = bot.shards.filter(s => s.status === "Online").length;
+  const ok = bot.online && online === total;
+  const partial = !ok && online > 0;
+
+  // Map global shard-count history to per-cluster health.
+  // We don't track per-bot history yet, so use the global series as a proxy :
+  // if the system was fully healthy (max value), the bar is green ; otherwise
+  // mirror the current degraded/down state.
+  const max = Math.max(...history, total);
+  const states: Health[] = pad(history).map(v => {
+    if (Number.isNaN(v)) return "unknown";
+    return v >= max ? "ok" : v > 0 ? "degraded" : "down";
+  });
+  // Override the most recent bar with the current real state so the bar
+  // never lies about *now*.
+  states[states.length - 1] = ok ? "ok" : partial ? "degraded" : "down";
+
+  const uptime = uptimePercent(states);
+  const iconSrc = bot.label.toLowerCase().includes("guard")
+    ? "/image/shardguard.png"
+    : "/image/shard.png";
+
   return (
-    <div className="flex h-10 items-end gap-[2px]">
-      {data.map((v, i) => {
-        const h = (v / max) * 100;
-        const highlight = h > 60;
+    <ServiceRow
+      icon={<img src={iconSrc} alt="" className="w-8 h-8 rounded-lg object-cover border border-white/10" />}
+      title={bot.label}
+      subtitle={`${online}/${total} shards · ${bot.guilds.toLocaleString("fr-FR")} serveurs`}
+      states={states}
+      uptime={uptime}
+      status={ok ? "ok" : partial ? "degraded" : "down"}
+    />
+  );
+}
+
+function ApiRow({ latencyHistory, avgPing }: { latencyHistory: number[]; avgPing: number }) {
+  const states: Health[] = pad(latencyHistory).map(v => {
+    if (Number.isNaN(v) || v === 0) return "unknown";
+    if (v < 250) return "ok";
+    if (v < 500) return "degraded";
+    return "down";
+  });
+  // Reflect current latency in the most recent bar.
+  states[states.length - 1] =
+    avgPing === 0 ? "unknown" :
+    avgPing < 250 ? "ok" :
+    avgPing < 500 ? "degraded" : "down";
+
+  const uptime = uptimePercent(states);
+  const current: Health =
+    avgPing === 0 ? "unknown" :
+    avgPing < 250 ? "ok" :
+    avgPing < 500 ? "degraded" : "down";
+
+  return (
+    <ServiceRow
+      icon={
+        <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-300">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+            <path d="M19.27 5.33C17.94 4.71 16.5 4.26 15 4a.09.09 0 0 0-.07.03c-.18.33-.39.76-.53 1.09a16.09 16.09 0 0 0-4.8 0c-.14-.34-.35-.76-.54-1.09c-.01-.02-.04-.03-.07-.03c-1.5.26-2.93.71-4.27 1.33c-.01 0-.02.01-.03.02c-2.72 4.07-3.47 8.03-3.1 11.95c0 .02.01.04.03.05c1.8 1.32 3.53 2.12 5.24 2.65c.03.01.06 0 .07-.02c.4-.55.76-1.13 1.07-1.74c.02-.04 0-.08-.04-.09c-.57-.22-1.11-.48-1.64-.78c-.04-.02-.04-.08-.01-.11c.11-.08.22-.17.33-.25c.02-.02.05-.02.07-.01c3.44 1.57 7.15 1.57 10.55 0c.02-.01.05-.01.07.01c.11.09.22.17.33.26c.04.03.04.09-.01.11c-.52.31-1.07.56-1.64.78c-.04.01-.05.06-.04.09c.32.61.68 1.19 1.07 1.74c.03.01.06.02.09.01c1.72-.53 3.45-1.33 5.25-2.65c.02-.01.03-.03.03-.05c.44-4.53-.73-8.46-3.1-11.95c-.01-.01-.02-.02-.04-.02zM8.52 14.91c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.84 2.12-1.89 2.12zm6.97 0c-1.03 0-1.89-.95-1.89-2.12s.84-2.12 1.89-2.12c1.06 0 1.9.96 1.89 2.12c0 1.17-.83 2.12-1.89 2.12z"/>
+          </svg>
+        </div>
+      }
+      title="API Discord"
+      subtitle={avgPing > 0 ? `${avgPing} ms en moyenne` : "Aucune mesure"}
+      states={states}
+      uptime={uptime}
+      status={current === "unknown" ? "ok" : current}
+    />
+  );
+}
+
+function ServiceRow({
+  icon, title, subtitle, states, uptime, status,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  states: Health[];
+  uptime: number;
+  status: Health;
+}) {
+  const label =
+    status === "ok"       ? "Opérationnel"
+    : status === "degraded" ? "Dégradé"
+    : status === "down"    ? "Hors ligne"
+    : "Inconnu";
+
+  const labelColor =
+    status === "ok"       ? "text-emerald-300"
+    : status === "degraded" ? "text-amber-300"
+    : status === "down"    ? "text-red-300"
+    : "text-white/40";
+
+  return (
+    <div className="p-5 md:p-6">
+      <div className="flex items-center gap-4 mb-3">
+        <div className="flex-shrink-0">{icon}</div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[15px] font-bold leading-tight">{title}</p>
+          <p className="text-[12px] text-white/45 mt-0.5">{subtitle}</p>
+        </div>
+        <p className={`text-[12px] font-bold ${labelColor}`}>{label}</p>
+      </div>
+
+      <UptimeBars states={states} />
+
+      <div className="flex justify-between items-center mt-2 text-[11px] text-white/35 font-mono-num">
+        <span>{WINDOW_LABEL}</span>
+        <span className={labelColor + " font-bold tabular-nums"}>{uptime.toFixed(1)} % uptime</span>
+        <span>maintenant</span>
+      </div>
+    </div>
+  );
+}
+
+function UptimeBars({ states }: { states: Health[] }) {
+  return (
+    <div className="flex h-9 gap-[3px]">
+      {states.map((s, i) => {
+        const cls =
+          s === "ok"       ? "bg-emerald-500"
+          : s === "degraded" ? "bg-amber-500"
+          : s === "down"    ? "bg-red-500"
+          : "bg-white/10";
         return (
           <span
             key={i}
-            className={`flex-1 rounded-t-sm origin-bottom transition-all ${highlight ? barClass : muteClass}`}
-            style={{ height: `${Math.max(2, h)}%` }}
+            className={`flex-1 rounded-sm transition-colors ${cls}`}
+            aria-label={s}
           />
         );
       })}
@@ -293,3 +342,33 @@ function ScreenTimeCardCompact({ data, barClass, muteClass }: { data: number[]; 
   );
 }
 
+function ServiceRowSkeleton() {
+  return (
+    <div className="p-5 md:p-6 animate-pulse">
+      <div className="flex items-center gap-4 mb-3">
+        <div className="w-8 h-8 rounded-lg bg-white/[0.06]" />
+        <div className="flex-1">
+          <div className="h-3 w-24 bg-white/[0.06] rounded" />
+          <div className="h-2 w-40 bg-white/[0.04] rounded mt-2" />
+        </div>
+        <div className="h-3 w-16 bg-white/[0.06] rounded" />
+      </div>
+      <div className="flex h-9 gap-[3px]">
+        {Array.from({ length: HISTORY_LEN }).map((_, i) => (
+          <span key={i} className="flex-1 rounded-sm bg-white/[0.06]" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Kpi({ label, value, down }: { label: string; value: string; down?: boolean }) {
+  return (
+    <div className="px-5 py-4 border-r last:border-r-0 border-white/[0.06] [border-right-style:solid] [&:nth-child(2)]:border-r-0 md:[&:nth-child(2)]:border-r [&:nth-child(2n)]:border-r-0 md:[&:nth-child(2n)]:border-r">
+      <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-white/40 mb-1.5">{label}</p>
+      <p className={`text-[20px] font-extrabold tracking-tight leading-none font-mono-num ${down ? "text-red-300" : "text-white"}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
