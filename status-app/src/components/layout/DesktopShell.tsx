@@ -143,7 +143,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           thème "aurora" est actif. En "noir" et "light" on garde une surface
           plate qui suit var(--ds-bg). */}
       {theme === "aurora" && (
-        <div className="fixed inset-0 pointer-events-none -z-10 opacity-55">
+        <div className="fixed inset-0 pointer-events-none -z-10 opacity-60">
           <BackgroundGradientAnimation
             interactive={false}
             gradientBackgroundStart="rgb(6, 10, 28)"
