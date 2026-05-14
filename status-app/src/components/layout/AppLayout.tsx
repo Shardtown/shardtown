@@ -22,17 +22,17 @@ export function AppLayout({ children, noBackground }: Props) {
   return (
     <div className="relative min-h-screen text-white">
       {!noBackground && (
-        <div className="fixed inset-0 pointer-events-none -z-10">
+        <div className="fixed inset-0 pointer-events-none -z-10 opacity-80">
           <BackgroundGradientAnimation
             interactive={false}
-            gradientBackgroundStart="rgb(28, 18, 64)"
-            gradientBackgroundEnd="rgb(10, 8, 28)"
-            firstColor="59, 130, 246"
-            secondColor="168, 85, 247"
-            thirdColor="79, 70, 229"
+            gradientBackgroundStart="rgb(12, 18, 42)"
+            gradientBackgroundEnd="rgb(6, 8, 20)"
+            firstColor="37, 99, 235"
+            secondColor="139, 92, 246"
+            thirdColor="30, 64, 175"
             fourthColor="236, 72, 153"
             fifthColor="16, 185, 129"
-            size="120%"
+            size="100%"
             blendingValue="screen"
             containerClassName="!h-full !w-full"
           />

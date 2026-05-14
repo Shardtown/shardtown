@@ -7,6 +7,7 @@ type NavItem = { to: string; label: string; external?: boolean };
 const NAV: NavItem[] = [
   { to: "/produits", label: "Produits" },
   { to: "/#services", label: "Services", external: true },
+  { to: "/download", label: "Télécharger" },
   { to: "/wiki", label: "Wiki" },
   { to: "/status", label: "Statut" },
   { to: "/premium", label: "Premium" },
