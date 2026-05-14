@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { ArrowRight, MessageSquare, Mail, Download as DownloadIcon } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -6,7 +5,6 @@ import { TiltCard } from "@/components/ui/tilt-card";
 import { LiquidButton } from "@/components/ui/liquid-glass-button";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
 import { HolographicCard } from "@/components/ui/holographic-card";
-import { CinematicHero } from "@/components/ui/cinematic-hero";
 
 function AppleLogo({ className }: { className?: string }) {
   return (
@@ -55,22 +53,10 @@ export function Index() {
   const reduce = useReducedMotion();
   const heroEase = [0.22, 1, 0.36, 1] as const;
 
-  // Snap full-page sur le marketing ; proximity évite de fighter avec le
-  // pin GSAP du CinematicHero. Restauration au démontage pour ne pas
-  // contaminer les autres routes (Wiki, Status, Premium…).
-  useEffect(() => {
-    const html = document.documentElement;
-    const prev = html.style.scrollSnapType;
-    html.style.scrollSnapType = "y proximity";
-    return () => {
-      html.style.scrollSnapType = prev;
-    };
-  }, []);
-
   return (
     <AppLayout>
       {/* Hero — initial swipe-in on mount */}
-      <section className="container-wide text-center min-h-screen snap-start flex flex-col justify-center py-32 md:py-40 overflow-hidden">
+      <section className="container-wide text-center py-32 md:py-40 overflow-hidden">
         <motion.p
           className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
           initial={{ opacity: 0, y: reduce ? 0 : 20 }}
@@ -125,25 +111,8 @@ export function Index() {
         </motion.div>
       </section>
 
-      {/* Cinematic scroll moment — pinned 7000px storytelling section */}
-      <CinematicHero
-        brandName="Shardtown"
-        tagline1="Pilotez votre Discord,"
-        tagline2="comme un studio."
-        cardHeading="Une app, tous vos serveurs."
-        cardDescription={
-          <>
-            <span className="text-white font-semibold">Shardtown</span> centralise bots, dashboards et activité de communauté dans une app desktop native, avec mises à jour automatiques.
-          </>
-        }
-        metricValue={99}
-        metricLabel="Uptime %"
-        ctaHeading="Prêt à passer pro ?"
-        ctaDescription="Téléchargez l'app desktop et donnez à votre Discord les outils qu'il mérite."
-      />
-
       {/* Services / Métiers — slides in from the LEFT */}
-      <section id="services" className="container-wide min-h-screen snap-start flex flex-col justify-center pt-48 pb-48 scroll-mt-32 overflow-x-clip">
+      <section id="services" className="container-wide pt-48 pb-48 scroll-mt-32 overflow-x-clip">
         <Reveal direction="left" distance={80} className="max-w-3xl mb-20">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
             Nos métiers
@@ -181,9 +150,11 @@ export function Index() {
         </RevealStagger>
       </section>
 
+      {/* Espace tampon entre la grille des métiers et la section Télécharger */}
+      <div className="h-32 md:h-48" aria-hidden />
 
       {/* Download — app desktop */}
-      <section id="download" className="container-wide min-h-screen snap-start flex flex-col justify-center pt-32 pb-32 scroll-mt-32 overflow-x-clip">
+      <section id="download" className="container-wide pt-32 pb-32 scroll-mt-32 overflow-x-clip">
         <Reveal direction="left" distance={80} className="max-w-3xl mb-16">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
             App desktop
@@ -263,9 +234,11 @@ export function Index() {
         </RevealStagger>
       </section>
 
+      {/* Espace tampon entre la section Télécharger et le CTA Parlons-en */}
+      <div className="h-32 md:h-48" aria-hidden />
 
       {/* Contact CTA — rises up */}
-      <section id="contact" className="container-wide min-h-screen snap-start flex flex-col justify-center pt-48 pb-16 scroll-mt-32 overflow-x-clip">
+      <section id="contact" className="container-wide pt-48 pb-16 scroll-mt-32 overflow-x-clip">
         <Reveal direction="up" distance={70} duration={0.85} className="bg-white/[0.02] border border-white/[0.06] rounded-3xl p-12 md:p-20 text-center">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">Parlons-en</p>
           <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-6">
