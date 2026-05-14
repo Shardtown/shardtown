@@ -2,10 +2,14 @@ node_modules/
 .env
 *.log
 
+# macOS Finder metadata — never useful in git
+.DS_Store
+
 # Auto-updater payloads — pushed to the VPS by CI, not committed
 updates/
 desktop-tauri/staging/
 desktop-tauri/latest.json
 
-# Local screenshot captures (Playwright debugging) — never in git
+# Local screenshot captures (Playwright + Playwright-MCP debugging)
 .captures/
+.playwright-mcp/
