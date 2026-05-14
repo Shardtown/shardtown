@@ -32,9 +32,17 @@ export function AppLayout({ children, noBackground }: Props) {
             thirdColor="30, 64, 175"
             fourthColor="236, 72, 153"
             fifthColor="16, 185, 129"
-            size="60%"
+            size="100%"
             blendingValue="screen"
             containerClassName="!h-full !w-full"
+          />
+          {/* Top-anchored aurora wash so the hero (above the centered
+              gradient blobs) gets the same colored backdrop as the rest of
+              the page. Without this the hero sits on a near-black band
+              while the sections below catch the centered blobs. */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 top-0 h-[70vh] [background:radial-gradient(ellipse_80%_70%_at_50%_0%,rgba(91,109,255,0.45)_0%,rgba(139,92,246,0.18)_45%,transparent_75%)]"
           />
         </div>
       )}
