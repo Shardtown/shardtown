@@ -1,7 +1,23 @@
-import { ArrowRight, Download as DownloadIcon, Apple, Monitor } from "lucide-react";
+import { ArrowRight, Download as DownloadIcon } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
 import { HolographicCard } from "@/components/ui/holographic-card";
+
+function AppleLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+    </svg>
+  );
+}
+
+function WindowsLogo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
+    </svg>
+  );
+}
 
 /**
  * Dedicated download page — moved out of Index.tsx so the homepage stays
@@ -36,7 +52,7 @@ export function Download() {
               <HolographicCard className="h-full">
                 <div className="flex items-start gap-6 h-full">
                   <div className="w-14 h-14 rounded-xl bg-white/[0.06] border border-white/[0.10] flex items-center justify-center flex-shrink-0 text-white">
-                    <Apple className="w-7 h-7" strokeWidth={1.4} />
+                    <AppleLogo className="w-7 h-7" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2 flex-wrap">
@@ -65,7 +81,7 @@ export function Download() {
               <HolographicCard className="h-full">
                 <div className="flex items-start gap-6 h-full">
                   <div className="w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center flex-shrink-0 text-white/65">
-                    <Monitor className="w-7 h-7" strokeWidth={1.4} />
+                    <WindowsLogo className="w-6 h-6" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2 flex-wrap">
