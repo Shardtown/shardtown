@@ -3,18 +3,30 @@
  *
  * Minimal Discord bot:
  *   1. Stays online with a "Watching shardtwn.fr" presence.
- *   2. Slash commands: /ping, /version.
+ *   2. Slash commands: /ping, /version, /release (owner only).
  *
- * Reads SHARDTOWN_TOKEN from the repo-root .env (loaded by sharder.js).
+ * Env (repo-root .env, loaded by sharder.js) :
+ *   SHARDTOWN_TOKEN       — bot Discord token (requis)
+ *   SHARDTOWN_GH_TOKEN    — PAT GitHub avec `contents:write` sur
+ *                           Shardtown/shardtown (requis pour /release)
+ *   SHARDTOWN_DEV_GUILD_ID — guild id pour enregistrement instantané (optionnel)
+ *   MANIFEST_URL          — override de l'URL du manifest updater (optionnel)
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 const {
     Client, GatewayIntentBits,
     SlashCommandBuilder, REST, Routes, MessageFlags,
+    ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder,
 } = require('discord.js');
 
 const MANIFEST_URL = process.env.MANIFEST_URL || 'https://shardtwn.fr/updates/latest.json';
+
+// Single Discord user authorized to trigger releases via /release. Hardcoded
+// on purpose — this is a one-person owner override, not a role.
+const RELEASE_OWNER_ID = '1394404648084832389';
+const RELEASE_REPO_OWNER = 'Shardtown';
+const RELEASE_REPO_NAME = 'shardtown';
 
 // When set, slash commands are registered ON THIS SPECIFIC GUILD (instant
 // availability, no 1h propagation delay) and the *global* command set is
@@ -36,6 +48,10 @@ const commands = [
     new SlashCommandBuilder()
         .setName('version')
         .setDescription('Version actuelle de l\'app desktop Shardtown.')
+        .toJSON(),
+    new SlashCommandBuilder()
+        .setName('release')
+        .setDescription('Bump + build de l\'app desktop (owner only).')
         .toJSON(),
 ];
 
@@ -80,10 +96,14 @@ client.once('clientReady', () => {
 
 client.on('interactionCreate', async interaction => {
     try {
-        if (!interaction.isChatInputCommand()) return;
-        switch (interaction.commandName) {
-            case 'ping':    return cmdPing(interaction);
-            case 'version': return cmdVersion(interaction);
+        if (interaction.isChatInputCommand()) {
+            switch (interaction.commandName) {
+                case 'ping':    return cmdPing(interaction);
+                case 'version': return cmdVersion(interaction);
+                case 'release': return cmdRelease(interaction);
+            }
+        } else if (interaction.isModalSubmit() && interaction.customId === 'release-modal') {
+            return onReleaseSubmit(interaction);
         }
     } catch (err) {
         console.error('[Shardtown] Interaction error:', err);
@@ -117,6 +137,184 @@ async function cmdVersion(interaction) {
     } catch (err) {
         await interaction.editReply(`Impossible de lire \`${MANIFEST_URL}\` : ${err.message}`);
     }
+}
+
+/* ─── Release pipeline ─────────────────────────────────────────────── */
+
+async function cmdRelease(interaction) {
+    if (interaction.user.id !== RELEASE_OWNER_ID) {
+        return interaction.reply({
+            content: 'Commande réservée.',
+            flags: MessageFlags.Ephemeral,
+        });
+    }
+
+    // Suggest the next patch version based on what's currently published, so
+    // the modal pre-fills the obvious next value but stays editable.
+    let suggested = '';
+    try {
+        const r = await fetch(MANIFEST_URL);
+        if (r.ok) {
+            const j = await r.json();
+            suggested = bumpPatch(j.version) || '';
+        }
+    } catch {}
+
+    const input = new TextInputBuilder()
+        .setCustomId('version')
+        .setLabel('Version cible (semver X.Y.Z)')
+        .setStyle(TextInputStyle.Short)
+        .setRequired(true)
+        .setMinLength(5)
+        .setMaxLength(16)
+        .setPlaceholder('0.1.36');
+    if (suggested) input.setValue(suggested);
+
+    const modal = new ModalBuilder()
+        .setCustomId('release-modal')
+        .setTitle('Release Shardtown desktop')
+        .addComponents(new ActionRowBuilder().addComponents(input));
+
+    await interaction.showModal(modal);
+}
+
+async function onReleaseSubmit(interaction) {
+    if (interaction.user.id !== RELEASE_OWNER_ID) {
+        return interaction.reply({ content: 'Refusé.', flags: MessageFlags.Ephemeral });
+    }
+    const version = interaction.fields.getTextInputValue('version').trim().replace(/^v/, '');
+    if (!/^\d+\.\d+\.\d+$/.test(version)) {
+        return interaction.reply({
+            content: `\`${version}\` n'est pas une version semver valide (attendu : X.Y.Z).`,
+            flags: MessageFlags.Ephemeral,
+        });
+    }
+
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    try {
+        const result = await bumpAndTriggerRelease(version);
+        const shortSha = result.commitSha.slice(0, 7);
+        await interaction.editReply(
+            `Release **v${version}** lancée.\n` +
+            `• Bump committé sur \`main\` : [\`${shortSha}\`](https://github.com/${RELEASE_REPO_OWNER}/${RELEASE_REPO_NAME}/commit/${result.commitSha})\n` +
+            `• Branche déclencheur : \`${result.branch}\`\n` +
+            `• Suivi : https://github.com/${RELEASE_REPO_OWNER}/${RELEASE_REPO_NAME}/actions`
+        );
+    } catch (err) {
+        console.error('[Shardtown] /release failed:', err);
+        await interaction.editReply(`Échec : ${err.message}`);
+    }
+}
+
+function bumpPatch(v) {
+    const m = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(String(v || '').trim());
+    if (!m) return null;
+    return `${m[1]}.${m[2]}.${Number(m[3]) + 1}`;
+}
+
+async function gh(path, init = {}) {
+    const token = process.env.SHARDTOWN_GH_TOKEN;
+    if (!token) throw new Error('SHARDTOWN_GH_TOKEN manquant dans .env');
+    const r = await fetch(`https://api.github.com${path}`, {
+        ...init,
+        headers: {
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            'Authorization': `Bearer ${token}`,
+            'User-Agent': 'shardtown-release-bot',
+            'Content-Type': 'application/json',
+            ...(init.headers || {}),
+        },
+    });
+    if (!r.ok) {
+        const txt = await r.text().catch(() => '');
+        throw new Error(`GitHub API ${r.status} sur ${path} — ${txt.slice(0, 180)}`);
+    }
+    return r.status === 204 ? null : r.json();
+}
+
+// Atomic version bump: writes tauri.conf.json + Cargo.toml in a single commit
+// on main, then creates a `release-trigger-<version>` branch ref so the
+// release.yml workflow picks it up exactly once.
+async function bumpAndTriggerRelease(version) {
+    const repo = `/repos/${RELEASE_REPO_OWNER}/${RELEASE_REPO_NAME}`;
+    const tauriPath = 'desktop-tauri/src-tauri/tauri.conf.json';
+    const cargoPath = 'desktop-tauri/src-tauri/Cargo.toml';
+
+    // Refuse to overwrite an existing release-trigger branch — that means a
+    // build for this version is already in flight (or finished).
+    try {
+        await gh(`${repo}/git/ref/heads/release-trigger-${version}`);
+        throw new Error(`La branche release-trigger-${version} existe déjà.`);
+    } catch (err) {
+        if (!/404/.test(err.message)) throw err;
+    }
+
+    const mainRef = await gh(`${repo}/git/ref/heads/main`);
+    const baseSha = mainRef.object.sha;
+    const baseCommit = await gh(`${repo}/git/commits/${baseSha}`);
+
+    const [tauriFile, cargoFile] = await Promise.all([
+        gh(`${repo}/contents/${encodeURIComponent(tauriPath)}?ref=main`),
+        gh(`${repo}/contents/${encodeURIComponent(cargoPath)}?ref=main`),
+    ]);
+    const tauriContent = Buffer.from(tauriFile.content, 'base64').toString('utf8');
+    const cargoContent = Buffer.from(cargoFile.content, 'base64').toString('utf8');
+
+    const newTauri = tauriContent.replace(/("version"\s*:\s*)"[^"]+"/, `$1"${version}"`);
+    const newCargo = cargoContent.replace(/^version\s*=\s*"[^"]+"/m, `version = "${version}"`);
+    if (newTauri === tauriContent) throw new Error('Pattern version introuvable dans tauri.conf.json.');
+    if (newCargo === cargoContent) throw new Error('Pattern version introuvable dans Cargo.toml.');
+    if (newTauri === tauriContent && newCargo === cargoContent) {
+        throw new Error('Aucun changement à committer — version déjà appliquée ?');
+    }
+
+    const [tauriBlob, cargoBlob] = await Promise.all([
+        gh(`${repo}/git/blobs`, {
+            method: 'POST',
+            body: JSON.stringify({ content: newTauri, encoding: 'utf-8' }),
+        }),
+        gh(`${repo}/git/blobs`, {
+            method: 'POST',
+            body: JSON.stringify({ content: newCargo, encoding: 'utf-8' }),
+        }),
+    ]);
+
+    const newTree = await gh(`${repo}/git/trees`, {
+        method: 'POST',
+        body: JSON.stringify({
+            base_tree: baseCommit.tree.sha,
+            tree: [
+                { path: tauriPath, mode: '100644', type: 'blob', sha: tauriBlob.sha },
+                { path: cargoPath, mode: '100644', type: 'blob', sha: cargoBlob.sha },
+            ],
+        }),
+    });
+
+    const newCommit = await gh(`${repo}/git/commits`, {
+        method: 'POST',
+        body: JSON.stringify({
+            message: `bump v${version}\n\nDéclenché depuis /release sur le bot Shardtown.`,
+            tree: newTree.sha,
+            parents: [baseSha],
+        }),
+    });
+
+    // Fast-forward main, then create the release-trigger branch off the same
+    // commit. The branch is what fires release.yml.
+    await gh(`${repo}/git/refs/heads/main`, {
+        method: 'PATCH',
+        body: JSON.stringify({ sha: newCommit.sha }),
+    });
+    await gh(`${repo}/git/refs`, {
+        method: 'POST',
+        body: JSON.stringify({
+            ref: `refs/heads/release-trigger-${version}`,
+            sha: newCommit.sha,
+        }),
+    });
+
+    return { commitSha: newCommit.sha, branch: `release-trigger-${version}` };
 }
 
 /* ─── Login ─────────────────────────────────────────────────────────── */
