@@ -57,9 +57,20 @@
     --ds-status-warn: rgb(var(--ds-status-warn-rgb));
     --ds-status-err-rgb: 248, 113, 113;
     --ds-status-err: rgb(var(--ds-status-err-rgb));
+
+    /* Fond statique coloré du body — se voit à travers les 40% de
+       transparence de l'aurora wrapper (opacity-60), donc même quand
+       les blobs animés cyclent hors d'une zone de la viewport on a
+       toujours une teinte plutôt qu'un retour au noir. Désactivé en
+       thèmes "noir" et "light" pour rester strictement plat. */
+    --ds-bg-image:
+      radial-gradient(ellipse 90% 60% at 50% 0%, rgba(91, 109, 255, 0.22) 0%, transparent 60%),
+      radial-gradient(ellipse 70% 50% at 85% 100%, rgba(168, 85, 247, 0.18) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 15% 70%, rgba(59, 130, 246, 0.16) 0%, transparent 60%);
   }
 
   [data-theme="noir"] {
+    --ds-bg-image: none;
     --ds-bg: #000000;
     --ds-bg-1: #050507;
     --ds-bg-2: #0a0a0c;
@@ -70,6 +81,7 @@
   }
 
   [data-theme="light"] {
+    --ds-bg-image: none;
     --ds-bg: #f5f5f7;
     --ds-bg-1: #ffffff;
     --ds-bg-2: #ffffff;
@@ -101,7 +113,9 @@
   html, body, #root { height: 100%; min-height: 100%; margin: 0; }
   body {
     font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-    background: var(--ds-bg);
+    background-color: var(--ds-bg);
+    background-image: var(--ds-bg-image);
+    background-attachment: fixed;
     color: var(--ds-text);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
