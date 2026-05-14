@@ -255,3 +255,106 @@ Ils téléchargent le `.dmg`, glissent dans Applications, double-clic.
 **Plus aucun avertissement Gatekeeper** — l'app s'ouvre comme n'importe
 quelle app du Mac App Store. Toutes les updates suivantes se font
 automatiquement via le bouton in-app.
+
+---
+
+## Cacher ton nom légal sur l'app (compte Individual → DBA)
+
+Avec un compte Apple Developer **Individual / Sole Proprietor**, ton
+certificat s'appelle `Developer ID Application: <Ton Nom Légal> (TEAMID)`
+et cette chaîne est embarquée dans la signature. macOS l'affiche dans :
+
+- le dialogue Gatekeeper au premier lancement ("provient de <Ton Nom>")
+- *À propos de cette app → Signature*
+- la sortie de `codesign -dv --verbose=4 /Applications/Shardtown.app`
+
+Aucun build flag Tauri ne peut masquer ça : Apple appose le nom à
+l'émission du cert. **Solution officielle : demander un "DBA name"**
+(*Doing Business As* — nom commercial) à Apple. Le Team ID ne change
+pas, donc les apps déjà installées continuent de marcher et l'updater
+Tauri n'est pas cassé.
+
+### 1. Prérequis — preuve d'enseigne commerciale
+
+Apple veut un document légal qui prouve que tu exploites bien sous le
+nom "Shardtown". Selon ton statut :
+
+- **Auto-entrepreneur / micro-entreprise (FR)** — déclaration d'activité
+  INSEE avec le nom commercial "Shardtown" déclaré (avis SIRENE), ou
+  attestation INPI si tu as déposé la marque.
+- **EI / EURL / SAS** — extrait Kbis mentionnant l'enseigne ou la
+  dénomination commerciale.
+- **Hors FR** — équivalent local (DBA filing, Fictitious Business Name
+  Statement, etc.).
+
+Le document doit être **récent (< 3 mois)**, en PDF, à ton nom légal,
+et mentionner "Shardtown" en toutes lettres.
+
+### 2. Ouvrir le ticket Apple
+
+Va sur https://developer.apple.com/contact/ → *Membership and Account*
+→ *Update name on account / DBA*. Connecte-toi avec ton Apple ID
+développeur, puis colle le message ci-dessous (adapte les `<…>`) :
+
+```
+Subject: Request to use DBA name on Developer ID certificates
+
+Hello,
+
+I am enrolled in the Apple Developer Program as an individual
+(Team ID: <TON_TEAM_ID>, legal name: <Ton Nom Légal>).
+
+I operate publicly under the trade name "Shardtown" and would like
+my Developer ID Application and Developer ID Installer certificates
+to be issued under this DBA name instead of my personal legal name,
+so that end users see "Developer ID Application: Shardtown (<TEAMID>)"
+in Gatekeeper dialogs and signature inspectors.
+
+Attached is the legal documentation proving I am authorized to do
+business under this name:
+- <type de document, ex: "INPI / INSEE business registration">
+  dated <YYYY-MM-DD>, listing "Shardtown" as my commercial name.
+
+I would like to keep my existing Team ID so that already-installed
+apps continue to validate against the Tauri auto-updater chain.
+
+Thank you,
+<Ton Nom Légal>
+Apple ID: <ton.email@example.com>
+Team ID: <TON_TEAM_ID>
+```
+
+Réponse Apple : **1-3 semaines** en général, parfois un aller-retour
+pour clarifier le document. Une fois validé, ils ré-émettent ton cert
+avec le nouveau Common Name.
+
+### 3. Mettre à jour la chaîne de signature
+
+Quand Apple confirme :
+
+1. Va sur https://developer.apple.com/account/resources/certificates/list
+2. Révoque l'ancien `Developer ID Application`
+3. Génère un nouveau cert (même procédure qu'au setup initial — CSR
+   depuis Keychain Access, upload, double-clic pour importer)
+4. Exporte le `.p12`, convertis en base64 :
+   ```bash
+   base64 -i developer-id.p12 -o developer-id.p12.b64
+   ```
+5. Récupère la nouvelle identité :
+   ```bash
+   security find-identity -v -p codesigning
+   # → "Developer ID Application: Shardtown (XXXXXXXXXX)"
+   ```
+6. Mets à jour les 3 secrets GitHub (https://github.com/Shardtown/shardtown/settings/secrets/actions) :
+   - `APPLE_CERTIFICATE` ← nouveau base64
+   - `APPLE_CERTIFICATE_PASSWORD` ← nouveau mot de passe
+   - `APPLE_SIGNING_IDENTITY` ← `Developer ID Application: Shardtown (TEAMID)`
+7. Tag une release de test (`v0.1.40` par ex.) → vérifie via :
+   ```bash
+   codesign -dv --verbose=4 /Applications/Shardtown.app 2>&1 | grep Authority
+   # → "Authority=Developer ID Application: Shardtown (TEAMID)"
+   ```
+
+Aucun changement de code requis. Les apps des users existants se
+mettent à jour normalement via le bouton in-app (le Tauri Updater valide
+sa signature ed25519, pas la chaîne Apple).
