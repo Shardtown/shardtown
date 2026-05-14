@@ -22,6 +22,7 @@ import {
 } from "@/lib/desktop";
 import { apiGet, apiPost, setBearerToken } from "@/api/client";
 import { disableDemoMode, isDemoMode } from "@/lib/demo";
+import { useTheme } from "@/lib/theme";
 
 /**
  * Desktop chrome — full NordVPN-style redesign.
@@ -61,6 +62,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
+  const theme = useTheme();
 
   const displayName = user?.global_name || user?.username || "Compte";
 
@@ -110,7 +112,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       label: "Système",
       items: [
         { to: "/rpc",         icon: <Sparkles size={18} strokeWidth={1.8} />, label: "Discord RPC" },
-        { to: "/preferences", icon: <Settings size={18} strokeWidth={1.8} />, label: "Préférences" },
+        { to: "/preferences", icon: <Settings size={18} strokeWidth={1.8} />, label: "Réglages" },
       ],
     },
   ];
@@ -137,24 +139,26 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       className="h-screen w-screen flex overflow-hidden relative"
       style={{ color: "var(--ds-text)" }}
     >
-      {/* Animated multi-color gradient background — same one as shardtwn.fr.
-          Mounted behind everything (fixed, -z-10) so each surface above can
-          let it bleed through via translucent backgrounds + ds-glass. */}
-      <div className="fixed inset-0 pointer-events-none -z-10 opacity-55">
-        <BackgroundGradientAnimation
-          interactive={false}
-          gradientBackgroundStart="rgb(6, 10, 28)"
-          gradientBackgroundEnd="rgb(0, 0, 0)"
-          firstColor="37, 99, 235"
-          secondColor="139, 92, 246"
-          thirdColor="30, 64, 175"
-          fourthColor="236, 72, 153"
-          fifthColor="16, 185, 129"
-          size="60%"
-          blendingValue="screen"
-          containerClassName="!h-full !w-full"
-        />
-      </div>
+      {/* Animated multi-color gradient background — uniquement quand le
+          thème "aurora" est actif. En "noir" et "light" on garde une surface
+          plate qui suit var(--ds-bg). */}
+      {theme === "aurora" && (
+        <div className="fixed inset-0 pointer-events-none -z-10 opacity-80">
+          <BackgroundGradientAnimation
+            interactive={false}
+            gradientBackgroundStart="rgb(12, 18, 42)"
+            gradientBackgroundEnd="rgb(6, 8, 20)"
+            firstColor="37, 99, 235"
+            secondColor="139, 92, 246"
+            thirdColor="30, 64, 175"
+            fourthColor="236, 72, 153"
+            fifthColor="16, 185, 129"
+            size="100%"
+            blendingValue="screen"
+            containerClassName="!h-full !w-full"
+          />
+        </div>
+      )}
 
       {/* Drag region — invisible strip at the top of the window */}
       <div className="fixed inset-x-0 top-0 h-7 z-50 pointer-events-none" data-tauri-drag-region />
@@ -487,7 +491,7 @@ function SearchBox({
       { label: "Shard · Serveurs",       hint: "Communauté",             path: "/shard/server" },
       { label: "Samia",                  hint: "Assistante IA",          path: "/assistant" },
       { label: "Discord RPC",            hint: "Rich Presence",          path: "/rpc" },
-      { label: "Préférences",            hint: "Sons, Touch ID, thème",  path: "/preferences" },
+      { label: "Réglages",               hint: "Apparence, sons, Touch ID, thème",  path: "/preferences" },
       { label: "Statut des services",    hint: "Surveillance temps réel", path: "/statut" },
       { label: "Mon compte",             hint: "Profil & connexions",    path: "/account" },
     ];

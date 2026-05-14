@@ -109,7 +109,7 @@ export function TrayPanel() {
           <button
             type="button"
             className="tray-icon-btn"
-            title="Préférences"
+            title="Réglages"
             onClick={() => openMain("/preferences")}
           >
             <Settings size={13} strokeWidth={2} />

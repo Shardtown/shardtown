@@ -59,6 +59,16 @@
     --ds-status-err: rgb(var(--ds-status-err-rgb));
   }
 
+  [data-theme="noir"] {
+    --ds-bg: #000000;
+    --ds-bg-1: #050507;
+    --ds-bg-2: #0a0a0c;
+    --ds-panel: rgba(255, 255, 255, 0.035);
+    --ds-panel-2: rgba(255, 255, 255, 0.065);
+    --ds-border: rgba(255, 255, 255, 0.08);
+    --ds-border-strong: rgba(255, 255, 255, 0.2);
+  }
+
   [data-theme="light"] {
     --ds-bg: #f5f5f7;
     --ds-bg-1: #ffffff;

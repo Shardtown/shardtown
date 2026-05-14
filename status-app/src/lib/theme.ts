@@ -1,41 +1,60 @@
 /**
- * Theme switcher for the desktop app — dark (default) and light. The
- * current theme writes a `data-theme="light"` attribute on <html>; CSS
- * lives in index.css under [data-theme="light"] selectors that override
- * the dark defaults.
+ * Theme switcher pour l'app desktop. Trois thèmes :
+ * - "aurora" (défaut) : gradient animé multicolore en arrière-plan du shell.
+ * - "noir" : noir pur, sans gradient — surface plate type "OLED".
+ * - "light" : palette claire (data-theme="light").
  *
- * Persisted in localStorage so the choice survives reloads. The DesktopShell
- * has a small toggle button next to the brand wordmark.
+ * Le thème courant écrit un `data-theme` sur <html> (sauf aurora qui est la
+ * valeur par défaut sans attribut). Les overrides CSS vivent dans index.css.
+ * `setTheme` dispatch un évènement `shardtown:theme-change` pour que le
+ * DesktopShell puisse cacher l'animation quand on n'est pas en aurora.
  */
 
-export type Theme = "dark" | "light";
+import { useEffect, useState } from "react";
+
+export type Theme = "aurora" | "noir" | "light";
 
 const STORAGE_KEY = "shardtown.theme";
+const EVENT = "shardtown:theme-change";
 
 export function getStoredTheme(): Theme {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    if (v === "light" || v === "dark") return v;
+    if (v === "aurora" || v === "noir" || v === "light") return v;
+    // Migration : ancien "dark" → "aurora" (qui inclut le gradient)
+    if (v === "dark") return "aurora";
   } catch { /* */ }
-  return "dark";
+  return "aurora";
 }
 
 export function applyTheme(theme: Theme) {
   if (typeof document === "undefined") return;
-  if (theme === "light") {
-    document.documentElement.setAttribute("data-theme", "light");
+  const root = document.documentElement;
+  if (theme === "aurora") {
+    root.removeAttribute("data-theme");
   } else {
-    document.documentElement.removeAttribute("data-theme");
+    root.setAttribute("data-theme", theme);
   }
 }
 
 export function setTheme(theme: Theme) {
   applyTheme(theme);
   try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* */ }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent<Theme>(EVENT, { detail: theme }));
+  }
 }
 
-export function toggleTheme(): Theme {
-  const next: Theme = getStoredTheme() === "dark" ? "light" : "dark";
-  setTheme(next);
-  return next;
+/** Hook React : renvoie le thème courant et se met à jour à chaque setTheme. */
+export function useTheme(): Theme {
+  const [theme, setLocal] = useState<Theme>(getStoredTheme);
+  useEffect(() => {
+    const onChange = (e: Event) => {
+      const t = (e as CustomEvent<Theme>).detail;
+      if (t === "aurora" || t === "noir" || t === "light") setLocal(t);
+    };
+    window.addEventListener(EVENT, onChange);
+    return () => window.removeEventListener(EVENT, onChange);
+  }, []);
+  return theme;
 }
