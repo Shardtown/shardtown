@@ -14,7 +14,6 @@ import { DeepLinkHandler } from "@/components/DeepLinkHandler";
 import { Status } from "@/routes/Status";
 import { Index } from "@/routes/Index";
 import { Wiki } from "@/routes/Wiki";
-import { Download } from "@/routes/Download";
 import { Terms } from "@/routes/Terms";
 import { Privacy } from "@/routes/Privacy";
 import { Outils } from "@/routes/Outils";
@@ -100,7 +99,7 @@ function AppMain() {
                   <Route path="/" element={<Index />} />
                   <Route path="/status" element={<Status />} />
                   <Route path="/wiki" element={<Wiki />} />
-                  <Route path="/download" element={<Download />} />
+                  <Route path="/download" element={<Navigate to="/#download" replace />} />
                   <Route path="/assistant" element={<Assistant />} />
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/privacy" element={<Privacy />} />
