@@ -133,6 +133,9 @@ export function Index() {
         </RevealStagger>
       </section>
 
+      {/* Espace tampon entre la grille des métiers et le CTA Parlons-en */}
+      <div className="h-32 md:h-48" aria-hidden />
+
       {/* Contact CTA — rises up */}
       <section id="contact" className="container-wide pt-48 pb-16 scroll-mt-32 overflow-x-clip">
         <Reveal direction="up" distance={70} duration={0.85} className="bg-white/[0.02] border border-white/[0.06] rounded-3xl p-12 md:p-20 text-center">

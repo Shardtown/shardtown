@@ -1,4 +1,4 @@
-import { ArrowRight, Download as DownloadIcon } from "lucide-react";
+import { Download as DownloadIcon } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
 import { HolographicCard } from "@/components/ui/holographic-card";
@@ -48,9 +48,9 @@ export function Download() {
         <RevealStagger className="grid md:grid-cols-2 gap-8 md:gap-10" staggerChildren={0.1} delayChildren={0.15}>
           {/* macOS — disponible */}
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
-            <a href="/download/mac" className="group block h-full">
-              <HolographicCard className="h-full">
-                <div className="flex items-start gap-6 h-full">
+            <HolographicCard className="h-full">
+              <div className="flex flex-col h-full">
+                <div className="flex items-start gap-6 mb-8">
                   <div className="w-14 h-14 rounded-xl bg-white/[0.06] border border-white/[0.10] flex items-center justify-center flex-shrink-0 text-white">
                     <AppleLogo className="w-7 h-7" />
                   </div>
@@ -61,25 +61,27 @@ export function Download() {
                         Disponible
                       </span>
                     </div>
-                    <p className="text-sm text-white/55 leading-relaxed mb-5">
+                    <p className="text-sm text-white/55 leading-relaxed">
                       Apple Silicon (M1/M2/M3/M4) + Intel via universal binary. macOS 11 Big Sur ou plus récent. Signature Developer ID + notarisation Apple, mises à jour automatiques.
                     </p>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white/70 group-hover:text-white group-hover:gap-2 transition-all">
-                      <DownloadIcon className="w-3 h-3" />
-                      Télécharger le .dmg
-                      <ArrowRight className="w-3 h-3" />
-                    </span>
                   </div>
                 </div>
-              </HolographicCard>
-            </a>
+                <a
+                  href="/download/mac"
+                  className="mt-auto self-center inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white text-black font-bold text-sm transition-all hover:scale-[1.02] hover:bg-white/90 active:scale-100"
+                >
+                  <DownloadIcon className="w-4 h-4" />
+                  Télécharger le .dmg
+                </a>
+              </div>
+            </HolographicCard>
           </RevealItem>
 
           {/* Windows — prochainement */}
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
-            <div className="block h-full opacity-70 cursor-not-allowed select-none">
-              <HolographicCard className="h-full">
-                <div className="flex items-start gap-6 h-full">
+            <HolographicCard className="h-full">
+              <div className="flex flex-col h-full opacity-70 select-none">
+                <div className="flex items-start gap-6 mb-8">
                   <div className="w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center flex-shrink-0 text-white/65">
                     <WindowsLogo className="w-6 h-6" />
                   </div>
@@ -90,16 +92,20 @@ export function Download() {
                         Prochainement
                       </span>
                     </div>
-                    <p className="text-sm text-white/55 leading-relaxed mb-5">
+                    <p className="text-sm text-white/55 leading-relaxed">
                       Version Windows 10 / 11 (x64 + ARM64) en cours de packaging. On vous prévient dès qu'elle est dispo.
                     </p>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white/40">
-                      Build en préparation
-                    </span>
                   </div>
                 </div>
-              </HolographicCard>
-            </div>
+                <button
+                  type="button"
+                  disabled
+                  className="mt-auto self-center inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white/10 text-white/50 font-bold text-sm border border-white/10 cursor-not-allowed"
+                >
+                  Build en préparation
+                </button>
+              </div>
+            </HolographicCard>
           </RevealItem>
         </RevealStagger>
       </section>
