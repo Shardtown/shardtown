@@ -5,6 +5,7 @@ import { TiltCard } from "@/components/ui/tilt-card";
 import { LiquidButton } from "@/components/ui/liquid-glass-button";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
 import { HolographicCard } from "@/components/ui/holographic-card";
+import { CinematicHero } from "@/components/ui/cinematic-hero";
 
 function AppleLogo({ className }: { className?: string }) {
   return (
@@ -110,6 +111,23 @@ export function Index() {
           </a>
         </motion.div>
       </section>
+
+      {/* Cinematic scroll moment — pinned 7000px storytelling section */}
+      <CinematicHero
+        brandName="Shardtown"
+        tagline1="Pilotez votre Discord,"
+        tagline2="comme un studio."
+        cardHeading="Une app, tous vos serveurs."
+        cardDescription={
+          <>
+            <span className="text-white font-semibold">Shardtown</span> centralise bots, dashboards et activité de communauté dans une app desktop native, avec mises à jour automatiques.
+          </>
+        }
+        metricValue={99}
+        metricLabel="Uptime %"
+        ctaHeading="Prêt à passer pro ?"
+        ctaDescription="Téléchargez l'app desktop et donnez à votre Discord les outils qu'il mérite."
+      />
 
       {/* Services / Métiers — slides in from the LEFT */}
       <section id="services" className="container-wide pt-48 pb-48 scroll-mt-32 overflow-x-clip">
