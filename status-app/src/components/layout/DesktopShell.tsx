@@ -871,7 +871,7 @@ function UpdateButton() {
                   </div>
                 </div>
                 <p className="text-[11.5px]" style={{ color: "var(--ds-text-mut)" }}>
-                  Tu utilises la dernière version. Les nouvelles mises à jour sont vérifiées automatiquement toutes les 30 min.
+                  Tu utilises la dernière version.
                 </p>
                 {lastChecked && (
                   <p className="text-[10.5px] font-mono-num mt-1.5" style={{ color: "var(--ds-text-faint)" }}>
