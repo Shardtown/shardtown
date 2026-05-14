@@ -2247,6 +2247,96 @@ function requireAccount(req, res, next) {
     res.status(401).json({ error: 'Non authentifié' });
 }
 
+// ─── Desktop OAuth bridge ──────────────────────────────────────────────
+// Tauri webview can't carry the user through a redirect-based OAuth flow:
+// the SPA loads from tauri://localhost (different origin from the API)
+// and the desktop client authenticates via a Bearer token, not a session
+// cookie. So the "Lier mon Discord" button on the desktop calls
+// /api/account/oauth-bridge/init to get a one-time URL it opens in the
+// system browser; that URL promotes the bearer account into a real
+// cookie session and forwards to the regular Discord/Shard link flow.
+// The callback (below) detects the `fromDesktop` session flag and
+// renders a small "you can return to the desktop app" page that fires
+// a shardtwn:// deep link instead of redirecting to /account.
+const desktopLinkTokens = new Map();
+const DESKTOP_LINK_TTL_MS = 5 * 60 * 1000;
+function issueDesktopLinkToken(accountId, provider) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + DESKTOP_LINK_TTL_MS;
+    desktopLinkTokens.set(token, { accountId, provider, expiresAt });
+    if (desktopLinkTokens.size > 1000) {
+        const now = Date.now();
+        for (const [k, v] of desktopLinkTokens) {
+            if (v.expiresAt < now) desktopLinkTokens.delete(k);
+        }
+    }
+    return token;
+}
+function consumeDesktopLinkToken(token) {
+    if (!token || typeof token !== 'string') return null;
+    const entry = desktopLinkTokens.get(token);
+    if (!entry) return null;
+    desktopLinkTokens.delete(token);
+    if (entry.expiresAt < Date.now()) return null;
+    return entry;
+}
+
+app.post('/api/account/oauth-bridge/init', requireAccount, (req, res) => {
+    const provider = String(req.body?.provider || '').toLowerCase();
+    if (provider !== 'discord' && provider !== 'shard') {
+        return res.status(400).json({ error: 'provider=discord|shard requis' });
+    }
+    const token = issueDesktopLinkToken(req.session.account.id, provider);
+    const base = process.env.APP_URL || 'http://localhost:3000';
+    res.json({ url: `${base}/api/oauth-bridge/use?token=${token}` });
+});
+
+app.get('/api/oauth-bridge/use', (req, res) => {
+    const entry = consumeDesktopLinkToken(String(req.query.token || ''));
+    if (!entry) {
+        return res.status(400).type('html').send(`<!doctype html>
+<meta charset="utf-8"><title>Lien expiré</title>
+<body style="margin:0;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:#0a0a0a;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px">
+<div style="max-width:480px;text-align:center">
+<h1 style="font-size:28px;font-weight:800;letter-spacing:-0.02em;margin:0 0 12px">Lien expiré</h1>
+<p style="color:rgba(255,255,255,.55);line-height:1.55;margin:0">Réessaie depuis l'application Shardtown.</p>
+</div>`);
+    }
+    req.session.regenerate(err => {
+        if (err) return res.status(500).send('Erreur de session');
+        req.session.account = { id: entry.accountId };
+        req.session.fromDesktop = true;
+        res.redirect(`/api/account/${entry.provider}/link`);
+    });
+});
+
+function renderDesktopReturn(res, opts) {
+    const { ok, reason, provider } = opts;
+    const status = ok ? 'ok' : 'error';
+    const params = new URLSearchParams({ linked: status, provider });
+    if (reason) params.set('reason', reason);
+    const deepLink = `shardtwn://open/account?${params}`;
+    const safeDeep = deepLink.replace(/"/g, '&quot;');
+    res.type('html').send(`<!doctype html>
+<meta charset="utf-8">
+<title>${ok ? 'Compte lié' : 'Liaison échouée'}</title>
+<style>
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:#0a0a0a;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:32px}
+.card{max-width:480px;text-align:center}
+h1{font-size:32px;font-weight:800;letter-spacing:-0.02em;margin:0 0 16px}
+p{color:rgba(255,255,255,.55);line-height:1.55;margin:0 0 28px}
+a.btn{display:inline-block;padding:12px 24px;border-radius:999px;background:#fff;color:#000;text-decoration:none;font-weight:700;font-size:13px}
+.small{color:rgba(255,255,255,.35);font-size:12px;margin-top:18px}
+</style>
+<div class="card">
+<h1>${ok ? '✓ Compte lié' : 'Liaison échouée'}</h1>
+<p>${ok ? "Tu peux retourner sur l'application Shardtown — la liste de tes serveurs est prête." : "Réessaie depuis l'application Shardtown."}</p>
+<a class="btn" href="${safeDeep}">Ouvrir Shardtown</a>
+<p class="small">Cette fenêtre peut être fermée.</p>
+</div>
+<script>setTimeout(function(){location.href=${JSON.stringify(deepLink)};}, 400);</script>`);
+}
+
 app.get('/api/account/discord/link', requireAccount, (req, res) => {
     if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET) {
         return res.status(503).send('Discord OAuth non configuré');
@@ -2274,14 +2364,17 @@ async function fetchDiscordGuildsFor(accessToken) {
 
 app.get('/api/account/discord/callback', async (req, res) => {
     if (!req.session?.account?.id) return res.redirect('/account/login');
+    const fromDesktop = !!req.session.fromDesktop;
+    delete req.session.fromDesktop;
+    const fail = (reason) => fromDesktop
+        ? renderDesktopReturn(res, { ok: false, reason, provider: 'discord' })
+        : res.redirect(`/account?linked=error&reason=${reason}`);
     const state = String(req.query.state || '');
     const expectedState = req.session.discordLinkState;
     req.session.discordLinkState = null;
-    if (!state || !expectedState || !timingSafeEqual(state, expectedState)) {
-        return res.redirect('/account?linked=error&reason=state');
-    }
+    if (!state || !expectedState || !timingSafeEqual(state, expectedState)) return fail('state');
     const code = String(req.query.code || '');
-    if (!code) return res.redirect('/account?linked=error&reason=code');
+    if (!code) return fail('code');
 
     try {
         // Exchange the code for an access token
@@ -2310,9 +2403,7 @@ app.get('/api/account/discord/callback', async (req, res) => {
             'SELECT id FROM accounts WHERE discord_id = ? AND id <> ? LIMIT 1',
             [me.id, req.session.account.id],
         );
-        if (otherRows.length) {
-            return res.redirect('/account?linked=error&reason=already_linked');
-        }
+        if (otherRows.length) return fail('already_linked');
 
         await db.execute(
             `UPDATE accounts SET
@@ -2337,10 +2428,11 @@ app.get('/api/account/discord/callback', async (req, res) => {
                 req.session.account.id,
             ],
         );
+        if (fromDesktop) return renderDesktopReturn(res, { ok: true, provider: 'discord' });
         res.redirect('/account?linked=ok');
     } catch (err) {
         console.error('discord link callback:', err.response?.data || err.message);
-        res.redirect('/account?linked=error&reason=exchange');
+        return fail('exchange');
     }
 });
 
@@ -2366,14 +2458,17 @@ app.get('/api/account/shard/link', requireAccount, (req, res) => {
 
 app.get('/api/account/shard/callback', async (req, res) => {
     if (!req.session?.account?.id) return res.redirect('/account/login');
+    const fromDesktop = !!req.session.fromDesktop;
+    delete req.session.fromDesktop;
+    const fail = (reason) => fromDesktop
+        ? renderDesktopReturn(res, { ok: false, reason, provider: 'shard' })
+        : res.redirect(`/account?shardLinked=error&reason=${reason}`);
     const state = String(req.query.state || '');
     const expectedState = req.session.shardLinkState;
     req.session.shardLinkState = null;
-    if (!state || !expectedState || !timingSafeEqual(state, expectedState)) {
-        return res.redirect('/account?shardLinked=error&reason=state');
-    }
+    if (!state || !expectedState || !timingSafeEqual(state, expectedState)) return fail('state');
     const code = String(req.query.code || '');
-    if (!code) return res.redirect('/account?shardLinked=error&reason=code');
+    if (!code) return fail('code');
 
     try {
         const tokenRes = await axios.post(
@@ -2400,9 +2495,7 @@ app.get('/api/account/shard/callback', async (req, res) => {
             'SELECT id FROM accounts WHERE shard_id = ? AND id <> ? LIMIT 1',
             [me.id, req.session.account.id],
         );
-        if (otherRows.length) {
-            return res.redirect('/account?shardLinked=error&reason=already_linked');
-        }
+        if (otherRows.length) return fail('already_linked');
 
         await db.execute(
             `UPDATE accounts SET
@@ -2427,10 +2520,11 @@ app.get('/api/account/shard/callback', async (req, res) => {
                 req.session.account.id,
             ],
         );
+        if (fromDesktop) return renderDesktopReturn(res, { ok: true, provider: 'shard' });
         res.redirect('/account?shardLinked=ok');
     } catch (err) {
         console.error('shard link callback:', err.response?.data || err.message);
-        res.redirect('/account?shardLinked=error&reason=exchange');
+        return fail('exchange');
     }
 });
 

@@ -8,6 +8,7 @@ import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost, apiDelete, isApiError } from "@/api/client";
 import { biometricConfirm } from "@/lib/desktop";
+import { startOAuthLink } from "@/lib/oauthLink";
 import { useAuth } from "@/api/auth";
 import type { Account as AccountT } from "@/api/account";
 
@@ -72,15 +73,22 @@ export function DesktopAccount() {
   }, []);
   useEffect(() => { refreshTokens(); }, [refreshTokens]);
 
-  // Surface ?linked=ok / ?linked=error from the OAuth callback
+  // Surface ?linked=ok / ?linked=error from the OAuth callback. The desktop
+  // bridge uses `provider=discord|shard` to disambiguate; the web flow uses
+  // either `linked=…` (ShardGuard) or `shardLinked=…` (Shard).
   useEffect(() => {
     const linked = params.get("linked");
     const shardLinked = params.get("shardLinked");
+    const provider = params.get("provider");
     if (!linked && !shardLinked) return;
-    const which = shardLinked ? "Shard" : "ShardGuard";
+    const which = provider === "shard" || shardLinked ? "Shard" : "ShardGuard";
     const ok = (linked || shardLinked) === "ok";
-    if (ok) setBanner({ kind: "ok", text: `${which} lié avec succès.` });
-    else {
+    if (ok) {
+      setBanner({ kind: "ok", text: `${which} lié avec succès.` });
+      // Account data changed server-side — pull the fresh row so the
+      // ConnectionRow flips to "Lié" without a manual reload.
+      void refresh();
+    } else {
       const reason = params.get("reason");
       setBanner({
         kind: "error",
@@ -89,9 +97,9 @@ export function DesktopAccount() {
           : `La liaison ${which} a échoué. Réessaie.`,
       });
     }
-    params.delete("linked"); params.delete("shardLinked"); params.delete("reason");
+    params.delete("linked"); params.delete("shardLinked"); params.delete("reason"); params.delete("provider");
     setParams(params, { replace: true });
-  }, [params, setParams]);
+  }, [params, setParams, refresh]);
 
   function openAddPasskey() { setNewPasskeyName(""); setShowAddPasskey(true); }
   async function confirmAddPasskey() {
@@ -298,6 +306,7 @@ export function DesktopAccount() {
               linkedName={account.discord_username}
               linkedAvatar={account.discord_avatar}
               hrefLink="/api/account/discord/link"
+              onLink={() => { void startOAuthLink("discord"); }}
               onUnlink={unlink}
               extraAction={
                 account.discord_id ? (
@@ -316,6 +325,7 @@ export function DesktopAccount() {
               linkedName={account.shard_username}
               linkedAvatar={account.shard_avatar}
               hrefLink="/api/account/shard/link"
+              onLink={() => { void startOAuthLink("shard"); }}
               onUnlink={unlinkShard}
               extraAction={
                 account.shard_id ? (
@@ -609,7 +619,7 @@ function EmptyState({ label }: { label: string }) {
 /* ──────────────────────── Connection row ──────────────────────── */
 
 function ConnectionRow({
-  kind, title, caption, linkedId, linkedName, linkedAvatar, hrefLink, onUnlink, extraAction,
+  kind, title, caption, linkedId, linkedName, linkedAvatar, hrefLink, onLink, onUnlink, extraAction,
 }: {
   kind: "discord" | "google" | "github";
   title: string;
@@ -618,6 +628,8 @@ function ConnectionRow({
   linkedName: string | null;
   linkedAvatar?: string | null;
   hrefLink: string;
+  /** When provided, the Lier button calls this instead of navigating to hrefLink — used in Tauri to route OAuth through the system browser. */
+  onLink?: () => void;
   onUnlink: () => void;
   extraAction?: ReactNode;
 }) {
@@ -670,6 +682,15 @@ function ConnectionRow({
             style={{ background: "transparent", border: "1px solid var(--ds-border)", color: "var(--ds-text-mut)" }}
           >
             Délier
+          </button>
+        ) : onLink ? (
+          <button
+            type="button"
+            onClick={onLink}
+            className="px-3 h-8 inline-flex items-center rounded-[8px] text-[11.5px] font-bold transition-opacity hover:opacity-90"
+            style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border-strong)", color: "var(--ds-text)" }}
+          >
+            Lier
           </button>
         ) : (
           <a

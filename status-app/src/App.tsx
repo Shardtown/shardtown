@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthContext } from "@/api/auth";
+import { AccountContext, type Account as AccountData } from "@/api/account";
 import { apiGet } from "@/api/client";
 import type { DiscordUser } from "@/api/types";
 import { IS_DESKTOP } from "@/lib/desktop";
@@ -60,6 +61,8 @@ export function App() {
 function AppMain() {
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [account, setAccount] = useState<AccountData | null>(null);
+  const [accountLoading, setAccountLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -72,9 +75,21 @@ function AppMain() {
     }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  const refreshAccount = useCallback(async () => {
+    try {
+      const data = await apiGet<{ account: AccountData | null }>("/api/account/me");
+      setAccount(data.account);
+    } catch {
+      setAccount(null);
+    } finally {
+      setAccountLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { refresh(); refreshAccount(); }, [refresh, refreshAccount]);
 
   return (
+    <AccountContext.Provider value={{ account, loading: accountLoading, refresh: refreshAccount }}>
     <AuthContext.Provider value={{ user, loading, refresh }}>
       <DesktopGate>
         <BrowserRouter>
@@ -135,6 +150,7 @@ function AppMain() {
         </BrowserRouter>
       </DesktopGate>
     </AuthContext.Provider>
+    </AccountContext.Provider>
   );
 }
 

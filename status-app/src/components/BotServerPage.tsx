@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Lock, ArrowRight } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, isApiError } from "@/api/client";
+import { useAccount } from "@/api/account";
+import { startOAuthLink } from "@/lib/oauthLink";
 
 interface Guild {
   id: string;
@@ -41,10 +43,13 @@ export function BotServerPage({
   inviteScopes,
   showBotPicker,
 }: Props) {
+  const { account, loading: accountLoading } = useAccount();
   const [data, setData] = useState<BotServerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
   const [pickerGuildId, setPickerGuildId] = useState<string | null>(null);
+  const linkProvider: "discord" | "shard" = botKey === "shard" ? "shard" : "discord";
+  const linkedId = botKey === "shard" ? account?.shard_id : account?.discord_id;
 
   useEffect(() => {
     apiGet<BotServerData>(`/api/${botKey}/server`)
@@ -57,7 +62,7 @@ export function BotServerPage({
       .finally(() => setLoading(false));
   }, [botKey]);
 
-  if (loading) {
+  if (loading || accountLoading) {
     return (
       <AppLayout>
         <section className="container-wide pt-12">
@@ -67,6 +72,44 @@ export function BotServerPage({
               <div key={i} className="bg-[#0a0a0a] border border-white/5 rounded-3xl h-32 animate-pulse" />
             ))}
           </div>
+        </section>
+      </AppLayout>
+    );
+  }
+
+  // Logged into a Shardtown account but the relevant Discord identity
+  // (Discord for ShardGuard, Shard for Shard) isn't linked yet — no
+  // guilds to show, so prompt the user to connect their Discord.
+  if (account && !linkedId) {
+    return (
+      <AppLayout>
+        <section className="container-wide pt-24 max-w-2xl mx-auto text-center">
+          <img
+            src={botImage}
+            alt=""
+            className="w-16 h-16 rounded-2xl border border-white/10 mx-auto mb-8 object-cover"
+          />
+          <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Une dernière étape</p>
+          <h1
+            className="font-extrabold leading-tight tracking-tight uppercase mb-6"
+            style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
+          >
+            Connecte ton Discord
+          </h1>
+          <p className="text-white/50 text-lg mb-10 leading-relaxed">
+            On a besoin d'accéder à la liste de tes serveurs Discord pour t'afficher ceux où tu
+            peux configurer {botLabel}. Aucun mot de passe — juste l'autorisation OAuth de Discord.
+          </p>
+          <button
+            type="button"
+            onClick={() => { void startOAuthLink(linkProvider); }}
+            className="btn-liquid btn-liquid--discord rounded-full px-8 py-4 font-bold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2"
+          >
+            Se connecter avec Discord <ArrowRight className="w-4 h-4" />
+          </button>
+          <p className="text-white/30 text-xs mt-6">
+            Permissions demandées : <span className="text-white/50">identité publique</span> et <span className="text-white/50">liste des serveurs</span>. Rien d'autre.
+          </p>
         </section>
       </AppLayout>
     );
@@ -87,7 +130,7 @@ export function BotServerPage({
             {botLabel}
           </h1>
           <p className="text-white/50 text-lg mb-10 leading-relaxed">
-            Connectez-vous à votre compte Shardtown (avec Discord lié) pour gérer vos serveurs.
+            Connectez-vous à votre compte Shardtown pour gérer vos serveurs.
           </p>
           <Link
             to="/account/login"

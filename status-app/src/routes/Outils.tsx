@@ -5,7 +5,9 @@ import {
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth, avatarUrl } from "@/api/auth";
+import { useAccount } from "@/api/account";
 import { TiltCard } from "@/components/ui/tilt-card";
+import { startOAuthLink } from "@/lib/oauthLink";
 
 /**
  * Page /outils — catalogue de tout ce que Shardtown propose.
@@ -72,10 +74,11 @@ const SERVICES = [
 
 export function Outils() {
   const { user, loading } = useAuth();
+  const { account, loading: accountLoading } = useAccount();
   const reduce = useReducedMotion();
   const heroEase = [0.22, 1, 0.36, 1] as const;
 
-  if (loading) {
+  if (loading || accountLoading) {
     return (
       <AppLayout>
         <section className="container-wide pt-32 md:pt-40">
@@ -89,6 +92,54 @@ export function Outils() {
               />
             ))}
           </div>
+        </section>
+      </AppLayout>
+    );
+  }
+
+  // Logged into a Shardtown account but Discord isn't linked yet — the
+  // dashboard needs the user's guild list, so prompt the OAuth bridge.
+  if (!user && account && !account.discord_id) {
+    return (
+      <AppLayout>
+        <section className="container-wide pt-32 md:pt-40 pb-32 max-w-2xl mx-auto text-center">
+          <motion.p
+            className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
+            initial={{ opacity: 0, y: reduce ? 0 : 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.05, ease: heroEase }}
+          >
+            Une dernière étape
+          </motion.p>
+          <motion.h1
+            className="font-extrabold tracking-tight uppercase mb-10 leading-[0.9]"
+            style={{ fontSize: "clamp(3rem, 8vw, 6rem)" }}
+            initial={{ opacity: 0, x: reduce ? 0 : -120, filter: reduce ? "blur(0px)" : "blur(8px)" }}
+            animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+            transition={{ duration: 0.95, delay: 0.15, ease: heroEase }}
+          >
+            Connecte ton Discord
+          </motion.h1>
+          <motion.p
+            className="text-lg md:text-xl text-white/55 mb-12 leading-relaxed"
+            initial={{ opacity: 0, x: reduce ? 0 : 80 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
+          >
+            Pour t'afficher la liste de tes serveurs et te laisser configurer ShardGuard,
+            on a besoin que tu autorises Shardtown à voir tes serveurs Discord. Aucun
+            mot de passe — juste l'OAuth officielle de Discord.
+          </motion.p>
+          <button
+            type="button"
+            onClick={() => { void startOAuthLink("discord"); }}
+            className="btn-liquid btn-liquid--discord inline-flex items-center gap-2 px-6 py-3 rounded-full text-sm font-bold hover:opacity-90 transition-opacity"
+          >
+            Se connecter avec Discord <ArrowRight className="w-4 h-4" />
+          </button>
+          <p className="text-white/30 text-xs mt-6">
+            Permissions demandées : <span className="text-white/50">identité publique</span> et <span className="text-white/50">liste des serveurs</span>.
+          </p>
         </section>
       </AppLayout>
     );

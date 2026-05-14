@@ -34,17 +34,21 @@ export function DeepLinkHandler() {
         const target = u.pathname.replace(/^\/+/, "");
 
         switch (action) {
-          case "open":
+          case "open": {
+            // Forward the deep link's query string so callbacks can carry
+            // status flags (e.g. shardtwn://open/account?linked=ok&provider=discord).
+            const search = u.search || "";
             if (target.startsWith("guild/")) {
               const id = target.slice("guild/".length);
-              if (/^\d+$/.test(id)) navigate(`/shardguard/guild/${id}`);
+              if (/^\d+$/.test(id)) navigate(`/shardguard/guild/${id}${search}`);
               return;
             }
-            if (target === "account") { navigate("/account"); return; }
-            if (target === "preferences") { navigate("/preferences"); return; }
-            if (target === "outils" || target === "") { navigate("/outils"); return; }
+            if (target === "account") { navigate(`/account${search}`); return; }
+            if (target === "preferences") { navigate(`/preferences${search}`); return; }
+            if (target === "outils" || target === "") { navigate(`/outils${search}`); return; }
             console.warn("[deep-link] unknown open target:", target);
             return;
+          }
 
           case "activate": {
             // Fire-and-forget POST. The server-side handler returns the
