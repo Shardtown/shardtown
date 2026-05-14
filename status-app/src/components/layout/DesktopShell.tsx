@@ -679,7 +679,6 @@ function UpdateButton() {
   const [progress, setProgress] = useState<UpdateProgress>({ kind: "idle" });
   const [menuOpen, setMenuOpen] = useState(false);
   const [checking, setChecking] = useState(false);
-  const [lastChecked, setLastChecked] = useState<number | null>(null);
 
   const poll = useCallback(async () => {
     setChecking(true);
@@ -697,7 +696,6 @@ function UpdateButton() {
         }
         return u;
       });
-      setLastChecked(Date.now());
     } finally {
       setChecking(false);
     }
@@ -873,11 +871,6 @@ function UpdateButton() {
                 <p className="text-[11.5px]" style={{ color: "var(--ds-text-mut)" }}>
                   Tu utilises la dernière version.
                 </p>
-                {lastChecked && (
-                  <p className="text-[10.5px] font-mono-num mt-1.5" style={{ color: "var(--ds-text-faint)" }}>
-                    Dernière vérification : {new Date(lastChecked).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                )}
               </div>
 
               <div className="px-4 pb-4">
