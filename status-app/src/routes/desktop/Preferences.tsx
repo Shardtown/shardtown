@@ -432,13 +432,13 @@ const THEMES: ThemeSpec[] = [
   {
     id: "aurora",
     label: "Aurora",
-    description: "Gradient animé multicolore.",
+    description: "Halos indigo subtils sur fond profond.",
     preview: {
       background:
-        "radial-gradient(circle at 25% 30%, rgba(37,99,235,0.55) 0%, transparent 45%), " +
-        "radial-gradient(circle at 75% 65%, rgba(139,92,246,0.55) 0%, transparent 45%), " +
-        "radial-gradient(circle at 60% 25%, rgba(236,72,153,0.4) 0%, transparent 40%), " +
-        "linear-gradient(135deg, rgb(12,18,42), rgb(6,8,20))",
+        "radial-gradient(ellipse 90% 60% at 50% 0%, rgba(91, 109, 255, 0.45) 0%, transparent 65%), " +
+        "radial-gradient(ellipse 70% 50% at 85% 100%, rgba(168, 85, 247, 0.38) 0%, transparent 65%), " +
+        "radial-gradient(ellipse 60% 50% at 15% 70%, rgba(59, 130, 246, 0.32) 0%, transparent 65%), " +
+        "linear-gradient(135deg, rgb(6,10,28), rgb(0,0,0))",
     },
     previewFg: "#fff",
   },
