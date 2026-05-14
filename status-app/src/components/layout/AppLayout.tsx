@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
 import { Header } from "@/components/Header";
-import { CinematicFooter } from "@/components/ui/motion-footer";
+import { Footer } from "@/components/layout/Footer";
 import { DesktopShell } from "@/components/layout/DesktopShell";
 import { IS_DESKTOP } from "@/lib/desktop";
 
@@ -48,7 +48,7 @@ export function AppLayout({ children, noBackground }: Props) {
       )}
       <Header />
       <main className="pt-32 pb-24">{children}</main>
-      <CinematicFooter />
+      <Footer />
     </div>
   );
 }
