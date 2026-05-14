@@ -61,12 +61,14 @@
     /* Fond statique coloré du body — se voit à travers les 40% de
        transparence de l'aurora wrapper (opacity-60), donc même quand
        les blobs animés cyclent hors d'une zone de la viewport on a
-       toujours une teinte plutôt qu'un retour au noir. Désactivé en
-       thèmes "noir" et "light" pour rester strictement plat. */
+       toujours une teinte plutôt qu'un retour au noir. Alphas fortes
+       parce qu'on perd ~60% de l'intensité dans le compositing.
+       Désactivé en thèmes "noir" et "light" pour rester strictement plat. */
     --ds-bg-image:
-      radial-gradient(ellipse 90% 60% at 50% 0%, rgba(91, 109, 255, 0.22) 0%, transparent 60%),
-      radial-gradient(ellipse 70% 50% at 85% 100%, rgba(168, 85, 247, 0.18) 0%, transparent 60%),
-      radial-gradient(ellipse 60% 50% at 15% 70%, rgba(59, 130, 246, 0.16) 0%, transparent 60%);
+      radial-gradient(ellipse 120% 80% at 50% 0%, rgba(91, 109, 255, 0.75) 0%, rgba(91, 109, 255, 0.15) 50%, transparent 80%),
+      radial-gradient(ellipse 100% 70% at 85% 100%, rgba(168, 85, 247, 0.65) 0%, rgba(168, 85, 247, 0.12) 50%, transparent 80%),
+      radial-gradient(ellipse 90% 70% at 15% 80%, rgba(59, 130, 246, 0.55) 0%, transparent 60%),
+      linear-gradient(180deg, rgba(40, 25, 90, 0.5) 0%, rgba(15, 10, 35, 0.3) 100%);
   }
 
   [data-theme="noir"] {
