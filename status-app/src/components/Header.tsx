@@ -5,7 +5,7 @@ import { useAuth, avatarUrl } from "@/api/auth";
 type NavItem = { to: string; label: string; external?: boolean };
 
 const NAV: NavItem[] = [
-  { to: "/#products", label: "Produits", external: true },
+  { to: "/produits", label: "Produits" },
   { to: "/#services", label: "Services", external: true },
   { to: "/download", label: "Télécharger" },
   { to: "/wiki", label: "Wiki" },

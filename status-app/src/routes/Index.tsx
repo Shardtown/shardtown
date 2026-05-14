@@ -1,11 +1,9 @@
-import { Link } from "react-router-dom";
 import { ArrowRight, MessageSquare, Mail } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TiltCard } from "@/components/ui/tilt-card";
 import { LiquidButton } from "@/components/ui/liquid-glass-button";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
-import { HolographicCard } from "@/components/ui/holographic-card";
 
 const SERVICES = [
   {
@@ -30,25 +28,6 @@ const SERVICES = [
     description:
       "Architecture des salons, rôles, sécurité, modération, vérification, niveaux, économie. On structure votre Discord pour qu'il scale.",
     href: "#contact",
-    accent: "text-emerald-400",
-  },
-];
-
-const TOOLS = [
-  {
-    label: "ShardGuard",
-    tagline: "Sécurité Discord",
-    description: "Anti-raid, vérification captcha, modération avancée et logs en temps réel.",
-    href: "/shardguard/server",
-    avatar: "/image/shardguard.png",
-    accent: "text-blue-400",
-  },
-  {
-    label: "Shard",
-    tagline: "Multi-fonctions premium",
-    description: "Niveaux, économie, tickets, sondages, giveaways, embed builder et plus.",
-    href: "/shard/server",
-    avatar: "/image/shard.png",
     accent: "text-emerald-400",
   },
 ];
@@ -151,53 +130,6 @@ export function Index() {
               </a>
             </RevealItem>
           ))}
-        </RevealStagger>
-      </section>
-
-      {/* Vertical spacer between SERVICES grid and "Nos outils" */}
-      <div className="py-8 md:py-10" aria-hidden />
-
-      {/* Outils maison — slides in from the RIGHT (alternance avec services) */}
-      <section id="products" className="container-wide pt-48 pb-48 overflow-x-clip">
-        <Reveal direction="right" distance={80} className="max-w-3xl mb-20 ml-auto md:text-right">
-          <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
-            Nos outils
-          </p>
-          <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05] mb-6">
-            Construits, testés,
-            <br />
-            déployés.
-          </h2>
-          <p className="text-lg text-white/50 leading-relaxed">
-            Les bots qu'on utilise sur nos missions, disponibles directement pour votre serveur.
-          </p>
-        </Reveal>
-        <RevealStagger className="grid md:grid-cols-2 gap-8 md:gap-10" staggerChildren={0.1} delayChildren={0.15}>
-          {TOOLS.map(t => {
-            return (
-              <RevealItem key={t.label} direction="right" distance={70} className="relative hover:z-10">
-                <Link to={t.href} className="group block h-full">
-                  <HolographicCard className="h-full">
-                    <div className="flex items-start gap-6 h-full">
-                      <div className="w-14 h-14 rounded-xl overflow-hidden bg-white/[0.04] border border-white/[0.08] flex-shrink-0">
-                        <img src={t.avatar} alt="" className="w-full h-full object-cover" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <h3 className="font-bold text-xl">{t.label}</h3>
-                          <span className={`text-[10px] font-bold uppercase tracking-widest ${t.accent}`}>{t.tagline}</span>
-                        </div>
-                        <p className="text-sm text-white/55 leading-relaxed mb-5">{t.description}</p>
-                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-white/70 group-hover:text-white group-hover:gap-2 transition-all">
-                          Configurer sur mon serveur <ArrowRight className="w-3 h-3" />
-                        </span>
-                      </div>
-                    </div>
-                  </HolographicCard>
-                </Link>
-              </RevealItem>
-            );
-          })}
         </RevealStagger>
       </section>
 

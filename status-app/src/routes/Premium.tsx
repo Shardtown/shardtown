@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  Check, Crown, Lock, Star, ChevronDown, Shield, Zap, Sparkles,
-  Headset, Infinity as InfinityIcon, Bolt, Heart,
+  Check, Crown, Lock, Star, ChevronDown, Shield, Heart,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -35,15 +34,6 @@ const FEATURES = {
     "Accès anticipé aux nouveautés",
   ],
 };
-
-const HIGHLIGHTS = [
-  { icon: Shield,     title: "Sécurité avancée",      desc: "Anti-raid + quarantaine automatique, mots interdits illimités, alerte modérateur en DM, blacklist globale." },
-  { icon: Zap,        title: "Engagement boosté",     desc: "20 paliers XP, multiplicateurs par rôle, sondages anonymes, parrainage, alertes Twitch & YouTube." },
-  { icon: Sparkles,   title: "Tickets pro",           desc: "Panel public, transcripts, jusqu'à 10 tickets/membre, journalisation complète." },
-  { icon: Headset,    title: "Support prioritaire",   desc: "Réponses < 4 h en jours ouvrés, accès direct au salon premium sur le serveur de support." },
-  { icon: InfinityIcon, title: "Backup & restauration", desc: "Sauvegarde automatique de toute ta config. Restauration en un clic en cas de fausse manip." },
-  { icon: Bolt,  title: "Mises à jour anticipées", desc: "Tu testes les nouveaux modules avant tout le monde, et tu votes sur les prochains." },
-];
 
 const COMPARISON: { title: string; rows: { label: string; free: string; premium: string }[] }[] = [
   {
@@ -184,7 +174,7 @@ export function Premium() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  const buttonLabel = useMemo(() => `Payer avec Stripe — ${PRICE[plan].label}`, [plan]);
+  const buttonLabel = "Payer avec Stripe";
 
   async function startCheckout() {
     if (!guildId) {
@@ -331,27 +321,6 @@ export function Premium() {
           </div>
         </div>
 
-        {/* Highlights — what you get */}
-        <p className="text-sm font-bold tracking-[0.22em] text-white/40 uppercase mb-3">Ce que tu débloques</p>
-        <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-8">Six raisons concrètes de passer Premium</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-20">
-          {HIGHLIGHTS.map(h => {
-            const Icon = h.icon;
-            return (
-              <div
-                key={h.title}
-                className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-5 hover:border-white/15 hover:bg-white/[0.035] transition-colors"
-              >
-                <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 flex items-center justify-center mb-3">
-                  <Icon className="w-4 h-4" />
-                </div>
-                <h3 className="font-bold text-[15px] mb-1.5">{h.title}</h3>
-                <p className="text-[13.5px] text-white/55 leading-relaxed">{h.desc}</p>
-              </div>
-            );
-          })}
-        </div>
-
         {/* Activate */}
         <div id="activate" className="max-w-2xl mx-auto mb-20 scroll-mt-32">
           <p className="text-sm font-bold tracking-[0.22em] text-white/40 uppercase mb-3 text-center">Activer Premium</p>
@@ -434,9 +403,8 @@ export function Premium() {
                   type="button"
                   onClick={startCheckout}
                   disabled={submitting || !guildId}
-                  className="btn-liquid btn-liquid--gold w-full rounded-full px-6 py-4 font-extrabold text-sm flex items-center justify-center gap-2"
+                  className="btn-liquid btn-liquid--gold w-full rounded-full px-6 py-4 font-extrabold text-sm flex items-center justify-center"
                 >
-                  <Crown className="w-4 h-4" />
                   {submitting ? "Redirection vers Stripe…" : buttonLabel}
                 </button>
                 <p className="text-[11px] text-white/35 text-center leading-relaxed">

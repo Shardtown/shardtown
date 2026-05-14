@@ -27,6 +27,7 @@ import { DesktopPremium } from "@/routes/desktop/Premium";
 import { DesktopBotServer } from "@/routes/desktop/BotServer";
 import { TrayPanel } from "@/routes/desktop/TrayPanel";
 import { Premium } from "@/routes/Premium";
+import { Produits } from "@/routes/Produits";
 import { ShardServer } from "@/routes/shard/Server";
 import { ShardGuild } from "@/routes/shard/Guild";
 import { ShardGuardServer } from "@/routes/shardguard/Server";
@@ -104,6 +105,7 @@ function AppMain() {
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/premium" element={<Premium />} />
+                  <Route path="/produits" element={<Produits />} />
                 </>
               )}
               <Route path="/outils" element={IS_DESKTOP ? <DesktopOverview /> : <Outils />} />
