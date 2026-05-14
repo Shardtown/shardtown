@@ -328,13 +328,15 @@ export function DesktopRpc() {
 
         <style>{`
           .rpc-input {
-            background: var(--ds-panel);
+            -webkit-appearance: none;
+            appearance: none;
+            background: var(--ds-bg-2);
             border: 1px solid var(--ds-border);
             color: var(--ds-text);
           }
           .rpc-input::placeholder { color: var(--ds-text-dim); }
           .rpc-input:focus {
-            background: var(--ds-panel-2);
+            background: var(--ds-bg-1);
             border-color: var(--ds-border-strong);
           }
         `}</style>
