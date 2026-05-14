@@ -40,9 +40,13 @@ export function Terms() {
           l'accès et l'utilisation des services proposés par <strong>Shardtown</strong>
           (ci-après « <strong>l'Éditeur</strong> ») via le site
           <a href="https://shardtwn.fr" className="underline mx-1">shardtwn.fr</a>
-          et tout sous-domaine, ainsi que les bots Discord ShardGuard et Shard,
-          le tableau de bord, l'assistante IA Samia et toute prestation
-          sur mesure (ensemble : les « <strong>Services</strong> »).
+          et tout sous-domaine, les applications mobiles et desktop éditées
+          par Shardtown, les bots Discord (notamment ShardGuard et Shard),
+          le tableau de bord, l'assistante IA Samia, les services en ligne
+          et abonnements numériques, ainsi que toute prestation de
+          conception, de développement, d'intégration, de configuration ou
+          de maintenance fournie par l'Éditeur (ensemble : les
+          « <strong>Services</strong> »).
         </p>
         <p>
           En accédant ou en utilisant les Services, vous reconnaissez avoir
