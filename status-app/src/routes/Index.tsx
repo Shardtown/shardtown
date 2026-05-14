@@ -135,12 +135,12 @@ export function Index() {
                   effect="gravitate"
                   tiltLimit={6}
                   scale={1.02}
-                  className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-10 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full"
+                  className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-10 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full flex flex-col"
                 >
                   <h3 className="text-2xl font-bold mb-3">{s.label}</h3>
                   <p className={`text-xs font-bold uppercase tracking-widest ${s.accent} mb-6`}>{s.tagline}</p>
                   <p className="text-white/55 leading-relaxed mb-10">{s.description}</p>
-                  <span className="inline-flex items-center gap-2 text-sm font-bold text-white group-hover:gap-3 transition-all">
+                  <span className="mt-auto inline-flex items-center gap-2 text-sm font-bold text-white group-hover:gap-3 transition-all">
                     En discuter <ArrowRight className="w-4 h-4" />
                   </span>
                 </TiltCard>
@@ -242,7 +242,7 @@ export function Index() {
             Un projet en tête ?
           </h2>
           <p className="text-lg text-white/50 mb-12 max-w-xl mx-auto leading-relaxed">
-            Site, bot, dashboard, configuration de serveur — décrivez ce dont vous avez besoin,
+            Site, bot, dashboard, configuration de serveur, décrivez ce dont vous avez besoin,
             on revient avec une proposition sous 48h.
           </p>
           <div className="flex items-center justify-center gap-3 flex-wrap">

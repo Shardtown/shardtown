@@ -42,7 +42,7 @@ export function AppLayout({ children, noBackground }: Props) {
               while the sections below catch the centered blobs. */}
           <div
             aria-hidden
-            className="absolute inset-x-0 top-0 h-[70vh] [background:radial-gradient(ellipse_80%_70%_at_50%_0%,rgba(91,109,255,0.45)_0%,rgba(139,92,246,0.18)_45%,transparent_75%)]"
+            className="absolute inset-x-0 top-0 h-[140vh] [background:radial-gradient(ellipse_90%_100%_at_50%_0%,rgba(91,109,255,0.45)_0%,rgba(139,92,246,0.22)_35%,rgba(91,109,255,0.10)_60%,transparent_100%)]"
           />
         </div>
       )}
