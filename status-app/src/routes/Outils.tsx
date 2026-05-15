@@ -33,10 +33,10 @@ const BOTS = [
 ];
 
 const ASSISTANT = {
-  label: "Shard · Discussion",
+  label: "Samia",
   tagline: "Assistante IA",
   description:
-    "Pose tes questions sur le bot, le dashboard, le Premium ou nos services. Shard connaît le wiki par cœur.",
+    "Pose tes questions sur le bot, le dashboard, le Premium ou nos services. Samia connaît le wiki par cœur.",
   href: "/assistant",
   icon: Sparkles,
 };
@@ -261,7 +261,7 @@ export function Outils() {
             <span className="text-[12px] text-white/35">en libre-service</span>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
-            <ToolCard {...ASSISTANT} cta="Discuter avec Shard" />
+            <ToolCard {...ASSISTANT} cta="Discuter avec Samia" />
           </div>
         </motion.div>
 
