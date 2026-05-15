@@ -43,14 +43,21 @@
     --ds-border-strong: rgba(255, 255, 255, 0.12);
     --ds-panel: rgba(255, 255, 255, 0.025);
     --ds-panel-2: rgba(255, 255, 255, 0.055);
-    --ds-accent-bg: #fafafa;
-    --ds-accent-fg: #0a0a0a;
+    --ds-accent-bg: #2563eb;
+    --ds-accent-fg: #ffffff;
 
-    /* Brand + status — accent neutre (blanc) par défaut, status colors
-       gardées mais désaturées d'un cran pour matcher la sobriété. */
-    --ds-accent-rgb: 250, 250, 250;
+    /* Brand : accent bleu gradient. Trois stops (light → mid → deep) pour
+       les CTA et surfaces accentuées ; les composants utilisent
+       background: var(--ds-accent-gradient). Pour les borders / text /
+       glow on garde un solide rgb(59, 130, 246) accessible via
+       rgba(var(--ds-accent-rgb), <a>). */
+    --ds-accent-rgb: 59, 130, 246;
     --ds-accent: rgb(var(--ds-accent-rgb));
-    --ds-accent-on: #0a0a0a;
+    --ds-accent-light: #60a5fa;
+    --ds-accent-deep: #1d4ed8;
+    --ds-accent-gradient: linear-gradient(135deg, #60a5fa 0%, #3b82f6 45%, #1d4ed8 100%);
+    --ds-accent-gradient-soft: linear-gradient(135deg, rgba(96, 165, 250, 0.14) 0%, rgba(59, 130, 246, 0.10) 50%, rgba(29, 78, 216, 0.14) 100%);
+    --ds-accent-on: #ffffff;
     --ds-status-ok-rgb: 52, 211, 153;
     --ds-status-ok: rgb(var(--ds-status-ok-rgb));
     --ds-status-warn-rgb: 251, 191, 36;
@@ -81,8 +88,10 @@
     --ds-border-strong: rgba(0, 0, 0, 0.16);
     --ds-panel: rgba(0, 0, 0, 0.025);
     --ds-panel-2: rgba(0, 0, 0, 0.05);
-    --ds-accent-bg: #09090b;
-    --ds-accent-fg: #fafafa;
+    /* L'accent bleu reste identique entre dark/light — c'est la couleur
+       de marque, pas dépendante du thème. */
+    --ds-accent-bg: #2563eb;
+    --ds-accent-fg: #ffffff;
   }
 
   /* Sidebar nav-item hover (theme-aware, replaces the prior Tailwind
@@ -116,6 +125,23 @@
   .font-mono-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "lnum" 1; letter-spacing: -0.01em; }
   .container-wide { max-width: 1600px; margin: 0 auto; padding: 0 24px; }
   .container-dashboard { max-width: 1600px; margin: 0 auto; padding: 0 28px; }
+
+  /* Bleu gradient de marque — utilisable sur CTA / surfaces accentuées.
+     `.bg-accent-gradient` pour la surface pleine, `.bg-accent-gradient-soft`
+     pour les hover backgrounds / glow translucides. `.text-accent-gradient`
+     pour les titres "shiny". */
+  .bg-accent-gradient { background-image: var(--ds-accent-gradient); }
+  .bg-accent-gradient-soft { background-image: var(--ds-accent-gradient-soft); }
+  .text-accent-gradient {
+    background-image: var(--ds-accent-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+  .ring-accent-glow {
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35), 0 10px 40px -10px rgba(59, 130, 246, 0.45);
+  }
 
   /* Liquid glass — backdrop-blurred translucent surface used on desktop
      overlays (popovers, modals, toasts). Layered: blur + saturate for the
