@@ -177,7 +177,7 @@ export function Index() {
                 {/* Soft emerald glow */}
                 <div className="absolute top-1/2 right-8 -translate-y-1/2 w-64 h-64 rounded-full bg-emerald-500/[0.07] blur-3xl pointer-events-none" aria-hidden />
                 {/* Logo platform — contained inside the card */}
-                <AppleLogo className="absolute top-1/2 right-6 -translate-y-1/2 w-40 h-40 text-white/[0.06] pointer-events-none" />
+                <AppleLogo className="absolute top-1/2 right-6 -translate-y-1/2 w-64 h-64 text-white/[0.07] pointer-events-none" />
 
                 <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter mb-auto pt-2">
                   macOS
@@ -199,7 +199,7 @@ export function Index() {
             <HolographicCard className="h-full">
               <div className="relative flex flex-col h-full min-h-[280px]">
                 <div className="absolute top-1/2 right-8 -translate-y-1/2 w-64 h-64 rounded-full bg-amber-500/[0.05] blur-3xl pointer-events-none" aria-hidden />
-                <WindowsLogo className="absolute top-1/2 right-6 -translate-y-1/2 w-36 h-36 text-white/[0.05] pointer-events-none" />
+                <WindowsLogo className="absolute top-1/2 right-6 -translate-y-1/2 w-60 h-60 text-white/[0.06] pointer-events-none" />
 
                 <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter text-white/70 mb-auto pt-2">
                   Windows
