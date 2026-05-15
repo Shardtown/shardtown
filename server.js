@@ -5048,10 +5048,12 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
         webhookAlertChannelId = '',
     } = req.body;
 
-    // Convertir les règles en JSON pour la DB si ce sont des tableaux
-    const rulesFrJson = Array.isArray(rules_fr) ? JSON.stringify(rules_fr.filter(r => r.trim())) : rules_fr;
-    const rulesEnJson = Array.isArray(rules_en) ? JSON.stringify(rules_en.filter(r => r.trim())) : rules_en;
-    const bannedWordsJson = Array.isArray(bannedWords) ? JSON.stringify(bannedWords.filter(w => w.trim())) : bannedWords;
+    // Normalise d'abord en tableaux nettoyés (entrées vides retirées).
+    // Les caps Premium ci-dessous s'appuient sur la longueur réelle.
+    const rulesFrArr = Array.isArray(rules_fr) ? rules_fr.filter(r => typeof r === 'string' && r.trim()) : null;
+    const rulesEnArr = Array.isArray(rules_en) ? rules_en.filter(r => typeof r === 'string' && r.trim()) : null;
+    const bannedArr  = Array.isArray(bannedWords) ? bannedWords.filter(w => typeof w === 'string' && w.trim()) : null;
+
     let modRolesJson;
     try { modRolesJson = JSON.stringify(JSON.parse(modRoles)); } catch { modRolesJson = '[]'; }
 
@@ -5062,6 +5064,41 @@ app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
         // Récupérer l'ancienne configuration pour comparer
         const [oldSettingsRows] = await db.execute('SELECT * FROM settings WHERE guildId = ?', [guildID]);
         const oldSettings = oldSettingsRows[0] || {};
+
+        // ─── Caps Premium ShardGuard ────────────────────────────────────
+        // Aligné sur la page /premium :
+        //   • Mots interdits : 3 max gratuit / illimité Premium
+        //   • Règles serveur : 3 max gratuit / 20 max Premium (par langue)
+        // Enforced ici à l'écriture pour qu'un client custom (ou un repost
+        // direct sur l'API) ne puisse pas contourner.
+        const isPremium = !!oldSettings.isPremium;
+        const MAX_BANNED = isPremium ? Infinity : 3;
+        const MAX_RULES = isPremium ? 20 : 3;
+        if (bannedArr && bannedArr.length > MAX_BANNED) {
+            return res.status(403).json({
+                success: false,
+                code: 'premium_required',
+                error: `Limite atteinte : ${MAX_BANNED} mots interdits maximum sans Premium (${bannedArr.length} soumis). Passe Premium pour les avoir illimités.`,
+            });
+        }
+        if (rulesFrArr && rulesFrArr.length > MAX_RULES) {
+            return res.status(403).json({
+                success: false,
+                code: 'premium_required',
+                error: `Limite atteinte : ${MAX_RULES} règles FR maximum ${isPremium ? '(plafond Premium)' : "(passe Premium pour aller jusqu'à 20)"} — ${rulesFrArr.length} soumises.`,
+            });
+        }
+        if (rulesEnArr && rulesEnArr.length > MAX_RULES) {
+            return res.status(403).json({
+                success: false,
+                code: 'premium_required',
+                error: `Limite atteinte : ${MAX_RULES} règles EN maximum ${isPremium ? '(plafond Premium)' : "(passe Premium pour aller jusqu'à 20)"} — ${rulesEnArr.length} soumises.`,
+            });
+        }
+
+        const rulesFrJson = rulesFrArr ? JSON.stringify(rulesFrArr) : rules_fr;
+        const rulesEnJson = rulesEnArr ? JSON.stringify(rulesEnArr) : rules_en;
+        const bannedWordsJson = bannedArr ? JSON.stringify(bannedArr) : bannedWords;
 
         await db.execute(`
             INSERT INTO settings (guildId, language, verifiedRole, rules_fr, rules_en, serverLocked, accessCode, verificationChannelId, accessCodeChannelId, captchaDigits, captchaNoise, captchaAttempts, verificationTimeout, autoKickUnverified, modRoles, bannedWords, bannedWordsEnabled, bannedWordsAction, automodAntiSpam, automodSpamThreshold, automodSpamInterval, automodSpamAction, automodAntiLinks, automodLinksAction, automodAntiRaid, automodRaidThreshold, automodRaidAction, warnMessage, muteMessage, kickMessage, banMessage, notifAutoDelete, notifDeleteDelay, automodAntiCaps, automodCapsThreshold, automodCapsAction, automodSlowmodeEnabled, automodSlowmodeDuration, automodSlowmodeExpiry, warnThresholdMute, warnThresholdKick, warnThresholdBan, warnMuteDuration, isPremium, antiRaidEnabled, antiRaidThreshold, antiRaidWindow, quarantineEnabled, quarantineRoleId, quarantineDuration, modAlertUserId, webhookAlertEnabled, webhookAlertChannelId)

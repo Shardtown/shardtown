@@ -116,12 +116,16 @@ function RuleEditor({ rules, onChange, lang }: { rules: string[]; onChange: (r: 
 export function RulesTab({ settings, update }: TabProps) {
   const fr = parseJsonArray(settings.rules_fr);
   const en = parseJsonArray(settings.rules_en);
+  const premium = isTrue(settings.isPremium);
+  const max = premium ? 20 : 3;
+  const frHint = `${fr.length}/${max} règles${premium ? "" : " — passe Premium pour 20"}`;
+  const enHint = `${en.length}/${max} rules${premium ? "" : " — go Premium for 20"}`;
   return (
     <div className="grid md:grid-cols-2 gap-4">
-      <SectionCard title="Règlement (FR)" description="Affiché dans le message de vérification pour les utilisateurs francophones.">
+      <SectionCard title="Règlement (FR)" description={`Affiché dans le message de vérification pour les utilisateurs francophones. ${frHint}.`}>
         <RuleEditor rules={fr} onChange={r => update({ rules_fr: JSON.stringify(r) })} lang="fr" />
       </SectionCard>
-      <SectionCard title="Règlement (EN)" description="Displayed for English-speaking members.">
+      <SectionCard title="Règlement (EN)" description={`Displayed for English-speaking members. ${enHint}.`}>
         <RuleEditor rules={en} onChange={r => update({ rules_en: JSON.stringify(r) })} lang="en" />
       </SectionCard>
     </div>
@@ -555,7 +559,14 @@ export function BannedWordsTab({ settings, update }: TabProps) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Liste des mots" description="Sensibles à la casse non. Wildcards : `*` pour caractères multiples.">
+      <SectionCard
+        title="Liste des mots"
+        description={
+          isTrue(settings.isPremium)
+            ? `Sensibles à la casse non. Wildcards : \`*\` pour caractères multiples. ${words.length} mots (illimité Premium).`
+            : `Sensibles à la casse non. Wildcards : \`*\` pour caractères multiples. ${words.length}/3 — passe Premium pour des mots illimités.`
+        }
+      >
         <div className="space-y-2">
           {words.length === 0 && (
             <p className="text-[12px] text-white/30 italic">Aucun mot. Ajoutez-en ci-dessous.</p>
