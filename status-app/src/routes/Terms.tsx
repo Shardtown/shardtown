@@ -41,8 +41,9 @@ export function Terms() {
           (ci-après « <strong>l'Éditeur</strong> ») via le site
           <a href="https://shardtwn.fr" className="underline mx-1">shardtwn.fr</a>
           et tout sous-domaine, les applications mobiles et desktop éditées
-          par Shardtown, les bots Discord (notamment ShardGuard et Shard),
-          le tableau de bord, l'assistante IA Samia, les services en ligne
+          par Shardtown, le bot Discord Samia (anciennement ShardGuard et
+          Shard, désormais fusionnés), le tableau de bord, l'assistante IA
+          Samia, les services en ligne
           et abonnements numériques, ainsi que toute prestation de
           conception, de développement, d'intégration, de configuration ou
           de maintenance fournie par l'Éditeur (ensemble : les

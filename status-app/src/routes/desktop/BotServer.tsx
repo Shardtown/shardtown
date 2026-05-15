@@ -23,76 +23,73 @@ interface GuildsResponse {
   stale: boolean;
 }
 
-interface Props {
-  kind: "shardguard" | "shard";
+const BOT_LABEL = "Samia";
+const BOT_TAG = "Bot Discord · sécurité, modération & communauté";
+const BOT_AVATAR = "/image/samia.png";
+
+function inviteUrl(guildId: string, clientId: string) {
+  return `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=${encodeURIComponent("bot applications.commands")}&guild_id=${guildId}`;
 }
 
-const BOT_LABEL = {
-  shardguard: { name: "Shard · Sécurité",    tag: "Sécurité Discord",          desc: "Anti-raid, captcha, modération automatique." },
-  shard:      { name: "Shard · Communauté", tag: "Communauté & engagement",   desc: "Niveaux, économie, tickets, sondages, giveaways." },
-};
-
-const CLIENT_ID_KEY = {
-  shardguard: "VITE_SHARDGUARD_CLIENT_ID",
-  shard:      "VITE_SHARD_CLIENT_ID",
-} as const;
-
-function inviteUrl(kind: "shardguard" | "shard", guildId: string, clientIdOverride?: string) {
-  // The /api/{kind}/server response includes clientId; we keep this as a
-  // fallback if it's missing.
-  const fallbackEnv = (import.meta.env[CLIENT_ID_KEY[kind]] as string | undefined) ?? "";
-  const clientId = clientIdOverride || fallbackEnv;
-  const scope = kind === "shardguard"
-    ? "bot applications.commands"
-    : "bot applications.commands";
-  return `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=${encodeURIComponent(scope)}&guild_id=${guildId}`;
-}
-
-export function DesktopBotServer({ kind }: Props) {
-  const [data, setData] = useState<GuildsResponse | null>(null);
+export function DesktopBotServer() {
+  const [guilds, setGuilds] = useState<Guild[]>([]);
   const [clientId, setClientId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState("");
 
   async function load() {
+    // Fetch both legacy guild lists in parallel and merge — a guild is
+    // bot_present if either Discord-OAuth (ex-ShardGuard) or Shard-OAuth
+    // (ex-Shard) reports it. Same for clientId (prefer the Shard one used
+    // by the active bot identity).
     try {
-      // Fetch the guild list (annotated with bot_present) AND the legacy
-      // /api/{kind}/server endpoint just for the clientId (used for invites).
-      const [g, srv] = await Promise.all([
-        apiGet<GuildsResponse>(`/api/account/guilds?bot=${kind}`),
-        apiGet<{ clientId?: string }>(`/api/${kind}/server`).catch(() => ({ clientId: "" })),
+      const [sec, com, secSrv, comSrv] = await Promise.all([
+        apiGet<GuildsResponse>("/api/account/guilds?bot=shardguard").catch(() => null),
+        apiGet<GuildsResponse>("/api/account/guilds?bot=shard").catch(() => null),
+        apiGet<{ clientId?: string }>("/api/shardguard/server").catch(() => ({ clientId: "" })),
+        apiGet<{ clientId?: string }>("/api/shard/server").catch(() => ({ clientId: "" })),
       ]);
-      setData(g);
-      setClientId(srv.clientId || "");
+
+      const merged = new Map<string, Guild>();
+      [sec, com].forEach(d => {
+        d?.guilds.forEach(g => {
+          const prev = merged.get(g.id);
+          if (prev) {
+            merged.set(g.id, { ...prev, bot_present: prev.bot_present || g.bot_present });
+          } else {
+            merged.set(g.id, g);
+          }
+        });
+      });
+      setGuilds(Array.from(merged.values()).sort((a, b) => {
+        if (a.bot_present !== b.bot_present) return a.bot_present ? -1 : 1;
+        return a.name.localeCompare(b.name, "fr");
+      }));
+      setClientId(comSrv.clientId || secSrv.clientId || "");
     } finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, [kind]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Live: re-fetch the (cached) guild list every 60s + on window focus.
-  // Cheap because /api/account/guilds reads from the DB cache; the bot
-  // presence ids are themselves cached for 60s server-side.
+  useEffect(() => { load(); }, []);
+
   useEffect(() => {
     function onFocus() { load(); }
     const id = setInterval(() => { if (!document.hidden) load(); }, 60_000);
     window.addEventListener("focus", onFocus);
     return () => { clearInterval(id); window.removeEventListener("focus", onFocus); };
-  }, [kind]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   async function refresh() {
     setRefreshing(true);
     try {
-      await apiPost(kind === "shardguard"
-        ? "/api/account/discord/refresh-guilds"
-        : "/api/account/shard/refresh-guilds").catch(() => {});
+      await Promise.allSettled([
+        apiPost("/api/account/discord/refresh-guilds"),
+        apiPost("/api/account/shard/refresh-guilds"),
+      ]);
       await load();
     } finally { setRefreshing(false); }
   }
 
-  const meta = BOT_LABEL[kind];
-  const botAvatar = kind === "shardguard" ? "/image/shardguard.png" : "/image/shard.png";
-
-  const guilds = useMemo(() => data?.guilds ?? [], [data?.guilds]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return guilds;
@@ -104,7 +101,6 @@ export function DesktopBotServer({ kind }: Props) {
 
   return (
     <AppLayout>
-      {/* Hero card — same NordVPN-style pattern as Overview */}
       <div
         className="relative overflow-hidden rounded-[22px] border mb-4 botserver-hero"
         style={{ borderColor: "var(--ds-border)" }}
@@ -121,15 +117,15 @@ export function DesktopBotServer({ kind }: Props) {
                 border: "1px solid rgba(255, 255, 255, 0.12)",
               }}
             >
-              <img src={botAvatar} alt="" className="w-full h-full object-cover" />
+              <img src={BOT_AVATAR} alt="" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-[26px] font-black tracking-tight leading-[1.05]">{meta.name}</h1>
+              <h1 className="text-[26px] font-black tracking-tight leading-[1.05]">{BOT_LABEL}</h1>
               <p
                 className="text-[13px] font-semibold mt-1"
                 style={{ color: "var(--ds-text-mut)" }}
               >
-                {meta.tag}
+                {BOT_TAG}
               </p>
             </div>
           </div>
@@ -165,7 +161,6 @@ export function DesktopBotServer({ kind }: Props) {
         `}</style>
       </div>
 
-      {/* Search */}
       {guilds.length > 5 && (
         <div
           className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[12px] border mb-5"
@@ -206,7 +201,7 @@ export function DesktopBotServer({ kind }: Props) {
             >
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
                 {configured.map(g => (
-                  <ConfiguredCard key={g.id} guild={g} kind={kind} />
+                  <ConfiguredCard key={g.id} guild={g} />
                 ))}
               </div>
             </Section>
@@ -217,11 +212,11 @@ export function DesktopBotServer({ kind }: Props) {
               title="Disponibles"
               count={available.length}
               total={guilds.filter(g => !g.bot_present).length}
-              hint={`Cliquez pour inviter ${meta.name} sur un serveur où vous êtes admin.`}
+              hint={`Cliquez pour inviter ${BOT_LABEL} sur un serveur où vous êtes admin.`}
             >
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
                 {available.map(g => (
-                  <InviteCard key={g.id} guild={g} kind={kind} clientId={clientId} />
+                  <InviteCard key={g.id} guild={g} clientId={clientId} />
                 ))}
               </div>
             </Section>
@@ -271,14 +266,9 @@ function Section({
   );
 }
 
-/* ─── Cards ─────────────────────────────────────────────────────────── */
-
 function GuildIcon({ guild, size = 40 }: { guild: Guild; size?: number }) {
   const initials = guild.name.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase().slice(0, 2);
   if (guild.icon) {
-    // Discord CDN only accepts power-of-2 sizes (16/32/64/128/256/512/1024).
-    // Pick the smallest one that's >= our 2x display size so retina stays
-    // crisp without wasting bandwidth.
     const target = size * 2;
     const cdnSize = [16, 32, 64, 128, 256, 512, 1024].find(s => s >= target) ?? 128;
     return (
@@ -306,10 +296,10 @@ function GuildIcon({ guild, size = 40 }: { guild: Guild; size?: number }) {
   );
 }
 
-function ConfiguredCard({ guild, kind }: { guild: Guild; kind: "shardguard" | "shard" }) {
+function ConfiguredCard({ guild }: { guild: Guild }) {
   return (
     <Link
-      to={`/${kind}/guild/${guild.id}`}
+      to={`/samia/guild/${guild.id}`}
       className="group flex items-center gap-3 p-3 pr-4 rounded-[14px] border transition-colors"
       style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--ds-border-strong)"; e.currentTarget.style.background = "var(--ds-panel-2)"; }}
@@ -333,15 +323,9 @@ function ConfiguredCard({ guild, kind }: { guild: Guild; kind: "shardguard" | "s
   );
 }
 
-function InviteCard({
-  guild, kind, clientId,
-}: {
-  guild: Guild;
-  kind: "shardguard" | "shard";
-  clientId: string;
-}) {
+function InviteCard({ guild, clientId }: { guild: Guild; clientId: string }) {
   function invite() {
-    openExternal(inviteUrl(kind, guild.id, clientId));
+    openExternal(inviteUrl(guild.id, clientId));
   }
   return (
     <button

@@ -85,15 +85,14 @@ export function DesktopShell({ children }: { children: ReactNode }) {
   const groups: NavGroup[] = [
     {
       items: [
-        { to: "/outils",    icon: <LayoutGrid    size={18} strokeWidth={1.8} />, label: "Tableau de bord" },
-        { to: "/assistant", icon: <MessageCircle size={18} strokeWidth={1.8} />, label: "Samia" },
+        { to: "/outils", icon: <LayoutGrid size={18} strokeWidth={1.8} />, label: "Tableau de bord" },
       ],
     },
     {
-      label: "Shard",
+      label: "Samia",
       items: [
-        { to: "/shardguard/server", icon: <BotAvatar src="/image/shard.png" size={22} alt="Shard · Sécurité" />,    label: "Shard · Sécurité" },
-        { to: "/shard/server",      icon: <BotAvatar src="/image/shard.png" size={22} alt="Shard · Communauté" />, label: "Shard · Communauté" },
+        { to: "/assistant",    icon: <MessageCircle size={18} strokeWidth={1.8} />,           label: "Discussion" },
+        { to: "/samia/server", icon: <BotAvatar src="/image/samia.png" size={22} alt="Samia" />, label: "Mes serveurs Discord" },
       ],
     },
     {
@@ -486,14 +485,13 @@ function SearchBox({
     if (!q) { setHits([]); return; }
 
     const locations: SearchHit[] = [
-      { label: "Tableau de bord",        hint: "Vue d'ensemble",         path: "/outils" },
-      { label: "Shard · Sécurité",    hint: "Anti-raid, captcha, modération", path: "/shardguard/server" },
-      { label: "Shard · Communauté",  hint: "Niveaux, économie, giveaways",   path: "/shard/server" },
-      { label: "Samia",                  hint: "Assistante IA",          path: "/assistant" },
-      { label: "Discord RPC",            hint: "Rich Presence",          path: "/rpc" },
-      { label: "Réglages",               hint: "Apparence, sons, Touch ID, thème",  path: "/preferences" },
-      { label: "Statut des services",    hint: "Surveillance temps réel", path: "/statut" },
-      { label: "Mon compte",             hint: "Profil & connexions",    path: "/account" },
+      { label: "Tableau de bord",     hint: "Vue d'ensemble",                       path: "/outils" },
+      { label: "Samia · Discussion",  hint: "Assistante IA",                        path: "/assistant" },
+      { label: "Samia · Discord",     hint: "Sécurité, modération & communauté",    path: "/samia/server" },
+      { label: "Discord RPC",         hint: "Rich Presence",                        path: "/rpc" },
+      { label: "Réglages",            hint: "Apparence, sons, Touch ID, thème",     path: "/preferences" },
+      { label: "Statut des services", hint: "Surveillance temps réel",              path: "/statut" },
+      { label: "Mon compte",          hint: "Profil & connexions",                  path: "/account" },
     ];
     const matched = locations.filter(l =>
       l.label.toLowerCase().includes(q) || l.hint.toLowerCase().includes(q)
@@ -507,14 +505,17 @@ function SearchBox({
           apiGet<{ guilds: { id: string; name: string }[] }>("/api/account/guilds?bot=shardguard").catch(() => ({ guilds: [] })),
           apiGet<{ guilds: { id: string; name: string }[] }>("/api/account/guilds?bot=shard").catch(() => ({ guilds: [] })),
         ]);
-        const guilds: SearchHit[] = [
-          ...sg.guilds.map(g => ({ label: g.name, hint: "Shard · Sécurité · " + g.id, path: `/shardguard/guild/${g.id}` })),
-          ...s.guilds.map(g => ({ label: g.name, hint: "Shard · Communauté · " + g.id, path: `/shard/guild/${g.id}` })),
-        ].filter(h => h.label.toLowerCase().includes(q));
+        const seen = new Set<string>();
+        const guilds: SearchHit[] = [];
+        for (const g of [...sg.guilds, ...s.guilds]) {
+          if (seen.has(g.id)) continue;
+          seen.add(g.id);
+          guilds.push({ label: g.name, hint: "Samia · " + g.id, path: `/samia/guild/${g.id}` });
+        }
+        const matchedGuilds = guilds.filter(h => h.label.toLowerCase().includes(q));
 
-        // Dedup by path
         const all = [...matched];
-        for (const g of guilds) if (!all.some(a => a.path === g.path)) all.push(g);
+        for (const g of matchedGuilds) if (!all.some(a => a.path === g.path)) all.push(g);
         if (!cancelled) setHits(all.slice(0, 8));
       } catch {
         if (!cancelled) setHits(matched);

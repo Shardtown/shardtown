@@ -13,38 +13,30 @@ import { startOAuthLink } from "@/lib/oauthLink";
  * Page /outils — catalogue de tout ce que Shardtown propose.
  *
  * Trois familles :
- * 1. Le bot Discord Shard (sécurité + communauté) que les users peuvent
- *    inviter et configurer depuis leur dashboard.
- * 2. Outils web Shardtown utilisables directement sur le site (Samia,
- *    page Statut, Wiki).
+ * 1. Le bot Discord Samia que les users peuvent inviter et configurer
+ *    depuis leur dashboard (sécurité + communauté réunies).
+ * 2. Outils web Shardtown utilisables directement sur le site (Samia
+ *    en mode assistante IA, page Statut, Wiki).
  * 3. Services à la demande (dev custom, setup serveur, etc.) — CTA vers
  *    le formulaire de contact de la home.
  */
 
 const BOTS = [
   {
-    label: "Shard · Sécurité",
-    tagline: "Sécurité Discord",
+    label: "Samia",
+    tagline: "Bot Discord tout-en-un",
     description:
-      "Anti-raid, vérification captcha, modération automatique, sanctions progressives, mode panic, logs en temps réel.",
-    href: "/shardguard/server",
-    avatar: "/image/shard.png",
-  },
-  {
-    label: "Shard · Communauté",
-    tagline: "Communauté & engagement",
-    description:
-      "Niveaux, économie, tickets, sondages, giveaways, vocaux temporaires, embeds, anniversaires, annonces planifiées.",
-    href: "/shard/server",
-    avatar: "/image/shard.png",
+      "Anti-raid, captcha, modération automatique — ET niveaux, économie, tickets, sondages, giveaways, alertes stream. Un seul bot, deux modules : Sécurité et Communauté.",
+    href: "/samia/server",
+    avatar: "/image/samia.png",
   },
 ];
 
 const ASSISTANT = {
-  label: "Samia",
+  label: "Samia · Discussion",
   tagline: "Assistante IA",
   description:
-    "Pose tes questions sur les bots, le dashboard, le Premium ou nos services. Samia connaît le wiki par cœur.",
+    "Pose tes questions sur le bot, le dashboard, le Premium ou nos services. Samia connaît le wiki par cœur.",
   href: "/assistant",
   icon: Sparkles,
 };
@@ -58,7 +50,7 @@ const SERVICES = [
   {
     label: "Bot Discord custom",
     description:
-      "Au-delà de Shard — fonctionnalités exclusives à ta communauté, intégrations API tierces, dashboards web dédiés.",
+      "Au-delà de Samia — fonctionnalités exclusives à ta communauté, intégrations API tierces, dashboards web dédiés.",
   },
   {
     label: "Configuration de serveur Discord",
@@ -126,7 +118,7 @@ export function Outils() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
           >
-            Pour t'afficher la liste de tes serveurs et te laisser configurer Shard,
+            Pour t'afficher la liste de tes serveurs et te laisser configurer Samia,
             on a besoin que tu autorises Shardtown à voir tes serveurs Discord. Aucun
             mot de passe — juste l'OAuth officielle de Discord.
           </motion.p>
@@ -228,7 +220,7 @@ export function Outils() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.85, delay: 0.35, ease: heroEase }}
           >
-            Tous les outils Shardtown — bots Discord, assistante IA, services
+            Tous les outils Shardtown — bot Discord, assistante IA, services
             sur mesure. Choisis ce sur quoi tu veux travailler.
           </motion.p>
         </header>
@@ -242,7 +234,7 @@ export function Outils() {
         >
           <div className="flex items-baseline gap-3 mb-8">
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Bots Discord
+              Bot Discord
             </h2>
             <span className="text-[12px] text-white/35">
               à inviter sur tes serveurs

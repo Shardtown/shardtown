@@ -17,6 +17,13 @@ function timeSince(ms: number) {
 const HISTORY_LEN = 24;          // 24 ticks × 30s = 12 minutes
 const WINDOW_LABEL = "12 dernières min";
 
+// Map legacy bot_label values stored in the DB to the unified display name.
+function displayBotLabel(raw: string): string {
+  const v = (raw || "").toLowerCase();
+  if (v === "shard" || v === "shardguard") return "Samia";
+  return raw;
+}
+
 /** Pad/truncate a series to HISTORY_LEN entries. */
 function pad(series: number[]): number[] {
   if (series.length === 0) return Array(HISTORY_LEN).fill(NaN);
@@ -224,14 +231,12 @@ function ClusterRow({ bot, history }: { bot: Bot; history: number[] }) {
   states[states.length - 1] = ok ? "ok" : partial ? "degraded" : "down";
 
   const uptime = uptimePercent(states);
-  const iconSrc = bot.label.toLowerCase().includes("guard")
-    ? "/image/shardguard.png"
-    : "/image/shard.png";
+  const iconSrc = "/image/samia.png";
 
   return (
     <ServiceRow
       icon={<img src={iconSrc} alt="" className="w-8 h-8 rounded-lg object-cover border border-white/10" />}
-      title={bot.label}
+      title={displayBotLabel(bot.label)}
       subtitle={`${online}/${total} shards · ${bot.guilds.toLocaleString("fr-FR")} serveurs`}
       states={states}
       uptime={uptime}

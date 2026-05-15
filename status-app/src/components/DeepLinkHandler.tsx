@@ -40,7 +40,7 @@ export function DeepLinkHandler() {
             const search = u.search || "";
             if (target.startsWith("guild/")) {
               const id = target.slice("guild/".length);
-              if (/^\d+$/.test(id)) navigate(`/shardguard/guild/${id}${search}`);
+              if (/^\d+$/.test(id)) navigate(`/samia/guild/${id}${search}`);
               return;
             }
             if (target === "account") { navigate(`/account${search}`); return; }

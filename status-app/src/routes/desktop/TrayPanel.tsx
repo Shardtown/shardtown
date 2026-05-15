@@ -71,8 +71,17 @@ export function TrayPanel() {
   const sgTotal = data?.shardguard.length ?? 0;
   const sActive = data?.shard.filter(g => g.bot_present).length ?? 0;
   const sTotal = data?.shard.length ?? 0;
-  const totalActive = sgActive + sActive;
-  const allActive = totalActive > 0 && sgActive === sgTotal && sActive === sTotal;
+  // Unified bot — count distinct guilds across both OAuth flows so the
+  // "active on N servers" tally doesn't double-count.
+  const uniqueGuildIds = new Set<string>();
+  const uniqueActiveIds = new Set<string>();
+  for (const g of allGuilds) {
+    uniqueGuildIds.add(g.id);
+    if (g.bot_present) uniqueActiveIds.add(g.id);
+  }
+  const totalActive = uniqueActiveIds.size;
+  const totalGuilds = uniqueGuildIds.size;
+  const allActive = totalActive > 0 && totalActive === totalGuilds;
 
   // Recents = first 4 configured guilds (deduplicated by id across bots)
   const recents = useMemo(() => {
@@ -155,12 +164,12 @@ export function TrayPanel() {
             <div className="tray-hero-body">
               <p className="tray-hero-title">
                 {totalActive > 0
-                  ? allActive ? "Tous les bots actifs" : `${totalActive} bot${totalActive > 1 ? "s" : ""} actif${totalActive > 1 ? "s" : ""}`
-                  : "Aucun bot configuré"}
+                  ? allActive ? "Samia active partout" : `Samia active sur ${totalActive} serveur${totalActive > 1 ? "s" : ""}`
+                  : "Samia n'est sur aucun serveur"}
               </p>
               <p className="tray-hero-sub">
                 {totalActive > 0
-                  ? `Sur ${sgTotal + sTotal} serveur${sgTotal + sTotal > 1 ? "s" : ""} où tu es admin`
+                  ? `Sur ${totalGuilds} serveur${totalGuilds > 1 ? "s" : ""} où tu es admin`
                   : "Configure tes serveurs depuis l'app"}
               </p>
             </div>
@@ -194,26 +203,18 @@ export function TrayPanel() {
             </>
           )}
 
-          {/* Bots */}
+          {/* Samia */}
           <div className="tray-section-head">
-            <span>Bots</span>
+            <span>Samia</span>
           </div>
           <div className="tray-bot-list">
             <TrayBotRow
-              kind="shardguard"
-              icon={<img src="/image/shardguard.png" alt="" className="tray-bot-avatar" />}
-              label="ShardGuard"
-              active={sgActive}
-              total={sgTotal}
-              onClick={() => openMain("/shardguard/server")}
-            />
-            <TrayBotRow
               kind="shard"
-              icon={<img src="/image/shard.png" alt="" className="tray-bot-avatar" />}
-              label="Shard"
-              active={sActive}
-              total={sTotal}
-              onClick={() => openMain("/shard/server")}
+              icon={<img src="/image/samia.png" alt="" className="tray-bot-avatar" />}
+              label="Samia"
+              active={Math.max(sgActive, sActive)}
+              total={Math.max(sgTotal, sTotal)}
+              onClick={() => openMain("/samia/server")}
             />
           </div>
         </div>
@@ -227,7 +228,6 @@ export function TrayPanel() {
 }
 
 function TrayGuildRow({ guild }: { guild: Guild }) {
-  const botAvatar = guild.bot === "shardguard" ? "/image/shardguard.png" : "/image/shard.png";
   const iconUrl = guild.icon
     ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`
     : null;
@@ -236,7 +236,7 @@ function TrayGuildRow({ guild }: { guild: Guild }) {
     <button
       type="button"
       className="tray-row"
-      onClick={() => openExternal(`https://shardtwn.fr/${guild.bot}/guild/${guild.id}`).catch(() => {})}
+      onClick={() => openExternal(`https://shardtwn.fr/samia/guild/${guild.id}`).catch(() => {})}
     >
       {iconUrl
         ? <img src={iconUrl} alt="" className="tray-row-icon" />
@@ -244,8 +244,8 @@ function TrayGuildRow({ guild }: { guild: Guild }) {
       <div className="tray-row-body">
         <p className="tray-row-name">{guild.name}</p>
         <p className="tray-row-meta">
-          <img src={botAvatar} alt="" className="tray-bot-avatar-xs" />
-          {guild.bot === "shardguard" ? "ShardGuard" : "Shard"}
+          <img src="/image/samia.png" alt="" className="tray-bot-avatar-xs" />
+          Samia
           {guild.bot_present && <span className="tray-row-ok">· Configuré</span>}
         </p>
       </div>
@@ -263,7 +263,7 @@ function TrayRecentCard({ guild }: { guild: Guild }) {
     <button
       type="button"
       className="tray-card"
-      onClick={() => openExternal(`https://shardtwn.fr/${guild.bot}/guild/${guild.id}`).catch(() => {})}
+      onClick={() => openExternal(`https://shardtwn.fr/samia/guild/${guild.id}`).catch(() => {})}
     >
       {iconUrl
         ? <img src={iconUrl} alt="" className="tray-card-icon" />
