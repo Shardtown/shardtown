@@ -175,9 +175,9 @@ export function Index() {
             <HolographicCard className="h-full">
               <div className="relative flex flex-col h-full min-h-[280px]">
                 {/* Soft emerald glow */}
-                <div className="absolute top-1/2 right-8 -translate-y-1/2 w-64 h-64 rounded-full bg-emerald-500/[0.07] blur-3xl pointer-events-none" aria-hidden />
+                <div className="absolute top-4 right-8 w-64 h-64 rounded-full bg-emerald-500/[0.07] blur-3xl pointer-events-none" aria-hidden />
                 {/* Logo platform — contained inside the card */}
-                <AppleLogo className="absolute top-1/2 right-6 -translate-y-1/2 w-64 h-64 text-white/[0.07] pointer-events-none" />
+                <AppleLogo className="absolute top-2 right-6 w-56 h-56 text-white/[0.07] pointer-events-none" />
 
                 <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter mb-auto pt-2">
                   macOS
@@ -198,8 +198,8 @@ export function Index() {
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
               <div className="relative flex flex-col h-full min-h-[280px]">
-                <div className="absolute top-1/2 right-8 -translate-y-1/2 w-64 h-64 rounded-full bg-amber-500/[0.05] blur-3xl pointer-events-none" aria-hidden />
-                <WindowsLogo className="absolute top-1/2 right-6 -translate-y-1/2 w-60 h-60 text-white/[0.06] pointer-events-none" />
+                <div className="absolute top-4 right-8 w-64 h-64 rounded-full bg-amber-500/[0.05] blur-3xl pointer-events-none" aria-hidden />
+                <WindowsLogo className="absolute top-2 right-6 w-52 h-52 text-white/[0.06] pointer-events-none" />
 
                 <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter text-white/70 mb-auto pt-2">
                   Windows
