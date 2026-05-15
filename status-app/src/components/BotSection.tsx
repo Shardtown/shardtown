@@ -3,8 +3,9 @@ import type { Bot } from "@/lib/types";
 import { ShardRow } from "./ShardRow";
 
 const BOT_IMAGES: Record<string, string> = {
-  ShardGuard: "/image/shardguard.png",
   Shard: "/image/shard.png",
+  // Legacy fallback for any unmigrated bot_label='ShardGuard' rows.
+  ShardGuard: "/image/shard.png",
 };
 
 interface Props {

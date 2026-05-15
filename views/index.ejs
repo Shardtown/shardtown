@@ -270,22 +270,16 @@
                     <p class="text-sm font-bold tracking-widest text-white/40 uppercase mb-4">Nos Produits</p>
                 </div>
 
-                <div class="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                    <div class="product-card text-left" onclick="openModal('shardguard')">
-                        <div class="flex items-center gap-5 mb-6">
-                            <img src="/image/shardguard.png" alt="ShardGuard Logo" class="w-14 h-14 rounded-2xl object-cover border border-white/5">
-                            <h3 class="text-2xl font-bold">ShardGuard</h3>
-                        </div>
-                        <p class="text-white/50 leading-relaxed mb-4">Système de vérification avancé pour protéger votre communauté contre les raids de bots et autres interactions indésirables.</p>
-                        <span class="text-xs font-bold text-white/30 uppercase tracking-widest">Découvrir →</span>
-                    </div>
-
+                <div class="max-w-2xl mx-auto">
                     <div class="product-card text-left" onclick="openModal('shard')">
                         <div class="flex items-center gap-5 mb-6">
                             <img src="/image/shard.png" alt="Shard Logo" class="w-14 h-14 rounded-2xl object-cover border border-white/5">
-                            <h3 class="text-2xl font-bold">Shard</h3>
+                            <div>
+                                <h3 class="text-2xl font-bold">Shard</h3>
+                                <p class="text-white/30 text-sm">Sécurité + Communauté · un seul bot</p>
+                            </div>
                         </div>
-                        <p class="text-white/50 leading-relaxed mb-4">Bot multifonction pour animer votre serveur : économie, giveaways, sondages, anniversaires et bien plus.</p>
+                        <p class="text-white/50 leading-relaxed mb-4">La suite complète : captcha de vérification, anti-raid, modération automatique, mais aussi niveaux, économie, giveaways, sondages, anniversaires et plus. Tout dans un seul bot Discord.</p>
                         <span class="text-xs font-bold text-white/30 uppercase tracking-widest">Découvrir →</span>
                     </div>
                 </div>
@@ -318,22 +312,23 @@
         </section>
     </main>
 
-    <!-- Modal ShardGuard -->
-    <div id="modal-shardguard" class="modal-overlay" onclick="closeModal('shardguard')">
+    <!-- Modal Shard (sécurité + communauté unifiées) -->
+    <div id="modal-shard" class="modal-overlay" onclick="closeModal('shard')">
         <div class="modal-box" onclick="event.stopPropagation()">
             <div class="flex items-center justify-between mb-8">
                 <div class="flex items-center gap-4">
-                    <img src="/image/shardguard.png" alt="ShardGuard" class="w-12 h-12 rounded-2xl object-cover border border-white/5">
+                    <img src="/image/shard.png" alt="Shard" class="w-12 h-12 rounded-2xl object-cover border border-white/5">
                     <div>
-                        <h2 class="text-2xl font-extrabold">ShardGuard</h2>
-                        <p class="text-white/30 text-sm">Sécurité & Modération</p>
+                        <h2 class="text-2xl font-extrabold">Shard</h2>
+                        <p class="text-white/30 text-sm">Sécurité + Communauté · un seul bot</p>
                     </div>
                 </div>
-                <button onclick="closeModal('shardguard')" class="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
+                <button onclick="closeModal('shard')" class="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
-            <p class="text-white/50 leading-relaxed mb-8">Système de vérification avancé pour protéger votre communauté contre les raids de bots et autres interactions indésirables.</p>
+            <p class="text-white/50 leading-relaxed mb-8">Toute la suite Shardtown dans un seul bot : protégez votre communauté avec captcha, anti-raid et modération automatique, puis animez-la avec niveaux, économie, giveaways, sondages, anniversaires et plus.</p>
+            <p class="text-xs font-bold tracking-widest text-white/40 uppercase mb-4">Sécurité & Modération</p>
             <div class="space-y-0 mb-8">
                 <div class="modal-feature">
                     <div class="modal-feature-icon bg-blue-500/10 border border-blue-500/20">
@@ -358,52 +353,12 @@
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#facc15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                     </div>
                     <div>
-                        <p class="font-bold text-sm mb-1">Système d'Avertissements</p>
-                        <p class="text-white/40 text-sm">Émettez des avertissements manuels contre des membres. Historique complet consultable depuis le dashboard.</p>
-                    </div>
-                </div>
-                <div class="modal-feature">
-                    <div class="modal-feature-icon bg-white/5 border border-white/10">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                    </div>
-                    <div>
-                        <p class="font-bold text-sm mb-1">Canaux de Statistiques</p>
-                        <p class="text-white/40 text-sm">Salons vocaux mis à jour automatiquement affichant membres totaux, membres en ligne et bots du serveur.</p>
-                    </div>
-                </div>
-                <div class="modal-feature">
-                    <div class="modal-feature-icon bg-white/5 border border-white/10">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                    </div>
-                    <div>
-                        <p class="font-bold text-sm mb-1">Logs de Modération</p>
-                        <p class="text-white/40 text-sm">Toutes les actions du bot sont journalisées : vérifications, avertissements, actions auto-mod.</p>
+                        <p class="font-bold text-sm mb-1">Anti-raid & Avertissements</p>
+                        <p class="text-white/40 text-sm">Détection automatique des raids, quarantaine, blacklist globale et système d'avertissements avec seuils mute/kick/ban.</p>
                     </div>
                 </div>
             </div>
-            <div class="flex gap-3">
-                <a href="/wiki#sg-verification" class="flex-1 py-3 bg-white text-black rounded-full font-bold text-sm text-center hover:opacity-90 transition-opacity">Documentation</a>
-                <a href="/dashboard" class="flex-1 py-3 border border-white/10 rounded-full font-bold text-sm text-center hover:border-white/20 transition-colors">Ajouter le bot</a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Shard -->
-    <div id="modal-shard" class="modal-overlay" onclick="closeModal('shard')">
-        <div class="modal-box" onclick="event.stopPropagation()">
-            <div class="flex items-center justify-between mb-8">
-                <div class="flex items-center gap-4">
-                    <img src="/image/shard.png" alt="Shard" class="w-12 h-12 rounded-2xl object-cover border border-white/5">
-                    <div>
-                        <h2 class="text-2xl font-extrabold">Shard</h2>
-                        <p class="text-white/30 text-sm">Engagement & Automatisation</p>
-                    </div>
-                </div>
-                <button onclick="closeModal('shard')" class="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                </button>
-            </div>
-            <p class="text-white/50 leading-relaxed mb-8">Bot multifonction pour animer votre serveur : économie, giveaways, sondages, anniversaires et bien plus.</p>
+            <p class="text-xs font-bold tracking-widest text-white/40 uppercase mb-4">Engagement & Animation</p>
             <div class="space-y-0 mb-8">
                 <div class="modal-feature">
                     <div class="modal-feature-icon bg-purple-500/10 border border-purple-500/20">
@@ -479,7 +434,7 @@
                 </div>
             </div>
             <div class="flex gap-3">
-                <a href="/wiki#s-welcome" class="flex-1 py-3 bg-white text-black rounded-full font-bold text-sm text-center hover:opacity-90 transition-opacity">Documentation</a>
+                <a href="/wiki" class="flex-1 py-3 bg-white text-black rounded-full font-bold text-sm text-center hover:opacity-90 transition-opacity">Documentation</a>
                 <a href="/dashboard" class="flex-1 py-3 border border-white/10 rounded-full font-bold text-sm text-center hover:border-white/20 transition-colors">Ajouter le bot</a>
             </div>
         </div>

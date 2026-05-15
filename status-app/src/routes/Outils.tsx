@@ -13,8 +13,8 @@ import { startOAuthLink } from "@/lib/oauthLink";
  * Page /outils — catalogue de tout ce que Shardtown propose.
  *
  * Trois familles :
- * 1. Bots Discord auto-hébergés que les users peuvent inviter et configurer
- *    depuis leur dashboard (ShardGuard, Shard).
+ * 1. Le bot Discord Shard (sécurité + communauté) que les users peuvent
+ *    inviter et configurer depuis leur dashboard.
  * 2. Outils web Shardtown utilisables directement sur le site (Samia,
  *    page Statut, Wiki).
  * 3. Services à la demande (dev custom, setup serveur, etc.) — CTA vers
@@ -23,15 +23,15 @@ import { startOAuthLink } from "@/lib/oauthLink";
 
 const BOTS = [
   {
-    label: "ShardGuard",
+    label: "Shard · Sécurité",
     tagline: "Sécurité Discord",
     description:
       "Anti-raid, vérification captcha, modération automatique, sanctions progressives, mode panic, logs en temps réel.",
     href: "/shardguard/server",
-    avatar: "/image/shardguard.png",
+    avatar: "/image/shard.png",
   },
   {
-    label: "Shard",
+    label: "Shard · Communauté",
     tagline: "Communauté & engagement",
     description:
       "Niveaux, économie, tickets, sondages, giveaways, vocaux temporaires, embeds, anniversaires, annonces planifiées.",
@@ -58,7 +58,7 @@ const SERVICES = [
   {
     label: "Bot Discord custom",
     description:
-      "Au-delà de ShardGuard et Shard — fonctionnalités exclusives à ta communauté, intégrations API tierces, dashboards web dédiés.",
+      "Au-delà de Shard — fonctionnalités exclusives à ta communauté, intégrations API tierces, dashboards web dédiés.",
   },
   {
     label: "Configuration de serveur Discord",
@@ -126,7 +126,7 @@ export function Outils() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
           >
-            Pour t'afficher la liste de tes serveurs et te laisser configurer ShardGuard,
+            Pour t'afficher la liste de tes serveurs et te laisser configurer Shard,
             on a besoin que tu autorises Shardtown à voir tes serveurs Discord. Aucun
             mot de passe — juste l'OAuth officielle de Discord.
           </motion.p>

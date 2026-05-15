@@ -125,7 +125,7 @@ export function DesktopOverview() {
                       boxShadow: "0 0 8px var(--ds-status-ok)",
                     }}
                   />
-                  Tous les bots opérationnels
+                  Shard opérationnel sur toutes tes guildes
                 </p>
               )}
               {!allOk && totalServers === 0 && (
@@ -226,22 +226,22 @@ export function DesktopOverview() {
         </div>
       )}
 
-      {/* ─── BOTS ──────────────────────────────────────────────── */}
-      <SectionHead title="Bots" />
+      {/* ─── SHARD MODULES ─────────────────────────────────────── */}
+      <SectionHead title="Shard" />
       <div className="grid md:grid-cols-2 gap-3 mb-10" data-tour="bots-stats">
         <StatCard
-          icon={<img src="/image/shardguard.png" alt="" className="w-full h-full object-cover" />}
-          label="ShardGuard"
+          icon={<img src="/image/shard.png" alt="" className="w-full h-full object-cover" />}
+          label="Shard · Sécurité"
           value={`${sgConfigured} / ${sgTotal}`}
-          sub="serveurs actifs"
+          sub="serveurs configurés"
           tone={sgConfigured > 0 ? "ok" : "off"}
           to="/shardguard/server"
         />
         <StatCard
           icon={<img src="/image/shard.png" alt="" className="w-full h-full object-cover" />}
-          label="Shard"
+          label="Shard · Communauté"
           value={`${sConfigured} / ${sTotal}`}
-          sub="serveurs actifs"
+          sub="serveurs configurés"
           tone={sConfigured > 0 ? "ok" : "off"}
           to="/shard/server"
         />
@@ -332,9 +332,9 @@ function RecentCard({ guild }: { guild: GuildSummary & { bots: ("shardguard" | "
         {guild.bots.map(b => (
           <img
             key={b}
-            src={b === "shardguard" ? "/image/shardguard.png" : "/image/shard.png"}
-            alt={b === "shardguard" ? "ShardGuard" : "Shard"}
-            title={b === "shardguard" ? "ShardGuard" : "Shard"}
+            src="/image/shard.png"
+            alt={b === "shardguard" ? "Shard · Sécurité" : "Shard · Communauté"}
+            title={b === "shardguard" ? "Shard · Sécurité" : "Shard · Communauté"}
             className="w-4 h-4 rounded-[5px] object-cover border"
             style={{ borderColor: "var(--ds-border)" }}
           />

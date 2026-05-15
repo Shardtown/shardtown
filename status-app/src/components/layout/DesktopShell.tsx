@@ -90,10 +90,10 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       ],
     },
     {
-      label: "Bots",
+      label: "Shard",
       items: [
-        { to: "/shardguard/server", icon: <BotAvatar src="/image/shardguard.png" size={22} alt="ShardGuard" />, label: "ShardGuard" },
-        { to: "/shard/server",      icon: <BotAvatar src="/image/shard.png"      size={22} alt="Shard" />,     label: "Shard" },
+        { to: "/shardguard/server", icon: <BotAvatar src="/image/shard.png" size={22} alt="Shard · Sécurité" />,    label: "Shard · Sécurité" },
+        { to: "/shard/server",      icon: <BotAvatar src="/image/shard.png" size={22} alt="Shard · Communauté" />, label: "Shard · Communauté" },
       ],
     },
     {
@@ -487,8 +487,8 @@ function SearchBox({
 
     const locations: SearchHit[] = [
       { label: "Tableau de bord",        hint: "Vue d'ensemble",         path: "/outils" },
-      { label: "ShardGuard · Serveurs",  hint: "Sécurité Discord",       path: "/shardguard/server" },
-      { label: "Shard · Serveurs",       hint: "Communauté",             path: "/shard/server" },
+      { label: "Shard · Sécurité",    hint: "Anti-raid, captcha, modération", path: "/shardguard/server" },
+      { label: "Shard · Communauté",  hint: "Niveaux, économie, giveaways",   path: "/shard/server" },
       { label: "Samia",                  hint: "Assistante IA",          path: "/assistant" },
       { label: "Discord RPC",            hint: "Rich Presence",          path: "/rpc" },
       { label: "Réglages",               hint: "Apparence, sons, Touch ID, thème",  path: "/preferences" },
@@ -508,8 +508,8 @@ function SearchBox({
           apiGet<{ guilds: { id: string; name: string }[] }>("/api/account/guilds?bot=shard").catch(() => ({ guilds: [] })),
         ]);
         const guilds: SearchHit[] = [
-          ...sg.guilds.map(g => ({ label: g.name, hint: "ShardGuard · " + g.id, path: `/shardguard/guild/${g.id}` })),
-          ...s.guilds.map(g => ({ label: g.name, hint: "Shard · " + g.id, path: `/shard/guild/${g.id}` })),
+          ...sg.guilds.map(g => ({ label: g.name, hint: "Shard · Sécurité · " + g.id, path: `/shardguard/guild/${g.id}` })),
+          ...s.guilds.map(g => ({ label: g.name, hint: "Shard · Communauté · " + g.id, path: `/shard/guild/${g.id}` })),
         ].filter(h => h.label.toLowerCase().includes(q));
 
         // Dedup by path

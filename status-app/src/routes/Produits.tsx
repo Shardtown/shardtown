@@ -16,13 +16,13 @@ interface Product {
 
 const PRODUCTS: Product[] = [
   {
-    label: "ShardGuard",
+    label: "Shard · Sécurité",
     description:
       "Le bouclier de votre Discord. Anti-raid intelligent, vérification captcha, modération automatique avec sanctions progressives, journaux temps réel.",
     href: "/shardguard/server",
-    avatar: "/image/shardguard.png",
+    avatar: "/image/shard.png",
     accentIcon: ShieldCheck,
-    cta: "Configurer ShardGuard",
+    cta: "Configurer la sécurité",
     features: [
       "Anti-raid + quarantaine automatique",
       "Captcha + vérification d'âge de compte",
@@ -32,13 +32,13 @@ const PRODUCTS: Product[] = [
     ],
   },
   {
-    label: "Shard",
+    label: "Shard · Communauté",
     description:
       "Le couteau suisse de la communauté. Niveaux, économie, tickets, sondages, giveaways, embed builder — tout ce qu'il faut pour faire vivre votre serveur.",
     href: "/shard/server",
     avatar: "/image/shard.png",
     accentIcon: SparklesIcon,
-    cta: "Configurer Shard",
+    cta: "Configurer la communauté",
     features: [
       "Système de niveaux XP avec paliers",
       "Économie, boutique & inventaires",
@@ -67,8 +67,8 @@ export function Produits() {
             <span className="text-white/70">déployés en prod.</span>
           </h1>
           <p className="text-lg md:text-xl text-white/55 max-w-2xl mx-auto leading-relaxed">
-            Les bots qu'on utilise nous-mêmes sur nos missions de configuration de serveurs —
-            disponibles directement pour le vôtre.
+            Le bot qu'on utilise nous-mêmes sur nos missions de configuration de serveurs —
+            disponible directement pour le vôtre, en deux modules complémentaires.
           </p>
         </Reveal>
       </section>
@@ -127,8 +127,8 @@ export function Produits() {
               Débloque tout le potentiel
             </h2>
             <p className="text-white/55 max-w-xl mx-auto mb-8 leading-relaxed">
-              Une seule offre, les deux bots, sans limite — pour les serveurs qui veulent passer
-              au niveau supérieur.
+              Une seule offre, tous les modules de Shard sans limite — pour les serveurs qui veulent
+              passer au niveau supérieur.
             </p>
             <Link
               to="/premium"

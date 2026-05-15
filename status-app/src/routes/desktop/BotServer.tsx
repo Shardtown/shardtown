@@ -28,8 +28,8 @@ interface Props {
 }
 
 const BOT_LABEL = {
-  shardguard: { name: "ShardGuard",  tag: "Sécurité Discord",          desc: "Anti-raid, captcha, modération automatique." },
-  shard:      { name: "Shard",       tag: "Communauté & engagement",   desc: "Niveaux, économie, tickets, sondages, giveaways." },
+  shardguard: { name: "Shard · Sécurité",    tag: "Sécurité Discord",          desc: "Anti-raid, captcha, modération automatique." },
+  shard:      { name: "Shard · Communauté", tag: "Communauté & engagement",   desc: "Niveaux, économie, tickets, sondages, giveaways." },
 };
 
 const CLIENT_ID_KEY = {

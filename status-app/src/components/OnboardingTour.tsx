@@ -45,8 +45,8 @@ const STEPS: Step[] = [
     route: "/outils",
     anchor: "bots-stats",
     side: "top",
-    title: "Tes bots en un coup d'œil",
-    body: "Deux cartes — ShardGuard (sécurité, anti-raid, modération) et Shard (communauté, niveaux, économie). Le ratio te dit combien de tes serveurs sont déjà configurés.",
+    title: "Shard en un coup d'œil",
+    body: "Un seul bot, deux modules — Sécurité (anti-raid, captcha, modération) et Communauté (niveaux, économie, giveaways). Le ratio te dit combien de tes serveurs sont déjà configurés.",
   },
   {
     route: "/outils",
@@ -77,8 +77,8 @@ const STEPS: Step[] = [
     route: "/shardguard/server",
     anchor: "bot-server-grid",
     side: "top",
-    title: "ShardGuard · Sécurité",
-    body: "Sélectionne un serveur pour configurer ShardGuard : anti-raid, captcha de vérification, modération automatique, mode panic, logs en temps réel.",
+    title: "Shard · Sécurité",
+    body: "Sélectionne un serveur pour configurer le module sécurité de Shard : anti-raid, captcha de vérification, modération automatique, mode panic, logs en temps réel.",
   },
   {
     route: "/rpc",

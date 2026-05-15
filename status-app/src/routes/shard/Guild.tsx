@@ -165,8 +165,6 @@ export function ShardGuild() {
     );
   }
 
-  const s = draft;
-
   const tabProps = {
     guildId, settings: draft, update,
     channels: data.channels, voiceChannels: data.voiceChannels,

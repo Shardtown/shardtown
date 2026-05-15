@@ -4,8 +4,8 @@ export function ShardGuardServer() {
   return (
     <BotServerPage
       botKey="shardguard"
-      botLabel="ShardGuard"
-      botImage="/image/shardguard.png"
+      botLabel="Shard · Sécurité"
+      botImage="/image/shard.png"
       configRoutePrefix="/shardguard/guild"
       loginPath="/login"
       inviteScopes="bot applications.commands"

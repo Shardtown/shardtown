@@ -20,7 +20,7 @@ const PRICE = {
 const FEATURES = {
   monthly: [
     "Toutes les fonctionnalités Premium",
-    "ShardGuard + Shard inclus",
+    "Sécurité + Communauté inclus",
     "Mises à jour permanentes",
     "Sans engagement",
     "Annulation en 1 clic",
@@ -37,7 +37,7 @@ const FEATURES = {
 
 const COMPARISON: { title: string; rows: { label: string; free: string; premium: string }[] }[] = [
   {
-    title: "ShardGuard",
+    title: "Shard · Sécurité",
     rows: [
       { label: "Vérification Captcha",        free: "✓",      premium: "✓" },
       { label: "Sanctions progressives",      free: "✓",      premium: "✓" },
@@ -51,7 +51,7 @@ const COMPARISON: { title: string; rows: { label: string; free: string; premium:
     ],
   },
   {
-    title: "Shard",
+    title: "Shard · Communauté",
     rows: [
       { label: "Paliers XP",                  free: "3 max",  premium: "20 max" },
       { label: "Multiplicateur XP par rôle",  free: "—",      premium: "✓" },
@@ -85,7 +85,7 @@ const FAQ = [
   },
   {
     q: "Avez-vous un essai gratuit ?",
-    a: "Tout ce qui n'est pas marqué Premium dans le wiki est gratuit, sans limite de temps. Tu peux donc utiliser ShardGuard et Shard sur ton serveur dès maintenant et passer Premium quand tu en as besoin.",
+    a: "Tout ce qui n'est pas marqué Premium dans le wiki est gratuit, sans limite de temps. Tu peux donc utiliser Shard sur ton serveur dès maintenant et passer Premium quand tu en as besoin.",
   },
   {
     q: "Mes données sont-elles en sécurité ?",
@@ -235,7 +235,7 @@ export function Premium() {
             transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
           >
             Tous les modules. <span className="text-white">Aucune limite.</span>{" "}
-            Une seule offre couvre ShardGuard et Shard, mensuel ou à vie.
+            Une seule offre couvre toute la suite Shard, mensuel ou à vie.
           </motion.p>
 
           <motion.div
