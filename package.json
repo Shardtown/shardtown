@@ -5,7 +5,6 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "bot:shardguard": "node ShardGuard/bot.js",
     "bot:shard": "node Shard/bot.js",
     "dev": "node server.js",
     "test": "node --test test/*.test.js"

@@ -5,7 +5,6 @@
 #  Gere les services PM2 :
 #    - shardtown      : Site web                 (server.js)
 #    - shard          : Shard Bot                (Shard/sharder.js)
-#    - shardguard     : ShardGuard Bot           (ShardGuard/sharder.js)
 #    - paladium       : Paladium Com Portal      (dist/index.js)
 # =============================================================================
 
@@ -24,20 +23,17 @@ NC='\033[0m'
 # -------- Identifiants des process PM2 --------------------------------------
 PM2_SITE="shardtown"
 PM2_SHARD="shard"
-PM2_SHARDGUARD="shardguard"
 PM2_PALADIUM="paladium"
 
 # -------- Dossiers de travail ------------------------------------------------
 DIR_SITE="/root/shardtown"
 DIR_SHARD="/root/shardtown"
-DIR_SHARDGUARD="/root/shardtown"
 DIR_PALADIUM="/root/PaladiumComPortal"
 DIR="/root/shardtown"  # alias historique
 
 # -------- Points d'entree (relatifs au dossier de travail) -------------------
 FILE_SITE="server.js"
 FILE_SHARD="Shard/sharder.js"
-FILE_SHARDGUARD="ShardGuard/sharder.js"
 FILE_PALADIUM="dist/index.js"
 
 # =============================================================================
@@ -190,7 +186,6 @@ overview() {
     echo -e "  ${DIM}-------------------------------------------------------------------------------${NC}"
     print_service_line "Site Web"        "$CYAN"    "$PM2_SITE"
     print_service_line "Shard Bot"       "$MAGENTA" "$PM2_SHARD"
-    print_service_line "ShardGuard Bot"  "$BLUE"    "$PM2_SHARDGUARD"
     print_service_line "Paladium Portal" "$YELLOW"  "$PM2_PALADIUM"
     echo ""
 
@@ -416,16 +411,13 @@ shards_menu() {
         echo -e "  ${DIM}-------------------------------------------------------------------------------${NC}"
         echo ""
         print_service_line "Shard Bot"      "$MAGENTA" "$PM2_SHARD"
-        print_service_line "ShardGuard Bot" "$BLUE"    "$PM2_SHARDGUARD"
         echo ""
-        echo -e "  ${DIM}Les shards sont geres par les Sharding Managers.${NC}"
+        echo -e "  ${DIM}Les shards sont geres par le Sharding Manager.${NC}"
         echo -e "  ${DIM}Redemarrer le bot redemarre tous ses shards.${NC}"
         echo ""
         echo -e "  ${YELLOW}[1]${NC} Redemarrer tous les shards Shard Bot"
-        echo -e "  ${YELLOW}[2]${NC} Redemarrer tous les shards ShardGuard"
-        echo -e "  ${YELLOW}[3]${NC} Redemarrer TOUS les shards (les 2 bots)"
-        echo -e "  ${YELLOW}[4]${NC} Arreter tous les shards"
-        echo -e "  ${YELLOW}[5]${NC} Demarrer tous les shards"
+        echo -e "  ${YELLOW}[2]${NC} Arreter tous les shards"
+        echo -e "  ${YELLOW}[3]${NC} Demarrer tous les shards"
         echo -e "  ${YELLOW}[0]${NC} Retour"
         echo ""
         echo -ne "  ${BOLD}Choix : ${NC}"
@@ -433,10 +425,8 @@ shards_menu() {
 
         case $choice in
             1) pm2 restart "$PM2_SHARD"; echo -e "\n  ${YELLOW}>> Shards Shard Bot redemarres.${NC}"; sleep 1 ;;
-            2) pm2 restart "$PM2_SHARDGUARD"; echo -e "\n  ${YELLOW}>> Shards ShardGuard redemarres.${NC}"; sleep 1 ;;
-            3) pm2 restart "$PM2_SHARD" "$PM2_SHARDGUARD"; echo -e "\n  ${YELLOW}>> Tous les shards redemarres.${NC}"; sleep 1 ;;
-            4) pm2 stop "$PM2_SHARD" "$PM2_SHARDGUARD"; echo -e "\n  ${RED}>> Tous les shards arretes.${NC}"; sleep 1 ;;
-            5) pm2 start "$PM2_SHARD" "$PM2_SHARDGUARD"; echo -e "\n  ${GREEN}>> Tous les shards demarres.${NC}"; sleep 1 ;;
+            2) pm2 stop "$PM2_SHARD"; echo -e "\n  ${RED}>> Shards arretes.${NC}"; sleep 1 ;;
+            3) pm2 start "$PM2_SHARD"; echo -e "\n  ${GREEN}>> Shards demarres.${NC}"; sleep 1 ;;
             0) break ;;
             *) echo -e "\n  ${RED}Choix invalide.${NC}"; sleep 0.7 ;;
         esac
@@ -531,7 +521,6 @@ main_menu() {
         echo -e "  ${BOLD}Services${NC}"
         echo -e "  ${YELLOW}[1]${NC}  Gerer le Site Web (${PM2_SITE})"
         echo -e "  ${YELLOW}[2]${NC}  Gerer Shard Bot (${PM2_SHARD})"
-        echo -e "  ${YELLOW}[3]${NC}  Gerer ShardGuard Bot (${PM2_SHARDGUARD})"
         echo -e "  ${YELLOW}[4]${NC}  Gerer Paladium Portal (${PM2_PALADIUM})"
         echo ""
         echo -e "  ${BOLD}Actions globales${NC}"
@@ -555,7 +544,6 @@ main_menu() {
         case $choice in
             1) control_service "$PM2_SITE"          "Site Web"               "$FILE_SITE"          "$DIR_SITE" ;;
             2) control_service "$PM2_SHARD"         "Shard Bot"              "$FILE_SHARD"         "$DIR_SHARD" ;;
-            3) control_service "$PM2_SHARDGUARD"    "ShardGuard Bot"         "$FILE_SHARDGUARD"    "$DIR_SHARDGUARD" ;;
             4) control_service "$PM2_PALADIUM"      "Paladium Portal"        "$FILE_PALADIUM"      "$DIR_PALADIUM" ;;
             5) shards_menu ;;
             6)
