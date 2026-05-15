@@ -1140,6 +1140,29 @@ app.use(async (req, res, next) => {
                 guilds,
             };
         }
+        // Cross-synth — bot fusionné : une seule des deux liaisons doit
+        // suffire à débloquer les deux familles d'endpoints. Si une seule
+        // est présente, on duplique son identité de l'autre côté.
+        if (!req.user && a?.shard_id) {
+            let guilds = [];
+            try { guilds = a.shard_guilds_json ? JSON.parse(a.shard_guilds_json) : []; } catch { /* */ }
+            req.user = {
+                id: a.shard_id,
+                username: a.shard_username,
+                avatar: a.shard_avatar,
+                guilds,
+            };
+        }
+        if (!req.session.shardUser && a?.discord_id) {
+            let guilds = [];
+            try { guilds = a.discord_guilds_json ? JSON.parse(a.discord_guilds_json) : []; } catch { /* */ }
+            req.session.shardUser = {
+                id: a.discord_id,
+                username: a.discord_username,
+                avatar: a.discord_avatar,
+                guilds,
+            };
+        }
     } catch { /* swallow, treat as unauth */ }
     next();
 });
