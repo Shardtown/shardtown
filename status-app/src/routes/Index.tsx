@@ -132,18 +132,35 @@ export function Index() {
                 <a href={s.href} className="group block h-full relative">
                   <TiltCard
                     effect="gravitate"
-                    tiltLimit={4}
-                    scale={1.015}
-                    className="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-7 hover:border-zinc-700 hover:bg-zinc-900/60 transition-colors h-full flex flex-col"
+                    tiltLimit={5}
+                    scale={1.02}
+                    className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 hover:bg-zinc-900/60 transition-colors h-full flex flex-col"
                   >
-                    <div className="w-11 h-11 rounded-xl bg-accent-gradient-soft border border-blue-500/25 flex items-center justify-center text-blue-300 mb-6">
-                      <Icon className="w-5 h-5" strokeWidth={1.8} />
+                    {/* Zone hero icône — élément visuel dominant en haut.
+                        Bandeau plein gradient bleu avec un glow sous-jacent,
+                        l'icône 56px en blanc au centre. ~35% de la hauteur
+                        de la card. */}
+                    <div className="relative h-[180px] flex items-center justify-center bg-accent-gradient-soft border-b border-zinc-800 overflow-hidden">
+                      <div
+                        aria-hidden
+                        className="absolute inset-0 opacity-60"
+                        style={{
+                          background:
+                            "radial-gradient(circle at 50% 60%, rgba(59,130,246,0.35), transparent 60%)",
+                        }}
+                      />
+                      <div className="relative w-[88px] h-[88px] rounded-2xl bg-accent-gradient flex items-center justify-center shadow-[0_16px_48px_-12px_rgba(59,130,246,0.55),0_0_0_1px_rgba(96,165,250,0.3)] group-hover:scale-105 transition-transform duration-300">
+                        <Icon className="w-11 h-11 text-white" strokeWidth={1.6} />
+                      </div>
                     </div>
-                    <h3 className="text-[19px] font-bold tracking-tight mb-2.5">{s.label}</h3>
-                    <p className="text-[14px] text-zinc-400 leading-relaxed mb-8">{s.description}</p>
-                    <span className="mt-auto inline-flex items-center gap-1.5 text-[13px] font-semibold text-zinc-300 group-hover:text-white group-hover:gap-2.5 transition-all">
-                      En discuter <ArrowRight className="w-3.5 h-3.5" />
-                    </span>
+                    {/* Zone texte */}
+                    <div className="p-7 flex-1 flex flex-col">
+                      <h3 className="text-[20px] font-bold tracking-tight mb-3">{s.label}</h3>
+                      <p className="text-[14px] text-zinc-400 leading-relaxed mb-8">{s.description}</p>
+                      <span className="mt-auto inline-flex items-center gap-1.5 text-[13px] font-semibold text-zinc-300 group-hover:text-white group-hover:gap-2.5 transition-all">
+                        En discuter <ArrowRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
                   </TiltCard>
                 </a>
               </RevealItem>
