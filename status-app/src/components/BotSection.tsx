@@ -42,7 +42,7 @@ export function BotSection({ bot, query = "", pingHistoryByKey }: Props) {
       : { ring: "ring-emerald-500/40", glow: "shadow-[0_0_24px_-6px_rgba(16,185,129,0.45)]", chip: "bg-emerald-500/15 border-emerald-500/25 text-emerald-300", dot: "bg-emerald-500", text: "Opérationnel", accent: "from-emerald-500/[0.05] via-transparent" };
 
   return (
-    <div className="group relative bg-gradient-to-br from-white/[0.04] via-white/[0.015] to-transparent border border-white/[0.08] rounded-3xl overflow-hidden hover:border-white/15 transition-colors">
+    <div className="group relative bg-gradient-to-br from-white/[0.04] via-white/[0.015] to-transparent border border-white/[0.08] rounded-2xl overflow-hidden hover:border-white/15 transition-colors">
       <div className={`absolute inset-x-0 top-0 h-32 bg-gradient-to-b ${statusTone.accent} to-transparent pointer-events-none`} />
 
       <header className="relative px-5 sm:px-6 pt-5 pb-4 border-b border-white/[0.06]">

@@ -386,7 +386,7 @@ function MemberModal({ guildId, member, onClose }: { guildId: string; member: Me
       onKeyDown={e => e.key === "Escape" && onClose()}
     >
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div className="relative bg-[#0a0a0a] border border-white/10 rounded-3xl p-6 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-[#0a0a0a] border border-white/10 rounded-2xl p-6 w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
         <button type="button" onClick={onClose}
           className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center" aria-label="Fermer">
           <X className="w-3.5 h-3.5" />

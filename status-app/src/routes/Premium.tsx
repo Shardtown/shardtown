@@ -256,7 +256,7 @@ export function Premium() {
         {/* Pricing cards */}
         <div id="pricing" className="grid md:grid-cols-2 gap-5 max-w-4xl mx-auto mb-20">
           {/* Monthly */}
-          <div className="relative rounded-3xl p-7 md:p-8 bg-white/[0.025] border border-white/[0.08] hover:border-white/15 transition-colors backdrop-blur-sm">
+          <div className="relative rounded-2xl p-7 md:p-8 bg-white/[0.025] border border-white/[0.08] hover:border-white/15 transition-colors backdrop-blur-sm">
             <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/30 mb-4">
               Pour tester sans engagement
             </p>
@@ -286,7 +286,7 @@ export function Premium() {
           </div>
 
           {/* Lifetime — featured with glow border */}
-          <div className="glow-border relative rounded-3xl p-7 md:p-8 bg-gradient-to-br from-amber-500/[0.12] via-amber-500/[0.04] to-transparent backdrop-blur-sm">
+          <div className="glow-border relative rounded-2xl p-7 md:p-8 bg-gradient-to-br from-amber-500/[0.12] via-amber-500/[0.04] to-transparent backdrop-blur-sm">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 text-black text-[10px] font-extrabold tracking-[0.18em] uppercase flex items-center gap-1 shadow-lg">
               <Star className="w-3 h-3" fill="currentColor" /> Meilleure offre
             </div>
@@ -339,7 +339,7 @@ export function Premium() {
             </div>
           )}
 
-          <div className="rounded-3xl bg-white/[0.025] border border-white/[0.08] p-6 md:p-8 backdrop-blur-sm">
+          <div className="rounded-2xl bg-white/[0.025] border border-white/[0.08] p-6 md:p-8 backdrop-blur-sm">
             {!user && !loading ? (
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">

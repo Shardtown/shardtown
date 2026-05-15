@@ -394,7 +394,7 @@ export function AccountLogin() {
                   type="button"
                   onClick={() => switchMode("login")}
                   className={`py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-colors ${
-                    mode === "login" ? "bg-white text-black" : "text-white/50 hover:text-white"
+                    mode === "login" ? "bg-accent-gradient text-white" : "text-white/50 hover:text-white"
                   }`}
                 >
                   Connexion
@@ -403,7 +403,7 @@ export function AccountLogin() {
                   type="button"
                   onClick={() => switchMode("register")}
                   className={`py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-colors ${
-                    mode === "register" ? "bg-white text-black" : "text-white/50 hover:text-white"
+                    mode === "register" ? "bg-accent-gradient text-white" : "text-white/50 hover:text-white"
                   }`}
                 >
                   Inscription

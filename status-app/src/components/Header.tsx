@@ -246,7 +246,7 @@ export function Header() {
           }`}
         >
           <div
-            className="flex flex-col p-3 border border-white/15 bg-zinc-950/90 backdrop-blur-xl rounded-3xl shadow-[0_16px_48px_-12px_rgba(0,0,0,0.7)] transition-all duration-300"
+            className="flex flex-col p-3 border border-white/15 bg-zinc-950/90 backdrop-blur-xl rounded-2xl shadow-[0_16px_48px_-12px_rgba(0,0,0,0.7)] transition-all duration-300"
           >
             {NAV.map(item =>
               item.external ? (

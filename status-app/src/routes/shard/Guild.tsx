@@ -279,7 +279,7 @@ export function ShardGuild() {
           <div className="h-20 w-3/4 bg-white/5 rounded animate-pulse mb-12" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-10">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-44 bg-white/[0.03] rounded-3xl animate-pulse" />
+              <div key={i} className="h-44 bg-white/[0.03] rounded-2xl animate-pulse" />
             ))}
           </div>
           <div className="grid md:grid-cols-[230px_1fr] gap-10">
@@ -289,8 +289,8 @@ export function ShardGuild() {
               ))}
             </div>
             <div className="space-y-4">
-              <div className="h-48 bg-white/[0.03] rounded-3xl animate-pulse" />
-              <div className="h-64 bg-white/[0.03] rounded-3xl animate-pulse" />
+              <div className="h-48 bg-white/[0.03] rounded-2xl animate-pulse" />
+              <div className="h-64 bg-white/[0.03] rounded-2xl animate-pulse" />
             </div>
           </div>
         </section>

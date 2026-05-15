@@ -104,7 +104,7 @@ export function ShardServer() {
           <div className="h-8 w-32 bg-white/5 rounded animate-pulse mb-8" />
           <div className="grid md:grid-cols-3 gap-6 mb-12">
             {[0, 1, 2].map(i => (
-              <div key={i} className="bg-[#0a0a0a] border border-white/5 rounded-3xl h-32 animate-pulse" />
+              <div key={i} className="bg-[#0a0a0a] border border-white/5 rounded-2xl h-32 animate-pulse" />
             ))}
           </div>
         </section>
@@ -317,7 +317,7 @@ export function ShardServer() {
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <div
-            className="relative bg-[#0d0d10]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-8 w-full max-w-md shadow-2xl"
+            className="relative bg-[#0d0d10]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button

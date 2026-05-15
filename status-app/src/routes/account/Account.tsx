@@ -250,7 +250,7 @@ export function Account() {
           <div className="h-20 w-3/4 bg-white/5 rounded animate-pulse mb-12" />
           <div className="grid md:grid-cols-2 gap-4 mb-10">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-24 bg-white/[0.03] rounded-3xl animate-pulse" />
+              <div key={i} className="h-24 bg-white/[0.03] rounded-2xl animate-pulse" />
             ))}
           </div>
         </section>
@@ -331,7 +331,7 @@ export function Account() {
         )}
 
         {/* CONNEXIONS — une seule carte avec les 4 intégrations en lignes */}
-        <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] overflow-hidden mb-6">
+        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden mb-6">
           <div className="px-6 md:px-8 pt-6 md:pt-7 pb-5 border-b border-white/[0.05]">
             <p className="text-[10.5px] font-bold tracking-[0.22em] text-white/35 uppercase mb-2">
               Connexions
@@ -435,7 +435,7 @@ export function Account() {
         </div>
 
         {/* Passkeys */}
-        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
+        <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
               <Fingerprint className="w-4 h-4" />
@@ -448,7 +448,7 @@ export function Account() {
               type="button"
               onClick={openAddPasskey}
               disabled={passkeyBusy}
-              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
+              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-gradient text-white text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
             >
               {passkeyBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
               Ajouter
@@ -490,7 +490,7 @@ export function Account() {
         </div>
 
         {/* Personal access tokens — pour app desktop, CLI, intégrations */}
-        <div className="mt-6 rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
+        <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
               <KeyRound className="w-4 h-4" />
@@ -503,7 +503,7 @@ export function Account() {
               type="button"
               onClick={openAddToken}
               disabled={tokenBusy}
-              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
+              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-gradient text-white text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
             >
               {tokenBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
               Générer
@@ -550,7 +550,7 @@ export function Account() {
         <div className="mt-12 flex items-center justify-center">
           <Link
             to="/outils"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-black text-[13px] font-bold hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-gradient text-white text-[13px] font-bold hover:opacity-90 transition-opacity"
           >
             <Server className="w-3.5 h-3.5" /> Aller à mes outils
           </Link>
@@ -566,7 +566,7 @@ export function Account() {
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-7 w-full max-w-sm shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -612,7 +612,7 @@ export function Account() {
               <button
                 type="button"
                 onClick={confirmAddPasskey}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
+                className="flex-1 py-3 rounded-full font-bold text-sm bg-accent-gradient text-white transition-opacity hover:opacity-90"
               >
                 Continuer
               </button>
@@ -630,7 +630,7 @@ export function Account() {
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-7 w-full max-w-sm shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -682,7 +682,7 @@ export function Account() {
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-7 w-full max-w-sm shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -728,7 +728,7 @@ export function Account() {
               <button
                 type="button"
                 onClick={confirmAddToken}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
+                className="flex-1 py-3 rounded-full font-bold text-sm bg-accent-gradient text-white transition-opacity hover:opacity-90"
               >
                 Générer
               </button>
@@ -746,7 +746,7 @@ export function Account() {
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-7 w-full max-w-md shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-md shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -787,7 +787,7 @@ export function Account() {
             <button
               type="button"
               onClick={() => setRevealedToken(null)}
-              className="w-full py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
+              className="w-full py-3 rounded-full font-bold text-sm bg-accent-gradient text-white transition-opacity hover:opacity-90"
             >
               J'ai copié
             </button>
@@ -804,7 +804,7 @@ export function Account() {
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-7 w-full max-w-sm shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -923,7 +923,7 @@ function ConnectionRow({
         ) : (
           <a
             href={hrefLink}
-            className="px-3 py-1.5 rounded-lg bg-white text-black text-[11px] font-bold hover:opacity-90"
+            className="px-3 py-1.5 rounded-lg bg-accent-gradient text-white text-[11px] font-bold hover:opacity-90"
           >
             Lier
           </a>

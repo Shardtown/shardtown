@@ -153,7 +153,7 @@ export function Outils() {
           </motion.p>
           <a
             href="/account/login"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-black text-sm font-bold hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-accent-gradient text-white text-sm font-bold hover:opacity-90 transition-opacity"
           >
             Se connecter <ArrowRight className="w-4 h-4" />
           </a>
@@ -197,7 +197,7 @@ export function Outils() {
           className="mb-4"
         >
           <Link to="/shard/server" className="group block">
-            <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 p-6 md:p-8 transition-colors flex items-center gap-6">
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 p-6 md:p-8 transition-colors flex items-center gap-6">
               <img
                 src="/image/shard.png"
                 alt=""
@@ -259,7 +259,7 @@ export function Outils() {
           initial={{ opacity: 0, y: reduce ? 0 : 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.22, ease: heroEase }}
-          className="rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-7"
+          className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-7"
         >
           <div className="flex items-start gap-4 mb-5">
             <div className="flex-1 min-w-0">
@@ -276,7 +276,7 @@ export function Outils() {
             </div>
             <a
               href="mailto:contact@shardtwn.fr"
-              className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12.5px] font-bold hover:opacity-90 transition-opacity shrink-0"
+              className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-gradient text-white text-[12.5px] font-bold hover:opacity-90 transition-opacity shrink-0"
             >
               <Mail className="w-3.5 h-3.5" /> Discuter
             </a>
@@ -296,7 +296,7 @@ export function Outils() {
           </div>
           <a
             href="mailto:contact@shardtwn.fr"
-            className="md:hidden mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12.5px] font-bold hover:opacity-90 transition-opacity"
+            className="md:hidden mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-gradient text-white text-[12.5px] font-bold hover:opacity-90 transition-opacity"
           >
             <Mail className="w-3.5 h-3.5" /> Discuter
           </a>

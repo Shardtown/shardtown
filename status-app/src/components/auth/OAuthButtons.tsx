@@ -27,7 +27,7 @@ export function OAuthButtons({ verb = "Continuer avec" }: Props) {
     <div className="space-y-2.5">
       <a
         href="/api/account/oauth/google"
-        className="w-full inline-flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-white text-black font-bold text-sm hover:bg-white/90 transition-colors"
+        className="w-full inline-flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl bg-accent-gradient text-white font-bold text-sm hover:bg-white/90 transition-colors"
       >
         <GoogleIcon className="w-4 h-4" />
         {verb} Google
@@ -66,7 +66,7 @@ export function OAuthIcons({ label = "Ou continuer avec", onPasskey, passkeyDisa
         <a
           href="/api/account/oauth/google"
           aria-label="Continuer avec Google"
-          className="w-7 h-7 md:w-11 md:h-11 rounded-full bg-white text-black flex items-center justify-center hover:bg-white/90 transition-colors"
+          className="w-7 h-7 md:w-11 md:h-11 rounded-full bg-accent-gradient text-white flex items-center justify-center hover:bg-white/90 transition-colors"
         >
           <GoogleIcon className="w-5 h-5 md:w-7 md:h-7" />
         </a>

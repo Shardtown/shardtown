@@ -122,7 +122,7 @@ export function AdminGuildDetail() {
       <AppLayout>
         <section className="container-wide pt-32 md:pt-40 space-y-4">
           <div className="h-8 w-64 bg-white/[0.04] rounded animate-pulse" />
-          <div className="h-48 bg-white/[0.03] rounded-3xl animate-pulse" />
+          <div className="h-48 bg-white/[0.03] rounded-2xl animate-pulse" />
         </section>
       </AppLayout>
     );
@@ -136,7 +136,7 @@ export function AdminGuildDetail() {
           <p className="text-white/70 mb-6">{error}</p>
           <Link
             to="/admin"
-            className="inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 bg-accent-gradient text-white px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
           >
             Retour au panel
           </Link>
@@ -169,7 +169,7 @@ export function AdminGuildDetail() {
         </Link>
 
         {/* Hero */}
-        <div className="bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent border border-white/[0.08] rounded-3xl p-6 md:p-8 mb-10">
+        <div className="bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent border border-white/[0.08] rounded-2xl p-6 md:p-8 mb-10">
           <div className="flex items-start gap-5 flex-wrap">
             {guild && guildIconUrl(guild.id, guild.icon) ? (
               <img
@@ -252,7 +252,7 @@ export function AdminGuildDetail() {
                 <h2 className="text-xl font-extrabold tracking-tight">Owner</h2>
               </div>
             </div>
-            <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-5 flex items-center gap-4">
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-5 flex items-center gap-4">
               {userAvatarUrl(data.owner) ? (
                 <img
                   src={userAvatarUrl(data.owner)!}
@@ -313,7 +313,7 @@ export function AdminGuildDetail() {
                 {data.warningsCount} warns
               </span>
             </div>
-            <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent overflow-hidden">
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent overflow-hidden">
               <ul className="divide-y divide-white/[0.04] max-h-[420px] overflow-y-auto">
                 {data.recentAuditLogs.map(log => (
                   <li key={log.id} className="px-4 py-3 hover:bg-white/[0.02] transition-colors">

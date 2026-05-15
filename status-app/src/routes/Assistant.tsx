@@ -418,7 +418,7 @@ export function Assistant() {
               className={cn(
                 "shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition-all",
                 draft.trim() && !sending
-                  ? "bg-white text-black hover:scale-105"
+                  ? "bg-accent-gradient text-white hover:scale-105"
                   : "bg-white/[0.06] text-white/40 cursor-not-allowed",
               )}
             >
@@ -514,7 +514,7 @@ function ConfirmResetCard({
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-reset-title"
-            className="relative w-full max-w-sm rounded-3xl bg-[#0a0a0f]/95 border border-white/[0.08] shadow-[0_32px_80px_-12px_rgba(0,0,0,0.85)] backdrop-blur-xl p-7"
+            className="relative w-full max-w-sm rounded-2xl bg-[#0a0a0f]/95 border border-white/[0.08] shadow-[0_32px_80px_-12px_rgba(0,0,0,0.85)] backdrop-blur-xl p-7"
           >
             <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-300 mb-5">
               <RotateCcw className="w-5 h-5" />
@@ -576,7 +576,7 @@ function Message({ m }: { m: ChatMessage }) {
         className={cn(
           "max-w-[85%] px-4 py-3 rounded-2xl text-[14.5px] leading-relaxed break-words",
           isUser
-            ? "bg-white text-black rounded-br-md whitespace-pre-wrap"
+            ? "bg-accent-gradient text-white rounded-br-md whitespace-pre-wrap"
             : "bg-white/[0.04] border border-white/[0.08] rounded-bl-md text-white/85 markdown-prose",
         )}
       >

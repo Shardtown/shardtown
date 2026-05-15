@@ -104,7 +104,7 @@ export function Produits() {
       {/* CTA Premium */}
       <section className="container-wide pb-32">
         <Reveal direction="up" distance={50}>
-          <div className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-10 md:p-16 text-center">
+          <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-10 md:p-16 text-center">
             <p className="text-sm font-bold tracking-widest text-amber-300/70 uppercase mb-4">
               Premium
             </p>

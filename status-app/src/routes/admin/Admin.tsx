@@ -289,7 +289,7 @@ export function Admin() {
               <div key={i} className="h-32 bg-white/[0.03] rounded-2xl animate-pulse" />
             ))}
           </div>
-          <div className="h-72 bg-white/[0.03] rounded-3xl animate-pulse" />
+          <div className="h-72 bg-white/[0.03] rounded-2xl animate-pulse" />
         </section>
       </AppLayout>
     );
@@ -305,7 +305,7 @@ export function Admin() {
           <p className="text-white/70 mb-6">{error}</p>
           <Link
             to="/admin/login"
-            className="inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 bg-accent-gradient text-white px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
           >
             Se connecter
           </Link>
@@ -400,7 +400,7 @@ export function Admin() {
                 type="button"
                 onClick={() => setTab(t.v)}
                 className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-tight transition-colors inline-flex items-center gap-2 ${
-                  tab === t.v ? "bg-white text-black" : "text-white/60 hover:text-white"
+                  tab === t.v ? "bg-accent-gradient text-white" : "text-white/60 hover:text-white"
                 }`}
               >
                 {t.label}
@@ -499,7 +499,7 @@ export function Admin() {
                 {visibleBlocked.length} / {totalBlocked}
               </span>
             </div>
-            <div className="rounded-3xl border border-red-500/15 bg-gradient-to-br from-red-500/[0.04] to-transparent p-2 space-y-1">
+            <div className="rounded-2xl border border-red-500/15 bg-gradient-to-br from-red-500/[0.04] to-transparent p-2 space-y-1">
               {visibleBlocked.map(b => (
                 <BlockedRow key={b.guild_id} blocked={b} onUnblock={unblockGuild} />
               ))}
@@ -511,7 +511,7 @@ export function Admin() {
         {tab !== "blocked" &&
           visibleBots.every(b => b.guilds.length === 0) &&
           visibleBlocked.length === 0 && (
-            <div className="mt-8 text-center py-16 rounded-3xl border border-white/[0.06] bg-white/[0.02]">
+            <div className="mt-8 text-center py-16 rounded-2xl border border-white/[0.06] bg-white/[0.02]">
               <p className="text-white/30 text-xs font-bold uppercase tracking-widest">
                 {q ? "Aucun serveur ne correspond" : "Aucun serveur"}
               </p>
@@ -538,7 +538,7 @@ export function Admin() {
               Actualiser
             </button>
           </div>
-          <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-2 space-y-1">
+          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-2 space-y-1">
             {sessions === null ? (
               <div className="p-6 text-center text-white/30 text-xs font-bold uppercase tracking-widest">
                 Chargement…
@@ -575,7 +575,7 @@ export function Admin() {
               Actualiser
             </button>
           </div>
-          <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent overflow-hidden">
+          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent overflow-hidden">
             {audit === null ? (
               <div className="p-8 text-center text-white/30 text-xs font-bold uppercase tracking-widest">
                 Chargement…
@@ -619,7 +619,7 @@ export function Admin() {
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-3xl p-7 w-full max-w-sm shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -743,7 +743,7 @@ function BotPanel({
           <p className="text-white/30 text-xs font-bold uppercase tracking-widest">Aucun serveur</p>
         </div>
       ) : (
-        <div className="rounded-3xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-2 space-y-1">
+        <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-2 space-y-1">
           {bot.guilds.map(g => {
             const blocked = blockedSet.has(g.id);
             return (

@@ -135,7 +135,7 @@ export function Index() {
                   effect="gravitate"
                   tiltLimit={6}
                   scale={1.02}
-                  className="bg-white/[0.02] border border-white/[0.08] rounded-3xl p-10 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full flex flex-col"
+                  className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-10 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full flex flex-col"
                 >
                   <h3 className="text-2xl font-bold mb-3">{s.label}</h3>
                   <p className={`text-xs font-bold uppercase tracking-widest ${s.accent} mb-6`}>{s.tagline}</p>
@@ -182,7 +182,7 @@ export function Index() {
 
                 <a
                   href="/download/mac"
-                  className="relative z-10 mt-auto group inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-white text-black font-bold text-sm transition-all hover:bg-white/95 hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_-12px_rgba(255,255,255,0.35)]"
+                  className="relative z-10 mt-auto group inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-accent-gradient text-white font-bold text-sm transition-all hover:bg-white/95 hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_-12px_rgba(255,255,255,0.35)]"
                 >
                   <DownloadIcon className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
                   Télécharger le .dmg
@@ -219,7 +219,7 @@ export function Index() {
 
       {/* Contact CTA — rises up */}
       <section id="contact" className="container-wide pt-48 pb-16 scroll-mt-32 overflow-x-clip">
-        <Reveal direction="up" distance={70} duration={0.85} className="bg-white/[0.02] border border-white/[0.06] rounded-3xl p-12 md:p-20 text-center">
+        <Reveal direction="up" distance={70} duration={0.85} className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-12 md:p-20 text-center">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">Parlons-en</p>
           <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-6">
             Un projet en tête ?
