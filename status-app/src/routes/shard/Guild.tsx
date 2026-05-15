@@ -3,13 +3,12 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, MessageSquare, UserPlus, Cake, Award, Coins,
   Gift, Vote, Volume2, Code2, Smile, MessageCircleHeart,
-  Layers, Heart, Radio,
+  Radio,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost, isApiError } from "@/api/client";
 import { IS_DESKTOP } from "@/lib/desktop";
-import { isOn, parseObjects } from "@/api/shard";
 import type { ShardGuildData, ShardSettings } from "@/api/shard";
 import { SaveBar } from "@/components/shardguard/SaveBar";
 import {
@@ -166,36 +165,7 @@ export function ShardGuild() {
     );
   }
 
-  // ── Engagement metrics ──
   const s = draft;
-  const autoReactions = s.autoReactions || [];
-  const moduleStates = [
-    !!s.welcomeChannelId,
-    !!s.autoRoleId,
-    !!s.birthdayChannelId,
-    data.scheduledAnnouncements.length > 0,
-    isOn(s.levelsEnabled),
-    isOn(s.economyEnabled),
-    data.giveaways.length > 0,
-    data.polls.length > 0,
-    !!s.tempVoiceTrigger,
-    autoReactions.length > 0,
-    isOn(s.ticketEnabled),
-  ];
-  const totalModules = moduleStates.length;
-  const activeModules = moduleStates.filter(Boolean).length;
-  const modulesPct = Math.round((activeModules / totalModules) * 100);
-
-  const liveGiveaways = data.giveaways.filter(g => !g.ended).length;
-  const livePolls = data.polls.filter(p => !p.ended).length;
-  const scheduledCount = data.scheduledAnnouncements.length;
-  const reactionsCount = autoReactions.length;
-  const levelRewards = parseObjects<{ level: number; roleId: string }>(s.levelRewards).length;
-
-  // Engagement score: modules weight 60%, live activity 30%, polish 10%
-  const liveActivity = Math.min(100, (liveGiveaways * 25) + (livePolls * 15) + (scheduledCount * 10));
-  const polish = Math.min(100, (reactionsCount * 8) + (levelRewards * 12));
-  const engagementScore = Math.round(modulesPct * 0.6 + liveActivity * 0.3 + polish * 0.1);
 
   const tabProps = {
     guildId, settings: draft, update,
@@ -272,54 +242,6 @@ export function ShardGuild() {
           </div>
         </header>
 
-        {/* STATS STRIP */}
-        <motion.div
-          initial={{ opacity: 0, y: reduce ? 0 : 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.25, ease: heroEase }}
-          className={IS_DESKTOP
-            ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 mb-6"
-            : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-14"}
-        >
-          <PulseCard
-            label="Modules actifs"
-            value={`${activeModules}/${totalModules}`}
-            icon={Layers}
-            accent="emerald"
-            ringPct={modulesPct}
-            sublabel={`${modulesPct}% configuré`}
-          />
-          <PulseCard
-            label="Giveaways"
-            value={liveGiveaways}
-            icon={Gift}
-            accent="pink"
-            sublabel={liveGiveaways > 0 ? "en cours" : "aucun actif"}
-          />
-          <PulseCard
-            label="Sondages"
-            value={livePolls}
-            icon={Vote}
-            accent="violet"
-            sublabel={livePolls > 0 ? "ouverts" : "aucun ouvert"}
-          />
-          <PulseCard
-            label="Réactions auto"
-            value={reactionsCount}
-            icon={Smile}
-            accent="amber"
-            sublabel={reactionsCount > 0 ? `+ ${levelRewards} récomp. niveau` : "à configurer"}
-          />
-          <PulseCard
-            label="Engagement"
-            value={engagementScore}
-            icon={Heart}
-            accent={engagementScore >= 75 ? "emerald" : engagementScore >= 50 ? "amber" : "pink"}
-            ringPct={engagementScore}
-            sublabel={engagementScore >= 75 ? "Excellent" : engagementScore >= 50 ? "Stable" : "À booster"}
-          />
-        </motion.div>
-
         {/* MAIN GRID */}
         <div className="grid md:grid-cols-[230px_1fr] gap-10 lg:gap-14">
           <aside className="md:sticky md:top-28 md:self-start">
@@ -374,69 +296,6 @@ export function ShardGuild() {
 
       <SaveBar dirty={dirty} saving={saving} saved={saved} error={saveError} onSave={save} onReset={reset} />
     </AppLayout>
-  );
-}
-
-/* ─────────── Pulse stat card (Shard palette) ─────────── */
-
-const ACCENT: Record<string, { text: string; ring: string; glow: string }> = {
-  white:   { text: "text-white",       ring: "stroke-white/80",    glow: "shadow-[0_0_24px_-6px_rgba(255,255,255,0.25)]" },
-  emerald: { text: "text-emerald-400", ring: "stroke-emerald-400", glow: "shadow-[0_0_28px_-6px_rgba(16,185,129,0.45)]" },
-  blue:    { text: "text-blue-400",    ring: "stroke-blue-400",    glow: "shadow-[0_0_28px_-6px_rgba(59,130,246,0.45)]" },
-  pink:    { text: "text-pink-400",    ring: "stroke-pink-400",    glow: "shadow-[0_0_28px_-6px_rgba(244,114,182,0.45)]" },
-  violet:  { text: "text-violet-400",  ring: "stroke-violet-400",  glow: "shadow-[0_0_28px_-6px_rgba(139,92,246,0.45)]" },
-  amber:   { text: "text-amber-400",   ring: "stroke-amber-400",   glow: "shadow-[0_0_28px_-6px_rgba(251,191,36,0.45)]" },
-};
-
-function PulseCard({
-  label, value, icon: Icon, accent, ringPct, sublabel,
-}: {
-  label: string;
-  value: number | string;
-  icon: typeof Layers;
-  accent: keyof typeof ACCENT;
-  ringPct?: number;
-  sublabel?: string;
-}) {
-  const a = ACCENT[accent];
-  const display = typeof value === "number" ? value.toLocaleString("fr-FR") : value;
-  return (
-    <div className={`stat-shine group relative bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent border border-white/[0.06] hover:border-white/15 rounded-2xl p-4 transition-all duration-300 hover:-translate-y-0.5 hover:${a.glow}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white/40">
-          <Icon className="w-3 h-3" />
-          {label}
-        </div>
-        {ringPct !== undefined && <RingMini pct={ringPct} colorClass={a.ring} />}
-      </div>
-
-      <div key={String(value)} className={`animate-count-pop text-3xl md:text-[32px] leading-none font-extrabold font-mono-num ${a.text}`}>
-        {display}
-      </div>
-
-      {sublabel && (
-        <p className="text-[10px] text-white/40 mt-1.5 font-medium">{sublabel}</p>
-      )}
-    </div>
-  );
-}
-
-function RingMini({ pct, colorClass }: { pct: number; colorClass: string }) {
-  const r = 11;
-  const c = 2 * Math.PI * r;
-  const off = c - (Math.max(0, Math.min(100, pct)) / 100) * c;
-  return (
-    <svg width="28" height="28" viewBox="0 0 28 28" className="flex-shrink-0">
-      <circle cx="14" cy="14" r={r} fill="none" stroke="currentColor" className="text-white/10" strokeWidth="2" />
-      <circle
-        cx="14" cy="14" r={r} fill="none"
-        strokeWidth="2.5" strokeLinecap="round"
-        className={colorClass}
-        strokeDasharray={c}
-        strokeDashoffset={off}
-        transform="rotate(-90 14 14)"
-      />
-    </svg>
   );
 }
 
