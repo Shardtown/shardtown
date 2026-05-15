@@ -4,12 +4,53 @@ import { apiGet } from "@/api/client";
 
 const SPARK_MAX = 24;
 
+// Persiste l'historique en localStorage pour qu'on retrouve les barres
+// quand on revient sur la page de statut. Sans ça, chaque visite repart
+// avec 0 point — il faut rester 12 min sur la page pour remplir la jauge.
+const STORAGE_KEY = "shardtown:stats:history:v1";
+// Au-delà de 30 min, on considère que les barres sont trop périmées
+// et on repart de zéro pour ne pas montrer un faux "tout va bien".
+const STORAGE_TTL_MS = 30 * 60 * 1000;
+
 export interface LiveHistory {
   clusters: number[];
   shards: number[];
   guilds: number[];
   members: number[];
   latency: number[];
+}
+
+interface StoredHistory {
+  savedAt: number;
+  live: LiveHistory;
+  ping: [string, number[]][];
+}
+
+function loadStored(): StoredHistory | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredHistory;
+    if (!parsed?.savedAt || Date.now() - parsed.savedAt > STORAGE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveStored(live: LiveHistory, ping: Map<string, number[]>) {
+  if (typeof window === "undefined") return;
+  try {
+    const payload: StoredHistory = {
+      savedAt: Date.now(),
+      live,
+      ping: [...ping.entries()],
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    /* quota dépassé / mode privé : on continue en mémoire */
+  }
 }
 
 export interface StatsSnapshot {
@@ -58,8 +99,15 @@ export function useStats(intervalMs = 30_000): StatsSnapshot {
   // corps du render (interdit par le compilateur React 19). Les Map/objets
   // sont par référence, donc le snapshot et les refs pointent vers la même
   // structure mutable, comme avant.
-  const initialLive: LiveHistory = useMemo(() => emptyHistory(), []);
-  const initialPing: Map<string, number[]> = useMemo(() => new Map(), []);
+  // On hydrate depuis localStorage si dispo (TTL 30 min) — sinon empty.
+  const initialLive: LiveHistory = useMemo(() => {
+    const stored = loadStored();
+    return stored?.live ?? emptyHistory();
+  }, []);
+  const initialPing: Map<string, number[]> = useMemo(() => {
+    const stored = loadStored();
+    return new Map(stored?.ping ?? []);
+  }, []);
   const liveHistoryRef = useRef<LiveHistory>(initialLive);
   const pingHistoryRef = useRef<Map<string, number[]>>(initialPing);
   const [snapshot, setSnapshot] = useState<StatsSnapshot>(() => ({
@@ -118,6 +166,8 @@ export function useStats(intervalMs = 30_000): StatsSnapshot {
           if (arr.length > SPARK_MAX) arr.shift();
           ph.set(key, arr);
         }
+
+        saveStored(live, ph);
 
         setSnapshot({
           bots,
