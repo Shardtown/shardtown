@@ -338,7 +338,7 @@ export function Account() {
             </p>
             <h2 className="text-xl font-extrabold tracking-tight">Comptes liés</h2>
             <p className="text-[13px] text-white/50 mt-2 max-w-xl leading-relaxed">
-              Discord est nécessaire pour configurer Samia. Google et GitHub
+              Discord est nécessaire pour configurer Shard. Google et GitHub
               sont optionnels, utiles pour te reconnecter en un clic.
             </p>
           </div>
@@ -348,7 +348,7 @@ export function Account() {
             <ConnectionRow
               kind="discord"
               title="Discord"
-              caption="Compte principal — nécessaire pour configurer Samia et les dashboards"
+              caption="Compte principal — nécessaire pour configurer Shard et les dashboards"
               linkedId={account.discord_id}
               linkedName={account.discord_username}
               linkedAvatar={account.discord_avatar}
@@ -377,7 +377,7 @@ export function Account() {
             <ConnectionRow
               kind="discord"
               title="Connexion secondaire"
-              caption="Discord alternatif — utile si tu administres Samia depuis deux comptes (optionnel)"
+              caption="Discord alternatif — utile si tu administres Shard depuis deux comptes (optionnel)"
               linkedId={account.shard_id}
               linkedName={account.shard_username}
               linkedAvatar={account.shard_avatar}

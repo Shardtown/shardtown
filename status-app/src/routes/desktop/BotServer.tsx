@@ -23,9 +23,9 @@ interface GuildsResponse {
   stale: boolean;
 }
 
-const BOT_LABEL = "Samia";
+const BOT_LABEL = "Shard";
 const BOT_TAG = "Bot Discord · sécurité, modération & communauté";
-const BOT_AVATAR = "/image/samia.png";
+const BOT_AVATAR = "/image/shard.png";
 
 function inviteUrl(guildId: string, clientId: string) {
   return `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=${encodeURIComponent("bot applications.commands")}&guild_id=${guildId}`;
@@ -299,7 +299,7 @@ function GuildIcon({ guild, size = 40 }: { guild: Guild; size?: number }) {
 function ConfiguredCard({ guild }: { guild: Guild }) {
   return (
     <Link
-      to={`/samia/guild/${guild.id}`}
+      to={`/shard/guild/${guild.id}`}
       className="group flex items-center gap-3 p-3 pr-4 rounded-[14px] border transition-colors"
       style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
       onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--ds-border-strong)"; e.currentTarget.style.background = "var(--ds-panel-2)"; }}

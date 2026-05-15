@@ -19,19 +19,19 @@ interface BotServerData {
   user: { id: string; username: string; avatar: string | null } | null;
 }
 
-const BOT_LABEL = "Samia";
-const BOT_IMAGE = "/image/samia.png";
+const BOT_LABEL = "Shard";
+const BOT_IMAGE = "/image/shard.png";
 
 function initials(name: string) {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-// Single Discord bot ("Samia"). Behind the scenes two legacy bot identities
+// Single Discord bot ("Shard"). Behind the scenes two legacy bot identities
 // still answer (community via /api/shard/server, security via
 // /api/shardguard/server) — we query both in parallel and merge so the user
 // sees one unified list whether they linked Discord OAuth, Shard OAuth, or
 // both.
-export function SamiaServer() {
+export function ShardServer() {
   const { account, loading: accountLoading } = useAccount();
   const [data, setData] = useState<BotServerData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -228,7 +228,7 @@ export function SamiaServer() {
             {guildsWithBot.map(g => (
               <Link
                 key={g.id}
-                to={`/samia/guild/${g.id}`}
+                to={`/shard/guild/${g.id}`}
                 className="group bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 flex items-center gap-5 hover:border-white/20 hover:bg-white/[0.04] hover:-translate-y-0.5 transition-all"
               >
                 <div className="relative flex-shrink-0">

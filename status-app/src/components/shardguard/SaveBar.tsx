@@ -18,7 +18,7 @@ export function SaveBar({ dirty, saving, saved, error, onSave, onReset }: Props)
     return (
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-md w-[calc(100%-3rem)]">
         <Admonition type="success" title="Modifications enregistrées">
-          La configuration a été synchronisée avec Samia.
+          La configuration a été synchronisée avec Shard.
         </Admonition>
       </div>
     );

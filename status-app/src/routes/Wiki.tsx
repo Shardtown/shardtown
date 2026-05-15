@@ -28,7 +28,7 @@ type Note =
 
 interface Section {
   id: string;
-  group: "Démarrage" | "Samia · Sécurité" | "Samia · Communauté" | "Compte & Premium" | "Référence";
+  group: "Démarrage" | "Shard · Sécurité" | "Shard · Communauté" | "Compte & Premium" | "Référence";
   title: string;
   tagline: string;
   /** Plain-text intro, 1-3 short paragraphs. */
@@ -51,7 +51,7 @@ const SECTIONS: Section[] = [
     title: "Bienvenue sur Shardtown",
     tagline: "Deux bots Discord, un seul écosystème, zéro commande à apprendre.",
     intro: [
-      "Shardtown propose Samia, un bot Discord tout-en-un avec deux modules complémentaires : Sécurité (captcha, anti-raid, modération automatique) et Communauté (niveaux, économie, tickets, sondages, giveaways). Un seul dashboard, un seul compte, un seul Premium.",
+      "Shardtown propose Shard, un bot Discord tout-en-un avec deux modules complémentaires : Sécurité (captcha, anti-raid, modération automatique) et Communauté (niveaux, économie, tickets, sondages, giveaways). Un seul dashboard, un seul compte, un seul Premium.",
       "Toute la configuration se fait depuis le web — pas de commandes à apprendre par cœur, pas de fichier à éditer. Tu cliques, tu sauvegardes, le bot applique en moins d'une seconde.",
       "Ce wiki documente chaque module avec : ce qu'il fait, les paramètres exacts disponibles, les étapes pour le configurer, et les pièges à éviter.",
     ],
@@ -63,7 +63,7 @@ const SECTIONS: Section[] = [
     id: "add-bots",
     group: "Démarrage",
     title: "Ajouter les bots à ton serveur",
-    tagline: "Inviter Samia sur ton serveur avec les bonnes permissions.",
+    tagline: "Inviter Shard sur ton serveur avec les bonnes permissions.",
     intro: [
       "Les deux bots s'invitent indépendamment via les liens d'invitation Discord officiels. Ils demandent les permissions dont ils ont besoin pour fonctionner — accepte-les en bloc, sinon certaines fonctionnalités tomberont en silence.",
       "Tu peux n'installer qu'un seul bot si tu n'as besoin que d'une moitié des fonctionnalités, mais ils sont conçus pour cohabiter sans conflit.",
@@ -76,7 +76,7 @@ const SECTIONS: Section[] = [
       "De retour sur le dashboard, le serveur apparaît dans la liste et tu peux ouvrir sa config.",
     ],
     notes: [
-      { kind: "warning", title: "Ne décoche pas les permissions", body: "Si tu refuses « Gérer les rôles » ou « Modérer les membres », Samia ne pourra pas attribuer le rôle vérifié ni mute/kick. Le bot fonctionnera mais sans les actions clés." },
+      { kind: "warning", title: "Ne décoche pas les permissions", body: "Si tu refuses « Gérer les rôles » ou « Modérer les membres », Shard ne pourra pas attribuer le rôle vérifié ni mute/kick. Le bot fonctionnera mais sans les actions clés." },
       { kind: "info", title: "Position du rôle du bot", body: "Le rôle du bot doit être au-dessus de tous les rôles qu'il manipule (verifié, quarantaine, etc.) dans Paramètres serveur → Rôles. Discord refuse les actions sur des rôles supérieurs." },
     ],
   },
@@ -89,11 +89,11 @@ const SECTIONS: Section[] = [
       "Si tu n'as que 5 minutes pour configurer Shardtown, voici ce que je te conseille de faire — ça couvre 80 % des cas et tu pourras affiner plus tard.",
     ],
     steps: [
-      "Samia → Général : choisis le salon de vérification (où le captcha sera envoyé) et le rôle vérifié (attribué après réussite).",
-      "Samia → Captcha : laisse les valeurs par défaut (6 chiffres, bruit moyen, 3 essais, 15 min). Active « auto-kick » si tu veux que les non-vérifiés partent tout seuls.",
-      "Samia → Règlement : ajoute 3-5 règles courtes, en français et en anglais (les deux versions sont obligatoires).",
-      "Samia → Bienvenue & Départ : sélectionne le salon d'accueil et personnalise le message — utilise {user} pour mentionner et {memberCount} pour le compteur.",
-      "Samia → Auto-rôle : choisis un rôle « Membre » à donner automatiquement aux arrivants vérifiés.",
+      "Shard → Général : choisis le salon de vérification (où le captcha sera envoyé) et le rôle vérifié (attribué après réussite).",
+      "Shard → Captcha : laisse les valeurs par défaut (6 chiffres, bruit moyen, 3 essais, 15 min). Active « auto-kick » si tu veux que les non-vérifiés partent tout seuls.",
+      "Shard → Règlement : ajoute 3-5 règles courtes, en français et en anglais (les deux versions sont obligatoires).",
+      "Shard → Bienvenue & Départ : sélectionne le salon d'accueil et personnalise le message — utilise {user} pour mentionner et {memberCount} pour le compteur.",
+      "Shard → Auto-rôle : choisis un rôle « Membre » à donner automatiquement aux arrivants vérifiés.",
     ],
     notes: [
       { kind: "tip", title: "Teste avant d'ouvrir", body: "Crée un compte Discord secondaire et rejoins ton serveur pour voir tout le flux : captcha → rôle vérifié → message de bienvenue → auto-rôle. Ajuste si quelque chose ne déclenche pas." },
@@ -104,24 +104,24 @@ const SECTIONS: Section[] = [
     ],
   },
 
-  /* ───────── Samia · Sécurité ───────── */
+  /* ───────── Shard · Sécurité ───────── */
   {
     id: "shardguard-overview",
-    group: "Samia · Sécurité",
-    title: "Vue d'ensemble — Samia",
+    group: "Shard · Sécurité",
+    title: "Vue d'ensemble — Shard",
     tagline: "Sécurité, vérification et modération sans configuration manuelle.",
     intro: [
-      "Samia couvre tout ce qui touche à la sécurité du serveur : captcha de vérification à l'arrivée, anti-raid, modération automatique, sanctions progressives, mode panic, statistiques d'arrivées et logs détaillés.",
+      "Shard couvre tout ce qui touche à la sécurité du serveur : captcha de vérification à l'arrivée, anti-raid, modération automatique, sanctions progressives, mode panic, statistiques d'arrivées et logs détaillés.",
       "Les modules sont indépendants : tu peux activer uniquement ce qui te concerne. La plupart sont gratuits ; quelques options avancées sont réservées au Premium.",
     ],
   },
   {
     id: "general",
-    group: "Samia · Sécurité",
+    group: "Shard · Sécurité",
     title: "Général · Vérification & verrouillage",
-    tagline: "Le squelette de Samia : où, par qui, avec quel rôle.",
+    tagline: "Le squelette de Shard : où, par qui, avec quel rôle.",
     intro: [
-      "Onglet « Général » du dashboard Samia. C'est ici qu'on dit au bot quel salon utiliser pour la vérification, quel rôle attribuer aux membres validés, et si le serveur doit être verrouillé.",
+      "Onglet « Général » du dashboard Shard. C'est ici qu'on dit au bot quel salon utiliser pour la vérification, quel rôle attribuer aux membres validés, et si le serveur doit être verrouillé.",
     ],
     settings: [
       { field: "verificationChannelId", desc: "Salon où le bot enverra le captcha aux nouveaux. Crée un salon dédié, en lecture seule pour @everyone." },
@@ -142,7 +142,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "captcha",
-    group: "Samia · Sécurité",
+    group: "Shard · Sécurité",
     title: "Captcha de vérification",
     tagline: "Filtre les selfbots et bots malveillants à l'entrée.",
     intro: [
@@ -163,7 +163,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "rules",
-    group: "Samia · Sécurité",
+    group: "Shard · Sécurité",
     title: "Règlement",
     tagline: "Les règles affichées dans le message de vérification.",
     intro: [
@@ -182,7 +182,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "security",
-    group: "Samia · Sécurité",
+    group: "Shard · Sécurité",
     title: "Sécurité · Anti-raid & Quarantaine",
     tagline: "Détecte les vagues d'arrivées anormales et confine les suspects.",
     intro: [
@@ -209,11 +209,11 @@ const SECTIONS: Section[] = [
   },
   {
     id: "warns",
-    group: "Samia · Sécurité",
+    group: "Shard · Sécurité",
     title: "Avertissements",
     tagline: "Sanctions automatiques en fonction du nombre de warns.",
     intro: [
-      "Tes modérateurs distribuent des warns aux membres qui débordent. Au lieu de gérer les sanctions à la main, Samia applique mute/kick/ban automatiquement quand un seuil est atteint.",
+      "Tes modérateurs distribuent des warns aux membres qui débordent. Au lieu de gérer les sanctions à la main, Shard applique mute/kick/ban automatiquement quand un seuil est atteint.",
       "Tu définis 3 seuils : combien de warns pour mute, combien pour kick, combien pour ban. Mettre 0 désactive le seuil correspondant.",
     ],
     settings: [
@@ -230,7 +230,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "modroles",
-    group: "Samia · Sécurité",
+    group: "Shard · Sécurité",
     title: "Rôles modérateurs",
     tagline: "Qui peut utiliser les commandes de modération du bot.",
     intro: [
@@ -245,7 +245,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "banned",
-    group: "Samia · Sécurité",
+    group: "Shard · Sécurité",
     title: "Mots interdits",
     tagline: "Filtre automatique de messages contenant certains mots.",
     intro: [
@@ -268,7 +268,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "automod",
-    group: "Samia · Sécurité",
+    group: "Shard · Sécurité",
     title: "Automod",
     tagline: "Anti-spam, anti-liens, anti-MAJUSCULES, anti-raid niveau 2, slowmode auto.",
     intro: [
@@ -287,7 +287,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "panic",
-    group: "Samia · Sécurité",
+    group: "Shard · Sécurité",
     title: "Mode Panic",
     tagline: "Bouton d'urgence : verrouille tout en une action.",
     intro: [
@@ -300,7 +300,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "stats-logs",
-    group: "Samia · Sécurité",
+    group: "Shard · Sécurité",
     title: "Statistiques · Logs · Membres",
     tagline: "Surveiller ce qui se passe vraiment, pas juste ce que tu configures.",
     intro: [
@@ -311,24 +311,24 @@ const SECTIONS: Section[] = [
     ],
   },
 
-  /* ───────── Samia · Communauté ───────── */
+  /* ───────── Shard · Communauté ───────── */
   {
     id: "shard-overview",
-    group: "Samia · Communauté",
-    title: "Vue d'ensemble — Samia · Communauté",
+    group: "Shard · Communauté",
+    title: "Vue d'ensemble — Shard · Communauté",
     tagline: "Communauté, engagement, fun. Tout est désactivable.",
     intro: [
-      "Le module Communauté de Samia : messages d'accueil, niveaux, économie virtuelle, giveaways, sondages, tickets, anniversaires, vocaux temporaires, embeds personnalisés…",
+      "Le module Communauté de Shard : messages d'accueil, niveaux, économie virtuelle, giveaways, sondages, tickets, anniversaires, vocaux temporaires, embeds personnalisés…",
       "Chaque module se gère indépendamment depuis le dashboard. Tu peux n'en activer qu'un seul ou les vingt — pas d'interdépendance forcée.",
     ],
   },
   {
     id: "welcome",
-    group: "Samia · Communauté",
+    group: "Shard · Communauté",
     title: "Arrivée & Départ",
     tagline: "Messages d'accueil et d'au revoir personnalisables.",
     intro: [
-      "Quand un membre rejoint le serveur, Samia envoie un embed dans le salon de ton choix avec le titre, le message, le pied de page et la couleur que tu définis. Idem quand un membre part.",
+      "Quand un membre rejoint le serveur, Shard envoie un embed dans le salon de ton choix avec le titre, le message, le pied de page et la couleur que tu définis. Idem quand un membre part.",
       "Les variables sont remplacées à la volée : `{user}` mentionne le membre, `{username}` affiche son pseudo, `{server}` le nom du serveur, `{memberCount}` le nombre total de membres.",
     ],
     settings: [
@@ -343,21 +343,21 @@ const SECTIONS: Section[] = [
   },
   {
     id: "autorole",
-    group: "Samia · Communauté",
+    group: "Shard · Communauté",
     title: "Auto-rôle",
     tagline: "Donner un rôle automatiquement à chaque arrivant.",
     intro: [
       "Sélectionne un rôle qui sera attribué à tous les nouveaux membres dès leur arrivée. Idéal pour un rôle « Membre » qui débloque les salons de base.",
-      "Si tu utilises Samia avec captcha, attends que le membre soit vérifié avant de lui donner ce rôle (combine avec le rôle vérifié).",
+      "Si tu utilises Shard avec captcha, attends que le membre soit vérifié avant de lui donner ce rôle (combine avec le rôle vérifié).",
     ],
   },
   {
     id: "birthdays",
-    group: "Samia · Communauté",
+    group: "Shard · Communauté",
     title: "Anniversaires",
     tagline: "Annonces auto + rôle anniversaire de 24 h.",
     intro: [
-      "Les membres enregistrent leur date d'anniversaire via une commande (sans l'année — Samia respecte la vie privée). Chaque jour à minuit UTC, Samia cherche les anniversaires du jour, envoie un message dans le salon configuré et attribue un rôle spécial pour 24 h.",
+      "Les membres enregistrent leur date d'anniversaire via une commande (sans l'année — Shard respecte la vie privée). Chaque jour à minuit UTC, Shard cherche les anniversaires du jour, envoie un message dans le salon configuré et attribue un rôle spécial pour 24 h.",
     ],
     settings: [
       { field: "birthdayChannelId", desc: "Salon des annonces." },
@@ -367,7 +367,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "levels",
-    group: "Samia · Communauté",
+    group: "Shard · Communauté",
     title: "Niveaux & XP",
     tagline: "Progression XP, paliers, récompenses de rôles, multiplicateurs.",
     intro: [
@@ -389,7 +389,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "economy",
-    group: "Samia · Communauté",
+    group: "Shard · Communauté",
     title: "Économie",
     tagline: "Monnaie virtuelle + récompenses quotidiennes + boutique de rôles.",
     intro: [
@@ -405,7 +405,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "giveaways",
-    group: "Samia · Communauté",
+    group: "Shard · Communauté",
     title: "Giveaways",
     tagline: "Concours avec durée, gagnants multiples, conditions de rôle/niveau.",
     intro: [
@@ -422,7 +422,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "polls",
-    group: "Samia · Communauté",
+    group: "Shard · Communauté",
     title: "Sondages",
     tagline: "2 à 5 choix, durée variable, mode anonyme Premium.",
     intro: [
@@ -435,11 +435,11 @@ const SECTIONS: Section[] = [
   },
   {
     id: "tempvoice",
-    group: "Samia · Communauté",
+    group: "Shard · Communauté",
     title: "Vocaux temporaires",
     tagline: "Salon « hub » qui crée un vocal personnel pour chaque membre.",
     intro: [
-      "Tu désignes un salon vocal « déclencheur ». Quand un membre le rejoint, Samia crée instantanément un nouveau salon vocal dans une catégorie cible, déplace le membre dedans, et lui donne le contrôle. Quand le dernier membre quitte, le salon est supprimé.",
+      "Tu désignes un salon vocal « déclencheur ». Quand un membre le rejoint, Shard crée instantanément un nouveau salon vocal dans une catégorie cible, déplace le membre dedans, et lui donne le contrôle. Quand le dernier membre quitte, le salon est supprimé.",
       "Le nom du salon est généré à partir d'un template avec `{username}` (ex : « Salon de Alice »).",
     ],
     settings: [
@@ -453,7 +453,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "embed",
-    group: "Samia · Communauté",
+    group: "Shard · Communauté",
     title: "Embed Builder",
     tagline: "Constructeur visuel d'embeds avec aperçu en direct.",
     intro: [
@@ -463,21 +463,21 @@ const SECTIONS: Section[] = [
   },
   {
     id: "reactions",
-    group: "Samia · Communauté",
+    group: "Shard · Communauté",
     title: "Réactions auto",
     tagline: "Quand un message contient X, le bot ajoute l'emoji Y.",
     intro: [
-      "Liste de paires (texte → emoji). À chaque message, Samia cherche le texte dans le contenu (sensible à la casse) et ajoute l'emoji correspondant en réaction. Tu peux empiler les règles.",
+      "Liste de paires (texte → emoji). À chaque message, Shard cherche le texte dans le contenu (sensible à la casse) et ajoute l'emoji correspondant en réaction. Tu peux empiler les règles.",
       "Cas typiques : « gg » → 🎉, « goodnight » → 🌙, « lfg » → 🚀.",
     ],
   },
   {
     id: "tickets",
-    group: "Samia · Communauté",
+    group: "Shard · Communauté",
     title: "Tickets de support",
     tagline: "Panel public, tickets privés, transcripts auto.",
     intro: [
-      "Système de support complet. Tu publies un panneau public (embed avec un bouton) dans un salon. Les membres cliquent, Samia crée un salon privé visible uniquement par eux et ton rôle support. À la fermeture, un transcript est sauvegardé dans un salon de logs.",
+      "Système de support complet. Tu publies un panneau public (embed avec un bouton) dans un salon. Les membres cliquent, Shard crée un salon privé visible uniquement par eux et ton rôle support. À la fermeture, un transcript est sauvegardé dans un salon de logs.",
     ],
     settings: [
       { field: "ticketEnabled", type: "0 | 1", desc: "Active les tickets." },
@@ -570,8 +570,8 @@ const SECTIONS: Section[] = [
 
 const GROUPS: Section["group"][] = [
   "Démarrage",
-  "Samia · Sécurité",
-  "Samia · Communauté",
+  "Shard · Sécurité",
+  "Shard · Communauté",
   "Compte & Premium",
   "Référence",
 ];
@@ -651,7 +651,7 @@ export function Wiki() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
           >
-            La doc complète de <span className="text-white">Samia</span> —
+            La doc complète de <span className="text-white">Shard</span> —
             guides, paramètres, pièges à éviter pour configurer chaque module
             proprement.
           </motion.p>
@@ -683,14 +683,14 @@ export function Wiki() {
             )}
           </motion.div>
 
-          {/* Samia (AI assistant) CTA — same neutral DA as the rest of the site */}
+          {/* Shard (AI assistant) CTA — same neutral DA as the rest of the site */}
           <Link
             to="/assistant"
             className="group inline-flex items-center gap-2.5 mt-6 px-4 py-2.5 rounded-full bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.07] hover:border-white/25 text-white/80 hover:text-white transition-colors"
           >
             <Sparkles className="w-3.5 h-3.5 text-white/60" />
             <span className="text-[13px] font-medium">
-              Pas envie de chercher ? Demande à Samia, l'assistante IA
+              Pas envie de chercher ? Demande à Shard, l'assistante IA
             </span>
             <ArrowRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
           </Link>

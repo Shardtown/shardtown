@@ -45,7 +45,7 @@ const STEPS: Step[] = [
     route: "/outils",
     anchor: "bots-stats",
     side: "top",
-    title: "Samia en un coup d'œil",
+    title: "Shard en un coup d'œil",
     body: "Un seul bot Discord, deux modules — Sécurité (anti-raid, captcha, modération) et Communauté (niveaux, économie, giveaways). Le ratio te dit combien de tes serveurs sont déjà configurés.",
   },
   {
@@ -53,13 +53,13 @@ const STEPS: Step[] = [
     anchor: "recents",
     side: "top",
     title: "Serveurs récents",
-    body: "Tes serveurs configurés s'affichent ici en accès rapide. Un clic ouvre la config détaillée de Samia pour ce serveur.",
+    body: "Tes serveurs configurés s'affichent ici en accès rapide. Un clic ouvre la config détaillée de Shard pour ce serveur.",
   },
   {
     anchor: "sidebar",
     side: "right",
     title: "Navigation latérale",
-    body: "Toute la navigation est ici, groupée par module : Tableau de bord, Samia (discussion + bot Discord), Statut, Premium, et Système (RPC + Préférences). Toujours accessible, sur toutes les pages.",
+    body: "Toute la navigation est ici, groupée par module : Tableau de bord, Shard (discussion + bot Discord), Statut, Premium, et Système (RPC + Préférences). Toujours accessible, sur toutes les pages.",
   },
   {
     anchor: "search",
@@ -74,11 +74,11 @@ const STEPS: Step[] = [
     body: "Avatar Discord, accès rapide à ton compte, au Premium, aux préférences et à la déconnexion. La déconnexion demande Touch ID.",
   },
   {
-    route: "/samia/server",
+    route: "/shard/server",
     anchor: "bot-server-grid",
     side: "top",
-    title: "Samia · Tes serveurs Discord",
-    body: "Sélectionne un serveur pour configurer Samia dessus. Tu y trouveras les deux modules — Sécurité (anti-raid, captcha, modération) et Communauté (niveaux, économie, tickets, giveaways) — dans la même interface.",
+    title: "Shard · Tes serveurs Discord",
+    body: "Sélectionne un serveur pour configurer Shard dessus. Tu y trouveras les deux modules — Sécurité (anti-raid, captcha, modération) et Communauté (niveaux, économie, tickets, giveaways) — dans la même interface.",
   },
   {
     route: "/rpc",
@@ -120,7 +120,7 @@ const STEPS: Step[] = [
     anchor: "account-connections",
     side: "top",
     title: "Connexions",
-    body: "Lie ton Discord — c'est ce qui permet à Shardtown de lister tes serveurs et d'y configurer Samia. Google et GitHub permettent la connexion en un clic.",
+    body: "Lie ton Discord — c'est ce qui permet à Shardtown de lister tes serveurs et d'y configurer Shard. Google et GitHub permettent la connexion en un clic.",
   },
   {
     route: "/account",

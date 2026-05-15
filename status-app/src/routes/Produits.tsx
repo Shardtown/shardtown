@@ -16,13 +16,13 @@ interface Product {
 
 const PRODUCTS: Product[] = [
   {
-    label: "Samia",
+    label: "Shard",
     description:
       "Un seul bot Discord pour tout : bouclier anti-raid, captcha, modération automatique ET niveaux, économie, tickets, giveaways. Sécurité et communauté réunies dans la même interface, configurées en quelques clics.",
-    href: "/samia/server",
-    avatar: "/image/samia.png",
+    href: "/shard/server",
+    avatar: "/image/shard.png",
     accentIcon: ShieldCheck,
-    cta: "Configurer Samia",
+    cta: "Configurer Shard",
     features: [
       "Anti-raid + captcha + quarantaine automatique",
       "Modération auto (mots interdits, anti-spam, anti-liens)",
@@ -112,7 +112,7 @@ export function Produits() {
               Débloque tout le potentiel
             </h2>
             <p className="text-white/55 max-w-xl mx-auto mb-8 leading-relaxed">
-              Une seule offre, tous les modules de Samia sans limite — pour les serveurs qui veulent
+              Une seule offre, tous les modules de Shard sans limite — pour les serveurs qui veulent
               passer au niveau supérieur.
             </p>
             <Link

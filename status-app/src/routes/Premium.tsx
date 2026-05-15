@@ -37,7 +37,7 @@ const FEATURES = {
 
 const COMPARISON: { title: string; rows: { label: string; free: string; premium: string }[] }[] = [
   {
-    title: "Samia · Sécurité",
+    title: "Shard · Sécurité",
     rows: [
       { label: "Vérification Captcha",        free: "✓",      premium: "✓" },
       { label: "Sanctions progressives",      free: "✓",      premium: "✓" },
@@ -51,7 +51,7 @@ const COMPARISON: { title: string; rows: { label: string; free: string; premium:
     ],
   },
   {
-    title: "Samia · Communauté",
+    title: "Shard · Communauté",
     rows: [
       { label: "Paliers XP",                  free: "3 max",  premium: "20 max" },
       { label: "Multiplicateur XP par rôle",  free: "—",      premium: "✓" },
@@ -73,7 +73,7 @@ const FAQ = [
   },
   {
     q: "L'achat à vie expire-t-il un jour ?",
-    a: "Non. Une fois payé, le serveur garde le Premium tant que Samia existe. Tu reçois aussi toutes les futures mises à jour gratuitement.",
+    a: "Non. Une fois payé, le serveur garde le Premium tant que Shard existe. Tu reçois aussi toutes les futures mises à jour gratuitement.",
   },
   {
     q: "Puis-je transférer Premium sur un autre serveur ?",
@@ -85,7 +85,7 @@ const FAQ = [
   },
   {
     q: "Avez-vous un essai gratuit ?",
-    a: "Tout ce qui n'est pas marqué Premium dans le wiki est gratuit, sans limite de temps. Tu peux donc utiliser Samia sur ton serveur dès maintenant et passer Premium quand tu en as besoin.",
+    a: "Tout ce qui n'est pas marqué Premium dans le wiki est gratuit, sans limite de temps. Tu peux donc utiliser Shard sur ton serveur dès maintenant et passer Premium quand tu en as besoin.",
   },
   {
     q: "Mes données sont-elles en sécurité ?",
@@ -235,7 +235,7 @@ export function Premium() {
             transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
           >
             Tous les modules. <span className="text-white">Aucune limite.</span>{" "}
-            Une seule offre couvre toute la suite Samia, mensuel ou à vie.
+            Une seule offre couvre toute la suite Shard, mensuel ou à vie.
           </motion.p>
 
           <motion.div

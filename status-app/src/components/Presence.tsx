@@ -66,7 +66,7 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
 function usePresenceCtx() { return useContext(PresenceCtx); }
 
 function scopeForPath(pathname: string): string | null {
-  const m = /^\/samia\/guild\/([\w-]+)/.exec(pathname);
+  const m = /^\/shard\/guild\/([\w-]+)/.exec(pathname);
   if (m) return `guild:${m[1]}`;
   return null;
 }

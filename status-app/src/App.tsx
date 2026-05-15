@@ -28,8 +28,8 @@ import { DesktopBotServer } from "@/routes/desktop/BotServer";
 import { TrayPanel } from "@/routes/desktop/TrayPanel";
 import { Premium } from "@/routes/Premium";
 import { Produits } from "@/routes/Produits";
-import { SamiaServer } from "@/routes/samia/Server";
-import { SamiaGuild } from "@/routes/samia/Guild";
+import { ShardServer } from "@/routes/shard/Server";
+import { ShardGuild } from "@/routes/shard/Guild";
 import { AdminLogin } from "@/routes/admin/Login";
 import { Admin } from "@/routes/admin/Admin";
 import { AdminGuildDetail } from "@/routes/admin/GuildDetail";
@@ -127,8 +127,8 @@ function AppMain() {
               {IS_DESKTOP && <Route path="/preferences" element={<DesktopPreferences />} />}
               {/* Ancien chemin — redirige vers /outils pour ne rien casser */}
               <Route path="/dashboard" element={<Navigate to="/outils" replace />} />
-              <Route path="/samia/server" element={IS_DESKTOP ? <DesktopBotServer /> : <SamiaServer />} />
-              <Route path="/samia/guild/:guildId" element={<SamiaGuild />} />
+              <Route path="/shard/server" element={IS_DESKTOP ? <DesktopBotServer /> : <ShardServer />} />
+              <Route path="/shard/guild/:guildId" element={<ShardGuild />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/admin/guild/:guildId" element={<AdminGuildDetail />} />

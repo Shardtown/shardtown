@@ -302,7 +302,7 @@ export function DesktopAccount() {
             <ConnectionRow
               kind="discord"
               title="Discord"
-              caption="Compte principal — nécessaire pour configurer Samia et les dashboards"
+              caption="Compte principal — nécessaire pour configurer Shard et les dashboards"
               linkedId={account.discord_id}
               linkedName={account.discord_username}
               linkedAvatar={account.discord_avatar}
@@ -321,7 +321,7 @@ export function DesktopAccount() {
             <ConnectionRow
               kind="discord"
               title="Connexion secondaire"
-              caption="Discord alternatif — utile si tu administres Samia depuis deux comptes (optionnel)"
+              caption="Discord alternatif — utile si tu administres Shard depuis deux comptes (optionnel)"
               linkedId={account.shard_id}
               linkedName={account.shard_username}
               linkedAvatar={account.shard_avatar}

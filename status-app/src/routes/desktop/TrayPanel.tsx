@@ -164,8 +164,8 @@ export function TrayPanel() {
             <div className="tray-hero-body">
               <p className="tray-hero-title">
                 {totalActive > 0
-                  ? allActive ? "Samia active partout" : `Samia active sur ${totalActive} serveur${totalActive > 1 ? "s" : ""}`
-                  : "Samia n'est sur aucun serveur"}
+                  ? allActive ? "Shard active partout" : `Shard active sur ${totalActive} serveur${totalActive > 1 ? "s" : ""}`
+                  : "Shard n'est sur aucun serveur"}
               </p>
               <p className="tray-hero-sub">
                 {totalActive > 0
@@ -203,18 +203,18 @@ export function TrayPanel() {
             </>
           )}
 
-          {/* Samia */}
+          {/* Shard */}
           <div className="tray-section-head">
-            <span>Samia</span>
+            <span>Shard</span>
           </div>
           <div className="tray-bot-list">
             <TrayBotRow
               kind="shard"
-              icon={<img src="/image/samia.png" alt="" className="tray-bot-avatar" />}
-              label="Samia"
+              icon={<img src="/image/shard.png" alt="" className="tray-bot-avatar" />}
+              label="Shard"
               active={Math.max(sgActive, sActive)}
               total={Math.max(sgTotal, sTotal)}
-              onClick={() => openMain("/samia/server")}
+              onClick={() => openMain("/shard/server")}
             />
           </div>
         </div>
@@ -236,7 +236,7 @@ function TrayGuildRow({ guild }: { guild: Guild }) {
     <button
       type="button"
       className="tray-row"
-      onClick={() => openExternal(`https://shardtwn.fr/samia/guild/${guild.id}`).catch(() => {})}
+      onClick={() => openExternal(`https://shardtwn.fr/shard/guild/${guild.id}`).catch(() => {})}
     >
       {iconUrl
         ? <img src={iconUrl} alt="" className="tray-row-icon" />
@@ -244,8 +244,8 @@ function TrayGuildRow({ guild }: { guild: Guild }) {
       <div className="tray-row-body">
         <p className="tray-row-name">{guild.name}</p>
         <p className="tray-row-meta">
-          <img src="/image/samia.png" alt="" className="tray-bot-avatar-xs" />
-          Samia
+          <img src="/image/shard.png" alt="" className="tray-bot-avatar-xs" />
+          Shard
           {guild.bot_present && <span className="tray-row-ok">· Configuré</span>}
         </p>
       </div>
@@ -263,7 +263,7 @@ function TrayRecentCard({ guild }: { guild: Guild }) {
     <button
       type="button"
       className="tray-card"
-      onClick={() => openExternal(`https://shardtwn.fr/samia/guild/${guild.id}`).catch(() => {})}
+      onClick={() => openExternal(`https://shardtwn.fr/shard/guild/${guild.id}`).catch(() => {})}
     >
       {iconUrl
         ? <img src={iconUrl} alt="" className="tray-card-icon" />

@@ -4,7 +4,7 @@
 # =============================================================================
 #  Gere les services PM2 :
 #    - shardtown      : Site web                 (server.js)
-#    - samia          : Bot Discord Samia        (Shard/sharder.js)
+#    - shard          : Bot Discord Shard        (Shard/sharder.js)
 #    - paladium       : Paladium Com Portal      (dist/index.js)
 # =============================================================================
 
@@ -185,7 +185,7 @@ overview() {
     echo -e "  ${BOLD}${WHITE}SERVICES${NC}"
     echo -e "  ${DIM}-------------------------------------------------------------------------------${NC}"
     print_service_line "Site Web"        "$CYAN"    "$PM2_SITE"
-    print_service_line "Samia Bot"       "$MAGENTA" "$PM2_SHARD"
+    print_service_line "Shard Bot"       "$MAGENTA" "$PM2_SHARD"
     print_service_line "Paladium Portal" "$YELLOW"  "$PM2_PALADIUM"
     echo ""
 
@@ -410,12 +410,12 @@ shards_menu() {
         echo -e "  ${BOLD}${WHITE}SHARDS - VUE GLOBALE${NC}"
         echo -e "  ${DIM}-------------------------------------------------------------------------------${NC}"
         echo ""
-        print_service_line "Samia Bot"      "$MAGENTA" "$PM2_SHARD"
+        print_service_line "Shard Bot"      "$MAGENTA" "$PM2_SHARD"
         echo ""
         echo -e "  ${DIM}Les shards sont geres par le Sharding Manager.${NC}"
         echo -e "  ${DIM}Redemarrer le bot redemarre tous ses shards.${NC}"
         echo ""
-        echo -e "  ${YELLOW}[1]${NC} Redemarrer tous les shards Samia Bot"
+        echo -e "  ${YELLOW}[1]${NC} Redemarrer tous les shards Shard Bot"
         echo -e "  ${YELLOW}[2]${NC} Arreter tous les shards"
         echo -e "  ${YELLOW}[3]${NC} Demarrer tous les shards"
         echo -e "  ${YELLOW}[0]${NC} Retour"
@@ -424,7 +424,7 @@ shards_menu() {
         read -r choice
 
         case $choice in
-            1) pm2 restart "$PM2_SHARD"; echo -e "\n  ${YELLOW}>> Shards Samia Bot redemarres.${NC}"; sleep 1 ;;
+            1) pm2 restart "$PM2_SHARD"; echo -e "\n  ${YELLOW}>> Shards Shard Bot redemarres.${NC}"; sleep 1 ;;
             2) pm2 stop "$PM2_SHARD"; echo -e "\n  ${RED}>> Shards arretes.${NC}"; sleep 1 ;;
             3) pm2 start "$PM2_SHARD"; echo -e "\n  ${GREEN}>> Shards demarres.${NC}"; sleep 1 ;;
             0) break ;;
@@ -543,7 +543,7 @@ main_menu() {
 
         case $choice in
             1) control_service "$PM2_SITE"          "Site Web"               "$FILE_SITE"          "$DIR_SITE" ;;
-            2) control_service "$PM2_SHARD"         "Samia Bot"              "$FILE_SHARD"         "$DIR_SHARD" ;;
+            2) control_service "$PM2_SHARD"         "Shard Bot"              "$FILE_SHARD"         "$DIR_SHARD" ;;
             4) control_service "$PM2_PALADIUM"      "Paladium Portal"        "$FILE_PALADIUM"      "$DIR_PALADIUM" ;;
             5) shards_menu ;;
             6)

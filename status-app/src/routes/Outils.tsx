@@ -13,9 +13,9 @@ import { startOAuthLink } from "@/lib/oauthLink";
  * Page /outils — catalogue de tout ce que Shardtown propose.
  *
  * Trois familles :
- * 1. Le bot Discord Samia que les users peuvent inviter et configurer
+ * 1. Le bot Discord Shard que les users peuvent inviter et configurer
  *    depuis leur dashboard (sécurité + communauté réunies).
- * 2. Outils web Shardtown utilisables directement sur le site (Samia
+ * 2. Outils web Shardtown utilisables directement sur le site (Shard
  *    en mode assistante IA, page Statut, Wiki).
  * 3. Services à la demande (dev custom, setup serveur, etc.) — CTA vers
  *    le formulaire de contact de la home.
@@ -23,20 +23,20 @@ import { startOAuthLink } from "@/lib/oauthLink";
 
 const BOTS = [
   {
-    label: "Samia",
+    label: "Shard",
     tagline: "Bot Discord tout-en-un",
     description:
       "Anti-raid, captcha, modération automatique — ET niveaux, économie, tickets, sondages, giveaways, alertes stream. Un seul bot, deux modules : Sécurité et Communauté.",
-    href: "/samia/server",
-    avatar: "/image/samia.png",
+    href: "/shard/server",
+    avatar: "/image/shard.png",
   },
 ];
 
 const ASSISTANT = {
-  label: "Samia · Discussion",
+  label: "Shard · Discussion",
   tagline: "Assistante IA",
   description:
-    "Pose tes questions sur le bot, le dashboard, le Premium ou nos services. Samia connaît le wiki par cœur.",
+    "Pose tes questions sur le bot, le dashboard, le Premium ou nos services. Shard connaît le wiki par cœur.",
   href: "/assistant",
   icon: Sparkles,
 };
@@ -50,7 +50,7 @@ const SERVICES = [
   {
     label: "Bot Discord custom",
     description:
-      "Au-delà de Samia — fonctionnalités exclusives à ta communauté, intégrations API tierces, dashboards web dédiés.",
+      "Au-delà de Shard — fonctionnalités exclusives à ta communauté, intégrations API tierces, dashboards web dédiés.",
   },
   {
     label: "Configuration de serveur Discord",
@@ -118,7 +118,7 @@ export function Outils() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
           >
-            Pour t'afficher la liste de tes serveurs et te laisser configurer Samia,
+            Pour t'afficher la liste de tes serveurs et te laisser configurer Shard,
             on a besoin que tu autorises Shardtown à voir tes serveurs Discord. Aucun
             mot de passe — juste l'OAuth officielle de Discord.
           </motion.p>
@@ -261,7 +261,7 @@ export function Outils() {
             <span className="text-[12px] text-white/35">en libre-service</span>
           </div>
           <div className="grid md:grid-cols-2 gap-6">
-            <ToolCard {...ASSISTANT} cta="Discuter avec Samia" />
+            <ToolCard {...ASSISTANT} cta="Discuter avec Shard" />
           </div>
         </motion.div>
 

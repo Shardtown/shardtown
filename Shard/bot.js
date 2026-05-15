@@ -396,7 +396,7 @@ const translations = {
         btn_verify: "Vérifier",
         btn_faq: "FAQ",
         faq_title: "<:chat:1492857699556266004> Foire Aux Questions",
-        faq_desc: "<:dot:1492857051444019240> **Pourquoi un système de vérification ?**\n\nSamia protège les serveurs des messages non sollicités.\n\n<:dot:1492857051444019240> **Pourquoi ne pas simplement me donner le rôle ?**\n\nL'attribution manuelle compromettrait la sécurité.\n\n<:dot:1492857051444019240> **Ce bot est-il sûr ?**\n\nNous ne vous demanderons jamais de scanner de QR code.\n\n<:dot:1492857051444019240> **Comment ajouter ce bot ?**\n\nGratuitement via notre site !",
+        faq_desc: "<:dot:1492857051444019240> **Pourquoi un système de vérification ?**\n\nShard protège les serveurs des messages non sollicités.\n\n<:dot:1492857051444019240> **Pourquoi ne pas simplement me donner le rôle ?**\n\nL'attribution manuelle compromettrait la sécurité.\n\n<:dot:1492857051444019240> **Ce bot est-il sûr ?**\n\nNous ne vous demanderons jamais de scanner de QR code.\n\n<:dot:1492857051444019240> **Comment ajouter ce bot ?**\n\nGratuitement via notre site !",
         step1_title: "1・Désactivez vos messages privés",
         step1_desc: "Pour continuer, vous devez désactiver vos MP.\n\n**Comment faire :**\n\n<:dot:1492857051444019240> Clic droit sur l'icône du serveur\n\n<:dot:1492857051444019240> Paramètres de confidentialité\n\n<:dot:1492857051444019240> Désactivez les **Messages privés**\n\n<:dot:1492857051444019240> Cliquez sur **Terminé**",
         btn_continue: "Continuer",
@@ -433,7 +433,7 @@ const translations = {
         btn_verify: "Verify",
         btn_faq: "FAQ",
         faq_title: "<:chat:1492857699556266004> Frequently Asked Questions",
-        faq_desc: "<:dot:1492857051444019240> **Why have a verification system?**\n\nSamia protects communities from unsolicited messages.\n\n<:dot:1492857051444019240> **Can't you just give me the role?**\n\nManual role assignment defeats the purpose of this system.\n\n<:dot:1492857051444019240> **Is this bot safe?**\n\nSamia will never DM you or ask for personal info.\n\n<:dot:1492857051444019240> **How can I add this bot?**\n\nYou can add Samia for free here!",
+        faq_desc: "<:dot:1492857051444019240> **Why have a verification system?**\n\nShard protects communities from unsolicited messages.\n\n<:dot:1492857051444019240> **Can't you just give me the role?**\n\nManual role assignment defeats the purpose of this system.\n\n<:dot:1492857051444019240> **Is this bot safe?**\n\nShard will never DM you or ask for personal info.\n\n<:dot:1492857051444019240> **How can I add this bot?**\n\nYou can add Shard for free here!",
         step1_title: "1・Turn off DMs",
         step1_desc: "To continue, you must turn off your DMs.\n\n**How to do it:**\n\n<:dot:1492857051444019240> Right click on server icon\n\n<:dot:1492857051444019240> Click on Privacy Settings\n\n<:dot:1492857051444019240> Turn off direct messages\n\n<:dot:1492857051444019240> Click on Done",
         btn_continue: "Continue",
@@ -1333,7 +1333,7 @@ client.on('webhooksUpdate', async (channel) => {
                 title: '⚠️ Webhook modifié',
                 description: `Un webhook a été créé ou modifié dans <#${channel.id}>.\nVérifiez qu'il n'est pas malveillant.`,
                 timestamp: new Date().toISOString(),
-                footer: { text: 'Samia — Détection Webhook' }
+                footer: { text: 'Shard — Détection Webhook' }
             }]
         });
     } catch {}
@@ -1712,11 +1712,11 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         if (cmd === 'dashboard') {
-            const logoPath = path.join(__dirname, '../image/samia.png');
+            const logoPath = path.join(__dirname, '../image/shard.png');
             const logoAttachment = new AttachmentBuilder(logoPath, { name: 'logo.png' });
             const c = new ContainerBuilder()
                 .setAccentColor(0x2b2d31)
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`# Dashboard\nAccédez au dashboard de Samia pour configurer votre serveur.`))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`# Dashboard\nAccédez au dashboard de Shard pour configurer votre serveur.`))
                 .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(
                     new MediaGalleryItemBuilder().setURL('attachment://logo.png')
                 ))
@@ -1728,11 +1728,11 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         if (cmd === 'invite') {
-            const logoPath = path.join(__dirname, '../image/samia.png');
+            const logoPath = path.join(__dirname, '../image/shard.png');
             const logoAttachment = new AttachmentBuilder(logoPath, { name: 'logo.png' });
             const c = new ContainerBuilder()
                 .setAccentColor(0x2b2d31)
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`# Inviter Samia\nAjoutez Samia à votre serveur — communauté + sécurité dans un seul bot.`))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`# Inviter Shard\nAjoutez Shard à votre serveur — communauté + sécurité dans un seul bot.`))
                 .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(
                     new MediaGalleryItemBuilder().setURL('attachment://logo.png')
                 ))

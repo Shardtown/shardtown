@@ -125,7 +125,7 @@ export function DesktopOverview() {
                       boxShadow: "0 0 8px var(--ds-status-ok)",
                     }}
                   />
-                  Samia opérationnelle sur toutes tes guildes
+                  Shard opérationnelle sur toutes tes guildes
                 </p>
               )}
               {!allOk && totalServers === 0 && (
@@ -138,7 +138,7 @@ export function DesktopOverview() {
 
           <div className="flex items-center gap-2.5">
             <Link
-              to="/samia/server"
+              to="/shard/server"
               className="inline-flex items-center justify-center px-6 h-[44px] rounded-full font-bold text-[13.5px] hero-cta"
               style={{ background: "var(--ds-accent)", color: "#fff" }}
             >
@@ -226,29 +226,29 @@ export function DesktopOverview() {
         </div>
       )}
 
-      {/* ─── SAMIA ─────────────────────────────────────────────── */}
-      <SectionHead title="Samia" />
+      {/* ─── SHARD ─────────────────────────────────────────────── */}
+      <SectionHead title="Shard" />
       <div className="grid md:grid-cols-2 gap-3 mb-10" data-tour="bots-stats">
         <StatCard
-          icon={<img src="/image/samia.png" alt="" className="w-full h-full object-cover" />}
-          label="Samia · Sécurité"
+          icon={<img src="/image/shard.png" alt="" className="w-full h-full object-cover" />}
+          label="Shard · Sécurité"
           value={`${sgConfigured} / ${sgTotal}`}
           sub="serveurs configurés"
           tone={sgConfigured > 0 ? "ok" : "off"}
-          to="/samia/server"
+          to="/shard/server"
         />
         <StatCard
-          icon={<img src="/image/samia.png" alt="" className="w-full h-full object-cover" />}
-          label="Samia · Communauté"
+          icon={<img src="/image/shard.png" alt="" className="w-full h-full object-cover" />}
+          label="Shard · Communauté"
           value={`${sConfigured} / ${sTotal}`}
           sub="serveurs configurés"
           tone={sConfigured > 0 ? "ok" : "off"}
-          to="/samia/server"
+          to="/shard/server"
         />
       </div>
 
       {/* ─── RECENTS ───────────────────────────────────────────── */}
-      <SectionHead title="Récents" linkTo="/samia/server" linkLabel="Tous les serveurs" muted />
+      <SectionHead title="Récents" linkTo="/shard/server" linkLabel="Tous les serveurs" muted />
       <div
         className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2.5 mb-10"
         data-tour="recents"
@@ -308,7 +308,7 @@ function RecentCard({ guild }: { guild: GuildSummary & { bots: ("shardguard" | "
 
   return (
     <Link
-      to={`/samia/guild/${guild.id}`}
+      to={`/shard/guild/${guild.id}`}
       className="rounded-[14px] border p-3 flex flex-col items-center text-center gap-2 transition-all hover:-translate-y-0.5 min-h-[110px]"
       style={{ background: "var(--ds-panel)", borderColor: "var(--ds-border)" }}
     >
@@ -328,9 +328,9 @@ function RecentCard({ guild }: { guild: GuildSummary & { bots: ("shardguard" | "
       <p className="text-[12px] font-bold leading-tight line-clamp-2 w-full break-words">{guild.name}</p>
       <div className="flex items-center gap-1 mt-auto">
         <img
-          src="/image/samia.png"
-          alt="Samia"
-          title="Samia"
+          src="/image/shard.png"
+          alt="Shard"
+          title="Shard"
           className="w-4 h-4 rounded-[5px] object-cover border"
           style={{ borderColor: "var(--ds-border)" }}
         />

@@ -298,7 +298,7 @@ export function AdminGuildDetail() {
           </div>
         </div>
 
-        {/* Recent audit logs (Samia · Sécurité) */}
+        {/* Recent audit logs (Shard · Sécurité) */}
         {data.recentAuditLogs.length > 0 && (
           <div className="mb-10">
             <div className="flex items-center gap-3 mb-4">
@@ -306,7 +306,7 @@ export function AdminGuildDetail() {
                 <Layers className="w-4 h-4" />
               </div>
               <div>
-                <p className="text-[10px] font-bold tracking-[0.22em] text-violet-300/70 uppercase">Samia · Sécurité</p>
+                <p className="text-[10px] font-bold tracking-[0.22em] text-violet-300/70 uppercase">Shard · Sécurité</p>
                 <h2 className="text-xl font-extrabold tracking-tight">Modération récente</h2>
               </div>
               <span className="ml-auto text-[11px] font-mono-num text-white/40">

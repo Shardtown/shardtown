@@ -89,10 +89,10 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       ],
     },
     {
-      label: "Samia",
+      label: "Shard",
       items: [
         { to: "/assistant",    icon: <MessageCircle size={18} strokeWidth={1.8} />,           label: "Discussion" },
-        { to: "/samia/server", icon: <BotAvatar src="/image/samia.png" size={22} alt="Samia" />, label: "Mes serveurs Discord" },
+        { to: "/shard/server", icon: <BotAvatar src="/image/shard.png" size={22} alt="Shard" />, label: "Mes serveurs Discord" },
       ],
     },
     {
@@ -486,8 +486,8 @@ function SearchBox({
 
     const locations: SearchHit[] = [
       { label: "Tableau de bord",     hint: "Vue d'ensemble",                       path: "/outils" },
-      { label: "Samia · Discussion",  hint: "Assistante IA",                        path: "/assistant" },
-      { label: "Samia · Discord",     hint: "Sécurité, modération & communauté",    path: "/samia/server" },
+      { label: "Shard · Discussion",  hint: "Assistante IA",                        path: "/assistant" },
+      { label: "Shard · Discord",     hint: "Sécurité, modération & communauté",    path: "/shard/server" },
       { label: "Discord RPC",         hint: "Rich Presence",                        path: "/rpc" },
       { label: "Réglages",            hint: "Apparence, sons, Touch ID, thème",     path: "/preferences" },
       { label: "Statut des services", hint: "Surveillance temps réel",              path: "/statut" },
@@ -510,7 +510,7 @@ function SearchBox({
         for (const g of [...sg.guilds, ...s.guilds]) {
           if (seen.has(g.id)) continue;
           seen.add(g.id);
-          guilds.push({ label: g.name, hint: "Samia · " + g.id, path: `/samia/guild/${g.id}` });
+          guilds.push({ label: g.name, hint: "Shard · " + g.id, path: `/shard/guild/${g.id}` });
         }
         const matchedGuilds = guilds.filter(h => h.label.toLowerCase().includes(q));
 

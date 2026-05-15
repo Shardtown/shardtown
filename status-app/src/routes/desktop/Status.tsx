@@ -19,7 +19,7 @@ const WINDOW_LABEL = "12 dernières min";
 // Map legacy bot_label values stored in the DB to the unified display name.
 function displayBotLabel(raw: string): string {
   const v = (raw || "").toLowerCase();
-  if (v === "shard" || v === "shardguard") return "Samia";
+  if (v === "shard" || v === "shardguard") return "Shard";
   return raw;
 }
 
@@ -225,7 +225,7 @@ function ClusterRow({ bot, history }: { bot: Bot; history: number[] }) {
   states[states.length - 1] = ok ? "ok" : partial ? "degraded" : "down";
 
   const uptime = uptimePercent(states);
-  const iconSrc = "/image/samia.png";
+  const iconSrc = "/image/shard.png";
 
   return (
     <ServiceRow
