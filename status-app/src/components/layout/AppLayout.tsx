@@ -25,13 +25,13 @@ export function AppLayout({ children, noBackground }: Props) {
         <div className="fixed inset-0 pointer-events-none -z-10 opacity-60">
           <BackgroundGradientAnimation
             interactive={false}
-            gradientBackgroundStart="rgb(6, 10, 28)"
+            gradientBackgroundStart="rgb(7, 11, 24)"
             gradientBackgroundEnd="rgb(0, 0, 0)"
-            firstColor="37, 99, 235"
-            secondColor="139, 92, 246"
-            thirdColor="30, 64, 175"
-            fourthColor="236, 72, 153"
-            fifthColor="16, 185, 129"
+            firstColor="96, 165, 250"
+            secondColor="59, 130, 246"
+            thirdColor="37, 99, 235"
+            fourthColor="29, 78, 216"
+            fifthColor="30, 58, 138"
             size="100%"
             blendingValue="screen"
             containerClassName="!h-full !w-full"

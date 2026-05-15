@@ -178,7 +178,7 @@ export function AdminGuildDetail() {
                 className="w-20 h-20 md:w-24 md:h-24 rounded-2xl border border-white/10 shadow-2xl"
               />
             ) : (
-              <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-gradient-to-br from-blue-500/30 to-violet-500/30 border border-white/10 flex items-center justify-center text-3xl font-extrabold text-white/80">
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-accent-gradient-soft border border-white/10 flex items-center justify-center text-3xl font-extrabold text-white/80">
                 {(guild?.name || data.blocked_name || "?")[0]?.toUpperCase()}
               </div>
             )}
