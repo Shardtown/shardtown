@@ -174,7 +174,7 @@ export function Index() {
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
               <div className="relative flex flex-col h-full min-h-[240px]">
-                <AppleLogo className="absolute top-1/2 right-8 -translate-y-1/2 w-44 h-44 text-white/[0.06] pointer-events-none" />
+                <AppleLogo className="absolute top-4 right-8 w-44 h-44 text-white/[0.06] pointer-events-none" />
 
                 <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter pt-1">
                   macOS
@@ -195,7 +195,7 @@ export function Index() {
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
               <div className="relative flex flex-col h-full min-h-[240px]">
-                <WindowsLogo className="absolute top-1/2 right-8 -translate-y-1/2 w-44 h-44 text-white/[0.06] pointer-events-none" />
+                <WindowsLogo className="absolute top-4 right-8 w-44 h-44 text-white/[0.06] pointer-events-none" />
 
                 <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter text-white/75 pt-1">
                   Windows
