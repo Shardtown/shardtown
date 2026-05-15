@@ -153,7 +153,7 @@ export function Outils() {
           </motion.p>
           <a
             href="/account/login"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-accent-gradient text-white text-sm font-bold hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-black text-sm font-bold hover:opacity-90 transition-opacity"
           >
             Se connecter <ArrowRight className="w-4 h-4" />
           </a>
@@ -276,7 +276,7 @@ export function Outils() {
             </div>
             <a
               href="mailto:contact@shardtwn.fr"
-              className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-gradient text-white text-[12.5px] font-bold hover:opacity-90 transition-opacity shrink-0"
+              className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12.5px] font-bold hover:opacity-90 transition-opacity shrink-0"
             >
               <Mail className="w-3.5 h-3.5" /> Discuter
             </a>
@@ -296,7 +296,7 @@ export function Outils() {
           </div>
           <a
             href="mailto:contact@shardtwn.fr"
-            className="md:hidden mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-gradient text-white text-[12.5px] font-bold hover:opacity-90 transition-opacity"
+            className="md:hidden mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12.5px] font-bold hover:opacity-90 transition-opacity"
           >
             <Mail className="w-3.5 h-3.5" /> Discuter
           </a>

@@ -448,7 +448,7 @@ export function Account() {
               type="button"
               onClick={openAddPasskey}
               disabled={passkeyBusy}
-              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-gradient text-white text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
+              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
             >
               {passkeyBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
               Ajouter
@@ -503,7 +503,7 @@ export function Account() {
               type="button"
               onClick={openAddToken}
               disabled={tokenBusy}
-              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-gradient text-white text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
+              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
             >
               {tokenBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
               Générer
@@ -550,7 +550,7 @@ export function Account() {
         <div className="mt-12 flex items-center justify-center">
           <Link
             to="/outils"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-gradient text-white text-[13px] font-bold hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-black text-[13px] font-bold hover:opacity-90 transition-opacity"
           >
             <Server className="w-3.5 h-3.5" /> Aller à mes outils
           </Link>
@@ -612,7 +612,7 @@ export function Account() {
               <button
                 type="button"
                 onClick={confirmAddPasskey}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-accent-gradient text-white transition-opacity hover:opacity-90"
+                className="flex-1 py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
               >
                 Continuer
               </button>
@@ -728,7 +728,7 @@ export function Account() {
               <button
                 type="button"
                 onClick={confirmAddToken}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-accent-gradient text-white transition-opacity hover:opacity-90"
+                className="flex-1 py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
               >
                 Générer
               </button>
@@ -787,7 +787,7 @@ export function Account() {
             <button
               type="button"
               onClick={() => setRevealedToken(null)}
-              className="w-full py-3 rounded-full font-bold text-sm bg-accent-gradient text-white transition-opacity hover:opacity-90"
+              className="w-full py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
             >
               J'ai copié
             </button>
@@ -923,7 +923,7 @@ function ConnectionRow({
         ) : (
           <a
             href={hrefLink}
-            className="px-3 py-1.5 rounded-lg bg-accent-gradient text-white text-[11px] font-bold hover:opacity-90"
+            className="px-3 py-1.5 rounded-lg bg-white text-black text-[11px] font-bold hover:opacity-90"
           >
             Lier
           </a>

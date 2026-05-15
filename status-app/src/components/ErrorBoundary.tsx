@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           <button
             type="button"
             onClick={() => this.setState({ error: null, info: null })}
-            className="mt-6 px-5 py-2.5 rounded-full bg-accent-gradient text-white font-bold text-sm hover:opacity-90"
+            className="mt-6 px-5 py-2.5 rounded-full bg-white text-black font-bold text-sm hover:opacity-90"
           >
             Réessayer
           </button>

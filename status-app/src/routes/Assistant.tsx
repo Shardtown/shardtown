@@ -418,7 +418,7 @@ export function Assistant() {
               className={cn(
                 "shrink-0 h-9 w-9 rounded-full flex items-center justify-center transition-all",
                 draft.trim() && !sending
-                  ? "bg-accent-gradient text-white hover:scale-105"
+                  ? "bg-white text-black hover:scale-105"
                   : "bg-white/[0.06] text-white/40 cursor-not-allowed",
               )}
             >
@@ -576,7 +576,7 @@ function Message({ m }: { m: ChatMessage }) {
         className={cn(
           "max-w-[85%] px-4 py-3 rounded-2xl text-[14.5px] leading-relaxed break-words",
           isUser
-            ? "bg-accent-gradient text-white rounded-br-md whitespace-pre-wrap"
+            ? "bg-white text-black rounded-br-md whitespace-pre-wrap"
             : "bg-white/[0.04] border border-white/[0.08] rounded-bl-md text-white/85 markdown-prose",
         )}
       >

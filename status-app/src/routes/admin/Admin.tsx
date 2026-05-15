@@ -305,7 +305,7 @@ export function Admin() {
           <p className="text-white/70 mb-6">{error}</p>
           <Link
             to="/admin/login"
-            className="inline-flex items-center gap-2 bg-accent-gradient text-white px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
           >
             Se connecter
           </Link>
@@ -400,7 +400,7 @@ export function Admin() {
                 type="button"
                 onClick={() => setTab(t.v)}
                 className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-tight transition-colors inline-flex items-center gap-2 ${
-                  tab === t.v ? "bg-accent-gradient text-white" : "text-white/60 hover:text-white"
+                  tab === t.v ? "bg-white text-black" : "text-white/60 hover:text-white"
                 }`}
               >
                 {t.label}

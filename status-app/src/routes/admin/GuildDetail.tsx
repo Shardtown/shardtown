@@ -136,7 +136,7 @@ export function AdminGuildDetail() {
           <p className="text-white/70 mb-6">{error}</p>
           <Link
             to="/admin"
-            className="inline-flex items-center gap-2 bg-accent-gradient text-white px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
           >
             Retour au panel
           </Link>

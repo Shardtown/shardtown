@@ -131,7 +131,7 @@ export function ComponentsBuilder({ guildId, channels }: Props) {
               type="button"
               onClick={send}
               disabled={busy || !channelId}
-              className="w-full bg-accent-gradient text-white px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50"
+              className="w-full bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50"
             >
               {busy ? "Envoi…" : "Envoyer"}
             </button>

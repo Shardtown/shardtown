@@ -147,7 +147,7 @@ export function Index() {
 
                     <a
                       href={s.href}
-                      className="relative z-10 mt-auto group inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-accent-gradient text-white font-bold text-sm transition-all hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_-12px_rgba(59,130,246,0.55)]"
+                      className="relative z-10 mt-auto group inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-white text-black font-bold text-sm transition-all hover:bg-white/95 hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_-12px_rgba(255,255,255,0.35)]"
                     >
                       En discuter
                       <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
@@ -192,7 +192,7 @@ export function Index() {
 
                 <a
                   href="/download/mac"
-                  className="relative z-10 mt-auto group inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-accent-gradient text-white font-bold text-sm transition-all hover:bg-white/95 hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_-12px_rgba(255,255,255,0.35)]"
+                  className="relative z-10 mt-auto group inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-white text-black font-bold text-sm transition-all hover:bg-white/95 hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_-12px_rgba(255,255,255,0.35)]"
                 >
                   <DownloadIcon className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
                   Télécharger le .dmg

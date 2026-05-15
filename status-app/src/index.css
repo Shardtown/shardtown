@@ -302,25 +302,14 @@
   transform: none;
 }
 
-/* Tinted variants — kept on the same chrome, change only fill + accent.
-   Primary suit le bleu gradient de marque ; les inset highlights restent
-   en blanc pour donner la profondeur "liquid". */
+/* Tinted variants — kept on the same chrome, change only fill + accent */
 .btn-liquid--primary {
-  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 45%, #1d4ed8 100%);
-  color: #ffffff;
-  border-color: rgba(96, 165, 250, 0.5);
-  box-shadow:
-    0 0 18px -4px rgba(59, 130, 246, 0.6),
-    0 2px 6px rgba(0, 0, 0, 0.3),
-    inset 3px 3px 0.5px -3.5px rgba(255, 255, 255, 0.9),
-    inset -3px -3px 0.5px -3.5px rgba(255, 255, 255, 0.3),
-    inset 1px 1px 1px -0.5px rgba(255, 255, 255, 0.5),
-    inset -1px -1px 1px -0.5px rgba(0, 0, 0, 0.2),
-    inset 0 0 6px 6px rgba(255, 255, 255, 0.08),
-    0 0 12px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(245,245,245,0.85) 100%);
+  color: #0a0a0a;
+  border-color: rgba(255, 255, 255, 0.4);
 }
 .btn-liquid--primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #93c5fd 0%, #60a5fa 45%, #2563eb 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f5f5f5 100%);
 }
 
 .btn-liquid--gold {

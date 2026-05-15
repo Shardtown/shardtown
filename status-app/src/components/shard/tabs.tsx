@@ -82,7 +82,7 @@ export function WelcomeTab({ guildId, settings, update, channels }: TabBase) {
         <Field label="Pied de page"><TextInput value={settings.welcomeFooter} onChange={e => update({ welcomeFooter: e.target.value })} /></Field>
         <Field label="Couleur"><ColorPicker value={settings.welcomeColor} onChange={v => update({ welcomeColor: v })} /></Field>
         <button type="button" onClick={() => test("welcome")} disabled={!settings.welcomeChannelId || testing === "welcome"}
-          className="bg-accent-gradient text-white px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
           {testing === "welcome" ? "Envoi…" : "Tester"}
         </button>
         {IS_DESKTOP && (
@@ -108,7 +108,7 @@ export function WelcomeTab({ guildId, settings, update, channels }: TabBase) {
         <Field label="Pied de page"><TextInput value={settings.leaveFooter} onChange={e => update({ leaveFooter: e.target.value })} /></Field>
         <Field label="Couleur"><ColorPicker value={settings.leaveColor} onChange={v => update({ leaveColor: v })} /></Field>
         <button type="button" onClick={() => test("leave")} disabled={!settings.leaveChannelId || testing === "leave"}
-          className="bg-accent-gradient text-white px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
           {testing === "leave" ? "Envoi…" : "Tester"}
         </button>
         {IS_DESKTOP && (
@@ -193,7 +193,7 @@ export function ScheduledTab({ guildId, channels }: TabBase & { announcements?: 
           <Field label="Intervalle (heures)"><NumberInput min={1} value={interval} onChange={e => setInterval(Number(e.target.value))} /></Field>
         </div>
         <button type="button" onClick={create} disabled={busy || !channelId || !message}
-          className="bg-accent-gradient text-white px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
           {busy ? "Création…" : "Programmer"}
         </button>
         {IS_DESKTOP && message.trim() !== "" && (
@@ -299,7 +299,7 @@ export function LevelsTab({ guildId, settings, update, channels, roles }: TabBas
           <NumberInput min={1} value={newReward.level} onChange={e => setNewReward(r => ({ ...r, level: Number(e.target.value) }))} />
           <Select options={roleOpts(roles)} value={newReward.roleId} onChange={v => setNewReward(r => ({ ...r, roleId: v }))} />
           <button type="button" onClick={() => { if (newReward.roleId) setRewards([...rewards, newReward]); setNewReward({ level: 5, roleId: "" }); }}
-            className="bg-accent-gradient text-white px-3 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity">
+            className="bg-white text-black px-3 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity">
             <Plus className="w-3.5 h-3.5 inline" />
           </button>
         </div>
@@ -321,7 +321,7 @@ export function LevelsTab({ guildId, settings, update, channels, roles }: TabBas
           <Select options={roleOpts(roles)} value={newMult.roleId} onChange={v => setNewMult(m => ({ ...m, roleId: v }))} />
           <NumberInput min={0.1} step={0.1} value={newMult.multiplier} onChange={e => setNewMult(m => ({ ...m, multiplier: Number(e.target.value) }))} />
           <button type="button" onClick={() => { if (newMult.roleId) setMultipliers([...multipliers, newMult]); setNewMult({ roleId: "", multiplier: 1.5 }); }}
-            className="bg-accent-gradient text-white px-3 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity">
+            className="bg-white text-black px-3 rounded-lg font-bold text-xs hover:opacity-90 transition-opacity">
             <Plus className="w-3.5 h-3.5 inline" />
           </button>
         </div>
@@ -383,7 +383,7 @@ export function EconomyTab({ guildId, settings, update, roles }: TabBase & { sho
           <Select options={roleOpts(roles)} value={newItem.roleId} onChange={v => setNewItem(x => ({ ...x, roleId: v }))} />
           <NumberInput min={1} value={newItem.price} onChange={e => setNewItem(x => ({ ...x, price: Number(e.target.value) }))} />
           <button type="button" onClick={addItem} disabled={busy}
-            className="bg-accent-gradient text-white px-3 rounded-lg font-bold text-xs hover:opacity-90 disabled:opacity-50">
+            className="bg-white text-black px-3 rounded-lg font-bold text-xs hover:opacity-90 disabled:opacity-50">
             <Plus className="w-3.5 h-3.5 inline" />
           </button>
         </div>
@@ -531,7 +531,7 @@ export function PollsTab({ guildId, channels }: TabBase & { polls?: Poll[] }) {
         </Field>
         <Field label="Durée"><Select options={POLL_DURATIONS} value={form.durationHours} onChange={v => setForm(f => ({ ...f, durationHours: v }))} /></Field>
         <button type="button" onClick={create} disabled={busy}
-          className="bg-accent-gradient text-white px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
           {busy ? "Création…" : "Lancer le sondage"}
         </button>
       </SectionCard>
@@ -597,7 +597,7 @@ function ModeBtn({ active, onClick, children }: { active: boolean; onClick: () =
     <button
       type="button"
       onClick={onClick}
-      className={`px-3.5 py-1.5 rounded-full transition-colors ${active ? "bg-accent-gradient text-white" : "text-white/60 hover:text-white"}`}
+      className={`px-3.5 py-1.5 rounded-full transition-colors ${active ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
     >
       {children}
     </button>
@@ -628,7 +628,7 @@ function LegacyEmbed({ guildId, channels }: { guildId: string; channels: DChanne
         <Field label="URL de l'image"><TextInput value={form.image} onChange={e => setForm(f => ({ ...f, image: e.target.value }))} placeholder="https://…" /></Field>
         <Field label="Couleur"><ColorPicker value={form.color} onChange={v => setForm(f => ({ ...f, color: v }))} /></Field>
         <button type="button" onClick={send} disabled={busy || !form.channelId}
-          className="bg-accent-gradient text-white px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
           {busy ? "Envoi…" : "Envoyer l'embed"}
         </button>
         {result && <p className="text-xs text-emerald-400 mt-2">{result}</p>}
@@ -711,7 +711,7 @@ export function ReactionsTab({ guildId, settings, update }: TabBase) {
         {emoji && <EmojiPreview value={emoji} />}
         <button type="button"
           onClick={() => { if (text && emoji) { setReactions([...reactions, { text, emoji }]); setText(""); setEmoji(""); } }}
-          className="bg-accent-gradient text-white px-3 h-9 rounded-lg font-bold text-xs hover:opacity-90">
+          className="bg-white text-black px-3 h-9 rounded-lg font-bold text-xs hover:opacity-90">
           <Plus className="w-3.5 h-3.5 inline" />
         </button>
       </div>
@@ -772,7 +772,7 @@ function TicketSubTab({ active, onClick, children }: { active: boolean; onClick:
     <button
       type="button"
       onClick={onClick}
-      className={`px-3.5 py-1.5 rounded-full transition-colors ${active ? "bg-accent-gradient text-white" : "text-white/60 hover:text-white"}`}
+      className={`px-3.5 py-1.5 rounded-full transition-colors ${active ? "bg-white text-black" : "text-white/60 hover:text-white"}`}
     >
       {children}
     </button>
@@ -834,7 +834,7 @@ function TicketsConfig({
           </div>
         </div>
         <button type="button" onClick={deployPanel} disabled={busy || !settings.ticketPanelChannelId}
-          className="bg-accent-gradient text-white px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
           {busy ? "Envoi…" : "Publier le panel"}
         </button>
         {result && <p className="text-xs text-emerald-400 mt-2">{result}</p>}
@@ -1070,7 +1070,7 @@ export function StreamAlertsTab({ guildId, channels, roles }: TabBase) {
           type="button"
           onClick={add}
           disabled={busy || !form.handle.trim() || !form.discordChannelId}
-          className="bg-accent-gradient text-white px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50"
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50"
         >
           {busy ? "Ajout…" : "Suivre ce streamer"}
         </button>

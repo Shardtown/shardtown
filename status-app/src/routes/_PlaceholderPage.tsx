@@ -32,7 +32,7 @@ export function PlaceholderPage({ title, legacyHref, description }: Props) {
           {legacyHref && (
             <a
               href={legacyHref}
-              className="bg-accent-gradient text-white px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
+              className="bg-white text-black px-6 py-3 rounded-full font-bold text-sm hover:opacity-90 transition-opacity"
             >
               Ouvrir l'ancienne version
             </a>
