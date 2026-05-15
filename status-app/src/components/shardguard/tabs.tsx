@@ -29,7 +29,6 @@ const roleOpts = (roles: DiscordRole[], excludeEveryone = true) => [
 /* ========== GÉNÉRAL ========== */
 export function GeneralTab({ settings, update, channels, roles }: TabProps) {
   const isLocked = settings.serverLocked === "true";
-  const isPremium = isTrue(settings.isPremium);
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <SectionCard title="Vérification" description="Comment les nouveaux membres accèdent au serveur.">
@@ -69,13 +68,6 @@ export function GeneralTab({ settings, update, channels, roles }: TabProps) {
             value={settings.accessCode}
             onChange={e => update({ accessCode: e.target.value })}
             placeholder="ex: SECRET2026"
-          />
-        </Field>
-        <Field label="Statut Premium" hint="Active les fonctionnalités avancées.">
-          <Toggle
-            checked={isPremium}
-            onChange={b => update({ isPremium: to01(b) })}
-            label={isPremium ? "Premium actif" : "Compte gratuit"}
           />
         </Field>
       </SectionCard>
