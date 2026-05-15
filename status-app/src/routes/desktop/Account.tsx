@@ -413,17 +413,7 @@ export function DesktopAccount() {
         {/* ─── TOKENS ──────────────────────────────────────── */}
         <Section
           title="Tokens d'accès personnel"
-          subtitle={
-            <>
-              Pour authentifier l'app desktop ou un script tiers. Header :{" "}
-              <code
-                className="px-1.5 py-0.5 rounded text-[11px] font-mono"
-                style={{ background: "var(--ds-panel-2)", border: "1px solid var(--ds-border)" }}
-              >
-                Authorization: Bearer st_…
-              </code>
-            </>
-          }
+          subtitle="Pour authentifier l'app desktop ou un script tiers."
           action={
             <button
               type="button"

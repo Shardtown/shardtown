@@ -98,7 +98,7 @@ export function BotServerPage({
           </h1>
           <p className="text-white/50 text-lg mb-10 leading-relaxed">
             On a besoin d'accéder à la liste de tes serveurs Discord pour t'afficher ceux où tu
-            peux configurer {botLabel}. Aucun mot de passe — juste l'autorisation OAuth de Discord.
+            peux configurer {botLabel}.
           </p>
           <button
             type="button"
@@ -108,7 +108,7 @@ export function BotServerPage({
             Se connecter avec Discord <ArrowRight className="w-4 h-4" />
           </button>
           <p className="text-white/30 text-xs mt-6">
-            Permissions demandées : <span className="text-white/50">identité publique</span> et <span className="text-white/50">liste des serveurs</span>. Rien d'autre.
+            Permissions demandées : <span className="text-white/50">identité publique</span> et <span className="text-white/50">liste des serveurs</span>.
           </p>
         </section>
       </AppLayout>

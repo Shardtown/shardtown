@@ -510,7 +510,7 @@ export function Account() {
             </button>
           </div>
           <p className="text-white/55 text-sm mb-5 max-w-xl">
-            Pour t'authentifier depuis l'app desktop, un script ou une intégration tierce. Header HTTP : <code className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[12px] font-mono">Authorization: Bearer st_…</code>
+            Pour t'authentifier depuis l'app desktop, un script ou une intégration tierce.
           </p>
           {tokens === null ? (
             <p className="text-white/30 text-xs uppercase tracking-widest font-bold py-3">Chargement…</p>
