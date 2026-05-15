@@ -1,7 +1,6 @@
 import { ArrowRight, MessageSquare, Mail, Download as DownloadIcon, Code2, Bot, Layers } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { TiltCard } from "@/components/ui/tilt-card";
 import { LiquidButton } from "@/components/ui/liquid-glass-button";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
 import { HolographicCard } from "@/components/ui/holographic-card";
@@ -124,44 +123,26 @@ export function Index() {
             on couvre toute la chaîne.
           </p>
         </Reveal>
-        <RevealStagger className="grid md:grid-cols-3 gap-5 md:gap-6" staggerChildren={0.08} delayChildren={0.15}>
+        <RevealStagger className="grid md:grid-cols-3 gap-6 md:gap-8" staggerChildren={0.08} delayChildren={0.15}>
           {SERVICES.map(s => {
             const Icon = s.icon;
             return (
               <RevealItem key={s.label} direction="left" distance={70} className="relative hover:z-10">
                 <a href={s.href} className="group block h-full relative">
-                  <TiltCard
-                    effect="gravitate"
-                    tiltLimit={5}
-                    scale={1.02}
-                    className="bg-zinc-900/40 border border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-700 hover:bg-zinc-900/60 transition-colors h-full flex flex-col"
-                  >
-                    {/* Zone hero icône — élément visuel dominant en haut.
-                        Bandeau plein gradient bleu avec un glow sous-jacent,
-                        l'icône 56px en blanc au centre. ~35% de la hauteur
-                        de la card. */}
-                    <div className="relative h-[180px] flex items-center justify-center bg-accent-gradient-soft border-b border-zinc-800 overflow-hidden">
-                      <div
-                        aria-hidden
-                        className="absolute inset-0 opacity-60"
-                        style={{
-                          background:
-                            "radial-gradient(circle at 50% 60%, rgba(59,130,246,0.35), transparent 60%)",
-                        }}
-                      />
-                      <div className="relative w-[88px] h-[88px] rounded-2xl bg-accent-gradient flex items-center justify-center shadow-[0_16px_48px_-12px_rgba(59,130,246,0.55),0_0_0_1px_rgba(96,165,250,0.3)] group-hover:scale-105 transition-transform duration-300">
-                        <Icon className="w-11 h-11 text-white" strokeWidth={1.6} />
-                      </div>
-                    </div>
-                    {/* Zone texte */}
-                    <div className="p-7 flex-1 flex flex-col">
-                      <h3 className="text-[20px] font-bold tracking-tight mb-3">{s.label}</h3>
-                      <p className="text-[14px] text-zinc-400 leading-relaxed mb-8">{s.description}</p>
-                      <span className="mt-auto inline-flex items-center gap-1.5 text-[13px] font-semibold text-zinc-300 group-hover:text-white group-hover:gap-2.5 transition-all">
-                        En discuter <ArrowRight className="w-3.5 h-3.5" />
-                      </span>
-                    </div>
-                  </TiltCard>
+                  <div className="p-8 h-full flex flex-col">
+                    {/* Grosse icône flat en haut, monochrome blanche. Pas de
+                        chrome autour, pas de carré coloré. C'est elle qui
+                        porte le visuel. */}
+                    <Icon
+                      className="w-14 h-14 text-white/85 mb-8 group-hover:text-white transition-colors"
+                      strokeWidth={1.25}
+                    />
+                    <h3 className="text-[22px] font-bold tracking-tight mb-3">{s.label}</h3>
+                    <p className="text-[14.5px] text-zinc-400 leading-relaxed mb-10">{s.description}</p>
+                    <span className="mt-auto inline-flex items-center gap-1.5 text-[13px] font-semibold text-zinc-400 group-hover:text-white group-hover:gap-2.5 transition-all">
+                      En discuter <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
                 </a>
               </RevealItem>
             );
