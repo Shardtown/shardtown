@@ -4,8 +4,7 @@ import { ShardRow } from "./ShardRow";
 
 const BOT_IMAGES: Record<string, string> = {
   Shard: "/image/shard.png",
-  // Legacy fallbacks for unmigrated bot_label values in older DB rows.
-  Shard: "/image/shard.png",
+  // Legacy fallback for unmigrated bot_label values in older DB rows.
   ShardGuard: "/image/shard.png",
 };
 
