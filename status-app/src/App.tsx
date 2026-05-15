@@ -40,6 +40,7 @@ import { AccountLogin } from "@/routes/account/Login";
 import { VerifyEmail } from "@/routes/account/VerifyEmail";
 import { Account } from "@/routes/account/Account";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { GooeyFilter } from "@/components/ui/toggle";
 
 // Marketing / informational routes that don't make sense inside the
 // desktop app — they redirect to the tools hub when running in Tauri.
@@ -92,6 +93,7 @@ function AppMain() {
     <AccountContext.Provider value={{ account, loading: accountLoading, refresh: refreshAccount }}>
     <AuthContext.Provider value={{ user, loading, refresh }}>
       <DesktopGate>
+        <GooeyFilter />
         <BrowserRouter>
           <ErrorBoundary>
             {/* Tauri drag handle — invisible strip on top of the window */}

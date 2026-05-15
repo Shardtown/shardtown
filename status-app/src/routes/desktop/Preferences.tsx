@@ -19,6 +19,7 @@ import {
 import { isAutostartEnabled, setAutostart } from "@/lib/desktop";
 import { apiGet, ApiError } from "@/api/client";
 import { setTheme, useTheme, type Theme } from "@/lib/theme";
+import { Toggle } from "@/components/ui/toggle";
 
 type SectionId = "apparence" | "sons" | "demarrage" | "decouverte" | "biometrie" | "token";
 
@@ -213,10 +214,10 @@ export function DesktopPreferences() {
                 title="Lancer Shardtown au démarrage"
                 hint="L'app démarre dans le menu-bar à la connexion macOS, sans ouvrir la fenêtre principale."
                 right={
-                  <Switch
-                    on={autostart === true}
+                  <Toggle
+                    checked={autostart === true}
                     disabled={autostart === null}
-                    onChange={v => toggleAutostart(v)}
+                    onCheckedChange={v => toggleAutostart(v)}
                   />
                 }
               />
@@ -350,34 +351,6 @@ function Row({
       </div>
       {right}
     </div>
-  );
-}
-
-function Switch({
-  on, disabled, onChange,
-}: {
-  on: boolean;
-  disabled?: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      disabled={disabled}
-      onClick={() => onChange(!on)}
-      className="relative inline-flex h-6 w-11 items-center rounded-full border transition-colors disabled:opacity-40"
-      style={{
-        background: on ? "var(--ds-accent)" : "var(--ds-panel-2)",
-        borderColor: "var(--ds-border-strong)",
-      }}
-    >
-      <span
-        className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-        style={{ transform: on ? "translateX(22px)" : "translateX(4px)" }}
-      />
-    </button>
   );
 }
 

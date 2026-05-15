@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
+import { Toggle as GooeyToggle } from "@/components/ui/toggle";
 
 export function Field({
   label, hint, children,
@@ -48,23 +49,10 @@ export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
 
 export function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (b: boolean) => void; label?: string }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] hover:bg-white/[0.05] hover:border-white/15 transition-colors w-full text-left`}
-    >
-      <span
-        className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${checked ? "bg-emerald-500" : "bg-white/10"}`}
-        aria-hidden="true"
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${checked ? "translate-x-4" : ""}`}
-        />
-      </span>
+    <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] hover:bg-white/[0.05] hover:border-white/15 transition-colors w-full">
+      <GooeyToggle checked={checked} onCheckedChange={onChange} variant="success" />
       {label && <span className="text-sm font-medium text-white/80">{label}</span>}
-    </button>
+    </div>
   );
 }
 

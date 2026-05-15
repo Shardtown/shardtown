@@ -185,9 +185,6 @@ export function Index() {
                         Disponible
                       </span>
                     </div>
-                    <p className="text-sm text-white/55 leading-relaxed">
-                      Apple Silicon (M1/M2/M3/M4) + Intel via universal binary. macOS 11 Big Sur ou plus récent. Signature Developer ID + notarisation Apple, mises à jour automatiques.
-                    </p>
                   </div>
                 </div>
                 <a
@@ -216,9 +213,6 @@ export function Index() {
                         Prochainement
                       </span>
                     </div>
-                    <p className="text-sm text-white/55 leading-relaxed">
-                      Version Windows 10 / 11 (x64 + ARM64) en cours de packaging. On vous prévient dès qu'elle est dispo.
-                    </p>
                   </div>
                 </div>
                 <button
