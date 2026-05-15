@@ -1,12 +1,11 @@
 import { Link } from "react-router-dom";
 import {
-  Sparkles, ArrowRight, Lock, Mail,
+  Sparkles, ArrowRight, Lock, Mail, Activity, Crown,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth, avatarUrl } from "@/api/auth";
 import { useAccount } from "@/api/account";
-import { TiltCard } from "@/components/ui/tilt-card";
 import { startOAuthLink } from "@/lib/oauthLink";
 
 /**
@@ -20,26 +19,6 @@ import { startOAuthLink } from "@/lib/oauthLink";
  * 3. Services à la demande (dev custom, setup serveur, etc.) — CTA vers
  *    le formulaire de contact de la home.
  */
-
-const BOTS = [
-  {
-    label: "Shard",
-    tagline: "Bot Discord tout-en-un",
-    description:
-      "Anti-raid, captcha, modération automatique — ET niveaux, économie, tickets, sondages, giveaways, alertes stream. Un seul bot, deux modules : Sécurité et Communauté.",
-    href: "/shard/server",
-    avatar: "/image/shard.png",
-  },
-];
-
-const ASSISTANT = {
-  label: "Samia",
-  tagline: "Assistante IA",
-  description:
-    "Pose tes questions sur le bot, le dashboard, le Premium ou nos services. Samia connaît le wiki par cœur.",
-  href: "/assistant",
-  icon: Sparkles,
-};
 
 const SERVICES = [
   {
@@ -183,177 +162,191 @@ export function Outils() {
     );
   }
 
+  const displayName = user.global_name || user.username;
+
   return (
     <AppLayout>
-      <section className="container-wide pt-32 md:pt-40 pb-32 overflow-hidden">
-        {/* Hero — same DA as the home */}
-        <header className="max-w-3xl mb-20">
-          <motion.p
-            className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
-            initial={{ opacity: 0, y: reduce ? 0 : 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.05, ease: heroEase }}
-          >
-            Mes outils
-          </motion.p>
-          <motion.div
-            className="flex items-center gap-5 mb-6"
-            initial={{ opacity: 0, x: reduce ? 0 : -60 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.85, delay: 0.15, ease: heroEase }}
-          >
-            <img
-              src={avatarUrl(user, 128)}
-              alt=""
-              className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border border-white/10"
-            />
-            <h1 className="font-extrabold tracking-tight leading-[0.95] text-4xl md:text-6xl lg:text-7xl">
-              Bonjour,{" "}
-              <span className="text-white/55">
-                {user.global_name || user.username}
-              </span>
-            </h1>
-          </motion.div>
-          <motion.p
-            className="text-lg text-white/55 leading-relaxed"
-            initial={{ opacity: 0, x: reduce ? 0 : 80 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.85, delay: 0.35, ease: heroEase }}
-          >
-            Tous les outils Shardtown — bot Discord, assistante IA, services
-            sur mesure. Choisis ce sur quoi tu veux travailler.
-          </motion.p>
-        </header>
-
-        {/* Bots Discord */}
-        <motion.div
-          className="mb-20"
-          initial={{ opacity: 0, y: reduce ? 0 : 30 }}
+      <section className="container-wide pt-16 md:pt-20 pb-24">
+        {/* Hero compact : avatar + greeting sur une ligne, sans sur-titre. */}
+        <motion.header
+          className="flex items-center gap-4 mb-12"
+          initial={{ opacity: 0, y: reduce ? 0 : 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.45, ease: heroEase }}
+          transition={{ duration: 0.55, ease: heroEase }}
         >
-          <div className="flex items-baseline gap-3 mb-8">
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Bot Discord
-            </h2>
-            <span className="text-[12px] text-white/35">
-              à inviter sur tes serveurs
-            </span>
-          </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            {BOTS.map(b => (
-              <ToolCard key={b.label} {...b} cta="Gérer mes serveurs" />
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Assistante IA */}
-        <motion.div
-          className="mb-20"
-          initial={{ opacity: 0, y: reduce ? 0 : 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.55, ease: heroEase }}
-        >
-          <div className="flex items-baseline gap-3 mb-8">
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Assistance
-            </h2>
-            <span className="text-[12px] text-white/35">en libre-service</span>
-          </div>
-          <div className="grid md:grid-cols-2 gap-6">
-            <ToolCard {...ASSISTANT} cta="Discuter avec Samia" />
-          </div>
-        </motion.div>
-
-        {/* Services sur mesure */}
-        <motion.div
-          initial={{ opacity: 0, y: reduce ? 0 : 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.65, ease: heroEase }}
-        >
-          <div className="flex items-baseline gap-3 mb-8">
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Sur mesure
-            </h2>
-            <span className="text-[12px] text-white/35">
-              au-delà des outils maison
-            </span>
-          </div>
-          <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
-            <p className="text-white/60 leading-relaxed mb-6 max-w-2xl">
-              Besoin d'autre chose qu'un bot maison ? L'équipe Shardtown
-              prend des projets sur mesure — site web, intégration API,
-              setup complet de serveur Discord, formation, audit.
+          <img
+            src={avatarUrl(user, 96)}
+            alt=""
+            className="w-12 h-12 md:w-14 md:h-14 rounded-2xl border border-white/10 object-cover"
+          />
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold tracking-[0.22em] uppercase text-white/35 mb-1">
+              Tableau de bord
             </p>
-            <div className="grid sm:grid-cols-2 gap-3 mb-7">
-              {SERVICES.map(s => (
-                <div
-                  key={s.label}
-                  className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4"
-                >
-                  <p className="font-bold text-[14.5px] mb-1.5">{s.label}</p>
-                  <p className="text-[12.5px] text-white/50 leading-relaxed">
-                    {s.description}
-                  </p>
-                </div>
-              ))}
+            <h1 className="font-extrabold tracking-tight text-2xl md:text-3xl truncate">
+              Bonjour, <span className="text-white/55">{displayName}</span>
+            </h1>
+          </div>
+        </motion.header>
+
+        {/* Carte primaire : Mes serveurs Discord (l'action principale). */}
+        <motion.div
+          initial={{ opacity: 0, y: reduce ? 0 : 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.08, ease: heroEase }}
+          className="mb-4"
+        >
+          <Link to="/shard/server" className="group block">
+            <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 p-6 md:p-8 transition-colors flex items-center gap-6">
+              <img
+                src="/image/shard.png"
+                alt=""
+                className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border border-white/10 object-cover shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10.5px] font-bold uppercase tracking-widest text-white/35 mb-1.5">
+                  Bot Discord
+                </p>
+                <h2 className="text-xl md:text-2xl font-extrabold tracking-tight mb-2">
+                  Mes serveurs Discord
+                </h2>
+                <p className="text-[13.5px] text-white/55 leading-relaxed max-w-2xl">
+                  Anti-raid, captcha, modération auto, niveaux, économie,
+                  giveaways, alertes stream — configure tout sans une seule
+                  commande Discord.
+                </p>
+              </div>
+              <span className="hidden md:inline-flex items-center gap-2 text-[13px] font-bold text-white shrink-0 group-hover:gap-3 transition-all">
+                Gérer <ArrowRight className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </Link>
+        </motion.div>
+
+        {/* Grille secondaire : Samia / Statut / Premium — 3 cards équipondérées. */}
+        <motion.div
+          initial={{ opacity: 0, y: reduce ? 0 : 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.15, ease: heroEase }}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10"
+        >
+          <SecondaryCard
+            href="/assistant"
+            icon={<Sparkles className="w-4 h-4" strokeWidth={2} />}
+            tagline="Assistante IA"
+            label="Samia"
+            description="Pose tes questions sur le bot, le dashboard, le Premium ou nos services."
+          />
+          <SecondaryCard
+            href="/statut"
+            icon={<Activity className="w-4 h-4" strokeWidth={2} />}
+            tagline="Temps réel"
+            label="Statut"
+            description="État des bots, de l'API et des services. Incidents et maintenance en direct."
+          />
+          <SecondaryCard
+            href="/premium"
+            icon={<Crown className="w-4 h-4" strokeWidth={2} />}
+            tagline="Abonnement"
+            label="Premium"
+            description="Repousse les limites : XP, giveaways, hubs vocaux, support prioritaire."
+            accent
+          />
+        </motion.div>
+
+        {/* Sur mesure : bannière compacte, expand des détails seulement si lu. */}
+        <motion.div
+          initial={{ opacity: 0, y: reduce ? 0 : 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.22, ease: heroEase }}
+          className="rounded-3xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-7"
+        >
+          <div className="flex items-start gap-4 mb-5">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10.5px] font-bold uppercase tracking-widest text-white/35 mb-1.5">
+                Sur mesure
+              </p>
+              <h2 className="text-lg md:text-xl font-extrabold tracking-tight mb-1.5">
+                Besoin d'autre chose ?
+              </h2>
+              <p className="text-[13px] text-white/55 leading-relaxed max-w-2xl">
+                Bot Discord custom, site web, setup de serveur, audit, formation
+                — l'équipe Shardtown prend tes projets sur devis.
+              </p>
             </div>
             <a
               href="mailto:contact@shardtwn.fr"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-black text-sm font-bold hover:opacity-90 transition-opacity"
+              className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12.5px] font-bold hover:opacity-90 transition-opacity shrink-0"
             >
-              <Mail className="w-3.5 h-3.5" /> Discuter d'un projet
+              <Mail className="w-3.5 h-3.5" /> Discuter
             </a>
           </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {SERVICES.map(s => (
+              <div
+                key={s.label}
+                className="rounded-xl border border-white/[0.06] bg-white/[0.015] p-3"
+              >
+                <p className="font-bold text-[12.5px] mb-1">{s.label}</p>
+                <p className="text-[11.5px] text-white/45 leading-relaxed">
+                  {s.description}
+                </p>
+              </div>
+            ))}
+          </div>
+          <a
+            href="mailto:contact@shardtwn.fr"
+            className="md:hidden mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12.5px] font-bold hover:opacity-90 transition-opacity"
+          >
+            <Mail className="w-3.5 h-3.5" /> Discuter
+          </a>
         </motion.div>
       </section>
     </AppLayout>
   );
 }
 
-function ToolCard({
-  label,
-  tagline,
-  description,
-  href,
-  icon: Icon,
-  avatar,
-  cta,
+function SecondaryCard({
+  href, icon, tagline, label, description, accent,
 }: {
-  label: string;
-  tagline: string;
-  description: string;
   href: string;
-  icon?: typeof Sparkles;
-  avatar?: string;
-  cta: string;
+  icon: React.ReactNode;
+  tagline: string;
+  label: string;
+  description: string;
+  accent?: boolean;
 }) {
   return (
-    <Link to={href} className="group block">
-      <TiltCard
-        effect="gravitate"
-        tiltLimit={6}
-        scale={1.02}
-        className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 md:p-7 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full"
+    <Link to={href} className="group block h-full">
+      <div
+        className={
+          "rounded-2xl p-5 h-full transition-colors border " +
+          (accent
+            ? "border-amber-400/20 bg-amber-400/[0.04] hover:bg-amber-400/[0.07] hover:border-amber-400/35"
+            : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20")
+        }
       >
-        <div className="w-11 h-11 rounded-xl overflow-hidden bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70 mb-5">
-          {avatar
-            ? <img src={avatar} alt="" className="w-full h-full object-cover" />
-            : Icon
-              ? <Icon className="w-5 h-5" strokeWidth={2} />
-              : null}
+        <div
+          className={
+            "w-9 h-9 rounded-lg flex items-center justify-center mb-4 " +
+            (accent
+              ? "bg-amber-400/15 text-amber-300 border border-amber-400/25"
+              : "bg-white/[0.04] text-white/70 border border-white/[0.08]")
+          }
+        >
+          {icon}
         </div>
-        <h3 className="text-xl font-bold mb-1.5">{label}</h3>
-        <p className="text-[10.5px] font-bold uppercase tracking-widest text-white/35 mb-4">
+        <p className={"text-[10px] font-bold uppercase tracking-widest mb-1 " + (accent ? "text-amber-300/70" : "text-white/35")}>
           {tagline}
         </p>
-        <p className="text-white/55 leading-relaxed mb-6 text-[13.5px]">
+        <h3 className="text-base font-bold mb-1.5">{label}</h3>
+        <p className="text-[12.5px] text-white/50 leading-relaxed mb-4">
           {description}
         </p>
-        <span className="inline-flex items-center gap-2 text-[13px] font-bold text-white group-hover:gap-3 transition-all">
-          {cta} <ArrowRight className="w-3.5 h-3.5" />
+        <span className={"inline-flex items-center gap-1.5 text-[12px] font-bold group-hover:gap-2 transition-all " + (accent ? "text-amber-300" : "text-white")}>
+          Ouvrir <ArrowRight className="w-3 h-3" />
         </span>
-      </TiltCard>
+      </div>
     </Link>
   );
 }

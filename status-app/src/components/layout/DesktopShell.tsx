@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutGrid, Sparkles, Settings, HelpCircle,
-  Search, Bell, User, LogOut, X, MessageCircle, Activity, Download, Loader2, RefreshCw, Crown,
+  Search, User, LogOut, X, MessageCircle, Activity, Download, Loader2, RefreshCw, Crown,
 } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
@@ -49,12 +49,6 @@ interface NavSpec {
   label: string;
 }
 
-interface NavGroup {
-  /** Tiny uppercase label rendered above the group (omit for the first group). */
-  label?: string;
-  items: NavSpec[];
-}
-
 export function DesktopShell({ children }: { children: ReactNode }) {
   const { user, refresh } = useAuth();
   const location = useLocation();
@@ -82,38 +76,16 @@ export function DesktopShell({ children }: { children: ReactNode }) {
     return location.pathname === prefix || location.pathname.startsWith(prefix + "/");
   }
 
-  const groups: NavGroup[] = [
-    {
-      items: [
-        { to: "/outils", icon: <LayoutGrid size={18} strokeWidth={1.8} />, label: "Tableau de bord" },
-      ],
-    },
-    {
-      label: "Shard",
-      items: [
-        { to: "/assistant",    icon: <MessageCircle size={18} strokeWidth={1.8} />,           label: "Discussion" },
-        { to: "/shard/server", icon: <BotAvatar src="/image/shard.png" size={22} alt="Shard" />, label: "Mes serveurs Discord" },
-      ],
-    },
-    {
-      label: "Statut",
-      items: [
-        { to: "/statut", icon: <Activity size={18} strokeWidth={1.8} />, label: "Statut des services" },
-      ],
-    },
-    {
-      label: "Premium",
-      items: [
-        { to: "/premium", icon: <Crown size={18} strokeWidth={1.8} />, label: isPremium ? "Mon abonnement Premium" : "Passer en Premium" },
-      ],
-    },
-    {
-      label: "Système",
-      items: [
-        { to: "/rpc",         icon: <Sparkles size={18} strokeWidth={1.8} />, label: "Discord RPC" },
-        { to: "/preferences", icon: <Settings size={18} strokeWidth={1.8} />, label: "Réglages" },
-      ],
-    },
+  // Sidebar plate, NordVPN-style. Pas de groupes : la hiérarchie crée du
+  // bruit visuel quand chaque catégorie n'a qu'un item. Les utilitaires
+  // (Réglages, Aide) sont rendus séparément en bas du rail.
+  const navItems: NavSpec[] = [
+    { to: "/outils",       icon: <LayoutGrid size={18} strokeWidth={1.8} />,                      label: "Tableau de bord" },
+    { to: "/shard/server", icon: <BotAvatar src="/image/shard.png" size={22} alt="Shard" />,      label: "Mes serveurs Discord" },
+    { to: "/assistant",    icon: <MessageCircle size={18} strokeWidth={1.8} />,                   label: "Samia" },
+    { to: "/statut",       icon: <Activity size={18} strokeWidth={1.8} />,                        label: "Statut des services" },
+    { to: "/premium",      icon: <Crown size={18} strokeWidth={1.8} />,                           label: isPremium ? "Mon abonnement Premium" : "Passer en Premium" },
+    { to: "/rpc",          icon: <Sparkles size={18} strokeWidth={1.8} />,                        label: "Discord RPC" },
   ];
 
   async function logout() {
@@ -176,33 +148,31 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           <img src="/image/favicon.png" alt="Shardtown" className="w-10 h-10 object-contain" />
         </Link>
 
-        <nav className="flex flex-col gap-3 w-12" data-tour="sidebar">
-          {groups.map((group, gi) => (
-            <div
-              key={gi}
-              className="flex flex-col gap-1 p-1 rounded-[16px] border ds-glass"
-              style={{ borderColor: "var(--ds-border)" }}
-            >
-              {group.items.map(item => (
-                <RailItem
-                  key={item.to}
-                  to={item.to}
-                  icon={item.icon}
-                  label={item.label}
-                  active={isActive(item.to)}
-                />
-              ))}
-            </div>
+        <nav className="flex flex-col gap-1.5 w-12" data-tour="sidebar">
+          {navItems.map(item => (
+            <RailItem
+              key={item.to}
+              to={item.to}
+              icon={item.icon}
+              label={item.label}
+              active={isActive(item.to)}
+            />
           ))}
         </nav>
 
-        <div className="mt-auto flex flex-col items-center gap-1">
+        <div className="mt-auto flex flex-col items-center gap-1.5">
+          <RailItem
+            to="/preferences"
+            icon={<Settings size={18} strokeWidth={1.8} />}
+            label="Réglages"
+            active={isActive("/preferences")}
+          />
           <button
             type="button"
             onClick={() => openExternal("https://shardtwn.fr/wiki").catch(() => {})}
             aria-label="Aide"
             title="Aide"
-            className="w-10 h-10 rounded-[12px] flex items-center justify-center transition-colors hover:opacity-80"
+            className="w-10 h-10 rounded-[12px] flex items-center justify-center transition-colors hover:bg-[var(--ds-panel)]"
             style={{ color: "var(--ds-text-dim)" }}
           >
             <HelpCircle size={18} strokeWidth={1.8} />
@@ -228,14 +198,6 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           </div>
           <PresenceStack />
           <UpdateButton />
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--ds-panel-2)]"
-            style={{ background: "var(--ds-panel)", border: "1px solid var(--ds-border)", color: "var(--ds-text)" }}
-          >
-            <Bell size={15} strokeWidth={1.8} />
-          </button>
           <div className="relative" data-tour="profile">
             <button
               type="button"
@@ -302,23 +264,18 @@ function RailItem({
       to={to}
       title={label}
       aria-label={label}
-      className={
-        active
-          ? "ds-glass w-10 h-10 rounded-[12px] flex items-center justify-center transition-colors group"
-          : "w-10 h-10 rounded-[12px] flex items-center justify-center transition-colors group"
-      }
+      className="w-10 h-10 rounded-[12px] flex items-center justify-center transition-colors hover:bg-[var(--ds-panel)]"
       style={
         active
           ? {
               color: "var(--ds-text)",
+              background: "var(--ds-panel-2)",
               border: "1px solid var(--ds-border-strong)",
             }
           : { color: "var(--ds-text-dim)" }
       }
     >
-      <span style={active ? undefined : { transition: "color 0.12s ease" }}>
-        {icon}
-      </span>
+      {icon}
     </Link>
   );
 }
