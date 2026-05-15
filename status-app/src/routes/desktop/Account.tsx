@@ -75,13 +75,13 @@ export function DesktopAccount() {
 
   // Surface ?linked=ok / ?linked=error from the OAuth callback. The desktop
   // bridge uses `provider=discord|shard` to disambiguate; the web flow uses
-  // either `linked=…` (ShardGuard) or `shardLinked=…` (Shard).
+  // either `linked=…` (Discord principal) or `shardLinked=…` (Discord secondaire).
   useEffect(() => {
     const linked = params.get("linked");
     const shardLinked = params.get("shardLinked");
     const provider = params.get("provider");
     if (!linked && !shardLinked) return;
-    const which = provider === "shard" || shardLinked ? "Shard" : "ShardGuard";
+    const which = provider === "shard" || shardLinked ? "Connexion secondaire" : "Discord";
     const ok = (linked || shardLinked) === "ok";
     if (ok) {
       setBanner({ kind: "ok", text: `${which} lié avec succès.` });
@@ -161,13 +161,13 @@ export function DesktopAccount() {
   }
 
   async function unlink() {
-    if (!confirm("Délier ton compte ShardGuard ?")) return;
-    try { await apiPost("/api/account/discord/unlink"); setBanner({ kind: "ok", text: "ShardGuard délié." }); refresh(); }
+    if (!confirm("Délier ta connexion Discord ?")) return;
+    try { await apiPost("/api/account/discord/unlink"); setBanner({ kind: "ok", text: "Connexion Discord déliée." }); refresh(); }
     catch { setBanner({ kind: "error", text: "Échec du déliage." }); }
   }
   async function unlinkShard() {
-    if (!confirm("Délier ton compte Shard ?")) return;
-    try { await apiPost("/api/account/shard/unlink"); setBanner({ kind: "ok", text: "Shard délié." }); refresh(); }
+    if (!confirm("Délier ta connexion secondaire ?")) return;
+    try { await apiPost("/api/account/shard/unlink"); setBanner({ kind: "ok", text: "Connexion secondaire déliée." }); refresh(); }
     catch { setBanner({ kind: "error", text: "Échec du déliage." }); }
   }
   async function refreshGuilds() {
@@ -182,14 +182,15 @@ export function DesktopAccount() {
   async function refreshShardGuilds() {
     setShardRefreshing(true);
     try {
+      // legacy refresh-guilds endpoint kept for the secondary OAuth flow
       const r = await apiPost<{ guilds_count: number }>("/api/account/shard/refresh-guilds");
       setShardGuildsCount(r.guilds_count);
-      setBanner({ kind: "ok", text: `${r.guilds_count} serveurs synchronisés (Shard).` });
+      setBanner({ kind: "ok", text: `${r.guilds_count} serveurs synchronisés (connexion secondaire).` });
     } catch (err: unknown) {
       const reason = isApiError(err) && (err.data as { reason?: string } | undefined)?.reason;
       setBanner({
         kind: "error",
-        text: reason === "scope" ? "Re-liaison Shard requise pour la liste des serveurs." : "Échec du refresh Shard.",
+        text: reason === "scope" ? "Re-liaison secondaire requise pour la liste des serveurs." : "Échec du refresh.",
       });
     } finally { setShardRefreshing(false); }
   }
@@ -300,8 +301,8 @@ export function DesktopAccount() {
           <CardList>
             <ConnectionRow
               kind="discord"
-              title="ShardGuard"
-              caption="Compte principal pour ShardGuard et les dashboards"
+              title="Discord"
+              caption="Compte principal — nécessaire pour configurer Samia et les dashboards"
               linkedId={account.discord_id}
               linkedName={account.discord_username}
               linkedAvatar={account.discord_avatar}
@@ -319,8 +320,8 @@ export function DesktopAccount() {
             />
             <ConnectionRow
               kind="discord"
-              title="Shard"
-              caption="Compte distinct pour le bot Shard (optionnel)"
+              title="Connexion secondaire"
+              caption="Discord alternatif — utile si tu administres Samia depuis deux comptes (optionnel)"
               linkedId={account.shard_id}
               linkedName={account.shard_username}
               linkedAvatar={account.shard_avatar}

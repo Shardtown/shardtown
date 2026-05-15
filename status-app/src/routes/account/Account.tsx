@@ -166,7 +166,7 @@ export function Account() {
     const linked = params.get("linked");
     const shardLinked = params.get("shardLinked");
     if (!linked && !shardLinked) return;
-    const which = shardLinked ? "Shard" : "ShardGuard";
+    const which = shardLinked ? "Connexion secondaire" : "Discord";
     const okState = (linked || shardLinked) === "ok";
     if (okState) setBanner({ kind: "ok", text: `${which} lié avec succès.` });
     else {
@@ -194,10 +194,10 @@ export function Account() {
   }
 
   async function unlink() {
-    if (!confirm("Délier ton compte ShardGuard ?")) return;
+    if (!confirm("Délier ta connexion Discord ?")) return;
     try {
       await apiPost("/api/account/discord/unlink");
-      setBanner({ kind: "ok", text: "ShardGuard délié." });
+      setBanner({ kind: "ok", text: "Connexion Discord déliée." });
       refresh();
     } catch {
       setBanner({ kind: "error", text: "Échec du déliage." });
@@ -205,10 +205,10 @@ export function Account() {
   }
 
   async function unlinkShard() {
-    if (!confirm("Délier ton compte Shard ?")) return;
+    if (!confirm("Délier ta connexion secondaire ?")) return;
     try {
       await apiPost("/api/account/shard/unlink");
-      setBanner({ kind: "ok", text: "Shard délié." });
+      setBanner({ kind: "ok", text: "Connexion secondaire déliée." });
       refresh();
     } catch {
       setBanner({ kind: "error", text: "Échec du déliage." });
@@ -231,13 +231,13 @@ export function Account() {
     try {
       const r = await apiPost<{ guilds_count: number }>("/api/account/shard/refresh-guilds");
       setShardGuildsCount(r.guilds_count);
-      setBanner({ kind: "ok", text: `${r.guilds_count} serveurs synchronisés (Shard).` });
+      setBanner({ kind: "ok", text: `${r.guilds_count} serveurs synchronisés (connexion secondaire).` });
     } catch (err: unknown) {
       const reason = isApiError(err) && (err.data as { reason?: string } | undefined)?.reason;
       if (reason === "scope") {
-        setBanner({ kind: "error", text: "Re-liaison Shard requise pour la liste des serveurs." });
+        setBanner({ kind: "error", text: "Re-liaison secondaire requise pour la liste des serveurs." });
       } else {
-        setBanner({ kind: "error", text: "Échec du refresh Shard." });
+        setBanner({ kind: "error", text: "Échec du refresh." });
       }
     } finally { setShardRefreshing(false); }
   }
@@ -338,17 +338,17 @@ export function Account() {
             </p>
             <h2 className="text-xl font-extrabold tracking-tight">Comptes liés</h2>
             <p className="text-[13px] text-white/50 mt-2 max-w-xl leading-relaxed">
-              Discord est nécessaire pour configurer les bots. Google et GitHub
+              Discord est nécessaire pour configurer Samia. Google et GitHub
               sont optionnels, utiles pour te reconnecter en un clic.
             </p>
           </div>
 
           <div className="divide-y divide-white/[0.05]">
-            {/* Discord (Shardtown / ShardGuard) */}
+            {/* Discord — main login (passport-discord) */}
             <ConnectionRow
               kind="discord"
-              title="ShardGuard"
-              caption="Compte principal pour ShardGuard et les dashboards"
+              title="Discord"
+              caption="Compte principal — nécessaire pour configurer Samia et les dashboards"
               linkedId={account.discord_id}
               linkedName={account.discord_username}
               linkedAvatar={account.discord_avatar}
@@ -373,11 +373,11 @@ export function Account() {
               }
             />
 
-            {/* Discord (Shard bot) */}
+            {/* Discord — secondary OAuth (custom shard flow, kept for legacy users) */}
             <ConnectionRow
               kind="discord"
-              title="Shard"
-              caption="Compte distinct pour le bot Shard (optionnel)"
+              title="Connexion secondaire"
+              caption="Discord alternatif — utile si tu administres Samia depuis deux comptes (optionnel)"
               linkedId={account.shard_id}
               linkedName={account.shard_username}
               linkedAvatar={account.shard_avatar}

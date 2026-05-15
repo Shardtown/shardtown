@@ -26,12 +26,12 @@ const SUGGESTIONS: { icon: React.ReactNode; label: string; prompt: string }[] = 
   {
     icon: <Shield className="w-4 h-4" />,
     label: "Configurer le captcha",
-    prompt: "Comment je configure le captcha ShardGuard de manière optimale ?",
+    prompt: "Comment je configure le captcha Samia de manière optimale ?",
   },
   {
     icon: <Bot className="w-4 h-4" />,
-    label: "Inviter les bots",
-    prompt: "Comment j'invite ShardGuard et Shard sur mon serveur ?",
+    label: "Inviter Samia",
+    prompt: "Comment j'invite Samia sur mon serveur Discord ?",
   },
   {
     icon: <Crown className="w-4 h-4" />,

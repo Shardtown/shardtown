@@ -19,48 +19,80 @@ interface BotServerData {
   user: { id: string; username: string; avatar: string | null } | null;
 }
 
-interface Props {
-  botKey: "shard" | "shardguard";
-  botLabel: string;
-  botImage: string;
-  configRoutePrefix: string;
-  /** Legacy — no longer used since the unified account login. Kept for callsite compat. */
-  loginPath?: string;
-  inviteScopes: string;
-  /** Optional modal-based bot picker (ShardGuard) — for now just opens invite directly */
-  showBotPicker?: boolean;
-}
+const BOT_LABEL = "Samia";
+const BOT_IMAGE = "/image/samia.png";
 
 function initials(name: string) {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
-export function BotServerPage({
-  botKey,
-  botLabel,
-  botImage,
-  configRoutePrefix,
-  inviteScopes,
-  showBotPicker,
-}: Props) {
+// Single Discord bot ("Samia"). Behind the scenes two legacy bot identities
+// still answer (community via /api/shard/server, security via
+// /api/shardguard/server) — we query both in parallel and merge so the user
+// sees one unified list whether they linked Discord OAuth, Shard OAuth, or
+// both.
+export function SamiaServer() {
   const { account, loading: accountLoading } = useAccount();
   const [data, setData] = useState<BotServerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [unauthorized, setUnauthorized] = useState(false);
   const [pickerGuildId, setPickerGuildId] = useState<string | null>(null);
-  const linkProvider: "discord" | "shard" = botKey === "shard" ? "shard" : "discord";
-  const linkedId = botKey === "shard" ? account?.shard_id : account?.discord_id;
+
+  const hasDiscord = !!account?.discord_id;
+  const hasShard = !!account?.shard_id;
+  const neitherLinked = !!account && !hasDiscord && !hasShard;
 
   useEffect(() => {
-    apiGet<BotServerData>(`/api/${botKey}/server`)
-      .then(setData)
-      .catch(err => {
-        if (isApiError(err) && (err.status === 401 || err.status === 403)) {
-          setUnauthorized(true);
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [botKey]);
+    let cancelled = false;
+    (async () => {
+      const [securityRes, communityRes] = await Promise.allSettled([
+        apiGet<BotServerData>("/api/shardguard/server"),
+        apiGet<BotServerData>("/api/shard/server"),
+      ]);
+
+      const security = securityRes.status === "fulfilled" ? securityRes.value : null;
+      const community = communityRes.status === "fulfilled" ? communityRes.value : null;
+      const both401 =
+        [securityRes, communityRes].every(
+          r => r.status === "rejected" && isApiError(r.reason) && (r.reason.status === 401 || r.reason.status === 403),
+        );
+
+      if (cancelled) return;
+
+      if (both401) {
+        setUnauthorized(true);
+        setLoading(false);
+        return;
+      }
+
+      const guildsMap = new Map<string, Guild>();
+      [security, community].forEach(d => {
+        d?.guilds.forEach(g => guildsMap.set(g.id, g));
+      });
+      const botGuildIds = new Set<string>([
+        ...(security?.botGuildIds ?? []),
+        ...(community?.botGuildIds ?? []),
+      ]);
+
+      const user = security?.user ?? community?.user ?? null;
+      const clientId = community?.clientId || security?.clientId || "";
+
+      setData({
+        guilds: Array.from(guildsMap.values()).sort((a, b) => {
+          const aIn = botGuildIds.has(a.id);
+          const bIn = botGuildIds.has(b.id);
+          if (aIn && !bIn) return -1;
+          if (!aIn && bIn) return 1;
+          return a.name.localeCompare(b.name, "fr");
+        }),
+        botGuildIds: Array.from(botGuildIds),
+        clientId,
+        user,
+      });
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   if (loading || accountLoading) {
     return (
@@ -77,15 +109,14 @@ export function BotServerPage({
     );
   }
 
-  // Logged into a Shardtown account but the relevant Discord identity
-  // (Discord for ShardGuard, Shard for Shard) isn't linked yet — no
-  // guilds to show, so prompt the user to connect their Discord.
-  if (account && !linkedId) {
+  // Signed in to Shardtown but neither Discord identity is linked — guilds
+  // come from Discord OAuth, so nothing to show until at least one is linked.
+  if (account && neitherLinked) {
     return (
       <AppLayout>
         <section className="container-wide pt-24 max-w-2xl mx-auto text-center">
           <img
-            src={botImage}
+            src={BOT_IMAGE}
             alt=""
             className="w-16 h-16 rounded-2xl border border-white/10 mx-auto mb-8 object-cover"
           />
@@ -98,11 +129,11 @@ export function BotServerPage({
           </h1>
           <p className="text-white/50 text-lg mb-10 leading-relaxed">
             On a besoin d'accéder à la liste de tes serveurs Discord pour t'afficher ceux où tu
-            peux configurer {botLabel}.
+            peux configurer {BOT_LABEL}.
           </p>
           <button
             type="button"
-            onClick={() => { void startOAuthLink(linkProvider); }}
+            onClick={() => { void startOAuthLink("discord"); }}
             className="btn-liquid btn-liquid--discord rounded-full px-8 py-4 font-bold text-sm hover:opacity-90 transition-opacity inline-flex items-center gap-2"
           >
             Se connecter avec Discord <ArrowRight className="w-4 h-4" />
@@ -127,7 +158,7 @@ export function BotServerPage({
             className="font-extrabold leading-tight tracking-tight uppercase mb-6"
             style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)" }}
           >
-            {botLabel}
+            {BOT_LABEL}
           </h1>
           <p className="text-white/50 text-lg mb-10 leading-relaxed">
             Connectez-vous à votre compte Shardtown pour gérer vos serveurs.
@@ -144,16 +175,13 @@ export function BotServerPage({
   }
 
   const { guilds, botGuildIds, clientId } = data;
-  const guildsWithBot = guilds.filter(g => botGuildIds.includes(g.id));
-  const guildsWithoutBot = guilds.filter(g => !botGuildIds.includes(g.id));
+  const botGuildSet = new Set(botGuildIds);
+  const guildsWithBot = guilds.filter(g => botGuildSet.has(g.id));
+  const guildsWithoutBot = guilds.filter(g => !botGuildSet.has(g.id));
 
   function inviteBot(guildId: string) {
-    const url = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=${encodeURIComponent(inviteScopes)}&guild_id=${guildId}`;
-    if (showBotPicker) {
-      window.location.assign(url);
-    } else {
-      window.open(url, "_blank");
-    }
+    const url = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=${encodeURIComponent("bot applications.commands")}&guild_id=${guildId}`;
+    window.location.assign(url);
   }
 
   return (
@@ -161,26 +189,25 @@ export function BotServerPage({
       <section className="container-wide pt-32 md:pt-40 pb-32">
         <div className="max-w-3xl mb-20">
           <div className="flex items-center gap-3 mb-6">
-            <img src={botImage} alt={botLabel} className="w-9 h-9 rounded-xl object-cover border border-white/10" />
-            <span className="text-xs font-bold uppercase tracking-widest text-white/40">{botLabel}</span>
+            <img src={BOT_IMAGE} alt={BOT_LABEL} className="w-9 h-9 rounded-xl object-cover border border-white/10" />
+            <span className="text-xs font-bold uppercase tracking-widest text-white/40">{BOT_LABEL}</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05] mb-6">
             Vos serveurs
           </h1>
           <p className="text-lg text-white/50 leading-relaxed">
-            Configurez {botLabel} sur les serveurs où vous êtes administrateur,
-            ou invitez-le sur ceux qu'il manque.
+            Configurez {BOT_LABEL} sur les serveurs où vous êtes administrateur,
+            ou invitez-la sur ceux qu'il manque.
           </p>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-20">
           <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-7 hover:border-white/15 transition-colors">
             <div className="text-4xl md:text-5xl font-extrabold font-mono-num mb-2">{guilds.length}</div>
             <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Communautés</p>
           </div>
           <div className="bg-white/[0.02] border border-blue-500/20 rounded-2xl p-7 hover:border-blue-500/40 transition-colors">
-            <div className="text-4xl md:text-5xl font-extrabold font-mono-num mb-2 text-blue-400">{botGuildIds.length}</div>
+            <div className="text-4xl md:text-5xl font-extrabold font-mono-num mb-2 text-blue-400">{guildsWithBot.length}</div>
             <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Serveurs actifs</p>
           </div>
           <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-7 hover:border-white/15 transition-colors col-span-2 md:col-span-1">
@@ -196,13 +223,12 @@ export function BotServerPage({
           </h2>
         </div>
 
-        {/* With bot */}
         {guildsWithBot.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-20">
             {guildsWithBot.map(g => (
               <Link
                 key={g.id}
-                to={`${configRoutePrefix}/${g.id}`}
+                to={`/samia/guild/${g.id}`}
                 className="group bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 flex items-center gap-5 hover:border-white/20 hover:bg-white/[0.04] hover:-translate-y-0.5 transition-all"
               >
                 <div className="relative flex-shrink-0">
@@ -235,7 +261,6 @@ export function BotServerPage({
           </div>
         )}
 
-        {/* Without bot */}
         {guildsWithoutBot.length > 0 && (
           <>
             <div className="mb-10">
@@ -243,7 +268,7 @@ export function BotServerPage({
               <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
                 Vos autres communautés
               </h2>
-              <p className="text-white/40 mt-3 text-sm">Cliquez sur une carte pour y inviter {botLabel}.</p>
+              <p className="text-white/40 mt-3 text-sm">Cliquez sur une carte pour y inviter {BOT_LABEL}.</p>
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -251,7 +276,7 @@ export function BotServerPage({
                 <button
                   key={g.id}
                   type="button"
-                  onClick={() => (showBotPicker ? setPickerGuildId(g.id) : inviteBot(g.id))}
+                  onClick={() => setPickerGuildId(g.id)}
                   className="group bg-white/[0.02] border border-white/[0.08] rounded-2xl p-6 flex items-center gap-5 hover:border-white/20 hover:bg-white/[0.04] hover:-translate-y-0.5 hover:opacity-100 opacity-70 transition-all text-left grayscale hover:grayscale-0"
                 >
                   <div className="flex-shrink-0">
@@ -270,7 +295,7 @@ export function BotServerPage({
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-base truncate mb-1.5">{g.name}</h3>
                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest bg-white/5 border border-white/10 text-white/50">
-                      Inviter {botLabel}
+                      Inviter {BOT_LABEL}
                     </span>
                   </div>
                   <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" strokeWidth={2.5} />
@@ -281,8 +306,7 @@ export function BotServerPage({
         )}
       </section>
 
-      {/* Bot picker modal (ShardGuard) */}
-      {showBotPicker && pickerGuildId && (
+      {pickerGuildId && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-6"
           onClick={() => setPickerGuildId(null)}
@@ -302,16 +326,16 @@ export function BotServerPage({
               ✕
             </button>
             <p className="text-xs font-black tracking-[0.3em] text-white/30 uppercase mb-2">Ajouter</p>
-            <h3 className="text-2xl font-bold uppercase mb-8">Choisir un Bot</h3>
+            <h3 className="text-2xl font-bold uppercase mb-8">Inviter {BOT_LABEL}</h3>
             <button
               type="button"
               onClick={() => inviteBot(pickerGuildId)}
               className="flex items-center gap-5 p-5 rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.07] hover:border-white/10 transition-all w-full text-left group"
             >
-              <img src={botImage} alt={botLabel} className="w-12 h-12 rounded-xl object-cover border border-white/10" />
+              <img src={BOT_IMAGE} alt={BOT_LABEL} className="w-12 h-12 rounded-xl object-cover border border-white/10" />
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-base mb-1">{botLabel}</p>
-                <p className="text-xs text-white/40">Modération, sécurité &amp; protection</p>
+                <p className="font-bold text-base mb-1">{BOT_LABEL}</p>
+                <p className="text-xs text-white/40">Sécurité, communauté &amp; engagement</p>
               </div>
               <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
                 <ArrowRight className="w-4 h-4" strokeWidth={2.5} />

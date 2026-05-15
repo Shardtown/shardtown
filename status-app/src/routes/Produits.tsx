@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, ShieldCheck, Sparkles as SparklesIcon, Check } from "lucide-react";
+import { ArrowRight, ShieldCheck, Check } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
 import { HolographicCard } from "@/components/ui/holographic-card";
@@ -16,35 +16,20 @@ interface Product {
 
 const PRODUCTS: Product[] = [
   {
-    label: "Shard · Sécurité",
+    label: "Samia",
     description:
-      "Le bouclier de votre Discord. Anti-raid intelligent, vérification captcha, modération automatique avec sanctions progressives, journaux temps réel.",
-    href: "/shardguard/server",
-    avatar: "/image/shard.png",
+      "Un seul bot Discord pour tout : bouclier anti-raid, captcha, modération automatique ET niveaux, économie, tickets, giveaways. Sécurité et communauté réunies dans la même interface, configurées en quelques clics.",
+    href: "/samia/server",
+    avatar: "/image/samia.png",
     accentIcon: ShieldCheck,
-    cta: "Configurer la sécurité",
+    cta: "Configurer Samia",
     features: [
-      "Anti-raid + quarantaine automatique",
-      "Captcha + vérification d'âge de compte",
-      "Mots interdits & règles auto-mod",
-      "Logs temps réel (joins, sanctions, edits)",
-      "Backup & restauration en un clic",
-    ],
-  },
-  {
-    label: "Shard · Communauté",
-    description:
-      "Le couteau suisse de la communauté. Niveaux, économie, tickets, sondages, giveaways, embed builder — tout ce qu'il faut pour faire vivre votre serveur.",
-    href: "/shard/server",
-    avatar: "/image/shard.png",
-    accentIcon: SparklesIcon,
-    cta: "Configurer la communauté",
-    features: [
-      "Système de niveaux XP avec paliers",
-      "Économie, boutique & inventaires",
-      "Panel de tickets pro (transcripts inclus)",
-      "Giveaways, sondages, parrainage",
-      "Embed builder + messages programmés",
+      "Anti-raid + captcha + quarantaine automatique",
+      "Modération auto (mots interdits, anti-spam, anti-liens)",
+      "Logs temps réel & backup/restauration",
+      "Système de niveaux, économie, boutique, inventaires",
+      "Tickets pro, giveaways, sondages, embed builder",
+      "Alertes Twitch / YouTube & messages programmés",
     ],
   },
 ];
@@ -68,7 +53,7 @@ export function Produits() {
           </h1>
           <p className="text-lg md:text-xl text-white/55 max-w-2xl mx-auto leading-relaxed">
             Le bot qu'on utilise nous-mêmes sur nos missions de configuration de serveurs —
-            disponible directement pour le vôtre, en deux modules complémentaires.
+            disponible directement pour le vôtre, dans un seul outil unifié.
           </p>
         </Reveal>
       </section>
@@ -127,7 +112,7 @@ export function Produits() {
               Débloque tout le potentiel
             </h2>
             <p className="text-white/55 max-w-xl mx-auto mb-8 leading-relaxed">
-              Une seule offre, tous les modules de Shard sans limite — pour les serveurs qui veulent
+              Une seule offre, tous les modules de Samia sans limite — pour les serveurs qui veulent
               passer au niveau supérieur.
             </p>
             <Link

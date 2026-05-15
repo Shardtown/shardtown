@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "bot:shard": "node Shard/bot.js",
+    "bot:samia": "node Shard/bot.js",
     "dev": "node server.js",
     "test": "node --test test/*.test.js"
   },
