@@ -5,8 +5,9 @@ import {
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   TrendingUp, TrendingDown, Heart, ShieldCheck, ShieldX, UserCheck, Percent,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
-  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight,
+  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight, Link2,
 } from "lucide-react";
+import { startOAuthLink } from "@/lib/oauthLink";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost, isApiError } from "@/api/client";
@@ -515,6 +516,13 @@ function OverviewPanel({
     new Set(TABS.filter(t => t.group !== "Tableau de bord").map(t => t.group)),
   );
 
+  // Côté manquant → certains tabs sont grisés (sec absent = Discord OAuth
+  // jamais fait, com absent = Shard OAuth jamais fait). Reliquat de l'archi
+  // 2 bots ; les endpoints data ont gardé 2 auth séparées même après fusion.
+  const missingProvider: "discord" | "shard" | null =
+    !sec ? "discord" : !com ? "shard" : null;
+  const missingCount = TABS.filter(t => !isTabAvailable(t)).length;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: reduce ? 0 : 12 }}
@@ -522,6 +530,34 @@ function OverviewPanel({
       transition={{ duration: 0.45, ease: heroEase }}
       className="space-y-9"
     >
+      {/* Bannière de raccord OAuth — n'apparaît que si un côté manque. */}
+      {missingProvider && (
+        <div className="rounded-2xl border border-amber-400/25 bg-amber-400/[0.06] p-5 flex items-start gap-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-400/15 border border-amber-400/30 flex items-center justify-center text-amber-300 shrink-0">
+            <Link2 className="w-5 h-5" strokeWidth={1.8} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[15px] font-bold mb-1">
+              {missingCount} module{missingCount > 1 ? "s" : ""} verrouillé{missingCount > 1 ? "s" : ""}
+            </p>
+            <p className="text-[13px] text-white/65 leading-relaxed mb-3">
+              Le bot Shard est fusionné mais les données passent encore par deux
+              OAuth distincts.{" "}
+              {missingProvider === "discord"
+                ? "Connecte ton compte Discord pour débloquer les modules de modération et les stats live."
+                : "Connecte ton compte Shard pour débloquer les modules de communauté (niveaux, économie, tickets, etc.)."}
+            </p>
+            <button
+              type="button"
+              onClick={() => { void startOAuthLink(missingProvider); }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400 text-black text-[12.5px] font-bold hover:bg-amber-300 transition-colors"
+            >
+              Connecter {missingProvider === "discord" ? "Discord" : "Shard"} <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Bloc 1 : KPI live (membres / arrivées / captcha rate) */}
       {sec && <LiveStatsCards security={sec} reduce={reduce} heroEase={heroEase} />}
 
