@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 const styles = {
-  switch: `relative block cursor-pointer h-8 w-[52px]
+  switch: `relative block cursor-pointer h-6 w-[40px]
     [--c-active:#275EFE]
     [--c-success:#10B981]
     [--c-warning:#F59E0B]
