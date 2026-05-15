@@ -24,7 +24,7 @@ interface GuildsResponse {
 }
 
 const BOT_LABEL = "Samia";
-const BOT_TAG = "Bot Discord · sécurité, modération & communauté";
+const BOT_TAG = "Bot Discord";
 const BOT_AVATAR = "/image/samia.png";
 
 function inviteUrl(guildId: string, clientId: string) {

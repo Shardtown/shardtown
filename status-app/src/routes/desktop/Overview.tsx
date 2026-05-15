@@ -79,13 +79,17 @@ export function DesktopOverview() {
     return [...byId.values()].slice(0, 8);
   }, [g]);
 
-  const sgConfigured = g.shardguard.filter(x => x.bot_present).length;
-  const sgTotal = g.shardguard.length;
-  const sConfigured = g.shard.filter(x => x.bot_present).length;
-  const sTotal = g.shard.length;
-  const totalConfigured = sgConfigured + sConfigured;
-  const totalServers = sgTotal + sTotal;
-  const allOk = totalConfigured > 0 && sgConfigured === sgTotal && sConfigured === sTotal;
+  // Unified bot — dedup guild IDs across both legacy OAuth flows so the
+  // count reflects "Samia is on N of M servers" without double-counting.
+  const allIds = new Set<string>();
+  const configuredIds = new Set<string>();
+  for (const x of [...g.shardguard, ...g.shard]) {
+    allIds.add(x.id);
+    if (x.bot_present) configuredIds.add(x.id);
+  }
+  const samiaConfigured = configuredIds.size;
+  const samiaTotal = allIds.size;
+  const allOk = samiaTotal > 0 && samiaConfigured === samiaTotal;
   const displayName = user?.global_name || user?.username || "ami";
 
   return (
@@ -128,7 +132,7 @@ export function DesktopOverview() {
                   Samia opérationnelle sur toutes tes guildes
                 </p>
               )}
-              {!allOk && totalServers === 0 && (
+              {!allOk && samiaTotal === 0 && (
                 <p className="text-[13px] font-semibold mt-1" style={{ color: "var(--ds-text-mut)" }}>
                   Aucun serveur lié
                 </p>
@@ -231,18 +235,10 @@ export function DesktopOverview() {
       <div className="grid md:grid-cols-2 gap-3 mb-10" data-tour="bots-stats">
         <StatCard
           icon={<img src="/image/samia.png" alt="" className="w-full h-full object-cover" />}
-          label="Samia · Sécurité"
-          value={`${sgConfigured} / ${sgTotal}`}
+          label="Samia"
+          value={`${samiaConfigured} / ${samiaTotal}`}
           sub="serveurs configurés"
-          tone={sgConfigured > 0 ? "ok" : "off"}
-          to="/samia/server"
-        />
-        <StatCard
-          icon={<img src="/image/samia.png" alt="" className="w-full h-full object-cover" />}
-          label="Samia · Communauté"
-          value={`${sConfigured} / ${sTotal}`}
-          sub="serveurs configurés"
-          tone={sConfigured > 0 ? "ok" : "off"}
+          tone={samiaConfigured > 0 ? "ok" : "off"}
           to="/samia/server"
         />
       </div>

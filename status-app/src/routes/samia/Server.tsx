@@ -335,7 +335,7 @@ export function SamiaServer() {
               <img src={BOT_IMAGE} alt={BOT_LABEL} className="w-12 h-12 rounded-xl object-cover border border-white/10" />
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-base mb-1">{BOT_LABEL}</p>
-                <p className="text-xs text-white/40">Sécurité, communauté &amp; engagement</p>
+                <p className="text-xs text-white/40">Bot Discord</p>
               </div>
               <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
                 <ArrowRight className="w-4 h-4" strokeWidth={2.5} />

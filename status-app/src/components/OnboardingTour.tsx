@@ -46,7 +46,7 @@ const STEPS: Step[] = [
     anchor: "bots-stats",
     side: "top",
     title: "Samia en un coup d'œil",
-    body: "Un seul bot Discord, deux modules — Sécurité (anti-raid, captcha, modération) et Communauté (niveaux, économie, giveaways). Le ratio te dit combien de tes serveurs sont déjà configurés.",
+    body: "Le ratio te dit combien de tes serveurs sont déjà configurés.",
   },
   {
     route: "/outils",
@@ -77,8 +77,8 @@ const STEPS: Step[] = [
     route: "/samia/server",
     anchor: "bot-server-grid",
     side: "top",
-    title: "Samia · Tes serveurs Discord",
-    body: "Sélectionne un serveur pour configurer Samia dessus. Tu y trouveras les deux modules — Sécurité (anti-raid, captcha, modération) et Communauté (niveaux, économie, tickets, giveaways) — dans la même interface.",
+    title: "Tes serveurs Discord",
+    body: "Sélectionne un serveur pour configurer Samia dessus.",
   },
   {
     route: "/rpc",
