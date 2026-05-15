@@ -1002,26 +1002,73 @@ app.use(passport.session());
 // etc.) work transparently when the user signed in via /account/login
 // rather than via the legacy passport-discord flow.
 app.use(async (req, res, next) => {
-    if (req.user) return next(); // passport already populated
+    if (req.user && req.session?.shardUser) return next(); // déjà tout hydraté
     if (!req.session?.account?.id) return next();
     try {
         const [rows] = await db.execute(
-            `SELECT discord_id, discord_username, discord_avatar, discord_guilds_json
+            `SELECT discord_id, discord_username, discord_avatar, discord_guilds_json,
+                    shard_id, shard_username, shard_avatar, shard_guilds_json
              FROM accounts WHERE id = ? LIMIT 1`,
             [req.session.account.id],
         );
         const a = rows[0];
-        if (!a || !a.discord_id) return next();
-        let guilds = [];
-        try { guilds = a.discord_guilds_json ? JSON.parse(a.discord_guilds_json) : []; } catch { /* */ }
-        req.user = {
-            id: a.discord_id,
-            username: a.discord_username || '',
-            global_name: a.discord_username || null,
-            avatar: a.discord_avatar || null,
-            discriminator: '0',
-            guilds,
-        };
+        if (!a) return next();
+
+        // Synth req.user depuis le Discord OAuth lié au compte (si présent).
+        if (!req.user && a.discord_id) {
+            let guilds = [];
+            try { guilds = a.discord_guilds_json ? JSON.parse(a.discord_guilds_json) : []; } catch { /* */ }
+            req.user = {
+                id: a.discord_id,
+                username: a.discord_username || '',
+                global_name: a.discord_username || null,
+                avatar: a.discord_avatar || null,
+                discriminator: '0',
+                guilds,
+            };
+        }
+        // Synth req.session.shardUser depuis le Shard OAuth lié au compte.
+        // Le bot étant fusionné, on n'a plus besoin de deux OAuth distinctes :
+        // une seule des deux liaisons doit suffire à tous les endpoints. Si
+        // shard_* manque mais discord_* existe, on hydrate shardUser depuis
+        // discord_* — et inversement pour req.user. Voir aussi le fallback
+        // symétrique dans checkAuth / checkAuthShard.
+        if (!req.session.shardUser) {
+            if (a.shard_id) {
+                let guilds = [];
+                try { guilds = a.shard_guilds_json ? JSON.parse(a.shard_guilds_json) : []; } catch { /* */ }
+                req.session.shardUser = {
+                    id: a.shard_id,
+                    username: a.shard_username || '',
+                    avatar: a.shard_avatar || null,
+                    guilds,
+                };
+            } else if (a.discord_id) {
+                // Fallback : pas de shard_* mais Discord linké → on réutilise
+                // la même identité + le même guild list pour l'auth Shard.
+                let guilds = [];
+                try { guilds = a.discord_guilds_json ? JSON.parse(a.discord_guilds_json) : []; } catch { /* */ }
+                req.session.shardUser = {
+                    id: a.discord_id,
+                    username: a.discord_username || '',
+                    avatar: a.discord_avatar || null,
+                    guilds,
+                };
+            }
+        }
+        // Et le symétrique : si Shard est linké mais pas Discord, synth user.
+        if (!req.user && a.shard_id) {
+            let guilds = [];
+            try { guilds = a.shard_guilds_json ? JSON.parse(a.shard_guilds_json) : []; } catch { /* */ }
+            req.user = {
+                id: a.shard_id,
+                username: a.shard_username || '',
+                global_name: a.shard_username || null,
+                avatar: a.shard_avatar || null,
+                discriminator: '0',
+                guilds,
+            };
+        }
     } catch { /* swallow — fall back to anonymous */ }
     next();
 });
@@ -6070,6 +6117,20 @@ function checkAuth(req, res, next) {
     // with a linked Discord (req.user is synthesized by the middleware
     // mounted right after passport.session). Both populate `req.user`.
     if (req.user || req.isAuthenticated()) return next();
+    // Fallback symétrique à checkAuthShard : le bot étant fusionné, une
+    // session Shard OAuth identifie aussi l'utilisateur pour les
+    // endpoints "ShardGuard". Synth req.user depuis shardUser.
+    if (req.session?.shardUser) {
+        req.user = {
+            id: req.session.shardUser.id,
+            username: req.session.shardUser.username || '',
+            global_name: req.session.shardUser.username || null,
+            avatar: req.session.shardUser.avatar || null,
+            discriminator: '0',
+            guilds: req.session.shardUser.guilds || [],
+        };
+        return next();
+    }
     const isAjax = req.headers['content-type'] === 'application/json'
         || req.path.includes('/api/')
         || req.headers['x-requested-with'] === 'XMLHttpRequest';
