@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost, isApiError } from "@/api/client";
+import { useAccount } from "@/api/account";
+import { useAuth } from "@/api/auth";
 import { OAuthIcons } from "@/components/auth/OAuthButtons";
 import { ShardSecure } from "@/components/auth/ShardSecure";
 import { ProgressIndicator } from "@/components/ui/progress-indicator";
@@ -60,6 +62,10 @@ export function AccountLogin() {
   const nav = useNavigate();
   const [params] = useSearchParams();
   const initialMode: Mode = params.get("mode") === "register" ? "register" : "login";
+  // Hydrate les contextes après login / verify-email-code sinon le Header
+  // reste sur "Connexion" jusqu'au prochain hard reload.
+  const { refresh: refreshAuth } = useAuth();
+  const { refresh: refreshAccount } = useAccount();
 
   const [mode, setMode] = useState<Mode>(initialMode);
   const [subStep, setSubStep] = useState(0);
@@ -203,6 +209,7 @@ export function AccountLogin() {
     setError(null);
     try {
       await authenticateWithPasskey(identifier.trim());
+      await Promise.all([refreshAuth(), refreshAccount()]);
       nav("/account", { replace: true });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -225,6 +232,7 @@ export function AccountLogin() {
       if (mode === "login") {
         try {
           await apiPost("/api/account/login", { identifier, password, shardSecure });
+          await Promise.all([refreshAuth(), refreshAccount()]);
           nav("/account", { replace: true });
         } catch (err) {
           const parsed = extractAuthError(err);
@@ -271,6 +279,7 @@ export function AccountLogin() {
             email: verifyEmail,
             code: codeStr,
           });
+          await Promise.all([refreshAuth(), refreshAccount()]);
           nav("/account", { replace: true });
         } catch (err) {
           const parsed = extractAuthError(err);

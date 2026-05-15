@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useAuth, avatarUrl } from "@/api/auth";
+import { useAccount } from "@/api/account";
 
 type NavItem = { to: string; label: string; external?: boolean };
 
@@ -25,6 +26,11 @@ export function Header() {
   const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
 
   const { user } = useAuth();
+  const { account } = useAccount();
+  // "Connecté" = Discord OAuth OU compte Shardtown email/pseudo.
+  // Sinon, après une inscription email, le header restait sur "Connexion"
+  // parce qu'il ne regardait que le user Discord.
+  const isConnected = !!user || !!account;
   const { pathname, hash } = useLocation();
   const isAdmin = pathname.startsWith("/admin");
 
@@ -168,7 +174,7 @@ export function Header() {
               </span>
             ) : (
               <>
-                {user && (
+                {user ? (
                   <Link
                     to="/account"
                     className={`hidden md:flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 ${pillBase} ${pillSurface} hover:bg-white/[0.08]`}
@@ -182,12 +188,24 @@ export function Header() {
                       {user.global_name || user.username}
                     </span>
                   </Link>
-                )}
+                ) : account ? (
+                  <Link
+                    to="/account"
+                    className={`hidden md:flex items-center gap-2.5 pl-3 pr-4 py-1.5 ${pillBase} ${pillSurface} hover:bg-white/[0.08]`}
+                  >
+                    <span className="w-7 h-7 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-[11px] font-extrabold uppercase">
+                      {account.pseudo[0]}
+                    </span>
+                    <span className="font-bold text-[13px] tracking-tight max-w-[120px] truncate">
+                      {account.pseudo}
+                    </span>
+                  </Link>
+                ) : null}
                 <Link
-                  to={user ? "/outils" : "/account/login"}
+                  to={isConnected ? "/outils" : "/account/login"}
                   className="btn-liquid btn-liquid--primary inline-flex items-center rounded-full px-5 py-2.5 font-bold text-[13px] tracking-tight"
                 >
-                  <span className="relative">{user ? "Outils" : "Connexion"}</span>
+                  <span className="relative">{isConnected ? "Outils" : "Connexion"}</span>
                 </Link>
               </>
             )}
