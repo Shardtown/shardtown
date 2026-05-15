@@ -173,19 +173,17 @@ export function Index() {
           {/* macOS — disponible */}
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
-              <div className="relative flex flex-col h-full min-h-[280px]">
-                {/* Soft emerald glow */}
-                <div className="absolute top-4 right-8 w-64 h-64 rounded-full bg-emerald-500/[0.07] blur-3xl pointer-events-none" aria-hidden />
-                {/* Logo platform — contained inside the card */}
-                <AppleLogo className="absolute top-2 right-6 w-56 h-56 text-white/[0.07] pointer-events-none" />
+              <div className="relative flex flex-col h-full min-h-[240px] rounded-3xl overflow-hidden">
+                {/* Hero logo — bleeds intentionally off the right */}
+                <AppleLogo className="absolute top-1/2 -right-10 -translate-y-1/2 w-72 h-72 text-white/[0.09] pointer-events-none" />
 
-                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter mb-auto pt-2">
+                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter pt-1">
                   macOS
                 </h3>
 
                 <a
                   href="/download/mac"
-                  className="relative z-10 mt-10 group inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-white text-black font-bold text-sm transition-all hover:bg-white/95 hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_-12px_rgba(255,255,255,0.35)]"
+                  className="relative z-10 mt-auto group inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-white text-black font-bold text-sm transition-all hover:bg-white/95 hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_-12px_rgba(255,255,255,0.35)]"
                 >
                   <DownloadIcon className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
                   Télécharger le .dmg
@@ -197,18 +195,18 @@ export function Index() {
           {/* Windows — prochainement */}
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
-              <div className="relative flex flex-col h-full min-h-[280px]">
-                <div className="absolute top-4 right-8 w-64 h-64 rounded-full bg-amber-500/[0.05] blur-3xl pointer-events-none" aria-hidden />
-                <WindowsLogo className="absolute top-2 right-6 w-52 h-52 text-white/[0.06] pointer-events-none" />
+              <div className="relative flex flex-col h-full min-h-[240px] rounded-3xl overflow-hidden">
+                {/* Same crop / weight as macOS for visual parity */}
+                <WindowsLogo className="absolute top-1/2 -right-10 -translate-y-1/2 w-72 h-72 text-white/[0.09] pointer-events-none" />
 
-                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter text-white/70 mb-auto pt-2">
+                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter text-white/75 pt-1">
                   Windows
                 </h3>
 
                 <button
                   type="button"
                   disabled
-                  className="relative z-10 mt-10 inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-white/[0.04] text-white/45 font-bold text-sm border border-white/[0.08] cursor-not-allowed"
+                  className="relative z-10 mt-auto inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-white/[0.06] text-white/65 font-bold text-sm border border-white/15 cursor-not-allowed"
                 >
                   Build en préparation
                 </button>
