@@ -92,7 +92,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       label: "Samia",
       items: [
         { to: "/assistant",    icon: <MessageCircle size={18} strokeWidth={1.8} />,           label: "Discussion" },
-        { to: "/samia/server", icon: <BotAvatar src="/image/samia.png" size={22} alt="Samia" />, label: "Mes serveurs Discord" },
+        { to: "/samia/server", icon: <BotAvatar src="/image/samia.png" size={22} alt="Samia" />, label: "Mes serveurs" },
       ],
     },
     {
@@ -486,8 +486,8 @@ function SearchBox({
 
     const locations: SearchHit[] = [
       { label: "Tableau de bord",     hint: "Vue d'ensemble",                       path: "/outils" },
-      { label: "Samia · Discussion",  hint: "Assistante IA",                        path: "/assistant" },
-      { label: "Samia · Discord",     hint: "Sécurité, modération & communauté",    path: "/samia/server" },
+      { label: "Discussion avec Samia", hint: "Assistante IA",         path: "/assistant" },
+      { label: "Mes serveurs",          hint: "Configurer Samia",      path: "/samia/server" },
       { label: "Discord RPC",         hint: "Rich Presence",                        path: "/rpc" },
       { label: "Réglages",            hint: "Apparence, sons, Touch ID, thème",     path: "/preferences" },
       { label: "Statut des services", hint: "Surveillance temps réel",              path: "/statut" },

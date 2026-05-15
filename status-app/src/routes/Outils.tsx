@@ -14,7 +14,7 @@ import { startOAuthLink } from "@/lib/oauthLink";
  *
  * Trois familles :
  * 1. Le bot Discord Samia que les users peuvent inviter et configurer
- *    depuis leur dashboard (sécurité + communauté réunies).
+ *    depuis leur dashboard.
  * 2. Outils web Shardtown utilisables directement sur le site (Samia
  *    en mode assistante IA, page Statut, Wiki).
  * 3. Services à la demande (dev custom, setup serveur, etc.) — CTA vers
@@ -24,16 +24,16 @@ import { startOAuthLink } from "@/lib/oauthLink";
 const BOTS = [
   {
     label: "Samia",
-    tagline: "Bot Discord tout-en-un",
+    tagline: "Bot Discord",
     description:
-      "Anti-raid, captcha, modération automatique — ET niveaux, économie, tickets, sondages, giveaways, alertes stream. Un seul bot, deux modules : Sécurité et Communauté.",
+      "Anti-raid, captcha, modération automatique, niveaux, économie, tickets, sondages, giveaways, alertes stream.",
     href: "/samia/server",
     avatar: "/image/samia.png",
   },
 ];
 
 const ASSISTANT = {
-  label: "Samia · Discussion",
+  label: "Discussion avec Samia",
   tagline: "Assistante IA",
   description:
     "Pose tes questions sur le bot, le dashboard, le Premium ou nos services. Samia connaît le wiki par cœur.",

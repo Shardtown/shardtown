@@ -1732,7 +1732,7 @@ client.on('interactionCreate', async (interaction) => {
             const logoAttachment = new AttachmentBuilder(logoPath, { name: 'logo.png' });
             const c = new ContainerBuilder()
                 .setAccentColor(0x2b2d31)
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`# Inviter Samia\nAjoutez Samia à votre serveur — communauté + sécurité dans un seul bot.`))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`# Inviter Samia\nAjoutez Samia à votre serveur Discord.`))
                 .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(
                     new MediaGalleryItemBuilder().setURL('attachment://logo.png')
                 ))

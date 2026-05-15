@@ -20,7 +20,6 @@ const PRICE = {
 const FEATURES = {
   monthly: [
     "Toutes les fonctionnalités Premium",
-    "Sécurité + Communauté inclus",
     "Mises à jour permanentes",
     "Sans engagement",
     "Annulation en 1 clic",
@@ -37,7 +36,7 @@ const FEATURES = {
 
 const COMPARISON: { title: string; rows: { label: string; free: string; premium: string }[] }[] = [
   {
-    title: "Samia · Sécurité",
+    title: "Sécurité & modération",
     rows: [
       { label: "Vérification Captcha",        free: "✓",      premium: "✓" },
       { label: "Sanctions progressives",      free: "✓",      premium: "✓" },
@@ -51,7 +50,7 @@ const COMPARISON: { title: string; rows: { label: string; free: string; premium:
     ],
   },
   {
-    title: "Samia · Communauté",
+    title: "Communauté & engagement",
     rows: [
       { label: "Paliers XP",                  free: "3 max",  premium: "20 max" },
       { label: "Multiplicateur XP par rôle",  free: "—",      premium: "✓" },
@@ -234,8 +233,8 @@ export function Premium() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
           >
-            Tous les modules. <span className="text-white">Aucune limite.</span>{" "}
-            Une seule offre couvre toute la suite Samia, mensuel ou à vie.
+            Toutes les fonctionnalités Samia. <span className="text-white">Aucune limite.</span>{" "}
+            Mensuel ou à vie.
           </motion.p>
 
           <motion.div

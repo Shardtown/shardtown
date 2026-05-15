@@ -28,7 +28,7 @@ type Note =
 
 interface Section {
   id: string;
-  group: "Démarrage" | "Samia · Sécurité" | "Samia · Communauté" | "Compte & Premium" | "Référence";
+  group: "Démarrage" | "Sécurité & modération" | "Communauté" | "Compte & Premium" | "Référence";
   title: string;
   tagline: string;
   /** Plain-text intro, 1-3 short paragraphs. */
@@ -49,24 +49,23 @@ const SECTIONS: Section[] = [
     id: "introduction",
     group: "Démarrage",
     title: "Bienvenue sur Shardtown",
-    tagline: "Deux bots Discord, un seul écosystème, zéro commande à apprendre.",
+    tagline: "Samia — bot Discord, zéro commande à apprendre.",
     intro: [
-      "Shardtown propose Samia, un bot Discord tout-en-un avec deux modules complémentaires : Sécurité (captcha, anti-raid, modération automatique) et Communauté (niveaux, économie, tickets, sondages, giveaways). Un seul dashboard, un seul compte, un seul Premium.",
+      "Samia s'occupe de la sécurité (captcha, anti-raid, modération automatique) et de l'animation (niveaux, économie, tickets, sondages, giveaways) de ton serveur Discord.",
       "Toute la configuration se fait depuis le web — pas de commandes à apprendre par cœur, pas de fichier à éditer. Tu cliques, tu sauvegardes, le bot applique en moins d'une seconde.",
-      "Ce wiki documente chaque module avec : ce qu'il fait, les paramètres exacts disponibles, les étapes pour le configurer, et les pièges à éviter.",
+      "Ce wiki documente chaque fonctionnalité avec : ce qu'elle fait, les paramètres exacts disponibles, les étapes pour la configurer, et les pièges à éviter.",
     ],
     notes: [
-      { kind: "tip", title: "Lis ces 3 sections en premier", body: "Ajouter les bots → Premiers pas → puis le module qui t'intéresse. Le reste est consultable à la demande." },
+      { kind: "tip", title: "Lis ces 3 sections en premier", body: "Ajouter Samia → Premiers pas → puis la fonctionnalité qui t'intéresse. Le reste est consultable à la demande." },
     ],
   },
   {
     id: "add-bots",
     group: "Démarrage",
-    title: "Ajouter les bots à ton serveur",
+    title: "Ajouter Samia à ton serveur",
     tagline: "Inviter Samia sur ton serveur avec les bonnes permissions.",
     intro: [
-      "Les deux bots s'invitent indépendamment via les liens d'invitation Discord officiels. Ils demandent les permissions dont ils ont besoin pour fonctionner — accepte-les en bloc, sinon certaines fonctionnalités tomberont en silence.",
-      "Tu peux n'installer qu'un seul bot si tu n'as besoin que d'une moitié des fonctionnalités, mais ils sont conçus pour cohabiter sans conflit.",
+      "Samia s'invite via le lien d'invitation Discord officiel. Le bot demande les permissions dont il a besoin pour fonctionner — accepte-les en bloc, sinon certaines fonctionnalités tomberont en silence.",
     ],
     steps: [
       "Connecte-toi sur shardtwn.fr avec ton compte Discord (le même qui administre le serveur cible).",
@@ -104,20 +103,20 @@ const SECTIONS: Section[] = [
     ],
   },
 
-  /* ───────── Samia · Sécurité ───────── */
+  /* ───────── Sécurité & modération ───────── */
   {
     id: "shardguard-overview",
-    group: "Samia · Sécurité",
-    title: "Vue d'ensemble — Samia",
-    tagline: "Sécurité, vérification et modération sans configuration manuelle.",
+    group: "Sécurité & modération",
+    title: "Sécurité & modération — vue d'ensemble",
+    tagline: "Vérification, anti-raid et modération sans configuration manuelle.",
     intro: [
-      "Samia couvre tout ce qui touche à la sécurité du serveur : captcha de vérification à l'arrivée, anti-raid, modération automatique, sanctions progressives, mode panic, statistiques d'arrivées et logs détaillés.",
+      "Captcha de vérification à l'arrivée, anti-raid, modération automatique, sanctions progressives, mode panic, statistiques d'arrivées et logs détaillés.",
       "Les modules sont indépendants : tu peux activer uniquement ce qui te concerne. La plupart sont gratuits ; quelques options avancées sont réservées au Premium.",
     ],
   },
   {
     id: "general",
-    group: "Samia · Sécurité",
+    group: "Sécurité & modération",
     title: "Général · Vérification & verrouillage",
     tagline: "Le squelette de Samia : où, par qui, avec quel rôle.",
     intro: [
@@ -142,7 +141,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "captcha",
-    group: "Samia · Sécurité",
+    group: "Sécurité & modération",
     title: "Captcha de vérification",
     tagline: "Filtre les selfbots et bots malveillants à l'entrée.",
     intro: [
@@ -163,7 +162,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "rules",
-    group: "Samia · Sécurité",
+    group: "Sécurité & modération",
     title: "Règlement",
     tagline: "Les règles affichées dans le message de vérification.",
     intro: [
@@ -182,7 +181,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "security",
-    group: "Samia · Sécurité",
+    group: "Sécurité & modération",
     title: "Sécurité · Anti-raid & Quarantaine",
     tagline: "Détecte les vagues d'arrivées anormales et confine les suspects.",
     intro: [
@@ -209,7 +208,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "warns",
-    group: "Samia · Sécurité",
+    group: "Sécurité & modération",
     title: "Avertissements",
     tagline: "Sanctions automatiques en fonction du nombre de warns.",
     intro: [
@@ -230,7 +229,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "modroles",
-    group: "Samia · Sécurité",
+    group: "Sécurité & modération",
     title: "Rôles modérateurs",
     tagline: "Qui peut utiliser les commandes de modération du bot.",
     intro: [
@@ -245,7 +244,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "banned",
-    group: "Samia · Sécurité",
+    group: "Sécurité & modération",
     title: "Mots interdits",
     tagline: "Filtre automatique de messages contenant certains mots.",
     intro: [
@@ -268,7 +267,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "automod",
-    group: "Samia · Sécurité",
+    group: "Sécurité & modération",
     title: "Automod",
     tagline: "Anti-spam, anti-liens, anti-MAJUSCULES, anti-raid niveau 2, slowmode auto.",
     intro: [
@@ -287,7 +286,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "panic",
-    group: "Samia · Sécurité",
+    group: "Sécurité & modération",
     title: "Mode Panic",
     tagline: "Bouton d'urgence : verrouille tout en une action.",
     intro: [
@@ -300,7 +299,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "stats-logs",
-    group: "Samia · Sécurité",
+    group: "Sécurité & modération",
     title: "Statistiques · Logs · Membres",
     tagline: "Surveiller ce qui se passe vraiment, pas juste ce que tu configures.",
     intro: [
@@ -311,20 +310,20 @@ const SECTIONS: Section[] = [
     ],
   },
 
-  /* ───────── Samia · Communauté ───────── */
+  /* ───────── Communauté ───────── */
   {
     id: "shard-overview",
-    group: "Samia · Communauté",
-    title: "Vue d'ensemble — Samia · Communauté",
+    group: "Communauté",
+    title: "Communauté — vue d'ensemble",
     tagline: "Communauté, engagement, fun. Tout est désactivable.",
     intro: [
-      "Le module Communauté de Samia : messages d'accueil, niveaux, économie virtuelle, giveaways, sondages, tickets, anniversaires, vocaux temporaires, embeds personnalisés…",
+      "Messages d'accueil, niveaux, économie virtuelle, giveaways, sondages, tickets, anniversaires, vocaux temporaires, embeds personnalisés…",
       "Chaque module se gère indépendamment depuis le dashboard. Tu peux n'en activer qu'un seul ou les vingt — pas d'interdépendance forcée.",
     ],
   },
   {
     id: "welcome",
-    group: "Samia · Communauté",
+    group: "Communauté",
     title: "Arrivée & Départ",
     tagline: "Messages d'accueil et d'au revoir personnalisables.",
     intro: [
@@ -343,7 +342,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "autorole",
-    group: "Samia · Communauté",
+    group: "Communauté",
     title: "Auto-rôle",
     tagline: "Donner un rôle automatiquement à chaque arrivant.",
     intro: [
@@ -353,7 +352,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "birthdays",
-    group: "Samia · Communauté",
+    group: "Communauté",
     title: "Anniversaires",
     tagline: "Annonces auto + rôle anniversaire de 24 h.",
     intro: [
@@ -367,7 +366,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "levels",
-    group: "Samia · Communauté",
+    group: "Communauté",
     title: "Niveaux & XP",
     tagline: "Progression XP, paliers, récompenses de rôles, multiplicateurs.",
     intro: [
@@ -389,7 +388,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "economy",
-    group: "Samia · Communauté",
+    group: "Communauté",
     title: "Économie",
     tagline: "Monnaie virtuelle + récompenses quotidiennes + boutique de rôles.",
     intro: [
@@ -405,7 +404,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "giveaways",
-    group: "Samia · Communauté",
+    group: "Communauté",
     title: "Giveaways",
     tagline: "Concours avec durée, gagnants multiples, conditions de rôle/niveau.",
     intro: [
@@ -422,7 +421,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "polls",
-    group: "Samia · Communauté",
+    group: "Communauté",
     title: "Sondages",
     tagline: "2 à 5 choix, durée variable, mode anonyme Premium.",
     intro: [
@@ -435,7 +434,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "tempvoice",
-    group: "Samia · Communauté",
+    group: "Communauté",
     title: "Vocaux temporaires",
     tagline: "Salon « hub » qui crée un vocal personnel pour chaque membre.",
     intro: [
@@ -453,7 +452,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "embed",
-    group: "Samia · Communauté",
+    group: "Communauté",
     title: "Embed Builder",
     tagline: "Constructeur visuel d'embeds avec aperçu en direct.",
     intro: [
@@ -463,7 +462,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "reactions",
-    group: "Samia · Communauté",
+    group: "Communauté",
     title: "Réactions auto",
     tagline: "Quand un message contient X, le bot ajoute l'emoji Y.",
     intro: [
@@ -473,7 +472,7 @@ const SECTIONS: Section[] = [
   },
   {
     id: "tickets",
-    group: "Samia · Communauté",
+    group: "Communauté",
     title: "Tickets de support",
     tagline: "Panel public, tickets privés, transcripts auto.",
     intro: [
@@ -570,8 +569,8 @@ const SECTIONS: Section[] = [
 
 const GROUPS: Section["group"][] = [
   "Démarrage",
-  "Samia · Sécurité",
-  "Samia · Communauté",
+  "Sécurité & modération",
+  "Communauté",
   "Compte & Premium",
   "Référence",
 ];
