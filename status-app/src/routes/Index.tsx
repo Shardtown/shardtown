@@ -2,8 +2,8 @@ import { ArrowRight, MessageSquare, Mail, Download as DownloadIcon, Code2, Bot, 
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { LiquidButton } from "@/components/ui/liquid-glass-button";
-import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
 import { HolographicCard } from "@/components/ui/holographic-card";
+import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
 
 function AppleLogo({ className }: { className?: string }) {
   return (
@@ -127,23 +127,33 @@ export function Index() {
           {SERVICES.map(s => {
             const Icon = s.icon;
             return (
-              <RevealItem key={s.label} direction="left" distance={70} className="relative hover:z-10">
-                <a href={s.href} className="group block h-full relative">
-                  <div className="p-8 h-full flex flex-col">
-                    {/* Grosse icône flat en haut, monochrome blanche. Pas de
-                        chrome autour, pas de carré coloré. C'est elle qui
-                        porte le visuel. */}
+              <RevealItem key={s.label} direction="up" distance={50} className="relative hover:z-10">
+                <HolographicCard className="h-full">
+                  <div className="relative flex flex-col h-full min-h-[280px]">
+                    {/* Grosse icône fantôme en fond, top-right, comme les
+                        logos macOS/Windows de la section télécharger. */}
                     <Icon
-                      className="w-14 h-14 text-white/85 mb-8 group-hover:text-white transition-colors"
-                      strokeWidth={1.25}
+                      className="absolute top-1 right-4 w-44 h-44 text-white/[0.06] pointer-events-none"
+                      strokeWidth={1}
                     />
-                    <h3 className="text-[22px] font-bold tracking-tight mb-3">{s.label}</h3>
-                    <p className="text-[14.5px] text-zinc-400 leading-relaxed mb-10">{s.description}</p>
-                    <span className="mt-auto inline-flex items-center gap-1.5 text-[13px] font-semibold text-zinc-400 group-hover:text-white group-hover:gap-2.5 transition-all">
-                      En discuter <ArrowRight className="w-3.5 h-3.5" />
-                    </span>
+
+                    <h3 className="relative z-10 font-extrabold text-4xl md:text-5xl tracking-tighter pt-1 max-w-[70%]">
+                      {s.label}
+                    </h3>
+
+                    <p className="relative z-10 text-[14px] text-white/55 leading-relaxed mt-5 max-w-[85%]">
+                      {s.description}
+                    </p>
+
+                    <a
+                      href={s.href}
+                      className="relative z-10 mt-auto group inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-accent-gradient text-white font-bold text-sm transition-all hover:opacity-90 hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_-12px_rgba(59,130,246,0.55)]"
+                    >
+                      En discuter
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                    </a>
                   </div>
-                </a>
+                </HolographicCard>
               </RevealItem>
             );
           })}
