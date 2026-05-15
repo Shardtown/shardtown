@@ -122,8 +122,8 @@
 
 @layer utilities {
   .font-mono-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "lnum" 1; letter-spacing: -0.01em; }
-  .container-wide { max-width: 1600px; margin: 0 auto; padding: 0 24px; }
-  .container-dashboard { max-width: 1600px; margin: 0 auto; padding: 0 28px; }
+  .container-wide { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
+  .container-dashboard { max-width: 1400px; margin: 0 auto; padding: 0 28px; }
 
   /* Bleu gradient de marque — utilisable sur CTA / surfaces accentuées.
      `.bg-accent-gradient` pour la surface pleine, `.bg-accent-gradient-soft`
