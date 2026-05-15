@@ -169,29 +169,38 @@ export function Index() {
           </p>
         </Reveal>
 
-        <RevealStagger className="grid md:grid-cols-2 gap-8 md:gap-10" staggerChildren={0.1} delayChildren={0.15}>
+        <RevealStagger className="grid md:grid-cols-2 gap-6 md:gap-8" staggerChildren={0.1} delayChildren={0.15}>
           {/* macOS — disponible */}
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
-              <div className="flex flex-col h-full">
-                <div className="flex items-start gap-6 mb-8">
-                  <div className="w-14 h-14 rounded-xl bg-white/[0.06] border border-white/[0.10] flex items-center justify-center flex-shrink-0 text-white">
-                    <AppleLogo className="w-7 h-7" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2 flex-wrap">
-                      <h3 className="font-bold text-xl">macOS</h3>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">
-                        Disponible
-                      </span>
-                    </div>
-                  </div>
+              <div className="relative flex flex-col h-full min-h-[280px] overflow-hidden">
+                {/* Watermark glyph */}
+                <AppleLogo className="absolute -top-10 -right-10 w-56 h-56 text-white/[0.03] pointer-events-none" />
+                {/* Soft emerald glow */}
+                <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-500/[0.06] blur-3xl pointer-events-none" aria-hidden />
+
+                <div className="relative z-10 flex items-center justify-between mb-12">
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/[0.12] border border-emerald-400/30">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-emerald-400"
+                      style={{ boxShadow: "0 0 10px rgba(74, 222, 128, 0.9)" }}
+                    />
+                    <span className="text-emerald-300 text-[10px] font-bold uppercase tracking-[0.18em]">
+                      Disponible
+                    </span>
+                  </span>
+                  <AppleLogo className="w-6 h-6 text-white/75" />
                 </div>
+
+                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter mb-auto">
+                  macOS
+                </h3>
+
                 <a
                   href="/download/mac"
-                  className="mt-auto self-center inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white text-black font-bold text-sm transition-all hover:scale-[1.02] hover:bg-white/90 active:scale-100"
+                  className="relative z-10 mt-10 group inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-white text-black font-bold text-sm transition-all hover:bg-white/95 hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_-12px_rgba(255,255,255,0.35)]"
                 >
-                  <DownloadIcon className="w-4 h-4" />
+                  <DownloadIcon className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
                   Télécharger le .dmg
                 </a>
               </div>
@@ -201,24 +210,31 @@ export function Index() {
           {/* Windows — prochainement */}
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
-              <div className="flex flex-col h-full opacity-70 select-none">
-                <div className="flex items-start gap-6 mb-8">
-                  <div className="w-14 h-14 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center flex-shrink-0 text-white/65">
-                    <WindowsLogo className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2 flex-wrap">
-                      <h3 className="font-bold text-xl">Windows</h3>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300">
-                        Prochainement
-                      </span>
-                    </div>
-                  </div>
+              <div className="relative flex flex-col h-full min-h-[280px] overflow-hidden">
+                <WindowsLogo className="absolute -top-8 -right-8 w-52 h-52 text-white/[0.025] pointer-events-none" />
+                <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-amber-500/[0.05] blur-3xl pointer-events-none" aria-hidden />
+
+                <div className="relative z-10 flex items-center justify-between mb-12">
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/[0.10] border border-amber-400/25">
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"
+                      style={{ boxShadow: "0 0 10px rgba(251, 191, 36, 0.8)" }}
+                    />
+                    <span className="text-amber-300 text-[10px] font-bold uppercase tracking-[0.18em]">
+                      Bientôt
+                    </span>
+                  </span>
+                  <WindowsLogo className="w-5 h-5 text-white/50" />
                 </div>
+
+                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter text-white/70 mb-auto">
+                  Windows
+                </h3>
+
                 <button
                   type="button"
                   disabled
-                  className="mt-auto self-center inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full bg-white/10 text-white/50 font-bold text-sm border border-white/10 cursor-not-allowed"
+                  className="relative z-10 mt-10 inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-white/[0.04] text-white/45 font-bold text-sm border border-white/[0.08] cursor-not-allowed"
                 >
                   Build en préparation
                 </button>

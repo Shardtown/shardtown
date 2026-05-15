@@ -15,10 +15,11 @@ import {
   Zap,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { apiGet, isApiError } from "@/api/client";
+import { apiGet, apiPost, isApiError } from "@/api/client";
 
 interface BotEntry {
   label: string;
+  botId: string | null;
   present: boolean;
   shardId?: number;
   isPremium?: boolean;
@@ -63,6 +64,7 @@ interface GuildDetail {
   blocked: boolean;
   blocked_at: string | null;
   blocked_name: string | null;
+  csrfToken?: string;
 }
 
 const VERIF_LABELS = ["Aucune", "Faible", "Moyenne", "Élevée", "Extrême"];
@@ -285,7 +287,14 @@ export function AdminGuildDetail() {
             </div>
           </div>
           <div className="grid md:grid-cols-2 gap-3">
-            {data.bots.map(b => <BotPresenceCard key={b.label} entry={b} />)}
+            {data.bots.map(b => (
+              <BotPresenceCard
+                key={b.label}
+                entry={b}
+                guildId={data.guildId}
+                onChange={refresh}
+              />
+            ))}
           </div>
         </div>
 
@@ -387,7 +396,36 @@ function Stat({
   );
 }
 
-function BotPresenceCard({ entry }: { entry: BotEntry }) {
+function BotPresenceCard({
+  entry,
+  guildId,
+  onChange,
+}: {
+  entry: BotEntry;
+  guildId: string;
+  onChange: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const canTogglePremium = entry.present && !!entry.botId;
+
+  async function togglePremium() {
+    if (!entry.botId || busy) return;
+    const next = !entry.isPremium;
+    setBusy(true);
+    try {
+      const r = await apiPost<{ success?: boolean; error?: string }>(
+        `/admin/bot/${encodeURIComponent(entry.botId)}/guild/${encodeURIComponent(guildId)}/premium`,
+        { enabled: next },
+      );
+      if (r?.success) onChange();
+      else alert(r?.error || "Erreur");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erreur réseau");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div
       className={`rounded-2xl border p-4 ${
@@ -419,7 +457,7 @@ function BotPresenceCard({ entry }: { entry: BotEntry }) {
         )}
       </div>
       {entry.present && (
-        <div className="grid grid-cols-2 gap-2 text-[11px]">
+        <div className="grid grid-cols-2 gap-2 text-[11px] mb-3">
           {entry.shardId !== undefined && (
             <div>
               <span className="text-white/30 uppercase tracking-widest text-[9px] font-bold">Shard</span>
@@ -435,6 +473,21 @@ function BotPresenceCard({ entry }: { entry: BotEntry }) {
             </div>
           )}
         </div>
+      )}
+      {canTogglePremium && (
+        <button
+          type="button"
+          onClick={togglePremium}
+          disabled={busy}
+          className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-colors disabled:opacity-50 ${
+            entry.isPremium
+              ? "bg-white/[0.04] border border-white/10 text-white/60 hover:bg-white/[0.07] hover:text-white/80"
+              : "bg-amber-500/10 border border-amber-500/25 text-amber-300 hover:bg-amber-500/15"
+          }`}
+        >
+          <Sparkles className="w-3 h-3" />
+          {entry.isPremium ? "Retirer Premium" : "Activer Premium"}
+        </button>
       )}
     </div>
   );

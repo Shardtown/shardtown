@@ -6152,6 +6152,10 @@ app.get('/api/admin/guild/:guildId', checkAdmin, async (req, res) => {
     if (!isValidSnowflake(guildId)) return res.status(400).json({ error: 'Guild ID invalide' });
 
     try {
+        await warmBotIdCache();
+        const labelToBotId = new Map();
+        for (const [id, b] of botIdCache.entries()) labelToBotId.set(b.label, id);
+
         const result = {
             guildId,
             bots: [],
@@ -6161,10 +6165,11 @@ app.get('/api/admin/guild/:guildId', checkAdmin, async (req, res) => {
             blocked: false,
             blocked_at: null,
             blocked_name: null,
+            csrfToken: generateCsrfToken(req),
         };
 
         for (const bot of BOTS) {
-            const entry = { label: bot.label, present: false };
+            const entry = { label: bot.label, botId: labelToBotId.get(bot.label) || null, present: false };
             try {
                 const guildRes = await axios.get(
                     `https://discord.com/api/v10/guilds/${guildId}?with_counts=true`,
@@ -6456,6 +6461,34 @@ app.post('/admin/guild/:guildId/unblock', checkAdmin, verifyCsrf, async (req, re
         res.json({ success: true });
     } catch (err) {
         await logAdminAction(req, 'guild.unblock.failed', { guildId }, { error: 'Erreur serveur' });
+        res.json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+// Manual premium grant / revoke per (bot, guild). isPremium est stocké
+// par bot — ShardGuard → table `settings`, Shard → `shard_settings`. Tant
+// qu'aucun webhook Stripe n'écrit ce flag automatiquement, c'est ici que
+// les abonnements sont activés à la main.
+app.post('/admin/bot/:botId/guild/:guildId/premium', checkAdmin, verifyCsrf, async (req, res) => {
+    const { botId, guildId } = req.params;
+    const { enabled } = req.body;
+    if (!isValidSnowflake(guildId)) return res.json({ success: false, error: 'Guild ID invalide' });
+    const bot = await resolveBotByBotId(botId);
+    if (!bot) return res.json({ success: false, error: 'Bot introuvable' });
+    const table = bot.label === 'ShardGuard' ? 'settings' : 'shard_settings';
+    const flag = enabled ? 1 : 0;
+    try {
+        // INSERT … ON DUPLICATE KEY UPDATE pour que la première activation
+        // créée la ligne settings si elle n'existe pas encore.
+        await db.execute(
+            `INSERT INTO ${table} (guildId, isPremium) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE isPremium = VALUES(isPremium)`,
+            [guildId, flag],
+        );
+        await logAdminAction(req, 'premium.set', { botId, guildId }, { enabled: !!enabled });
+        res.json({ success: true, isPremium: !!enabled });
+    } catch (err) {
+        await logAdminAction(req, 'premium.set.failed', { botId, guildId }, { error: err.message || 'Erreur serveur' });
         res.json({ success: false, error: 'Erreur serveur' });
     }
 });
