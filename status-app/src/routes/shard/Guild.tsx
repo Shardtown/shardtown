@@ -391,42 +391,42 @@ export function ShardGuild() {
                 : "font-extrabold tracking-tight leading-[0.95] truncate text-4xl md:text-6xl lg:text-7xl"}>
                 {heroGuild.name}
               </h1>
-              <div className={IS_DESKTOP ? "flex items-center gap-2 mt-1.5 flex-wrap" : "flex items-center gap-2 mt-3 flex-wrap"}>
+              <div className={IS_DESKTOP ? "flex items-center gap-2.5 mt-2 flex-wrap" : "flex items-center gap-2.5 mt-4 flex-wrap"}>
                 {security?.stats?.totalMembers !== undefined && (
-                  <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-white/55 bg-white/[0.04] border border-white/[0.08] rounded-full px-2 py-0.5">
-                    <Users2 className="w-2.5 h-2.5" />
+                  <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-white/65 bg-white/[0.05] border border-white/[0.1] rounded-full px-3 py-1">
+                    <Users2 className="w-3 h-3" />
                     {security.stats.totalMembers.toLocaleString("fr-FR")} membres
                   </span>
                 )}
                 {(security?.settings?.isPremium === 1 || security?.settings?.isPremium === "1") && (
-                  <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-300 bg-amber-400/10 border border-amber-400/25 rounded-full px-2 py-0.5">
+                  <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-amber-300 bg-amber-400/12 border border-amber-400/30 rounded-full px-3 py-1">
                     Premium
                   </span>
                 )}
-                <span className="text-[10.5px] text-white/25 font-mono-num">
-                  ID&nbsp;<span className="text-white/40">{heroGuild.id}</span>
+                <span className="text-[12px] text-white/30 font-mono-num">
+                  ID&nbsp;<span className="text-white/50">{heroGuild.id}</span>
                 </span>
               </div>
             </motion.div>
           </div>
         </header>
 
-        <div className="grid md:grid-cols-[200px_1fr] gap-8 lg:gap-12">
+        <div className="grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
           <aside className="md:sticky md:top-28 md:self-start">
-            <nav className="space-y-5">
+            <nav className="space-y-7">
               {/* "Vue d'ensemble" → traitée en standalone (pas de header de
                   groupe), elle joue le rôle de landing par défaut. */}
-              <div className="flex md:flex-col gap-0.5 mb-1">
+              <div className="flex md:flex-col gap-1 mb-2">
                 {TABS.filter(t => t.group === "Tableau de bord").map(t => (
                   <SidebarTab key={t.key} t={t} active={t.key === tab} available={isTabAvailable(t)} onClick={() => setTab(t.key)} />
                 ))}
               </div>
               {groups.filter(g => g !== "Tableau de bord").map(g => (
                 <div key={g}>
-                  <p className="text-[9.5px] font-bold uppercase tracking-[0.22em] text-white/30 mb-2 px-2">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/45 mb-3 px-3">
                     {g}
                   </p>
-                  <div className="flex md:flex-col gap-0.5 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0">
+                  <div className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0">
                     {TABS.filter(t => t.group === g).map(t => (
                       <SidebarTab key={t.key} t={t} active={t.key === tab} available={isTabAvailable(t)} onClick={() => setTab(t.key)} />
                     ))}
@@ -471,22 +471,22 @@ function SidebarTab({
       type="button"
       onClick={onClick}
       disabled={!available}
-      className={`relative inline-flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[12.5px] font-medium whitespace-nowrap transition-colors duration-150 md:w-full md:justify-start ${
+      className={`relative inline-flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium whitespace-nowrap transition-colors duration-150 md:w-full md:justify-start ${
         active
-          ? "bg-white/[0.08] text-white"
+          ? "bg-white/[0.09] text-white"
           : available
-          ? "text-white/55 hover:bg-white/[0.04] hover:text-white"
-          : "text-white/20 cursor-not-allowed"
+          ? "text-white/60 hover:bg-white/[0.05] hover:text-white"
+          : "text-white/25 cursor-not-allowed"
       }`}
       title={!available ? "Données indisponibles — connecte le compte Discord correspondant" : undefined}
     >
       {active && (
         <span
           aria-hidden
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-full bg-white"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-white"
         />
       )}
-      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+      <Icon className="w-[17px] h-[17px] flex-shrink-0" strokeWidth={1.8} />
       {t.label}
     </button>
   );
@@ -528,19 +528,19 @@ function OverviewPanel({
       {/* Bloc 2 : grille de modules par groupe. Chaque card est cliquable
           et porte un badge de statut (active / inactive / info). */}
       <div>
-        <div className="flex items-baseline justify-between mb-4">
-          <p className="text-[10.5px] font-bold uppercase tracking-[0.22em] text-white/45">
+        <div className="flex items-baseline justify-between mb-6">
+          <h2 className="text-xl font-extrabold tracking-tight">
             Modules
-          </p>
-          <p className="text-[10.5px] text-white/30">
+          </h2>
+          <p className="text-[12.5px] text-white/40">
             {TABS.filter(t => t.group !== "Tableau de bord").length} disponibles
           </p>
         </div>
-        <div className="space-y-7">
+        <div className="space-y-9">
           {moduleGroups.map(g => (
             <section key={g}>
-              <h3 className="text-[12px] font-bold text-white/65 mb-2.5 px-0.5">{g}</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+              <h3 className="text-[14px] font-bold text-white/75 mb-4 px-0.5">{g}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {TABS.filter(t => t.group === g).map(t => (
                   <ModuleCard
                     key={t.key}
@@ -607,34 +607,34 @@ function ModuleCard({
       type="button"
       onClick={onClick}
       disabled={!available}
-      className={`group relative text-left rounded-xl border p-3.5 transition-colors h-full ${
+      className={`group relative text-left rounded-2xl border p-5 transition-colors h-full ${
         available
-          ? "bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.05] hover:border-white/[0.18]"
+          ? "bg-white/[0.025] border-white/[0.08] hover:bg-white/[0.05] hover:border-white/20"
           : "bg-white/[0.015] border-white/[0.04] cursor-not-allowed opacity-50"
       }`}
       title={!available ? "Connecte le compte Discord correspondant pour activer cette section" : undefined}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${
-          available ? "bg-white/[0.04] border-white/[0.08] text-white/75" : "bg-white/[0.02] border-white/[0.04] text-white/30"
+      <div className="flex items-start justify-between mb-4">
+        <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
+          available ? "bg-white/[0.04] border-white/[0.08] text-white/80" : "bg-white/[0.02] border-white/[0.04] text-white/30"
         }`}>
-          <Icon className="w-4 h-4" />
+          <Icon className="w-5 h-5" strokeWidth={1.8} />
         </div>
         <span
-          className={`w-1.5 h-1.5 rounded-full mt-2 ${statusTone}`}
+          className={`w-2 h-2 rounded-full mt-3.5 ${statusTone}`}
           aria-label={statusLabel}
         />
       </div>
-      <p className="text-[12.5px] font-bold leading-tight mb-1">{label}</p>
+      <p className="text-[15px] font-bold leading-tight mb-1.5">{label}</p>
       <div className="flex items-center justify-between">
-        <span className={`text-[10.5px] font-semibold ${
-          status === "active"   ? "text-emerald-300/85" :
-          status === "inactive" ? "text-white/35" :
-          "text-white/30"
+        <span className={`text-[12px] font-semibold ${
+          status === "active"   ? "text-emerald-300/90" :
+          status === "inactive" ? "text-white/40" :
+          "text-white/35"
         }`}>
           {statusLabel}
         </span>
-        <ChevronRight className="w-3 h-3 text-white/25 group-hover:text-white/55 group-hover:translate-x-0.5 transition-all" />
+        <ChevronRight className="w-3.5 h-3.5 text-white/30 group-hover:text-white/65 group-hover:translate-x-0.5 transition-all" />
       </div>
     </button>
   );
