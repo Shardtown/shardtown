@@ -1,4 +1,4 @@
-import { ArrowRight, MessageSquare, Mail, Download as DownloadIcon } from "lucide-react";
+import { ArrowRight, MessageSquare, Mail, Download as DownloadIcon, Code2, Bot, Layers } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { TiltCard } from "@/components/ui/tilt-card";
@@ -24,28 +24,25 @@ function WindowsLogo({ className }: { className?: string }) {
 
 const SERVICES = [
   {
-    label: "Développement Web",
-    tagline: "Sites, dashboards & apps sur mesure",
+    icon: Code2,
+    label: "Développement web",
     description:
-      "Conception et développement d'interfaces modernes — landings, dashboards, panels admin, intégrations API. Stack React / Next.js / TypeScript.",
+      "Sites, dashboards et panels admin sur mesure. React, Next.js, TypeScript. Intégrations API et OAuth.",
     href: "#contact",
-    accent: "text-blue-400",
   },
   {
-    label: "Développement Discord",
-    tagline: "Bots & intégrations à votre image",
+    icon: Bot,
+    label: "Bots Discord",
     description:
-      "Bots Discord custom, automatisations, intégrations OAuth, webhooks, slash commands. Écosystème complet déjà éprouvé en production.",
+      "Bots custom à votre image — automatisations, webhooks, slash commands, intégrations tierces. Stack éprouvée en prod.",
     href: "#contact",
-    accent: "text-purple-400",
   },
   {
-    label: "Configuration de serveurs",
-    tagline: "Setup & accompagnement de communautés",
+    icon: Layers,
+    label: "Setup de serveurs",
     description:
-      "Architecture des salons, rôles, sécurité, modération, vérification, niveaux, économie. On structure votre Discord pour qu'il scale.",
+      "Architecture des salons, rôles, modération, niveaux, économie. On structure votre Discord pour qu'il scale.",
     href: "#contact",
-    accent: "text-emerald-400",
   },
 ];
 
@@ -127,26 +124,31 @@ export function Index() {
             on couvre toute la chaîne.
           </p>
         </Reveal>
-        <RevealStagger className="grid md:grid-cols-3 gap-8 md:gap-10" staggerChildren={0.1} delayChildren={0.15}>
-          {SERVICES.map(s => (
-            <RevealItem key={s.label} direction="left" distance={70} className="relative hover:z-10">
-              <a href={s.href} className="group block h-full relative">
-                <TiltCard
-                  effect="gravitate"
-                  tiltLimit={6}
-                  scale={1.02}
-                  className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-10 hover:border-white/20 hover:bg-white/[0.04] transition-colors h-full flex flex-col"
-                >
-                  <h3 className="text-2xl font-bold mb-3">{s.label}</h3>
-                  <p className={`text-xs font-bold uppercase tracking-widest ${s.accent} mb-6`}>{s.tagline}</p>
-                  <p className="text-white/55 leading-relaxed mb-10">{s.description}</p>
-                  <span className="mt-auto inline-flex items-center gap-2 text-sm font-bold text-white group-hover:gap-3 transition-all">
-                    En discuter <ArrowRight className="w-4 h-4" />
-                  </span>
-                </TiltCard>
-              </a>
-            </RevealItem>
-          ))}
+        <RevealStagger className="grid md:grid-cols-3 gap-5 md:gap-6" staggerChildren={0.08} delayChildren={0.15}>
+          {SERVICES.map(s => {
+            const Icon = s.icon;
+            return (
+              <RevealItem key={s.label} direction="left" distance={70} className="relative hover:z-10">
+                <a href={s.href} className="group block h-full relative">
+                  <TiltCard
+                    effect="gravitate"
+                    tiltLimit={4}
+                    scale={1.015}
+                    className="bg-zinc-900/40 border border-zinc-800 rounded-2xl p-7 hover:border-zinc-700 hover:bg-zinc-900/60 transition-colors h-full flex flex-col"
+                  >
+                    <div className="w-11 h-11 rounded-xl bg-accent-gradient-soft border border-blue-500/25 flex items-center justify-center text-blue-300 mb-6">
+                      <Icon className="w-5 h-5" strokeWidth={1.8} />
+                    </div>
+                    <h3 className="text-[19px] font-bold tracking-tight mb-2.5">{s.label}</h3>
+                    <p className="text-[14px] text-zinc-400 leading-relaxed mb-8">{s.description}</p>
+                    <span className="mt-auto inline-flex items-center gap-1.5 text-[13px] font-semibold text-zinc-300 group-hover:text-white group-hover:gap-2.5 transition-all">
+                      En discuter <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
+                  </TiltCard>
+                </a>
+              </RevealItem>
+            );
+          })}
         </RevealStagger>
       </section>
 
