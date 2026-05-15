@@ -66,7 +66,9 @@ export function DesktopBotServer() {
         if (a.bot_present !== b.bot_present) return a.bot_present ? -1 : 1;
         return a.name.localeCompare(b.name, "fr");
       }));
-      setClientId(comSrv.clientId || secSrv.clientId || "");
+      // Bot unifié — n'utilise QUE le clientId Shard. Sans ce garde, un
+      // SHARD_CLIENT_ID vide faisait basculer l'invite sur le bot ShardGuard.
+      setClientId(comSrv.clientId || "");
     } finally { setLoading(false); }
   }
 

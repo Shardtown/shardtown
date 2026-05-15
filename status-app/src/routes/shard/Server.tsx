@@ -75,7 +75,10 @@ export function ShardServer() {
       ]);
 
       const user = security?.user ?? community?.user ?? null;
-      const clientId = community?.clientId || security?.clientId || "";
+      // Shard est désormais un bot unifié — n'utilise QUE le clientId Shard.
+      // Sans ce garde, un SHARD_CLIENT_ID vide faisait basculer le lien
+      // d'invitation sur l'ancien clientId ShardGuard.
+      const clientId = community?.clientId || "";
 
       setData({
         guilds: Array.from(guildsMap.values()).sort((a, b) => {

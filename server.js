@@ -5010,7 +5010,7 @@ app.get('/api/shardguard/server', checkAuth, async (req, res) => {
     }
 });
 
-app.get('/guild/:guildID', (req, res) => res.redirect(301, `/samia/guild/${req.params.guildID}`));
+app.get('/guild/:guildID', (req, res) => res.redirect(301, `/shard/guild/${req.params.guildID}`));
 
 // ShardGuard guild config — consumed by React /shardguard/guild/:id
 app.get('/api/shardguard/guild/:guildID', checkAuth, async (req, res) => {
