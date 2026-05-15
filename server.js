@@ -3448,6 +3448,25 @@ app.get('/shard/logout', (req, res) => {
     });
 });
 
+// Lit le flag isPremium pour un serveur côté Shard. Source unique de
+// vérité = la colonne `shard_settings.isPremium`, écrite uniquement par
+// le webhook Stripe (server.js:925-951) ou le panel admin
+// (POST /admin/bot/:botId/guild/:guildId/premium).
+async function getShardPremium(guildID) {
+    try {
+        const [rows] = await db.execute('SELECT isPremium FROM shard_settings WHERE guildId = ?', [guildID]);
+        return !!rows[0]?.isPremium;
+    } catch { return false; }
+}
+
+function premiumRequiredResponse(feature) {
+    return {
+        success: false,
+        code: 'premium_required',
+        error: `Cette fonctionnalité (${feature}) nécessite Premium. Active-le sur /premium.`,
+    };
+}
+
 function checkAuthShard(req, res, next) {
     if (req.session && req.session.shardUser) return next();
     // Fall back to the Shardtown account session: the Phase-2 middleware
@@ -3777,10 +3796,24 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
     const xpMults = roleIds.map((id, i) => ({ roleId: id, multiplier: parseFloat(multVals[i]) || 1 })).filter(m => m.roleId);
     const xpRoleMultipliersJson = JSON.stringify(xpMults);
     let thresholdsJson = '[]';
+    let parsedThresholds = [];
     try {
         const parsed = typeof levelThresholds === 'string' ? JSON.parse(levelThresholds || '[]') : levelThresholds;
-        thresholdsJson = JSON.stringify(Array.isArray(parsed) ? parsed : []);
-    } catch { thresholdsJson = '[]'; }
+        parsedThresholds = Array.isArray(parsed) ? parsed : [];
+        thresholdsJson = JSON.stringify(parsedThresholds);
+    } catch { thresholdsJson = '[]'; parsedThresholds = []; }
+    // Cap Paliers XP : 3 max gratuit / 20 max Premium ([Premium.tsx:56]).
+    {
+        const isPremiumForCheck = await getShardPremium(guildID);
+        const MAX_LEVELS = isPremiumForCheck ? 20 : 3;
+        if (parsedThresholds.length > MAX_LEVELS) {
+            return res.status(403).json({
+                success: false,
+                code: 'premium_required',
+                error: `Limite atteinte : ${MAX_LEVELS} paliers XP maximum ${isPremiumForCheck ? '(plafond Premium)' : "— passe Premium pour aller jusqu'à 20"} (${parsedThresholds.length} soumis).`,
+            });
+        }
+    }
     try {
         await db.execute(`
             INSERT INTO shard_settings (guildId, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabled, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, levelThresholds, ticketEnabled, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, ticketPanelButtonLabel, ticketPanelButtonEmoji, ticketPanelButtonStyle, ticketOpenTitle, ticketOpenDescription, ticketOpenFooter, ticketOpenColor, ticketCloseButtonLabel, ticketCloseButtonEmoji, ticketCloseButtonStyle, ticketTranscriptEnabled, ticketLogOpenTitle, ticketLogOpenColor, ticketLogCloseTitle, ticketLogCloseColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabled, economyCurrencyName, economyDailyMin, economyDailyMax, isPremium, referralEnabled, referralReward, xpRoleMultipliers)
@@ -3832,6 +3865,10 @@ app.post('/shard/guild/:guildID/ticket-panel', checkAuthShard, async (req, res) 
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
+    // Panel de tickets = Premium ([Premium.tsx:63]).
+    if (!(await getShardPremium(guildID))) {
+        return res.status(403).json(premiumRequiredResponse('panel de tickets'));
+    }
     const { channelId, title, description, color, buttonLabel, buttonEmoji, buttonStyle } = req.body;
     if (!channelId || !/^\d{17,20}$/.test(String(channelId))) return res.status(400).json({ success: false, error: 'Salon invalide' });
     const colorInt = parseInt(String(color || '#3b82f6').replace('#', ''), 16) || 0x3b82f6;
@@ -4393,8 +4430,13 @@ app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
-    const { channelId, question, choices, durationHours } = req.body;
+    const { channelId, question, choices, durationHours, anonymous } = req.body;
     if (!channelId || !question || !Array.isArray(choices) || choices.length < 2) return res.status(400).json({ success: false, error: 'Données manquantes' });
+    // Sondage anonyme = feature Premium ([Premium.tsx:60]).
+    const wantsAnonymous = !!anonymous;
+    if (wantsAnonymous && !(await getShardPremium(guildID))) {
+        return res.status(403).json(premiumRequiredResponse('sondages anonymes'));
+    }
     // Discord native polls only accept a fixed set of durations (1h, 4h, 8h,
     // 24h, 72h, 168h = 1 sem., 336h = 2 sem.). We clamp to the closest valid
     // option, with 24h as the default.
@@ -4419,7 +4461,7 @@ app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
         const endsAtDate = new Date(Date.now() + hours * 3600 * 1000);
         const [result] = await db.execute(
             `INSERT INTO shard_polls (guildId, channelId, messageId, question, choices, endsAt, anonymous) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [guildID, channelId, messageId, question, JSON.stringify(cleanChoices), endsAtDate, 0]
+            [guildID, channelId, messageId, question, JSON.stringify(cleanChoices), endsAtDate, wantsAnonymous ? 1 : 0]
         );
         res.json({ success: true, id: result.insertId });
     } catch (err) {
@@ -4479,6 +4521,20 @@ app.post('/shard/guild/:guildID/giveaway', checkAuthShard, async (req, res) => {
     if (!userGuild) return res.status(403).json({ success: false });
     const { channelId, prize, winnersCount = 1, endsAt, gwMinRole = '', gwMinLevel = 0 } = req.body;
     if (!channelId || !prize || !endsAt) return res.status(400).json({ success: false, error: 'Données manquantes' });
+    // Caps page Premium : 1 max gratuit / 5 max Premium en simultané.
+    const isPremium = await getShardPremium(guildID);
+    const maxActive = isPremium ? 5 : 1;
+    const [active] = await db.execute(
+        `SELECT COUNT(*) AS c FROM shard_giveaways WHERE guildId = ? AND ended = 0`,
+        [guildID],
+    );
+    if ((active[0]?.c || 0) >= maxActive) {
+        return res.status(403).json({
+            success: false,
+            code: 'premium_required',
+            error: `Limite atteinte : ${maxActive} giveaway(s) actif(s) max ${isPremium ? '(plafond Premium)' : '— passe Premium pour 5 simultanés'}. Termine ou attends la fin d'un giveaway en cours.`,
+        });
+    }
     const colorInt = 0xf59e0b;
     const endsAtDate = new Date(endsAt);
     const embed = {
@@ -4534,6 +4590,10 @@ app.post('/shard/guild/:guildID/scheduled', checkAuthShard, async (req, res) => 
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
+    // Messages programmés = Premium only ([Premium.tsx:62]).
+    if (!(await getShardPremium(guildID))) {
+        return res.status(403).json(premiumRequiredResponse('messages programmés'));
+    }
     const { channelId, message, intervalHours, nextRun } = req.body;
     if (!channelId || !message || !intervalHours || !nextRun) return res.status(400).json({ success: false, error: 'Données manquantes' });
     try {
