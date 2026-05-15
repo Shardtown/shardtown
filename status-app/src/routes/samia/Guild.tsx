@@ -226,6 +226,11 @@ export function SamiaGuild() {
   }
 
   if (!guildId) return null;
+  // Narrow once into a local const so nested closures (renderTab below) see
+  // the non-undefined type. `useParams<…>()` types the value as
+  // `string | undefined` regardless of the generic, so the early-return guard
+  // doesn't propagate inside nested function bodies.
+  const gid: string = guildId;
 
   // Pick whichever side we successfully loaded for hero info (prefer security).
   const heroGuild = security?.guild ?? community?.guild;
@@ -273,14 +278,14 @@ export function SamiaGuild() {
         case "automod":  return <AutomodTab {...tp} />;
         case "panic":    return <PanicTab settings={securityDraft} />;
         case "stats":    return <StatsTab chartData={security.chartData} totalMembers={security.stats.totalMembers} verifiedCount={security.stats.verifiedCount} />;
-        case "logs":     return <LogsTab guildId={guildId} />;
-        case "members":  return <MembersTab guildId={guildId} />;
+        case "logs":     return <LogsTab guildId={gid} />;
+        case "members":  return <MembersTab guildId={gid} />;
       }
     }
 
     if (currentTab.side === "community" && community && communityDraft) {
       const tp = {
-        guildId, settings: communityDraft, update: updateCommunity,
+        guildId: gid, settings: communityDraft, update: updateCommunity,
         channels: community.channels, voiceChannels: community.voiceChannels,
         categories: community.categories, roles: community.roles,
       };

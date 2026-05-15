@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, ShieldCheck, Sparkles as SparklesIcon, Check } from "lucide-react";
+import { ArrowRight, ShieldCheck, Check } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
 import { HolographicCard } from "@/components/ui/holographic-card";
