@@ -165,7 +165,7 @@ export function Index() {
 
       {/* Download — app desktop */}
       <section id="download" className="container-wide pt-32 pb-32 scroll-mt-32 overflow-x-clip">
-        <Reveal direction="left" distance={80} className="max-w-3xl mb-16 text-left">
+        <Reveal direction="right" distance={80} className="max-w-3xl ml-auto mb-16 text-right">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
             App desktop
           </p>
