@@ -5,7 +5,7 @@ import {
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   TrendingUp, TrendingDown, Heart, ShieldCheck, ShieldX, UserCheck, Percent,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
-  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight, Link2,
+  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight, ChevronDown, Link2,
 } from "lucide-react";
 import { startOAuthLink } from "@/lib/oauthLink";
 import { motion, useReducedMotion } from "framer-motion";
@@ -83,6 +83,22 @@ export function ShardGuild() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<TabKey>("overview");
+  // Groupes de la sidebar repliés/dépliés. Tout ouvert par défaut pour ne
+  // pas masquer la nav au premier coup d'œil ; un useEffect plus bas
+  // ré-ouvre automatiquement le groupe du tab actif.
+  const allGroupNames = useMemo(
+    () => Array.from(new Set(TABS.map(t => t.group))).filter(g => g !== "Tableau de bord"),
+    [],
+  );
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(allGroupNames));
+  function toggleGroup(g: string) {
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(g)) next.delete(g);
+      else next.add(g);
+      return next;
+    });
+  }
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -123,6 +139,15 @@ export function ShardGuild() {
   }, [guildId, nav]);
 
   useEffect(() => { refresh(); }, [refresh]);
+
+  // Quand on saute vers un tab (depuis Vue d'ensemble par exemple), ouvre
+  // automatiquement son groupe dans la sidebar.
+  useEffect(() => {
+    const g = TABS.find(t => t.key === tab)?.group;
+    if (g && g !== "Tableau de bord") {
+      setOpenGroups(prev => prev.has(g) ? prev : new Set([...prev, g]));
+    }
+  }, [tab]);
 
   // Manual refresh trigger from descendants (e.g. "verify everyone").
   useEffect(() => {
@@ -339,7 +364,9 @@ export function ShardGuild() {
 
   return (
     <AppLayout>
-      <section className={IS_DESKTOP ? "px-2 pt-2 pb-32" : "container-wide pt-24 md:pt-32 pb-32"}>
+      <section className={IS_DESKTOP
+        ? "px-2 pt-2 pb-32"
+        : "max-w-[1600px] mx-auto px-6 md:px-10 pt-24 md:pt-32 pb-32"}>
         <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -422,18 +449,36 @@ export function ShardGuild() {
                   <SidebarTab key={t.key} t={t} active={t.key === tab} available={isTabAvailable(t)} onClick={() => setTab(t.key)} />
                 ))}
               </div>
-              {groups.filter(g => g !== "Tableau de bord").map(g => (
-                <div key={g}>
-                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/45 mb-3 px-3">
-                    {g}
-                  </p>
-                  <div className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0">
-                    {TABS.filter(t => t.group === g).map(t => (
-                      <SidebarTab key={t.key} t={t} active={t.key === tab} available={isTabAvailable(t)} onClick={() => setTab(t.key)} />
-                    ))}
+              {groups.filter(g => g !== "Tableau de bord").map(g => {
+                const isOpen = openGroups.has(g);
+                const tabsInGroup = TABS.filter(t => t.group === g);
+                return (
+                  <div key={g}>
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(g)}
+                      className="w-full flex items-center gap-2 mb-2 px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-[0.2em] text-white/45 hover:text-white/75 hover:bg-white/[0.03] transition-colors"
+                      aria-expanded={isOpen}
+                    >
+                      <ChevronDown
+                        className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
+                        strokeWidth={2.5}
+                      />
+                      <span className="flex-1 text-left">{g}</span>
+                      <span className="text-[10px] font-mono-num text-white/30 normal-case tracking-normal">
+                        {tabsInGroup.length}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0">
+                        {tabsInGroup.map(t => (
+                          <SidebarTab key={t.key} t={t} active={t.key === tab} available={isTabAvailable(t)} onClick={() => setTab(t.key)} />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </nav>
           </aside>
 
