@@ -5,7 +5,7 @@ import {
   AtSign, KeyRound, ArrowRight, ShieldAlert, Eye, EyeOff, Mail, UserPlus,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { apiPost, isApiError } from "@/api/client";
+import { apiGet, apiPost, isApiError } from "@/api/client";
 import { OAuthIcons } from "@/components/auth/OAuthButtons";
 import { ShardSecure } from "@/components/auth/ShardSecure";
 import { ProgressIndicator } from "@/components/ui/progress-indicator";
@@ -70,6 +70,9 @@ export function AccountLogin() {
   const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
   const [pseudo, setPseudo] = useState("");
+  // Live check : "idle" tant que le format est invalide, "checking" pendant
+  // le fetch debouncé, puis "available" / "taken" selon la DB.
+  const [pseudoStatus, setPseudoStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [shardSecure, setShardSecure] = useState("");
@@ -92,6 +95,34 @@ export function AccountLogin() {
       setTimeout(() => codeRefs.current[0]?.focus(), 200);
     }
   }, [mode]);
+
+  // Vérifie la dispo du pseudo en live (debounce 400ms). Le bouton
+  // "Suivant" reste bloqué tant que `pseudoStatus !== "available"` —
+  // ça évite de laisser l'utilisateur taper son mot de passe pour
+  // ensuite se prendre un "Pseudo déjà pris" au submit.
+  useEffect(() => {
+    if (mode !== "register" || subStep !== 1) return;
+    const trimmed = pseudo.trim();
+    if (!/^[A-Za-z0-9._-]{3,32}$/.test(trimmed)) {
+      setPseudoStatus("idle");
+      return;
+    }
+    setPseudoStatus("checking");
+    // Garde anti-race : si l'utilisateur retape pendant qu'une requête est
+    // en vol, on ignore la réponse périmée (le cleanup débranche le flag).
+    let stale = false;
+    const t = setTimeout(async () => {
+      try {
+        const r = await apiGet<{ available: boolean }>(
+          `/api/account/pseudo-available?pseudo=${encodeURIComponent(trimmed)}`,
+        );
+        if (!stale) setPseudoStatus(r.available ? "available" : "taken");
+      } catch {
+        if (!stale) setPseudoStatus("idle");
+      }
+    }, 400);
+    return () => { stale = true; clearTimeout(t); };
+  }, [pseudo, mode, subStep]);
 
   useEffect(() => {
     if (!oauthError) return;
@@ -152,7 +183,7 @@ export function AccountLogin() {
     }
     if (mode === "register") {
       if (subStep === 0) return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-      if (subStep === 1) return /^[A-Za-z0-9._-]{3,32}$/.test(pseudo.trim());
+      if (subStep === 1) return /^[A-Za-z0-9._-]{3,32}$/.test(pseudo.trim()) && pseudoStatus === "available";
       if (subStep === 2) return password.length >= 8;
       return false;
     }
@@ -462,17 +493,31 @@ export function AccountLogin() {
                           )}
 
                           {mode === "register" && subStep === 1 && (
-                            <FieldWithIcon
-                              label="Pseudo"
-                              icon={<UserPlus className="w-4 h-4 text-white/30" />}
-                              type="text"
-                              value={pseudo}
-                              onChange={setPseudo}
-                              autoComplete="username"
-                              placeholder="ton_pseudo"
-                              required
-                              autoFocus
-                            />
+                            <div>
+                              <FieldWithIcon
+                                label="Pseudo"
+                                icon={<UserPlus className="w-4 h-4 text-white/30" />}
+                                type="text"
+                                value={pseudo}
+                                onChange={setPseudo}
+                                autoComplete="username"
+                                placeholder="ton_pseudo"
+                                required
+                                autoFocus
+                              />
+                              {pseudoStatus !== "idle" && (
+                                <p className={
+                                  "mt-2 text-[12px] font-medium " +
+                                  (pseudoStatus === "available" ? "text-emerald-400"
+                                   : pseudoStatus === "taken" ? "text-red-400"
+                                   : "text-white/40")
+                                }>
+                                  {pseudoStatus === "checking" && "Vérification…"}
+                                  {pseudoStatus === "available" && "✓ Disponible"}
+                                  {pseudoStatus === "taken" && "✗ Pseudo déjà pris"}
+                                </p>
+                              )}
+                            </div>
                           )}
 
                           {mode === "register" && subStep === 2 && (

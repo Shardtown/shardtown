@@ -1729,6 +1729,10 @@ function newCaptcha() {
 
 const accountAuthLimiter = rateLimit({ windowMs: 60_000, max: 10, standardHeaders: true, legacyHeaders: false });
 const accountSignupLimiter = rateLimit({ windowMs: 15 * 60_000, max: 5, standardHeaders: true, legacyHeaders: false });
+// Live pseudo-availability check pour le formulaire d'inscription.
+// Plus généreux que l'auth (l'utilisateur tape lettre par lettre) mais
+// borné pour éviter qu'un script enumère la table accounts.
+const pseudoCheckLimiter = rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false });
 
 function publicAccount(a) {
     if (!a) return null;
@@ -1813,6 +1817,20 @@ function consumeShardSecure(req, submitted) {
 }
 
 // Signup
+app.get('/api/account/pseudo-available', pseudoCheckLimiter, async (req, res) => {
+    const pseudo = String(req.query.pseudo || '').trim();
+    if (!/^[A-Za-z0-9._-]{3,32}$/.test(pseudo)) {
+        return res.json({ available: false, reason: 'format' });
+    }
+    try {
+        const [rows] = await db.execute('SELECT id FROM accounts WHERE pseudo = ? LIMIT 1', [pseudo]);
+        res.json({ available: rows.length === 0 });
+    } catch (err) {
+        console.error('pseudo-available:', err.message);
+        res.status(500).json({ available: false, reason: 'server' });
+    }
+});
+
 app.post('/api/account/signup', accountSignupLimiter, async (req, res) => {
     const email = String(req.body?.email || '').trim().toLowerCase();
     const pseudo = String(req.body?.pseudo || '').trim();
