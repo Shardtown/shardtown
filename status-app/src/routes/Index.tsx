@@ -173,26 +173,13 @@ export function Index() {
           {/* macOS — disponible */}
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
-              <div className="relative flex flex-col h-full min-h-[280px] overflow-hidden">
-                {/* Watermark glyph */}
-                <AppleLogo className="absolute -top-10 -right-10 w-56 h-56 text-white/[0.03] pointer-events-none" />
+              <div className="relative flex flex-col h-full min-h-[280px]">
                 {/* Soft emerald glow */}
-                <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-emerald-500/[0.06] blur-3xl pointer-events-none" aria-hidden />
+                <div className="absolute top-1/2 right-8 -translate-y-1/2 w-64 h-64 rounded-full bg-emerald-500/[0.07] blur-3xl pointer-events-none" aria-hidden />
+                {/* Logo platform — contained inside the card */}
+                <AppleLogo className="absolute top-1/2 right-6 -translate-y-1/2 w-40 h-40 text-white/[0.06] pointer-events-none" />
 
-                <div className="relative z-10 flex items-center justify-between mb-12">
-                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/[0.12] border border-emerald-400/30">
-                    <span
-                      className="w-1.5 h-1.5 rounded-full bg-emerald-400"
-                      style={{ boxShadow: "0 0 10px rgba(74, 222, 128, 0.9)" }}
-                    />
-                    <span className="text-emerald-300 text-[10px] font-bold uppercase tracking-[0.18em]">
-                      Disponible
-                    </span>
-                  </span>
-                  <AppleLogo className="w-6 h-6 text-white/75" />
-                </div>
-
-                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter mb-auto">
+                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter mb-auto pt-2">
                   macOS
                 </h3>
 
@@ -210,24 +197,11 @@ export function Index() {
           {/* Windows — prochainement */}
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
-              <div className="relative flex flex-col h-full min-h-[280px] overflow-hidden">
-                <WindowsLogo className="absolute -top-8 -right-8 w-52 h-52 text-white/[0.025] pointer-events-none" />
-                <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-amber-500/[0.05] blur-3xl pointer-events-none" aria-hidden />
+              <div className="relative flex flex-col h-full min-h-[280px]">
+                <div className="absolute top-1/2 right-8 -translate-y-1/2 w-64 h-64 rounded-full bg-amber-500/[0.05] blur-3xl pointer-events-none" aria-hidden />
+                <WindowsLogo className="absolute top-1/2 right-6 -translate-y-1/2 w-36 h-36 text-white/[0.05] pointer-events-none" />
 
-                <div className="relative z-10 flex items-center justify-between mb-12">
-                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/[0.10] border border-amber-400/25">
-                    <span
-                      className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"
-                      style={{ boxShadow: "0 0 10px rgba(251, 191, 36, 0.8)" }}
-                    />
-                    <span className="text-amber-300 text-[10px] font-bold uppercase tracking-[0.18em]">
-                      Bientôt
-                    </span>
-                  </span>
-                  <WindowsLogo className="w-5 h-5 text-white/50" />
-                </div>
-
-                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter text-white/70 mb-auto">
+                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter text-white/70 mb-auto pt-2">
                   Windows
                 </h3>
 
