@@ -39,10 +39,10 @@ export function DesktopBotServer() {
   const [query, setQuery] = useState("");
 
   async function load() {
-    // Fetch both legacy guild lists in parallel and merge — a guild is
-    // bot_present if either Discord-OAuth (ex-ShardGuard) or Shard-OAuth
-    // (ex-Shard) reports it. Same for clientId (prefer the Shard one used
-    // by the active bot identity).
+    // On affiche la liste des serveurs admin de l'utilisateur (issue des deux
+    // OAuth, certains comptes n'en ont qu'un). Mais pour le badge "bot présent",
+    // on n'écoute QUE la réponse Shard : si l'ancien bot ShardGuard est encore
+    // sur un serveur, ça ne veut pas dire que Shard y est.
     try {
       const [sec, com, comSrv] = await Promise.all([
         apiGet<GuildsResponse>("/api/account/guilds?bot=shardguard").catch(() => null),
@@ -51,22 +51,16 @@ export function DesktopBotServer() {
       ]);
 
       const merged = new Map<string, Guild>();
-      [sec, com].forEach(d => {
-        d?.guilds.forEach(g => {
-          const prev = merged.get(g.id);
-          if (prev) {
-            merged.set(g.id, { ...prev, bot_present: prev.bot_present || g.bot_present });
-          } else {
-            merged.set(g.id, g);
-          }
-        });
-      });
+      // 1) Seed avec les guildes côté ShardGuard, en forçant bot_present=false.
+      sec?.guilds.forEach(g => merged.set(g.id, { ...g, bot_present: false }));
+      // 2) Override avec les guildes côté Shard — c'est la source de vérité
+      //    pour bot_present (présence du bot Shard).
+      com?.guilds.forEach(g => merged.set(g.id, g));
+
       setGuilds(Array.from(merged.values()).sort((a, b) => {
         if (a.bot_present !== b.bot_present) return a.bot_present ? -1 : 1;
         return a.name.localeCompare(b.name, "fr");
       }));
-      // Bot unifié — n'utilise QUE le clientId Shard. Sans ce garde, un
-      // SHARD_CLIENT_ID vide faisait basculer l'invite sur le bot ShardGuard.
       setClientId(comSrv.clientId || "");
     } finally { setLoading(false); }
   }

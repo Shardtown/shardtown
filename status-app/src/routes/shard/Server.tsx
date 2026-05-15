@@ -69,10 +69,10 @@ export function ShardServer() {
       [security, community].forEach(d => {
         d?.guilds.forEach(g => guildsMap.set(g.id, g));
       });
-      const botGuildIds = new Set<string>([
-        ...(security?.botGuildIds ?? []),
-        ...(community?.botGuildIds ?? []),
-      ]);
+      // Présence du bot : on ne regarde QUE la liste Shard. L'ancien bot
+      // ShardGuard peut encore traîner sur certains serveurs sans que Shard
+      // y soit — l'union faisait apparaître Shard comme présent à tort.
+      const botGuildIds = new Set<string>(community?.botGuildIds ?? []);
 
       const user = security?.user ?? community?.user ?? null;
       // Shard est désormais un bot unifié — n'utilise QUE le clientId Shard.
