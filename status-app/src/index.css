@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -6,54 +6,54 @@
 
 @layer base {
   :root {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 4%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 4%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 53%;
-    --accent: 0 0% 10%;
-    --accent-foreground: 0 0% 100%;
+    /* Linear/Vercel inspired palette — neutres zinc, accents discrets,
+       contraste haut sans cris. Pas de pure black (#000) qui se voit
+       sale sur OLED ; on choisit #0a0a0a (zinc-950 ajusté). */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 240 4% 12%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 4% 12%;
+    --muted-foreground: 240 5% 65%;
+    --accent: 240 4% 12%;
+    --accent-foreground: 0 0% 98%;
     --destructive: 0 72% 56%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 10%;
-    --input: 0 0% 10%;
-    --ring: 0 0% 60%;
-    --radius: 1rem;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 16%;
+    --input: 240 4% 16%;
+    --ring: 240 5% 65%;
+    --radius: 0.5rem;
 
-    /* Desktop-shell variables — what DesktopShell / DesktopOverview /
-       DesktopRpc / DesktopPreferences read. Overridden in light mode
-       below. The web SPA keeps its current dark Tailwind styling. */
-    --ds-bg: #0c0d10;
-    --ds-bg-1: #101115;
-    --ds-bg-2: #15161b;
-    --ds-text: #f5f5f7;
-    --ds-text-mut: rgba(245, 245, 247, 0.62);
-    --ds-text-dim: rgba(245, 245, 247, 0.38);
-    --ds-text-faint: rgba(245, 245, 247, 0.18);
+    /* Desktop-shell variables — désormais alignées sur la même palette
+       neutre que le reste du site (zinc-950 → zinc-50 via opacités). */
+    --ds-bg: #0a0a0a;
+    --ds-bg-1: #111111;
+    --ds-bg-2: #171717;
+    --ds-text: #fafafa;
+    --ds-text-mut: #a1a1aa;
+    --ds-text-dim: #71717a;
+    --ds-text-faint: #52525b;
     --ds-border: rgba(255, 255, 255, 0.06);
-    --ds-border-strong: rgba(255, 255, 255, 0.18);
+    --ds-border-strong: rgba(255, 255, 255, 0.12);
     --ds-panel: rgba(255, 255, 255, 0.025);
-    --ds-panel-2: rgba(255, 255, 255, 0.05);
-    --ds-accent-bg: #ffffff;
-    --ds-accent-fg: #000000;
+    --ds-panel-2: rgba(255, 255, 255, 0.055);
+    --ds-accent-bg: #fafafa;
+    --ds-accent-fg: #0a0a0a;
 
-    /* Brand + status palette — centralisé pour ne plus avoir
-       `rgb(91, 109, 255)` et 3 nuances de vert / rouge hardcodées dans
-       chaque page. Utiliser `var(--ds-accent)` pour la couleur pleine,
-       `rgba(var(--ds-accent-rgb), 0.16)` quand on a besoin d'alpha. */
-    --ds-accent-rgb: 91, 109, 255;
+    /* Brand + status — accent neutre (blanc) par défaut, status colors
+       gardées mais désaturées d'un cran pour matcher la sobriété. */
+    --ds-accent-rgb: 250, 250, 250;
     --ds-accent: rgb(var(--ds-accent-rgb));
-    --ds-accent-on: #ffffff;
-    --ds-status-ok-rgb: 74, 222, 128;
+    --ds-accent-on: #0a0a0a;
+    --ds-status-ok-rgb: 52, 211, 153;
     --ds-status-ok: rgb(var(--ds-status-ok-rgb));
-    --ds-status-warn-rgb: 250, 204, 21;
+    --ds-status-warn-rgb: 251, 191, 36;
     --ds-status-warn: rgb(var(--ds-status-warn-rgb));
     --ds-status-err-rgb: 248, 113, 113;
     --ds-status-err: rgb(var(--ds-status-err-rgb));
@@ -61,28 +61,28 @@
 
   [data-theme="noir"] {
     --ds-bg: #000000;
-    --ds-bg-1: #050507;
-    --ds-bg-2: #0a0a0c;
+    --ds-bg-1: #060606;
+    --ds-bg-2: #0d0d0d;
     --ds-panel: rgba(255, 255, 255, 0.035);
-    --ds-panel-2: rgba(255, 255, 255, 0.065);
-    --ds-border: rgba(255, 255, 255, 0.08);
-    --ds-border-strong: rgba(255, 255, 255, 0.2);
+    --ds-panel-2: rgba(255, 255, 255, 0.07);
+    --ds-border: rgba(255, 255, 255, 0.07);
+    --ds-border-strong: rgba(255, 255, 255, 0.16);
   }
 
   [data-theme="light"] {
-    --ds-bg: #f5f5f7;
-    --ds-bg-1: #ffffff;
-    --ds-bg-2: #ffffff;
-    --ds-text: #0c0d10;
-    --ds-text-mut: rgba(12, 13, 16, 0.62);
-    --ds-text-dim: rgba(12, 13, 16, 0.42);
-    --ds-text-faint: rgba(12, 13, 16, 0.22);
+    --ds-bg: #ffffff;
+    --ds-bg-1: #fafafa;
+    --ds-bg-2: #f4f4f5;
+    --ds-text: #09090b;
+    --ds-text-mut: #52525b;
+    --ds-text-dim: #71717a;
+    --ds-text-faint: #a1a1aa;
     --ds-border: rgba(0, 0, 0, 0.08);
-    --ds-border-strong: rgba(0, 0, 0, 0.22);
-    --ds-panel: rgba(0, 0, 0, 0.02);
+    --ds-border-strong: rgba(0, 0, 0, 0.16);
+    --ds-panel: rgba(0, 0, 0, 0.025);
     --ds-panel-2: rgba(0, 0, 0, 0.05);
-    --ds-accent-bg: #0c0d10;
-    --ds-accent-fg: #ffffff;
+    --ds-accent-bg: #09090b;
+    --ds-accent-fg: #fafafa;
   }
 
   /* Sidebar nav-item hover (theme-aware, replaces the prior Tailwind
@@ -100,11 +100,15 @@
   * { border-color: hsl(var(--border)); }
   html, body, #root { height: 100%; min-height: 100%; margin: 0; }
   body {
-    font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: "cv11", "ss01", "ss03";
     color: var(--ds-text);
+    background: var(--ds-bg);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.01em;
   }
+  h1, h2, h3, h4 { letter-spacing: -0.02em; }
 
 }
 
@@ -727,7 +731,7 @@
 }
 .dl-wordmark {
   position: relative;
-  font-family: "Plus Jakarta Sans", -apple-system, sans-serif;
+  font-family: "Inter", -apple-system, sans-serif;
   font-size: clamp(56px, 10vw, 104px);
   font-weight: 800;
   text-transform: uppercase;
