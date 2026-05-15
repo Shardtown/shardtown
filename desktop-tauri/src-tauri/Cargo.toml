@@ -1,6 +1,6 @@
 [package]
 name = "shardtown-desktop"
-version = "0.1.42"
+version = "0.1.43"
 description = "Native macOS dashboard for Shardtown"
 authors = ["Shardtown"]
 edition = "2021"
