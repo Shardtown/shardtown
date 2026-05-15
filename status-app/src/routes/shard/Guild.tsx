@@ -5,7 +5,7 @@ import {
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   TrendingUp, TrendingDown, Heart, ShieldCheck, ShieldX, UserCheck, Percent,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
-  Code2, Smile, MessageCircleHeart, Radio,
+  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -25,15 +25,15 @@ import {
   StreamAlertsTab,
 } from "@/components/shard/tabs";
 
-// 4 groupes logiques, par mental model utilisateur (et non plus par bot
-// d'origine, puisque Shard a fusionné ShardGuard et Shard).
-//   - Mise en place  : ce qu'on règle au lancement du serveur
-//   - Modération     : sécurité, anti-abus, sanctions
-//   - Engagement     : ce que les membres font pour vivre la commu
-//   - Données        : observabilité (stats, logs, listes)
+// 4 groupes logiques par mental model utilisateur, plus "Tableau de bord"
+// qui contient la vue d'ensemble landing (stats + grille de modules).
 // Le champ `side` reste critique : il dicte quelle API alimente l'onglet
-// (security = /api/shardguard/guild, community = /api/shard/guild).
+// (security = /api/shardguard/guild, community = /api/shard/guild,
+//  any = dashboard, pas de dépendance directe).
 const TABS = [
+  // Tableau de bord (landing)
+  { key: "overview",  label: "Vue d'ensemble",  icon: LayoutGrid,         group: "Tableau de bord", side: "any" },
+
   // Mise en place
   { key: "general",   label: "Général",         icon: Settings,           group: "Mise en place", side: "security" },
   { key: "rules",     label: "Règlement",       icon: FileText,           group: "Mise en place", side: "security" },
@@ -81,7 +81,7 @@ export function ShardGuild() {
   const [communityDraft, setCommunityDraft] = useState<ShardSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<TabKey>("general");
+  const [tab, setTab] = useState<TabKey>("overview");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -266,8 +266,10 @@ export function ShardGuild() {
   // Build distinct group order from TABS array.
   const groups = Array.from(new Set(TABS.map(t => t.group)));
 
-  // Disable tabs for sides that failed to load.
+  // Disable tabs for sides that failed to load. "any" = pas de dépendance
+  // (cas du tableau de bord, toujours dispo).
   function isTabAvailable(t: typeof TABS[number]) {
+    if (t.side === "any") return true;
     if (t.side === "security") return !!security && !!securityDraft;
     return !!community && !!communityDraft;
   }
@@ -278,6 +280,19 @@ export function ShardGuild() {
   // Tab content rendering — only render if the side is loaded.
   function renderTab(): React.ReactNode {
     if (!currentTab || !currentAvailable) return null;
+
+    if (currentTab.key === "overview") {
+      return (
+        <OverviewPanel
+          sec={security}
+          com={community}
+          onJumpTo={setTab}
+          isTabAvailable={isTabAvailable}
+          reduce={reduce}
+          heroEase={heroEase}
+        />
+      );
+    }
 
     if (currentTab.side === "security" && security && securityDraft) {
       const tp = { settings: securityDraft, update: updateSecurity, channels: security.channels, roles: security.roles };
@@ -320,105 +335,6 @@ export function ShardGuild() {
     }
     return null;
   }
-
-  // Live stats (security side only) — render if loaded.
-  const liveStats = security && (() => {
-    const days = Object.keys(security.chartData).sort();
-    const joins = days.map(d => security.chartData[d].join);
-    const leaves = days.map(d => security.chartData[d].leave);
-    const success = days.map(d => security.chartData[d].success);
-    const failed = days.map(d => security.chartData[d].failed);
-    const totalJoin = joins.reduce((s, x) => s + x, 0);
-    const totalLeave = leaves.reduce((s, x) => s + x, 0);
-    const totalSuccess = success.reduce((s, x) => s + x, 0);
-    const totalFailed = failed.reduce((s, x) => s + x, 0);
-    const verifRate = security.stats.totalMembers > 0
-      ? Math.round((security.stats.verifiedCount / security.stats.totalMembers) * 100)
-      : 0;
-    const checkRate = totalSuccess + totalFailed > 0
-      ? Math.round((totalSuccess / (totalSuccess + totalFailed)) * 100)
-      : 100;
-    const netGrowth = totalJoin - totalLeave;
-    const growthScore = Math.max(0, Math.min(100, 50 + netGrowth));
-    const healthScore = Math.round(verifRate * 0.45 + checkRate * 0.35 + growthScore * 0.2);
-    const peakJoin = Math.max(...joins, 0);
-    const peakSuccess = Math.max(...success, 0);
-    const xLabels = days.length >= 3
-      ? [days[0], days[Math.floor(days.length / 2)], days[days.length - 1]].map(d => d.slice(5))
-      : [];
-    const healthTone = healthScore >= 75 ? "text-emerald-300"
-      : healthScore >= 50 ? "text-amber-300"
-      : "text-red-300";
-
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: reduce ? 0 : 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.25, ease: heroEase }}
-        className={IS_DESKTOP
-          ? "grid grid-cols-1 lg:grid-cols-3 gap-3 mb-6"
-          : "grid grid-cols-1 lg:grid-cols-3 gap-5 mb-14"}
-      >
-        <ScreenTimeCard
-          total={security.stats.totalMembers.toLocaleString("fr-FR")}
-          totalLabel="Membres · communauté"
-          barData={joins.length ? joins : [0]}
-          timeLabels={xLabels}
-          yLabels={[`${peakJoin}`, `${Math.round(peakJoin / 2)}`, "0"]}
-          barAccentClass="bg-gradient-to-t from-emerald-500 to-emerald-400/80"
-          barMutedClass="bg-emerald-500/15"
-          stats={[
-            { icon: <UserCheck className="w-3.5 h-3.5 text-emerald-400" />, label: "Vérifiés", value: security.stats.verifiedCount.toLocaleString("fr-FR"), tone: "text-emerald-300" },
-            { icon: <Percent className="w-3.5 h-3.5 text-white/60" />, label: "Du serveur", value: `${verifRate}%`, tone: "text-white" },
-            { icon: <Users2 className="w-3.5 h-3.5 text-white/60" />, label: "Non vérifiés", value: Math.max(0, security.stats.totalMembers - security.stats.verifiedCount).toLocaleString("fr-FR"), tone: "text-white/80" },
-          ]}
-        />
-        <ScreenTimeCard
-          total={totalJoin.toLocaleString("fr-FR")}
-          totalLabel="Arrivées · 14 derniers jours"
-          barData={joins.length ? joins : [0]}
-          timeLabels={xLabels}
-          yLabels={[`${peakJoin}`, `${Math.round(peakJoin / 2)}`, "0"]}
-          barAccentClass="bg-gradient-to-t from-blue-500 to-blue-400/80"
-          barMutedClass="bg-blue-500/15"
-          stats={[
-            { icon: <TrendingUp className="w-3.5 h-3.5 text-blue-400" />, label: "Pic / jour", value: peakJoin.toLocaleString("fr-FR"), tone: "text-blue-300" },
-            { icon: <TrendingDown className="w-3.5 h-3.5 text-red-400" />, label: "Départs", value: totalLeave.toLocaleString("fr-FR"), tone: "text-red-300" },
-            {
-              icon: netGrowth >= 0
-                ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                : <TrendingDown className="w-3.5 h-3.5 text-red-400" />,
-              label: "Net 14j",
-              value: `${netGrowth >= 0 ? "+" : ""}${netGrowth.toLocaleString("fr-FR")}`,
-              tone: netGrowth >= 0 ? "text-emerald-300" : "text-red-300",
-            },
-          ]}
-        />
-        <ScreenTimeCard
-          total={`${checkRate}%`}
-          totalLabel={`Captchas OK · ${totalSuccess + totalFailed} tentatives`}
-          barData={success.length ? success : [0]}
-          timeLabels={xLabels}
-          yLabels={[`${peakSuccess}`, `${Math.round(peakSuccess / 2)}`, "0"]}
-          barAccentClass={
-            healthScore >= 75 ? "bg-gradient-to-t from-emerald-500 to-emerald-400/80"
-            : healthScore >= 50 ? "bg-gradient-to-t from-amber-500 to-amber-400/80"
-            : "bg-gradient-to-t from-red-500 to-red-400/80"
-          }
-          barMutedClass={
-            healthScore >= 75 ? "bg-emerald-500/15"
-            : healthScore >= 50 ? "bg-amber-500/15"
-            : "bg-red-500/15"
-          }
-          stats={[
-            { icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />, label: "Succès", value: totalSuccess.toLocaleString("fr-FR"), tone: "text-emerald-300" },
-            { icon: <ShieldX className="w-3.5 h-3.5 text-amber-400" />, label: "Échecs", value: totalFailed.toLocaleString("fr-FR"), tone: "text-amber-300" },
-            { icon: <Heart className={`w-3.5 h-3.5 ${healthTone.replace("300","400")}`} />, label: "Santé", value: `${healthScore}`, tone: healthTone },
-          ]}
-        />
-      </motion.div>
-    );
-  })();
 
   return (
     <AppLayout>
@@ -475,56 +391,45 @@ export function ShardGuild() {
                 : "font-extrabold tracking-tight leading-[0.95] truncate text-4xl md:text-6xl lg:text-7xl"}>
                 {heroGuild.name}
               </h1>
-              <p className={IS_DESKTOP
-                ? "text-[10.5px] text-white/30 font-mono-num mt-1"
-                : "text-[11px] text-white/30 font-mono-num mt-3"}>
-                ID&nbsp;<span className="text-white/45">{heroGuild.id}</span>
-              </p>
+              <div className={IS_DESKTOP ? "flex items-center gap-2 mt-1.5 flex-wrap" : "flex items-center gap-2 mt-3 flex-wrap"}>
+                {security?.stats?.totalMembers !== undefined && (
+                  <span className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-white/55 bg-white/[0.04] border border-white/[0.08] rounded-full px-2 py-0.5">
+                    <Users2 className="w-2.5 h-2.5" />
+                    {security.stats.totalMembers.toLocaleString("fr-FR")} membres
+                  </span>
+                )}
+                {(security?.settings?.isPremium === 1 || security?.settings?.isPremium === "1") && (
+                  <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-300 bg-amber-400/10 border border-amber-400/25 rounded-full px-2 py-0.5">
+                    Premium
+                  </span>
+                )}
+                <span className="text-[10.5px] text-white/25 font-mono-num">
+                  ID&nbsp;<span className="text-white/40">{heroGuild.id}</span>
+                </span>
+              </div>
             </motion.div>
           </div>
         </header>
 
-        {liveStats}
-
         <div className="grid md:grid-cols-[200px_1fr] gap-8 lg:gap-12">
           <aside className="md:sticky md:top-28 md:self-start">
             <nav className="space-y-5">
-              {groups.map(g => (
+              {/* "Vue d'ensemble" → traitée en standalone (pas de header de
+                  groupe), elle joue le rôle de landing par défaut. */}
+              <div className="flex md:flex-col gap-0.5 mb-1">
+                {TABS.filter(t => t.group === "Tableau de bord").map(t => (
+                  <SidebarTab key={t.key} t={t} active={t.key === tab} available={isTabAvailable(t)} onClick={() => setTab(t.key)} />
+                ))}
+              </div>
+              {groups.filter(g => g !== "Tableau de bord").map(g => (
                 <div key={g}>
                   <p className="text-[9.5px] font-bold uppercase tracking-[0.22em] text-white/30 mb-2 px-2">
                     {g}
                   </p>
                   <div className="flex md:flex-col gap-0.5 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0">
-                    {TABS.filter(t => t.group === g).map(t => {
-                      const Icon = t.icon;
-                      const active = t.key === tab;
-                      const available = isTabAvailable(t);
-                      return (
-                        <button
-                          key={t.key}
-                          type="button"
-                          onClick={() => setTab(t.key)}
-                          disabled={!available}
-                          className={`relative inline-flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[12.5px] font-medium whitespace-nowrap transition-colors duration-150 md:w-full md:justify-start ${
-                            active
-                              ? "bg-white/[0.08] text-white"
-                              : available
-                              ? "text-white/55 hover:bg-white/[0.04] hover:text-white"
-                              : "text-white/20 cursor-not-allowed"
-                          }`}
-                          title={!available ? "Données indisponibles — connecte le compte Discord correspondant" : undefined}
-                        >
-                          {active && (
-                            <span
-                              aria-hidden
-                              className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-full bg-white"
-                            />
-                          )}
-                          <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-                          {t.label}
-                        </button>
-                      );
-                    })}
+                    {TABS.filter(t => t.group === g).map(t => (
+                      <SidebarTab key={t.key} t={t} active={t.key === tab} available={isTabAvailable(t)} onClick={() => setTab(t.key)} />
+                    ))}
                   </div>
                 </div>
               ))}
@@ -545,5 +450,295 @@ export function ShardGuild() {
 
       <SaveBar dirty={dirty} saving={saving} saved={saved} error={saveError} onSave={save} onReset={reset} />
     </AppLayout>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//  SIDEBAR TAB (extraction pour réutilisation entre standalone & groupes)
+// ──────────────────────────────────────────────────────────────────────
+
+function SidebarTab({
+  t, active, available, onClick,
+}: {
+  t: typeof TABS[number];
+  active: boolean;
+  available: boolean;
+  onClick: () => void;
+}) {
+  const Icon = t.icon;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!available}
+      className={`relative inline-flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[12.5px] font-medium whitespace-nowrap transition-colors duration-150 md:w-full md:justify-start ${
+        active
+          ? "bg-white/[0.08] text-white"
+          : available
+          ? "text-white/55 hover:bg-white/[0.04] hover:text-white"
+          : "text-white/20 cursor-not-allowed"
+      }`}
+      title={!available ? "Données indisponibles — connecte le compte Discord correspondant" : undefined}
+    >
+      {active && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-full bg-white"
+        />
+      )}
+      <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+      {t.label}
+    </button>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//  OVERVIEW (vue d'ensemble — landing par défaut)
+// ──────────────────────────────────────────────────────────────────────
+
+type Reduce = boolean | null;
+type Ease = readonly [number, number, number, number];
+
+function OverviewPanel({
+  sec, com, onJumpTo, isTabAvailable, reduce, heroEase,
+}: {
+  sec: ShardGuardGuildData | null;
+  com: ShardGuildData | null;
+  onJumpTo: (key: TabKey) => void;
+  isTabAvailable: (t: typeof TABS[number]) => boolean;
+  reduce: Reduce;
+  heroEase: Ease;
+}) {
+  // Liste des groupes de modules à afficher dans le hub (on exclut
+  // "Tableau de bord" qui est l'overview lui-même).
+  const moduleGroups = Array.from(
+    new Set(TABS.filter(t => t.group !== "Tableau de bord").map(t => t.group)),
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: reduce ? 0 : 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: heroEase }}
+      className="space-y-9"
+    >
+      {/* Bloc 1 : KPI live (membres / arrivées / captcha rate) */}
+      {sec && <LiveStatsCards security={sec} reduce={reduce} heroEase={heroEase} />}
+
+      {/* Bloc 2 : grille de modules par groupe. Chaque card est cliquable
+          et porte un badge de statut (active / inactive / info). */}
+      <div>
+        <div className="flex items-baseline justify-between mb-4">
+          <p className="text-[10.5px] font-bold uppercase tracking-[0.22em] text-white/45">
+            Modules
+          </p>
+          <p className="text-[10.5px] text-white/30">
+            {TABS.filter(t => t.group !== "Tableau de bord").length} disponibles
+          </p>
+        </div>
+        <div className="space-y-7">
+          {moduleGroups.map(g => (
+            <section key={g}>
+              <h3 className="text-[12px] font-bold text-white/65 mb-2.5 px-0.5">{g}</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                {TABS.filter(t => t.group === g).map(t => (
+                  <ModuleCard
+                    key={t.key}
+                    icon={t.icon}
+                    label={t.label}
+                    status={getModuleStatus(t.key, sec?.settings ?? null, com?.settings ?? null)}
+                    available={isTabAvailable(t)}
+                    onClick={() => onJumpTo(t.key)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+type ModuleStatus = "active" | "inactive" | "info";
+
+function getModuleStatus(
+  key: TabKey,
+  sec: SGSettings | null,
+  com: ShardSettings | null,
+): ModuleStatus {
+  const truthy = (v: unknown) => v === 1 || v === "1" || v === true;
+  switch (key) {
+    case "captcha":   return sec?.verificationChannelId ? "active" : "inactive";
+    case "security":  return truthy(sec?.antiRaidEnabled) ? "active" : "inactive";
+    case "banned":    return truthy(sec?.bannedWordsEnabled) ? "active" : "inactive";
+    case "automod":   return sec && (truthy(sec.automodAntiSpam) || truthy(sec.automodAntiLinks) || truthy(sec.automodAntiRaid) || truthy(sec.automodAntiCaps)) ? "active" : "inactive";
+    case "panic":     return truthy(sec?.panicModeActive) ? "active" : "inactive";
+    case "welcome":   return com?.welcomeChannelId ? "active" : "inactive";
+    case "autorole":  return com?.autoRoleId ? "active" : "inactive";
+    case "birthdays": return com?.birthdayChannelId ? "active" : "inactive";
+    case "levels":    return truthy(com?.levelsEnabled) ? "active" : "inactive";
+    case "economy":   return truthy(com?.economyEnabled) ? "active" : "inactive";
+    case "tickets":   return truthy(com?.ticketEnabled) ? "active" : "inactive";
+    case "tempvoice": return com?.tempVoiceTrigger ? "active" : "inactive";
+    default:          return "info";
+  }
+}
+
+function ModuleCard({
+  icon: Icon, label, status, available, onClick,
+}: {
+  icon: typeof Settings;
+  label: string;
+  status: ModuleStatus;
+  available: boolean;
+  onClick: () => void;
+}) {
+  const statusLabel =
+    status === "active"   ? "Activé"     :
+    status === "inactive" ? "Désactivé"  :
+    "—";
+  const statusTone =
+    status === "active"   ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" :
+    status === "inactive" ? "bg-white/15" :
+    "bg-white/10";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!available}
+      className={`group relative text-left rounded-xl border p-3.5 transition-colors h-full ${
+        available
+          ? "bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.05] hover:border-white/[0.18]"
+          : "bg-white/[0.015] border-white/[0.04] cursor-not-allowed opacity-50"
+      }`}
+      title={!available ? "Connecte le compte Discord correspondant pour activer cette section" : undefined}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center border ${
+          available ? "bg-white/[0.04] border-white/[0.08] text-white/75" : "bg-white/[0.02] border-white/[0.04] text-white/30"
+        }`}>
+          <Icon className="w-4 h-4" />
+        </div>
+        <span
+          className={`w-1.5 h-1.5 rounded-full mt-2 ${statusTone}`}
+          aria-label={statusLabel}
+        />
+      </div>
+      <p className="text-[12.5px] font-bold leading-tight mb-1">{label}</p>
+      <div className="flex items-center justify-between">
+        <span className={`text-[10.5px] font-semibold ${
+          status === "active"   ? "text-emerald-300/85" :
+          status === "inactive" ? "text-white/35" :
+          "text-white/30"
+        }`}>
+          {statusLabel}
+        </span>
+        <ChevronRight className="w-3 h-3 text-white/25 group-hover:text-white/55 group-hover:translate-x-0.5 transition-all" />
+      </div>
+    </button>
+  );
+}
+
+// Extrait de l'ancien IIFE inline pour réutilisation dans OverviewPanel.
+function LiveStatsCards({
+  security, reduce, heroEase,
+}: {
+  security: ShardGuardGuildData;
+  reduce: Reduce;
+  heroEase: Ease;
+}) {
+  const days = Object.keys(security.chartData).sort();
+  const joins = days.map(d => security.chartData[d].join);
+  const leaves = days.map(d => security.chartData[d].leave);
+  const success = days.map(d => security.chartData[d].success);
+  const failed = days.map(d => security.chartData[d].failed);
+  const totalJoin = joins.reduce((s, x) => s + x, 0);
+  const totalLeave = leaves.reduce((s, x) => s + x, 0);
+  const totalSuccess = success.reduce((s, x) => s + x, 0);
+  const totalFailed = failed.reduce((s, x) => s + x, 0);
+  const verifRate = security.stats.totalMembers > 0
+    ? Math.round((security.stats.verifiedCount / security.stats.totalMembers) * 100)
+    : 0;
+  const checkRate = totalSuccess + totalFailed > 0
+    ? Math.round((totalSuccess / (totalSuccess + totalFailed)) * 100)
+    : 100;
+  const netGrowth = totalJoin - totalLeave;
+  const growthScore = Math.max(0, Math.min(100, 50 + netGrowth));
+  const healthScore = Math.round(verifRate * 0.45 + checkRate * 0.35 + growthScore * 0.2);
+  const peakJoin = Math.max(...joins, 0);
+  const peakSuccess = Math.max(...success, 0);
+  const xLabels = days.length >= 3
+    ? [days[0], days[Math.floor(days.length / 2)], days[days.length - 1]].map(d => d.slice(5))
+    : [];
+  const healthTone = healthScore >= 75 ? "text-emerald-300"
+    : healthScore >= 50 ? "text-amber-300"
+    : "text-red-300";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: reduce ? 0 : 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.1, ease: heroEase }}
+      className="grid grid-cols-1 lg:grid-cols-3 gap-3"
+    >
+      <ScreenTimeCard
+        total={security.stats.totalMembers.toLocaleString("fr-FR")}
+        totalLabel="Membres · communauté"
+        barData={joins.length ? joins : [0]}
+        timeLabels={xLabels}
+        yLabels={[`${peakJoin}`, `${Math.round(peakJoin / 2)}`, "0"]}
+        barAccentClass="bg-gradient-to-t from-emerald-500 to-emerald-400/80"
+        barMutedClass="bg-emerald-500/15"
+        stats={[
+          { icon: <UserCheck className="w-3.5 h-3.5 text-emerald-400" />, label: "Vérifiés", value: security.stats.verifiedCount.toLocaleString("fr-FR"), tone: "text-emerald-300" },
+          { icon: <Percent className="w-3.5 h-3.5 text-white/60" />, label: "Du serveur", value: `${verifRate}%`, tone: "text-white" },
+          { icon: <Users2 className="w-3.5 h-3.5 text-white/60" />, label: "Non vérifiés", value: Math.max(0, security.stats.totalMembers - security.stats.verifiedCount).toLocaleString("fr-FR"), tone: "text-white/80" },
+        ]}
+      />
+      <ScreenTimeCard
+        total={totalJoin.toLocaleString("fr-FR")}
+        totalLabel="Arrivées · 14 derniers jours"
+        barData={joins.length ? joins : [0]}
+        timeLabels={xLabels}
+        yLabels={[`${peakJoin}`, `${Math.round(peakJoin / 2)}`, "0"]}
+        barAccentClass="bg-gradient-to-t from-blue-500 to-blue-400/80"
+        barMutedClass="bg-blue-500/15"
+        stats={[
+          { icon: <TrendingUp className="w-3.5 h-3.5 text-blue-400" />, label: "Pic / jour", value: peakJoin.toLocaleString("fr-FR"), tone: "text-blue-300" },
+          { icon: <TrendingDown className="w-3.5 h-3.5 text-red-400" />, label: "Départs", value: totalLeave.toLocaleString("fr-FR"), tone: "text-red-300" },
+          {
+            icon: netGrowth >= 0
+              ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+              : <TrendingDown className="w-3.5 h-3.5 text-red-400" />,
+            label: "Net 14j",
+            value: `${netGrowth >= 0 ? "+" : ""}${netGrowth.toLocaleString("fr-FR")}`,
+            tone: netGrowth >= 0 ? "text-emerald-300" : "text-red-300",
+          },
+        ]}
+      />
+      <ScreenTimeCard
+        total={`${checkRate}%`}
+        totalLabel={`Captchas OK · ${totalSuccess + totalFailed} tentatives`}
+        barData={success.length ? success : [0]}
+        timeLabels={xLabels}
+        yLabels={[`${peakSuccess}`, `${Math.round(peakSuccess / 2)}`, "0"]}
+        barAccentClass={
+          healthScore >= 75 ? "bg-gradient-to-t from-emerald-500 to-emerald-400/80"
+          : healthScore >= 50 ? "bg-gradient-to-t from-amber-500 to-amber-400/80"
+          : "bg-gradient-to-t from-red-500 to-red-400/80"
+        }
+        barMutedClass={
+          healthScore >= 75 ? "bg-emerald-500/15"
+          : healthScore >= 50 ? "bg-amber-500/15"
+          : "bg-red-500/15"
+        }
+        stats={[
+          { icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />, label: "Succès", value: totalSuccess.toLocaleString("fr-FR"), tone: "text-emerald-300" },
+          { icon: <ShieldX className="w-3.5 h-3.5 text-amber-400" />, label: "Échecs", value: totalFailed.toLocaleString("fr-FR"), tone: "text-amber-300" },
+          { icon: <Heart className={`w-3.5 h-3.5 ${healthTone.replace("300","400")}`} />, label: "Santé", value: `${healthScore}`, tone: healthTone },
+        ]}
+      />
+    </motion.div>
   );
 }
