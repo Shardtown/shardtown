@@ -25,32 +25,46 @@ import {
   StreamAlertsTab,
 } from "@/components/shard/tabs";
 
-// Unified tab list — security tabs first (default landing), then community.
+// 4 groupes logiques, par mental model utilisateur (et non plus par bot
+// d'origine, puisque Shard a fusionné ShardGuard et Shard).
+//   - Mise en place  : ce qu'on règle au lancement du serveur
+//   - Modération     : sécurité, anti-abus, sanctions
+//   - Engagement     : ce que les membres font pour vivre la commu
+//   - Données        : observabilité (stats, logs, listes)
+// Le champ `side` reste critique : il dicte quelle API alimente l'onglet
+// (security = /api/shardguard/guild, community = /api/shard/guild).
 const TABS = [
-  { key: "general",   label: "Général",         icon: Settings,           group: "Sécurité",   side: "security" },
-  { key: "rules",     label: "Règlement",       icon: FileText,           group: "Sécurité",   side: "security" },
-  { key: "captcha",   label: "Captcha",         icon: Check,              group: "Sécurité",   side: "security" },
-  { key: "security",  label: "Anti-raid",       icon: Shield,             group: "Sécurité",   side: "security" },
-  { key: "warns",     label: "Avertissements",  icon: AlertTriangle,      group: "Sécurité",   side: "security" },
-  { key: "modroles",  label: "Modérateurs",     icon: Users2,             group: "Sécurité",   side: "security" },
-  { key: "banned",    label: "Mots interdits",  icon: Filter,             group: "Sécurité",   side: "security" },
-  { key: "automod",   label: "Automod",         icon: Bot,                group: "Sécurité",   side: "security" },
-  { key: "panic",     label: "Mode Panic",      icon: ShieldOff,          group: "Sécurité",   side: "security" },
-  { key: "stats",     label: "Statistiques",    icon: BarChart3,          group: "Sécurité",   side: "security" },
-  { key: "logs",      label: "Logs",            icon: ScrollText,         group: "Sécurité",   side: "security" },
-  { key: "members",   label: "Membres",         icon: Users2,             group: "Sécurité",   side: "security" },
-  { key: "welcome",   label: "Arrivée & Départ",icon: MessageSquare,      group: "Communauté", side: "community" },
-  { key: "autorole",  label: "Auto Rôle",       icon: UserPlus,           group: "Communauté", side: "community" },
-  { key: "birthdays", label: "Anniversaires",   icon: Cake,               group: "Communauté", side: "community" },
-  { key: "levels",    label: "Niveaux",         icon: Award,              group: "Communauté", side: "community" },
-  { key: "economy",   label: "Économie",        icon: Coins,              group: "Communauté", side: "community" },
-  { key: "giveaways", label: "Giveaways",       icon: Gift,               group: "Communauté", side: "community" },
-  { key: "polls",     label: "Sondages",        icon: Vote,               group: "Communauté", side: "community" },
-  { key: "tempvoice", label: "Vocal temporaire",icon: Volume2,            group: "Communauté", side: "community" },
-  { key: "embed",     label: "Embed Builder",   icon: Code2,              group: "Communauté", side: "community" },
-  { key: "reactions", label: "Réactions auto",  icon: Smile,              group: "Communauté", side: "community" },
-  { key: "tickets",   label: "Tickets",         icon: MessageCircleHeart, group: "Communauté", side: "community" },
-  { key: "streams",   label: "Alertes stream",  icon: Radio,              group: "Communauté", side: "community" },
+  // Mise en place
+  { key: "general",   label: "Général",         icon: Settings,           group: "Mise en place", side: "security" },
+  { key: "rules",     label: "Règlement",       icon: FileText,           group: "Mise en place", side: "security" },
+  { key: "welcome",   label: "Arrivée & Départ",icon: MessageSquare,      group: "Mise en place", side: "community" },
+  { key: "autorole",  label: "Auto Rôle",       icon: UserPlus,           group: "Mise en place", side: "community" },
+  { key: "birthdays", label: "Anniversaires",   icon: Cake,               group: "Mise en place", side: "community" },
+
+  // Modération
+  { key: "captcha",   label: "Captcha",         icon: Check,              group: "Modération",    side: "security" },
+  { key: "security",  label: "Anti-raid",       icon: Shield,             group: "Modération",    side: "security" },
+  { key: "warns",     label: "Avertissements",  icon: AlertTriangle,      group: "Modération",    side: "security" },
+  { key: "modroles",  label: "Modérateurs",     icon: Users2,             group: "Modération",    side: "security" },
+  { key: "banned",    label: "Mots interdits",  icon: Filter,             group: "Modération",    side: "security" },
+  { key: "automod",   label: "Automod",         icon: Bot,                group: "Modération",    side: "security" },
+  { key: "panic",     label: "Mode Panic",      icon: ShieldOff,          group: "Modération",    side: "security" },
+
+  // Engagement
+  { key: "levels",    label: "Niveaux",         icon: Award,              group: "Engagement",    side: "community" },
+  { key: "economy",   label: "Économie",        icon: Coins,              group: "Engagement",    side: "community" },
+  { key: "giveaways", label: "Giveaways",       icon: Gift,               group: "Engagement",    side: "community" },
+  { key: "polls",     label: "Sondages",        icon: Vote,               group: "Engagement",    side: "community" },
+  { key: "tempvoice", label: "Vocal temporaire",icon: Volume2,            group: "Engagement",    side: "community" },
+  { key: "tickets",   label: "Tickets",         icon: MessageCircleHeart, group: "Engagement",    side: "community" },
+  { key: "embed",     label: "Embed Builder",   icon: Code2,              group: "Engagement",    side: "community" },
+  { key: "reactions", label: "Réactions auto",  icon: Smile,              group: "Engagement",    side: "community" },
+  { key: "streams",   label: "Alertes stream",  icon: Radio,              group: "Engagement",    side: "community" },
+
+  // Données
+  { key: "stats",     label: "Statistiques",    icon: BarChart3,          group: "Données",       side: "security" },
+  { key: "logs",      label: "Logs",            icon: ScrollText,         group: "Données",       side: "security" },
+  { key: "members",   label: "Membres",         icon: Users2,             group: "Données",       side: "security" },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -472,15 +486,15 @@ export function ShardGuild() {
 
         {liveStats}
 
-        <div className="grid md:grid-cols-[230px_1fr] gap-10 lg:gap-14">
+        <div className="grid md:grid-cols-[200px_1fr] gap-8 lg:gap-12">
           <aside className="md:sticky md:top-28 md:self-start">
-            <nav className="space-y-7">
+            <nav className="space-y-5">
               {groups.map(g => (
                 <div key={g}>
-                  <p className="text-[10.5px] font-bold uppercase tracking-[0.24em] text-white/35 mb-3 px-1">
+                  <p className="text-[9.5px] font-bold uppercase tracking-[0.22em] text-white/30 mb-2 px-2">
                     {g}
                   </p>
-                  <div className="flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0">
+                  <div className="flex md:flex-col gap-0.5 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0">
                     {TABS.filter(t => t.group === g).map(t => {
                       const Icon = t.icon;
                       const active = t.key === tab;
@@ -491,15 +505,21 @@ export function ShardGuild() {
                           type="button"
                           onClick={() => setTab(t.key)}
                           disabled={!available}
-                          className={`relative inline-flex items-center gap-2.5 px-3.5 py-2 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors duration-200 ${
+                          className={`relative inline-flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-[12.5px] font-medium whitespace-nowrap transition-colors duration-150 md:w-full md:justify-start ${
                             active
-                              ? "bg-white text-black"
+                              ? "bg-white/[0.08] text-white"
                               : available
-                              ? "bg-white/[0.03] border border-white/[0.08] text-white/60 hover:bg-white/[0.07] hover:border-white/20 hover:text-white"
-                              : "bg-white/[0.02] border border-white/[0.04] text-white/20 cursor-not-allowed"
+                              ? "text-white/55 hover:bg-white/[0.04] hover:text-white"
+                              : "text-white/20 cursor-not-allowed"
                           }`}
                           title={!available ? "Données indisponibles — connecte le compte Discord correspondant" : undefined}
                         >
+                          {active && (
+                            <span
+                              aria-hidden
+                              className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-full bg-white"
+                            />
+                          )}
                           <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                           {t.label}
                         </button>
