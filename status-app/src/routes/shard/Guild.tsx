@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Check, Settings, ScrollText, Shield, AlertTriangle,
@@ -99,6 +99,37 @@ export function ShardGuild() {
       return next;
     });
   }
+
+  // Indicateur coulissant pour la sidebar — même DA que la pill du header.
+  // Position en pixels relative au <nav> ; se déplace via transition CSS
+  // à chaque hover, et retombe sur le tab actif à mouseleave.
+  const navRef = useRef<HTMLElement>(null);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicator, setIndicator] = useState<{ top: number; left: number; width: number; height: number; opacity: number }>({
+    top: 0, left: 0, width: 0, height: 0, opacity: 0,
+  });
+  const moveIndicatorTo = useCallback((key: string | null) => {
+    const navEl = navRef.current;
+    if (!navEl) return;
+    if (!key) {
+      setIndicator(prev => ({ ...prev, opacity: 0 }));
+      return;
+    }
+    const el = tabRefs.current[key];
+    if (!el) {
+      setIndicator(prev => ({ ...prev, opacity: 0 }));
+      return;
+    }
+    const navBox = navEl.getBoundingClientRect();
+    const itemBox = el.getBoundingClientRect();
+    setIndicator({
+      top: itemBox.top - navBox.top,
+      left: itemBox.left - navBox.left,
+      width: itemBox.width,
+      height: itemBox.height,
+      opacity: 1,
+    });
+  }, []);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -148,6 +179,19 @@ export function ShardGuild() {
       setOpenGroups(prev => prev.has(g) ? prev : new Set([...prev, g]));
     }
   }, [tab]);
+
+  // Recale l'indicateur sur le tab actif au moindre changement de layout :
+  // changement de tab, expand/collapse d'un groupe, resize de la fenêtre.
+  // requestAnimationFrame laisse le DOM se reflow avant la mesure.
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => moveIndicatorTo(tab));
+    return () => cancelAnimationFrame(raf);
+  }, [tab, openGroups, moveIndicatorTo]);
+  useEffect(() => {
+    function onResize() { moveIndicatorTo(tab); }
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [tab, moveIndicatorTo]);
 
   // Manual refresh trigger from descendants (e.g. "verify everyone").
   useEffect(() => {
@@ -439,12 +483,38 @@ export function ShardGuild() {
 
         <div className="grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
           <aside className="md:sticky md:top-28 md:self-start">
-            <nav className="space-y-7">
+            <nav
+              ref={navRef}
+              className="space-y-7 relative"
+              onMouseLeave={() => moveIndicatorTo(tab)}
+            >
+              {/* Indicateur coulissant — même mécanisme que la pill du
+                  Header. Positionné en absolute, suit la souris via
+                  transition CSS, retombe sur le tab actif au mouseleave. */}
+              <span
+                aria-hidden
+                className="absolute pointer-events-none rounded-lg bg-white/[0.09] border border-white/10 transition-all duration-300 ease-out"
+                style={{
+                  top: indicator.top,
+                  left: indicator.left,
+                  width: indicator.width,
+                  height: indicator.height,
+                  opacity: indicator.opacity,
+                }}
+              />
               {/* "Vue d'ensemble" → traitée en standalone (pas de header de
                   groupe), elle joue le rôle de landing par défaut. */}
               <div className="flex md:flex-col gap-1 mb-2">
                 {TABS.filter(t => t.group === "Tableau de bord").map(t => (
-                  <SidebarTab key={t.key} t={t} active={t.key === tab} available={isTabAvailable(t)} onClick={() => setTab(t.key)} />
+                  <SidebarTab
+                    key={t.key}
+                    t={t}
+                    active={t.key === tab}
+                    available={isTabAvailable(t)}
+                    onClick={() => setTab(t.key)}
+                    refCallback={el => { tabRefs.current[t.key] = el; }}
+                    onHover={() => moveIndicatorTo(t.key)}
+                  />
                 ))}
               </div>
 
@@ -493,7 +563,15 @@ export function ShardGuild() {
                     {isOpen && (
                       <div className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0">
                         {tabsInGroup.map(t => (
-                          <SidebarTab key={t.key} t={t} active={t.key === tab} available={isTabAvailable(t)} onClick={() => setTab(t.key)} />
+                          <SidebarTab
+                            key={t.key}
+                            t={t}
+                            active={t.key === tab}
+                            available={isTabAvailable(t)}
+                            onClick={() => setTab(t.key)}
+                            refCallback={el => { tabRefs.current[t.key] = el; }}
+                            onHover={() => moveIndicatorTo(t.key)}
+                          />
                         ))}
                       </div>
                     )}
@@ -525,24 +603,32 @@ export function ShardGuild() {
 // ──────────────────────────────────────────────────────────────────────
 
 function SidebarTab({
-  t, active, available, onClick,
+  t, active, available, onClick, refCallback, onHover,
 }: {
   t: typeof TABS[number];
   active: boolean;
   available: boolean;
   onClick: () => void;
+  refCallback?: (el: HTMLButtonElement | null) => void;
+  onHover?: () => void;
 }) {
   const Icon = t.icon;
+  // Pas de background ici quand actif : c'est l'indicateur coulissant du
+  // parent qui rend le surlignage. On garde juste le contraste de texte
+  // et la barre verticale d'accent à gauche.
   return (
     <button
+      ref={refCallback}
       type="button"
       onClick={onClick}
+      onMouseEnter={onHover}
+      onFocus={onHover}
       disabled={!available}
-      className={`relative inline-flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium whitespace-nowrap transition-colors duration-150 md:w-full md:justify-start ${
+      className={`relative z-10 inline-flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium whitespace-nowrap transition-colors duration-150 md:w-full md:justify-start ${
         active
-          ? "bg-white/[0.09] text-white"
+          ? "text-white"
           : available
-          ? "text-white/60 hover:bg-white/[0.05] hover:text-white"
+          ? "text-white/60 hover:text-white"
           : "text-white/25 cursor-not-allowed"
       }`}
       title={!available ? "Données indisponibles — connecte le compte Discord correspondant" : undefined}
