@@ -112,7 +112,6 @@
     font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     font-feature-settings: "cv11", "ss01", "ss03";
     color: var(--ds-text);
-    background: var(--ds-bg);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
