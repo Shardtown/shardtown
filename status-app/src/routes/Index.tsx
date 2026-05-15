@@ -163,12 +163,24 @@ export function Index() {
       {/* Espace tampon entre la grille des métiers et la section Télécharger */}
       <div className="h-32 md:h-48" aria-hidden />
 
-      {/* Download — app desktop. Layout 2 colonnes : cards à gauche,
-          heading aligné à droite. Sur mobile : heading au-dessus, cards
-          dessous (col-reverse pour garder l'ordre logique). */}
+      {/* Download — app desktop */}
       <section id="download" className="container-wide pt-32 pb-32 scroll-mt-32 overflow-x-clip">
-        <div className="grid lg:grid-cols-[1.4fr_1fr] gap-10 lg:gap-16 items-center">
-          <RevealStagger className="grid sm:grid-cols-2 gap-6 md:gap-8 order-2 lg:order-1" staggerChildren={0.1} delayChildren={0.15}>
+        <Reveal direction="left" distance={80} className="max-w-3xl mb-16 text-left">
+          <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
+            App desktop
+          </p>
+          <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05] mb-6">
+            Shardtown,
+            <br />
+            sur ton bureau.
+          </h2>
+          <p className="text-lg text-white/50 leading-relaxed">
+            Gère tes serveurs Discord depuis une app native, avec mises à jour
+            automatiques signées Apple et statut temps réel.
+          </p>
+        </Reveal>
+
+        <RevealStagger className="grid md:grid-cols-2 gap-6 md:gap-8" staggerChildren={0.1} delayChildren={0.15}>
           {/* macOS — disponible */}
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
@@ -211,23 +223,6 @@ export function Index() {
             </HolographicCard>
           </RevealItem>
         </RevealStagger>
-
-          {/* Heading aligné à droite (sous les cards en mobile via order). */}
-          <Reveal direction="right" distance={80} className="order-1 lg:order-2 lg:text-right">
-            <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
-              App desktop
-            </p>
-            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-6">
-              Shardtown,
-              <br />
-              sur ton bureau.
-            </h2>
-            <p className="text-lg text-white/50 leading-relaxed lg:ml-auto lg:max-w-md">
-              Gère tes serveurs Discord depuis une app native, avec mises à jour
-              automatiques signées Apple et statut temps réel.
-            </p>
-          </Reveal>
-        </div>
       </section>
 
       {/* Espace tampon entre la section Télécharger et le CTA Parlons-en */}
