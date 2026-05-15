@@ -44,10 +44,9 @@ export function DesktopBotServer() {
     // (ex-Shard) reports it. Same for clientId (prefer the Shard one used
     // by the active bot identity).
     try {
-      const [sec, com, secSrv, comSrv] = await Promise.all([
+      const [sec, com, comSrv] = await Promise.all([
         apiGet<GuildsResponse>("/api/account/guilds?bot=shardguard").catch(() => null),
         apiGet<GuildsResponse>("/api/account/guilds?bot=shard").catch(() => null),
-        apiGet<{ clientId?: string }>("/api/shardguard/server").catch(() => ({ clientId: "" })),
         apiGet<{ clientId?: string }>("/api/shard/server").catch(() => ({ clientId: "" })),
       ]);
 
