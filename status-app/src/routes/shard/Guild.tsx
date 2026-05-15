@@ -3,7 +3,7 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, MessageSquare, UserPlus, Cake, Award, Coins,
   Gift, Vote, Volume2, Code2, Smile, MessageCircleHeart,
-  Layers, Heart,
+  Layers, Heart, Radio,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -15,6 +15,7 @@ import { SaveBar } from "@/components/shardguard/SaveBar";
 import {
   WelcomeTab, AutoRoleTab, BirthdaysTab, LevelsTab, EconomyTab,
   GiveawaysTab, PollsTab, TempVoiceTab, EmbedBuilderTab, ReactionsTab, TicketsTab,
+  StreamAlertsTab,
 } from "@/components/shard/tabs";
 
 const TABS = [
@@ -29,6 +30,7 @@ const TABS = [
   { key: "embed",     label: "Embed Builder",        icon: Code2,              group: "Outils" },
   { key: "reactions", label: "Réactions auto",       icon: Smile,              group: "Outils" },
   { key: "tickets",   label: "Tickets",              icon: MessageCircleHeart, group: "Outils" },
+  { key: "streams",   label: "Alertes stream",       icon: Radio,              group: "Outils" },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -365,6 +367,7 @@ export function ShardGuild() {
             {tab === "embed" && <EmbedBuilderTab {...tabProps} />}
             {tab === "reactions" && <ReactionsTab {...tabProps} />}
             {tab === "tickets" && <TicketsTab {...tabProps} />}
+            {tab === "streams" && <StreamAlertsTab {...tabProps} />}
           </div>
         </div>
       </section>

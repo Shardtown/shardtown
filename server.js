@@ -656,6 +656,26 @@ async function connectDB() {
                     PRIMARY KEY (guildId, inviteCode)
                 )
             `);
+            // Stream alerts (Twitch + YouTube). `lastStreamId` =
+            // identifiant unique du dernier live notifié pour ne pas
+            // re-poster à chaque tick tant que le live est en cours.
+            // Twitch : stream id. YouTube : videoId du live.
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_streamers (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    guildId VARCHAR(255) NOT NULL,
+                    platform ENUM('twitch', 'youtube') NOT NULL,
+                    handle VARCHAR(255) NOT NULL,
+                    discordChannelId VARCHAR(255) NOT NULL,
+                    mentionRoleId VARCHAR(255) DEFAULT NULL,
+                    customMessage TEXT DEFAULT NULL,
+                    lastStreamId VARCHAR(255) DEFAULT NULL,
+                    lastCheckedAt DATETIME DEFAULT NULL,
+                    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE KEY uniq_streamer (guildId, platform, handle),
+                    INDEX idx_platform (platform)
+                )
+            `);
             await db.execute(`
                 CREATE TABLE IF NOT EXISTS blocked_guilds (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -4430,13 +4450,8 @@ app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
-    const { channelId, question, choices, durationHours, anonymous } = req.body;
+    const { channelId, question, choices, durationHours } = req.body;
     if (!channelId || !question || !Array.isArray(choices) || choices.length < 2) return res.status(400).json({ success: false, error: 'Données manquantes' });
-    // Sondage anonyme = feature Premium ([Premium.tsx:60]).
-    const wantsAnonymous = !!anonymous;
-    if (wantsAnonymous && !(await getShardPremium(guildID))) {
-        return res.status(403).json(premiumRequiredResponse('sondages anonymes'));
-    }
     // Discord native polls only accept a fixed set of durations (1h, 4h, 8h,
     // 24h, 72h, 168h = 1 sem., 336h = 2 sem.). We clamp to the closest valid
     // option, with 24h as the default.
@@ -4461,7 +4476,7 @@ app.post('/shard/guild/:guildID/poll', checkAuthShard, async (req, res) => {
         const endsAtDate = new Date(Date.now() + hours * 3600 * 1000);
         const [result] = await db.execute(
             `INSERT INTO shard_polls (guildId, channelId, messageId, question, choices, endsAt, anonymous) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [guildID, channelId, messageId, question, JSON.stringify(cleanChoices), endsAtDate, wantsAnonymous ? 1 : 0]
+            [guildID, channelId, messageId, question, JSON.stringify(cleanChoices), endsAtDate, 0]
         );
         res.json({ success: true, id: result.insertId });
     } catch (err) {
@@ -4614,6 +4629,79 @@ app.delete('/shard/guild/:guildID/scheduled/:id', checkAuthShard, async (req, re
         await db.execute(`DELETE FROM shard_scheduled WHERE id = ? AND guildId = ?`, [id, guildID]);
         res.json({ success: true });
     } catch (err) { res.status(500).json({ success: false, error: 'Erreur serveur' }); }
+});
+
+/* ─── Stream alerts (Twitch + YouTube) ──────────────────────────────────
+ * CRUD pour gérer les streamers à surveiller par guilde. Le worker en
+ * fin de fichier poll Twitch + YouTube et envoie un message Discord
+ * quand un streamer passe en live (transition offline → live).
+ * Toute l'écriture est gated Premium ([Premium.tsx] "Alertes Twitch/YouTube").
+ */
+app.get('/shard/guild/:guildID/streamers', checkAuthShard, async (req, res) => {
+    const guildID = req.params.guildID;
+    const shardUser = req.session.shardUser;
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
+    if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, platform, handle, discordChannelId, mentionRoleId, customMessage, lastStreamId, lastCheckedAt
+             FROM shard_streamers WHERE guildId = ? ORDER BY platform, handle`,
+            [guildID],
+        );
+        res.json({ success: true, streamers: rows, isPremium: await getShardPremium(guildID) });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+app.post('/shard/guild/:guildID/streamer', checkAuthShard, async (req, res) => {
+    const guildID = req.params.guildID;
+    const shardUser = req.session.shardUser;
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
+    if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
+    if (!(await getShardPremium(guildID))) {
+        return res.status(403).json(premiumRequiredResponse('alertes Twitch/YouTube'));
+    }
+    const { platform, handle, discordChannelId, mentionRoleId = null, customMessage = null } = req.body;
+    if (platform !== 'twitch' && platform !== 'youtube') return res.status(400).json({ success: false, error: 'platform invalide' });
+    const cleanHandle = String(handle || '').trim();
+    // Twitch logins : 4-25 chars, alphanum + underscore. YouTube : channelId
+    // "UC..." (24 chars) ou handle "@..." (≤30 chars).
+    if (platform === 'twitch' && !/^[A-Za-z0-9_]{4,25}$/.test(cleanHandle)) {
+        return res.status(400).json({ success: false, error: 'Pseudo Twitch invalide (4-25 caractères alphanum + underscore).' });
+    }
+    if (platform === 'youtube' && !/^(UC[A-Za-z0-9_-]{22}|@[A-Za-z0-9._-]{3,30})$/.test(cleanHandle)) {
+        return res.status(400).json({ success: false, error: 'YouTube : channelId ("UC...") ou handle ("@nom") attendu.' });
+    }
+    if (!discordChannelId || !/^\d{17,20}$/.test(String(discordChannelId))) {
+        return res.status(400).json({ success: false, error: 'Salon Discord invalide' });
+    }
+    try {
+        const [r] = await db.execute(
+            `INSERT INTO shard_streamers (guildId, platform, handle, discordChannelId, mentionRoleId, customMessage)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [guildID, platform, cleanHandle, discordChannelId, mentionRoleId || null, customMessage || null],
+        );
+        res.json({ success: true, id: r.insertId });
+    } catch (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ success: false, error: 'Ce streamer est déjà suivi sur ce serveur.' });
+        }
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+app.delete('/shard/guild/:guildID/streamer/:id', checkAuthShard, async (req, res) => {
+    const { guildID, id } = req.params;
+    const shardUser = req.session.shardUser;
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
+    if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
+    try {
+        await db.execute('DELETE FROM shard_streamers WHERE id = ? AND guildId = ?', [id, guildID]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
 });
 
 app.post('/guild/:guildID/backup', checkAuth, async (req, res) => {
@@ -6677,6 +6765,220 @@ async function collectStats() {
 setInterval(collectStats, 60 * 60 * 1000).unref?.();
 // Et au démarrage après un court délai pour laisser la DB se connecter
 setTimeout(collectStats, 5000).unref?.();
+
+/* ─── Worker stream alerts (Twitch + YouTube) ───────────────────────────
+ * Boucle toutes les 90s :
+ *   1. Twitch : récupère un app token (mis en cache), bat tous les
+ *      streamers Twitch en un seul appel /helix/streams (jusqu'à 100
+ *      logins par requête).
+ *   2. YouTube : interroge un par un /videos?part=snippet,liveStreamingDetails
+ *      via la search API (coûteuse en quota — voir env YOUTUBE_API_KEY).
+ *   3. Pour chaque streamer, compare le lastStreamId stocké en DB. Si
+ *      transition offline→live (ou changement de stream), poste un embed
+ *      Discord et met à jour lastStreamId. Si offline alors qu'on avait
+ *      un id stocké, on remet à NULL (prêt pour la prochaine annonce).
+ * Le worker se désactive proprement si les env vars sont absentes.
+ */
+const STREAM_POLL_INTERVAL_MS = 90 * 1000;
+
+let twitchAppToken = null;
+let twitchAppTokenExpiresAt = 0;
+
+async function getTwitchAppToken() {
+    if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_CLIENT_SECRET) return null;
+    if (twitchAppToken && Date.now() < twitchAppTokenExpiresAt - 60_000) return twitchAppToken;
+    try {
+        const r = await axios.post('https://id.twitch.tv/oauth2/token', null, {
+            params: {
+                client_id: process.env.TWITCH_CLIENT_ID,
+                client_secret: process.env.TWITCH_CLIENT_SECRET,
+                grant_type: 'client_credentials',
+            },
+            timeout: 8000,
+        });
+        twitchAppToken = r.data.access_token;
+        twitchAppTokenExpiresAt = Date.now() + (r.data.expires_in || 3600) * 1000;
+        return twitchAppToken;
+    } catch (err) {
+        console.warn('[stream-alerts] Twitch token failed:', err.response?.data || err.message);
+        return null;
+    }
+}
+
+async function postStreamAlert(streamer, embed, mentionLine) {
+    const content = [mentionLine, streamer.customMessage].filter(Boolean).join('\n') || undefined;
+    try {
+        await axios.post(
+            `https://discord.com/api/v10/channels/${streamer.discordChannelId}/messages`,
+            { content, embeds: [embed], allowed_mentions: { parse: ['roles', 'users'], replied_user: false } },
+            { headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' }, timeout: 8000 },
+        );
+    } catch (err) {
+        console.warn(`[stream-alerts] post message (guild ${streamer.guildId}):`, err.response?.data?.message || err.message);
+    }
+}
+
+async function pollTwitch(streamers) {
+    if (streamers.length === 0) return;
+    const token = await getTwitchAppToken();
+    if (!token) return;
+    // /helix/streams accepte jusqu'à 100 user_login par requête.
+    const chunks = [];
+    for (let i = 0; i < streamers.length; i += 100) chunks.push(streamers.slice(i, i + 100));
+    for (const chunk of chunks) {
+        const params = new URLSearchParams();
+        for (const s of chunk) params.append('user_login', s.handle.toLowerCase());
+        try {
+            const r = await axios.get(`https://api.twitch.tv/helix/streams?${params}`, {
+                headers: { 'Client-Id': process.env.TWITCH_CLIENT_ID, Authorization: `Bearer ${token}` },
+                timeout: 8000,
+            });
+            const liveByLogin = new Map();
+            for (const live of r.data?.data || []) liveByLogin.set(live.user_login.toLowerCase(), live);
+            for (const s of chunk) {
+                const live = liveByLogin.get(s.handle.toLowerCase());
+                if (live) {
+                    if (s.lastStreamId === live.id) continue; // déjà notifié
+                    const thumb = live.thumbnail_url?.replace('{width}', '640').replace('{height}', '360');
+                    const embed = {
+                        color: 0x9146ff,
+                        author: { name: `${live.user_name} est en live sur Twitch !`, url: `https://twitch.tv/${live.user_login}` },
+                        title: live.title || 'Stream en cours',
+                        url: `https://twitch.tv/${live.user_login}`,
+                        description: live.game_name ? `🎮 **${live.game_name}**` : undefined,
+                        fields: [{ name: 'Viewers', value: String(live.viewer_count ?? 0), inline: true }],
+                        image: thumb ? { url: `${thumb}?t=${Date.now()}` } : undefined,
+                        timestamp: live.started_at || new Date().toISOString(),
+                    };
+                    const mention = s.mentionRoleId ? `<@&${s.mentionRoleId}>` : '';
+                    await postStreamAlert(s, embed, mention);
+                    await db.execute(
+                        'UPDATE shard_streamers SET lastStreamId = ?, lastCheckedAt = NOW() WHERE id = ?',
+                        [live.id, s.id],
+                    );
+                } else if (s.lastStreamId) {
+                    // Plus en live — reset pour qu'on re-notifie au prochain live.
+                    await db.execute(
+                        'UPDATE shard_streamers SET lastStreamId = NULL, lastCheckedAt = NOW() WHERE id = ?',
+                        [s.id],
+                    );
+                } else {
+                    await db.execute('UPDATE shard_streamers SET lastCheckedAt = NOW() WHERE id = ?', [s.id]);
+                }
+            }
+        } catch (err) {
+            console.warn('[stream-alerts] Twitch poll failed:', err.response?.data || err.message);
+        }
+    }
+}
+
+async function resolveYoutubeChannelId(handleOrId) {
+    // Handle direct si déjà un channelId.
+    if (/^UC[A-Za-z0-9_-]{22}$/.test(handleOrId)) return handleOrId;
+    // Sinon résolution via /channels?forHandle=@xxx (1 unité de quota).
+    if (!process.env.YOUTUBE_API_KEY) return null;
+    try {
+        const r = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
+            params: { part: 'id', forHandle: handleOrId, key: process.env.YOUTUBE_API_KEY },
+            timeout: 8000,
+        });
+        return r.data?.items?.[0]?.id || null;
+    } catch (err) {
+        console.warn('[stream-alerts] YT handle resolve failed:', err.response?.data?.error?.message || err.message);
+        return null;
+    }
+}
+
+async function pollYoutube(streamers) {
+    if (streamers.length === 0 || !process.env.YOUTUBE_API_KEY) return;
+    // YouTube quota : search.list = 100 unités/appel, daily quota = 10k par
+    // défaut. On poll donc séquentiellement et on rate-limite implicitement
+    // via STREAM_POLL_INTERVAL_MS (90s) — soit ~40 streamers/jour si plein
+    // régime. Au-delà tu dois demander un quota augmenté à Google ou
+    // espacer (passer à 300s).
+    for (const s of streamers) {
+        const channelId = await resolveYoutubeChannelId(s.handle);
+        if (!channelId) {
+            await db.execute('UPDATE shard_streamers SET lastCheckedAt = NOW() WHERE id = ?', [s.id]);
+            continue;
+        }
+        try {
+            const r = await axios.get('https://www.googleapis.com/youtube/v3/search', {
+                params: {
+                    part: 'snippet',
+                    channelId,
+                    eventType: 'live',
+                    type: 'video',
+                    maxResults: 1,
+                    key: process.env.YOUTUBE_API_KEY,
+                },
+                timeout: 8000,
+            });
+            const item = r.data?.items?.[0];
+            if (item?.id?.videoId) {
+                const videoId = item.id.videoId;
+                if (s.lastStreamId === videoId) {
+                    await db.execute('UPDATE shard_streamers SET lastCheckedAt = NOW() WHERE id = ?', [s.id]);
+                    continue;
+                }
+                const snippet = item.snippet || {};
+                const embed = {
+                    color: 0xff0000,
+                    author: { name: `${snippet.channelTitle || s.handle} est en live sur YouTube !`, url: `https://www.youtube.com/watch?v=${videoId}` },
+                    title: snippet.title || 'Stream en cours',
+                    url: `https://www.youtube.com/watch?v=${videoId}`,
+                    description: snippet.description ? String(snippet.description).slice(0, 300) : undefined,
+                    image: snippet.thumbnails?.high?.url ? { url: snippet.thumbnails.high.url } : undefined,
+                    timestamp: snippet.publishedAt || new Date().toISOString(),
+                };
+                const mention = s.mentionRoleId ? `<@&${s.mentionRoleId}>` : '';
+                await postStreamAlert(s, embed, mention);
+                await db.execute(
+                    'UPDATE shard_streamers SET lastStreamId = ?, lastCheckedAt = NOW() WHERE id = ?',
+                    [videoId, s.id],
+                );
+            } else if (s.lastStreamId) {
+                await db.execute(
+                    'UPDATE shard_streamers SET lastStreamId = NULL, lastCheckedAt = NOW() WHERE id = ?',
+                    [s.id],
+                );
+            } else {
+                await db.execute('UPDATE shard_streamers SET lastCheckedAt = NOW() WHERE id = ?', [s.id]);
+            }
+        } catch (err) {
+            // 403 quotaExceeded → on log et on attend le reset Google.
+            console.warn('[stream-alerts] YT poll failed:', err.response?.data?.error?.message || err.message);
+        }
+    }
+}
+
+async function pollStreamAlerts() {
+    try {
+        // Ne charger que les serveurs Premium — c'est la garantie côté
+        // worker en plus du gate sur le POST. Si quelqu'un avait un
+        // streamer en DB puis a perdu Premium (annulation Stripe), on
+        // arrête immédiatement les notifications.
+        const [rows] = await db.execute(`
+            SELECT s.* FROM shard_streamers s
+            JOIN shard_settings ss ON ss.guildId = s.guildId
+            WHERE ss.isPremium = 1
+        `);
+        const twitch = rows.filter(s => s.platform === 'twitch');
+        const youtube = rows.filter(s => s.platform === 'youtube');
+        await pollTwitch(twitch);
+        await pollYoutube(youtube);
+    } catch (err) {
+        console.error('[stream-alerts] tick failed:', err.message);
+    }
+}
+
+if (process.env.TWITCH_CLIENT_ID || process.env.YOUTUBE_API_KEY) {
+    console.log('[stream-alerts] worker actif (interval 90s)');
+    setInterval(pollStreamAlerts, STREAM_POLL_INTERVAL_MS).unref?.();
+    setTimeout(pollStreamAlerts, 10_000).unref?.();
+} else {
+    console.log('[stream-alerts] worker désactivé (TWITCH_CLIENT_ID / YOUTUBE_API_KEY absents du .env)');
+}
 
 // SPA catch-all — must be last. Anything that didn't match an Express route
 // (and isn't an API/webhook/OAuth path) gets the React build.

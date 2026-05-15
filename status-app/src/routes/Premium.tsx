@@ -61,9 +61,7 @@ const COMPARISON: { title: string; rows: { label: string; free: string; premium:
       { label: "Messages programmés",         free: "—",      premium: "✓" },
       { label: "Panel de tickets",            free: "—",      premium: "✓" },
       { label: "Parrainage",                  free: "—",      premium: "✓" },
-      { label: "Sondages anonymes",           free: "—",      premium: "Bientôt" },
-      { label: "Alertes Twitch / YouTube",    free: "—",      premium: "Bientôt" },
-      { label: "Stats d'activité",            free: "—",      premium: "Bientôt" },
+      { label: "Alertes Twitch / YouTube",    free: "—",      premium: "✓" },
     ],
   },
 ];

@@ -956,3 +956,160 @@ function TicketsTranscripts({ guildId, settings, update }: { guildId: string; se
     </div>
   );
 }
+
+/* ========== ALERTES STREAM (Twitch + YouTube) ========== */
+interface StreamerRow {
+  id: number;
+  platform: "twitch" | "youtube";
+  handle: string;
+  discordChannelId: string;
+  mentionRoleId: string | null;
+  customMessage: string | null;
+  lastStreamId: string | null;
+  lastCheckedAt: string | null;
+}
+
+export function StreamAlertsTab({ guildId, channels, roles }: TabBase) {
+  const [list, setList] = useState<StreamerRow[] | null>(null);
+  const [isPremium, setIsPremium] = useState<boolean | null>(null);
+  const [form, setForm] = useState({
+    platform: "twitch" as "twitch" | "youtube",
+    handle: "",
+    discordChannelId: "",
+    mentionRoleId: "",
+    customMessage: "",
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function refresh() {
+    try {
+      const r = await apiGet<{ success: boolean; streamers: StreamerRow[]; isPremium: boolean }>(
+        `/shard/guild/${guildId}/streamers`,
+      );
+      setList(r.streamers || []);
+      setIsPremium(!!r.isPremium);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Erreur réseau");
+    }
+  }
+  useEffect(() => { refresh(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [guildId]);
+
+  async function add() {
+    setErr(null);
+    setBusy(true);
+    const r = await postJson(`/shard/guild/${guildId}/streamer`, {
+      platform: form.platform,
+      handle: form.handle.trim(),
+      discordChannelId: form.discordChannelId,
+      mentionRoleId: form.mentionRoleId || null,
+      customMessage: form.customMessage.trim() || null,
+    });
+    setBusy(false);
+    if (r.success) {
+      setForm(f => ({ ...f, handle: "", customMessage: "" }));
+      refresh();
+    } else {
+      setErr(r.error || "Erreur");
+    }
+  }
+
+  async function remove(id: number) {
+    const r = await delJson(`/shard/guild/${guildId}/streamer/${id}`);
+    if (r.success) refresh();
+    else setErr(r.error || "Erreur");
+  }
+
+  return (
+    <div className="space-y-4">
+      {isPremium === false && (
+        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-4 text-[13px] text-amber-200">
+          Les alertes Twitch / YouTube sont une feature <strong>Premium</strong>. Tu peux configurer
+          la liste ici, mais elle restera inactive tant que le serveur n'est pas Premium.
+        </div>
+      )}
+
+      <SectionCard
+        title="Ajouter un streamer"
+        description="Twitch : pseudo (sans @). YouTube : channelId 'UC…' ou handle '@nom'. Vérification toutes les ~90 secondes."
+      >
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Plateforme">
+            <Select
+              options={[
+                { value: "twitch", label: "Twitch" },
+                { value: "youtube", label: "YouTube" },
+              ]}
+              value={form.platform}
+              onChange={v => setForm(f => ({ ...f, platform: v as "twitch" | "youtube" }))}
+            />
+          </Field>
+          <Field label={form.platform === "twitch" ? "Pseudo Twitch" : "channelId ou @handle YouTube"}>
+            <TextInput
+              value={form.handle}
+              onChange={e => setForm(f => ({ ...f, handle: e.target.value }))}
+              placeholder={form.platform === "twitch" ? "exemple_streamer" : "UCxxxxxx ou @exemple"}
+            />
+          </Field>
+          <Field label="Salon où poster l'annonce">
+            <Select options={channelOpts(channels)} value={form.discordChannelId} onChange={v => setForm(f => ({ ...f, discordChannelId: v }))} />
+          </Field>
+          <Field label="Rôle à mentionner (optionnel)">
+            <Select options={roleOpts(roles)} value={form.mentionRoleId} onChange={v => setForm(f => ({ ...f, mentionRoleId: v }))} />
+          </Field>
+        </div>
+        <Field label="Message personnalisé (optionnel)" hint="Affiché au-dessus de l'embed. Laisse vide pour ne mettre que la mention.">
+          <TextArea
+            value={form.customMessage}
+            onChange={e => setForm(f => ({ ...f, customMessage: e.target.value }))}
+            placeholder="🔴 On passe en live, viens dire coucou !"
+          />
+        </Field>
+        {err && <p className="text-[12px] text-red-300">{err}</p>}
+        <button
+          type="button"
+          onClick={add}
+          disabled={busy || !form.handle.trim() || !form.discordChannelId}
+          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50"
+        >
+          {busy ? "Ajout…" : "Suivre ce streamer"}
+        </button>
+      </SectionCard>
+
+      <SectionCard title="Streamers suivis" description={list === null ? "Chargement…" : `${list.length} streamer(s) configuré(s).`}>
+        {list && list.length === 0 && (
+          <p className="text-[12px] text-white/40 italic">Aucun streamer pour l'instant. Ajoutes-en un avec le formulaire ci-dessus.</p>
+        )}
+        {list && list.length > 0 && (
+          <div className="space-y-2">
+            {list.map(s => {
+              const channel = channels.find(c => c.id === s.discordChannelId);
+              const role = s.mentionRoleId ? roles.find(r => r.id === s.mentionRoleId) : null;
+              return (
+                <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-full ${s.platform === "twitch" ? "bg-purple-500/15 text-purple-300 border border-purple-500/25" : "bg-red-500/15 text-red-300 border border-red-500/25"}`}>
+                    {s.platform}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate">{s.handle}</p>
+                    <p className="text-[11px] text-white/40 truncate">
+                      Poste dans #{channel?.name || s.discordChannelId}{role ? ` · mention @${role.name}` : ""}
+                      {s.lastStreamId ? " · actuellement en live" : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => remove(s.id)}
+                    className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/15 text-xs font-bold"
+                  >
+                    Retirer
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  );
+}
