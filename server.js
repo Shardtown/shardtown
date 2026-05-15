@@ -3809,7 +3809,15 @@ app.get('/api/shard/guild/:guildID', checkAuthShard, async (req, res) => {
         settings.autoReactions = settings.autoReactions.filter(r => r && r.text);
         settings.levelRewards = safeParse(settings.levelRewards, []) || [];
         if (!Array.isArray(settings.levelRewards)) settings.levelRewards = [];
-        const defaultThresholds = [100, 250, 500, 1000, 2000, 3500, 5500, 8000, 11500, 15000];
+        // Défaut adapté au tier : non-premium = 3 paliers (la limite gratuite),
+        // premium = 10 paliers. Avant, on retournait toujours 10 — un user
+        // gratuit qui sauvegardait n'importe quel autre module (anniversaires,
+        // tickets, etc.) envoyait ces 10 paliers par défaut au save endpoint,
+        // qui rejetait avec "Limite atteinte : 3 paliers max".
+        const isPremiumForThresholds = await getShardPremium(guildID);
+        const defaultThresholds = isPremiumForThresholds
+            ? [100, 250, 500, 1000, 2000, 3500, 5500, 8000, 11500, 15000]
+            : [100, 250, 500];
         settings.levelThresholds = safeParse(settings.levelThresholds, defaultThresholds);
         if (!Array.isArray(settings.levelThresholds) || !settings.levelThresholds.length) settings.levelThresholds = defaultThresholds;
 
