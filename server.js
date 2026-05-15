@@ -3752,7 +3752,9 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
         ticketLogCloseTitle = '', ticketLogCloseColor = '#ef4444',
         birthdayChannelId = '', birthdayMessage = '', birthdayRoleId = '',
         economyEnabled, economyCurrencyName = 'coins', economyDailyMin = 50, economyDailyMax = 200,
-        isPremiumS = '0',
+        // NB : on ignore isPremiumS du body (cf. self-grant) — la vraie
+        // valeur vient de la DB existante, écrite uniquement par le
+        // webhook Stripe ou le panel admin.
         referralEnabled = '0',
         referralReward = 100,
         xpMultRoleId = [],
@@ -3765,7 +3767,10 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
     const validStyles = [1, 2, 3, 4];
     const panelBtnStyle = validStyles.includes(Number(ticketPanelButtonStyle)) ? Number(ticketPanelButtonStyle) : 1;
     const closeBtnStyle = validStyles.includes(Number(ticketCloseButtonStyle)) ? Number(ticketCloseButtonStyle) : 4;
-    const isPremiumSVal = parseInt(isPremiumS) || 0;
+    // Préserve la valeur DB existante — un client custom ne peut plus
+    // se passer Premium en réécrivant la config.
+    const [existingShard] = await db.execute('SELECT isPremium FROM shard_settings WHERE guildId = ?', [guildID]);
+    const isPremiumSVal = existingShard[0]?.isPremium ? 1 : 0;
     const referralEnabledVal = parseInt(referralEnabled) || 0;
     const roleIds = Array.isArray(xpMultRoleId) ? xpMultRoleId : [xpMultRoleId].filter(Boolean);
     const multVals = Array.isArray(xpMultValue) ? xpMultValue : [xpMultValue].filter(Boolean);
