@@ -2445,7 +2445,20 @@ a.btn{display:inline-block;padding:12px 24px;border-radius:999px;background:#fff
 <script>setTimeout(function(){location.href=${JSON.stringify(deepLink)};}, 400);</script>`);
 }
 
+// L'app OAuth historique (CLIENT_ID) s'appelle "ShardGuard" côté Discord :
+// le user voyait l'écran de consentement "ShardGuard wants to access...".
+// Le bot étant fusionné sous l'identité "Shard", on redirige systématiquement
+// vers l'OAuth de l'app Shard. Le callback /api/account/shard/callback écrit
+// désormais aussi les colonnes discord_* pour que l'ancien front (qui
+// vérifie account.discord_id) continue de fonctionner.
 app.get('/api/account/discord/link', requireAccount, (req, res) => {
+    res.redirect('/api/account/shard/link');
+});
+
+// Endpoint legacy conservé pour compat (anciens deep links desktop, etc.).
+// On garde le path d'origine accessible via /api/account/discord/link.legacy
+// si jamais on a besoin du flux séparé un jour ; sinon mort.
+app.get('/api/account/discord/link.legacy', requireAccount, (req, res) => {
     if (!process.env.CLIENT_ID || !process.env.CLIENT_SECRET) {
         return res.status(503).send('Discord OAuth non configuré');
     }
@@ -2599,12 +2612,18 @@ app.get('/api/account/shard/callback', async (req, res) => {
         let guilds = [];
         try { guilds = await fetchDiscordGuildsFor(access_token); } catch { /* will retry from /account */ }
 
+        // Le bot étant fusionné, on bloque si l'identité Discord est déjà
+        // liée à un autre compte — peu importe la colonne (shard_id OU
+        // discord_id), c'est le même user.id Discord dans les deux.
         const [otherRows] = await db.execute(
-            'SELECT id FROM accounts WHERE shard_id = ? AND id <> ? LIMIT 1',
-            [me.id, req.session.account.id],
+            'SELECT id FROM accounts WHERE (shard_id = ? OR discord_id = ?) AND id <> ? LIMIT 1',
+            [me.id, me.id, req.session.account.id],
         );
         if (otherRows.length) return fail('already_linked');
 
+        // On hydrate à la fois shard_* ET discord_* depuis la même OAuth.
+        // Comme ça l'ancien front qui regarde account.discord_id continue de
+        // fonctionner sans qu'on doive faire la cross-synth à chaque requête.
         await db.execute(
             `UPDATE accounts SET
                 shard_id = ?,
@@ -2615,9 +2634,26 @@ app.get('/api/account/shard/callback', async (req, res) => {
                 shard_refresh_token = ?,
                 shard_token_expires_at = DATE_ADD(NOW(), INTERVAL ? SECOND),
                 shard_guilds_json = ?,
-                shard_guilds_fetched_at = NOW()
+                shard_guilds_fetched_at = NOW(),
+                discord_id = COALESCE(discord_id, ?),
+                discord_username = COALESCE(discord_username, ?),
+                discord_avatar = COALESCE(discord_avatar, ?),
+                discord_linked_at = COALESCE(discord_linked_at, NOW()),
+                discord_access_token = COALESCE(discord_access_token, ?),
+                discord_refresh_token = COALESCE(discord_refresh_token, ?),
+                discord_token_expires_at = COALESCE(discord_token_expires_at, DATE_ADD(NOW(), INTERVAL ? SECOND)),
+                discord_guilds_json = COALESCE(discord_guilds_json, ?),
+                discord_guilds_fetched_at = COALESCE(discord_guilds_fetched_at, NOW())
              WHERE id = ?`,
             [
+                me.id,
+                me.username,
+                me.avatar || null,
+                encryptToken(access_token),
+                encryptToken(refresh_token),
+                Math.max(60, parseInt(expires_in, 10) || 0),
+                JSON.stringify(guilds),
+                // Discord side mirror (COALESCE → ne touche pas si déjà rempli)
                 me.id,
                 me.username,
                 me.avatar || null,
@@ -2629,7 +2665,7 @@ app.get('/api/account/shard/callback', async (req, res) => {
             ],
         );
         if (fromDesktop) return renderDesktopReturn(res, { ok: true, provider: 'shard' });
-        res.redirect('/account?shardLinked=ok');
+        res.redirect('/account?linked=ok');
     } catch (err) {
         console.error('shard link callback:', err.response?.data || err.message);
         return fail('exchange');

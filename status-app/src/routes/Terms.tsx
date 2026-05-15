@@ -41,9 +41,8 @@ export function Terms() {
           (ci-après « <strong>l'Éditeur</strong> ») via le site
           <a href="https://shardtwn.fr" className="underline mx-1">shardtwn.fr</a>
           et tout sous-domaine, les applications mobiles et desktop éditées
-          par Shardtown, le bot Discord Shard (anciennement ShardGuard et
-          Shard, désormais fusionnés), le tableau de bord, l'assistante IA
-          Samia, les services en ligne
+          par Shardtown, le bot Discord Shard, le tableau de bord,
+          l'assistante IA Samia, les services en ligne
           et abonnements numériques, ainsi que toute prestation de
           conception, de développement, d'intégration, de configuration ou
           de maintenance fournie par l'Éditeur (ensemble : les
@@ -211,7 +210,7 @@ export function Terms() {
       <LegalSection id="ip" title="11. Propriété intellectuelle">
         <p>
           L'ensemble des éléments composant les Services (codes sources, marques
-          « Shardtown », « ShardGuard », « Shard », « Samia », logos, designs,
+          « Shardtown », « Shard », « Samia », logos, designs,
           textes, illustrations, base de connaissance) est la propriété
           exclusive de l'Éditeur ou de ses concédants, et protégé par le Code
           de la propriété intellectuelle.
