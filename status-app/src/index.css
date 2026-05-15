@@ -110,7 +110,7 @@
 
 @layer utilities {
   .font-mono-num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "lnum" 1; letter-spacing: -0.01em; }
-  .container-wide { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+  .container-wide { max-width: 1600px; margin: 0 auto; padding: 0 24px; }
   .container-dashboard { max-width: 1600px; margin: 0 auto; padding: 0 28px; }
 
   /* Liquid glass — backdrop-blurred translucent surface used on desktop
