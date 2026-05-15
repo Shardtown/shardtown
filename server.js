@@ -6683,17 +6683,26 @@ app.post('/admin/bot/:botId/guild/:guildId/premium', checkAdmin, verifyCsrf, asy
     if (!isValidSnowflake(guildId)) return res.json({ success: false, error: 'Guild ID invalide' });
     const bot = await resolveBotByBotId(botId);
     if (!bot) return res.json({ success: false, error: 'Bot introuvable' });
-    const table = bot.label === 'ShardGuard' ? 'settings' : 'shard_settings';
     const flag = enabled ? 1 : 0;
     try {
-        // INSERT … ON DUPLICATE KEY UPDATE pour que la première activation
-        // créée la ligne settings si elle n'existe pas encore.
+        // Offre unifiée : un seul Premium couvre les deux bots — on
+        // synchronise donc TOUJOURS settings + shard_settings ensemble,
+        // peu importe quel BotPresenceCard a déclenché le clic. Sinon,
+        // un admin qui n'active Premium que sur le toggle ShardGuard
+        // laisse Shard à 0 (et inversement) → les caps Shard restent
+        // appliqués alors que le serveur est censé être Premium.
+        // Même comportement que le webhook Stripe (server.js:932-933).
         await db.execute(
-            `INSERT INTO ${table} (guildId, isPremium) VALUES (?, ?)
+            `INSERT INTO settings (guildId, isPremium) VALUES (?, ?)
              ON DUPLICATE KEY UPDATE isPremium = VALUES(isPremium)`,
             [guildId, flag],
         );
-        await logAdminAction(req, 'premium.set', { botId, guildId }, { enabled: !!enabled });
+        await db.execute(
+            `INSERT INTO shard_settings (guildId, isPremium) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE isPremium = VALUES(isPremium)`,
+            [guildId, flag],
+        );
+        await logAdminAction(req, 'premium.set', { botId, guildId }, { enabled: !!enabled, syncedBoth: true });
         res.json({ success: true, isPremium: !!enabled });
     } catch (err) {
         await logAdminAction(req, 'premium.set.failed', { botId, guildId }, { error: err.message || 'Erreur serveur' });
