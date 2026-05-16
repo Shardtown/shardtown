@@ -5,7 +5,7 @@ import {
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   TrendingUp, TrendingDown, Heart, ShieldCheck, ShieldX, UserCheck, Percent,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
-  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight, ChevronDown, Crown,
+  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight, ChevronDown, Crown, Plus,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -96,6 +96,54 @@ export function ShardGuild() {
     [],
   );
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(allGroupNames));
+
+  // Switcher de serveur — dropdown au-dessus du hero. Liste fetchée à la
+  // demande (première ouverture) pour ne pas charger l'API si l'utilisateur
+  // ne clique jamais. Merge security + community comme dans /shard/server.
+  type SwitcherGuild = { id: string; name: string; icon: string | null };
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [switcherGuilds, setSwitcherGuilds] = useState<SwitcherGuild[] | null>(null);
+  const [switcherLoading, setSwitcherLoading] = useState(false);
+  const switcherRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!switcherOpen) return;
+    function onClickOutside(e: MouseEvent) {
+      if (switcherRef.current && !switcherRef.current.contains(e.target as Node)) {
+        setSwitcherOpen(false);
+      }
+    }
+    function onEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setSwitcherOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    document.addEventListener("keydown", onEscape);
+    return () => {
+      document.removeEventListener("mousedown", onClickOutside);
+      document.removeEventListener("keydown", onEscape);
+    };
+  }, [switcherOpen]);
+
+  const loadSwitcherGuilds = useCallback(async () => {
+    if (switcherGuilds || switcherLoading) return;
+    setSwitcherLoading(true);
+    type ServerResp = { guilds: SwitcherGuild[]; botGuildIds: string[] };
+    const [sec, com] = await Promise.allSettled([
+      apiGet<ServerResp>("/api/shardguard/server"),
+      apiGet<ServerResp>("/api/shard/server"),
+    ]);
+    const map = new Map<string, SwitcherGuild>();
+    [sec, com].forEach(r => {
+      if (r.status === "fulfilled") r.value.guilds.forEach(g => map.set(g.id, g));
+    });
+    const botIds = new Set<string>(com.status === "fulfilled" ? com.value.botGuildIds : []);
+    // Seuls les serveurs où Shard est présent — c'est ce qu'on peut switcher.
+    const list = Array.from(map.values())
+      .filter(g => botIds.has(g.id))
+      .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+    setSwitcherGuilds(list);
+    setSwitcherLoading(false);
+  }, [switcherGuilds, switcherLoading]);
   function toggleGroup(g: string) {
     setOpenGroups(prev => {
       const next = new Set(prev);
@@ -444,58 +492,141 @@ export function ShardGuild() {
         </motion.div>
 
         <header className={IS_DESKTOP ? "mb-6" : "mb-16 md:mb-20"}>
-          <div className={IS_DESKTOP ? "flex items-center gap-3.5 mb-3" : "flex items-center gap-6 flex-wrap mb-8"}>
-            <motion.div
-              className="flex-shrink-0"
-              initial={{ opacity: 0, scale: reduce ? 1 : 0.85 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.55, delay: 0.05, ease: heroEase }}
+          <motion.div
+            ref={switcherRef}
+            className="relative inline-block"
+            initial={{ opacity: 0, y: reduce ? 0 : 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.05, ease: heroEase }}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setSwitcherOpen(o => !o);
+                if (!switcherOpen) loadSwitcherGuilds();
+              }}
+              className={IS_DESKTOP
+                ? "inline-flex items-center gap-3 pl-2 pr-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20 transition-colors max-w-[420px]"
+                : "inline-flex items-center gap-4 pl-3 pr-5 py-3 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20 transition-colors max-w-[560px]"}
+              aria-expanded={switcherOpen}
+              aria-haspopup="menu"
             >
               {guildIcon ? (
                 <img
                   src={guildIcon}
                   alt=""
                   className={IS_DESKTOP
-                    ? "w-11 h-11 rounded-xl border border-white/10"
-                    : "w-20 h-20 md:w-24 md:h-24 rounded-2xl border border-white/10 shadow-2xl"}
+                    ? "w-9 h-9 rounded-lg border border-white/10 flex-shrink-0"
+                    : "w-12 h-12 md:w-14 md:h-14 rounded-xl border border-white/10 flex-shrink-0"}
                 />
               ) : (
                 <div className={IS_DESKTOP
-                  ? "w-11 h-11 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-base font-extrabold text-white/70"
-                  : "w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-3xl font-extrabold text-white/70 shadow-2xl"}>
+                  ? "w-9 h-9 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-sm font-extrabold text-white/70 flex-shrink-0"
+                  : "w-12 h-12 md:w-14 md:h-14 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-xl font-extrabold text-white/70 flex-shrink-0"}>
                   {heroGuild.name[0]?.toUpperCase()}
                 </div>
               )}
-            </motion.div>
-            <motion.div
-              className="min-w-0 flex-1"
-              initial={{ opacity: 0, x: reduce ? 0 : -40 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, delay: 0.1, ease: heroEase }}
-            >
               <h1 className={IS_DESKTOP
-                ? "font-extrabold tracking-tight leading-tight truncate text-[22px]"
-                : "font-extrabold tracking-tight leading-[0.95] truncate text-4xl md:text-6xl lg:text-7xl"}>
+                ? "font-extrabold tracking-tight leading-tight truncate text-[18px]"
+                : "font-extrabold tracking-tight leading-tight truncate text-2xl md:text-3xl"}>
                 {heroGuild.name}
               </h1>
-              <div className={IS_DESKTOP ? "flex items-center gap-2.5 mt-2 flex-wrap" : "flex items-center gap-2.5 mt-4 flex-wrap"}>
-                {security?.stats?.totalMembers !== undefined && (
-                  <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-white/65 bg-white/[0.05] border border-white/[0.1] rounded-full px-3 py-1">
-                    <Users2 className="w-3 h-3" />
-                    {security.stats.totalMembers.toLocaleString("fr-FR")} membres
-                  </span>
-                )}
-                {(security?.settings?.isPremium === 1 || security?.settings?.isPremium === "1") && (
-                  <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-amber-300 bg-amber-400/12 border border-amber-400/30 rounded-full px-3 py-1">
-                    Premium
-                  </span>
-                )}
-                <span className="text-[12px] text-white/30 font-mono-num">
-                  ID&nbsp;<span className="text-white/50">{heroGuild.id}</span>
-                </span>
+              <ChevronDown
+                className={`flex-shrink-0 text-white/55 transition-transform duration-200 ${switcherOpen ? "rotate-180" : ""} ${IS_DESKTOP ? "w-4 h-4 ml-1" : "w-5 h-5 ml-2"}`}
+                strokeWidth={2.2}
+              />
+            </button>
+
+            {switcherOpen && (
+              <div
+                role="menu"
+                className={IS_DESKTOP
+                  ? "absolute left-0 top-full mt-2 w-[320px] max-w-[90vw] rounded-xl border border-white/10 bg-[#0c0f17]/95 backdrop-blur shadow-2xl z-50 overflow-hidden"
+                  : "absolute left-0 top-full mt-2 w-[380px] max-w-[90vw] rounded-2xl border border-white/10 bg-[#0c0f17]/95 backdrop-blur shadow-2xl z-50 overflow-hidden"}
+              >
+                <div className="max-h-[320px] overflow-y-auto py-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-thumb]:rounded-full">
+                  {switcherLoading && !switcherGuilds && (
+                    <div className="px-3 py-3 space-y-2">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="h-9 bg-white/[0.04] rounded-lg animate-pulse" />
+                      ))}
+                    </div>
+                  )}
+                  {switcherGuilds?.map(g => {
+                    const isCurrent = g.id === gid;
+                    const icon = g.icon
+                      ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64`
+                      : null;
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => {
+                          setSwitcherOpen(false);
+                          if (!isCurrent) nav(`/shard/guild/${g.id}`);
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
+                          isCurrent
+                            ? "bg-white/[0.06] text-white"
+                            : "text-white/75 hover:bg-white/[0.04] hover:text-white"
+                        }`}
+                        role="menuitem"
+                      >
+                        {icon ? (
+                          <img src={icon} alt="" className="w-7 h-7 rounded-md border border-white/10 flex-shrink-0" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-md bg-white/[0.04] border border-white/10 flex items-center justify-center text-[11px] font-extrabold text-white/70 flex-shrink-0">
+                            {g.name[0]?.toUpperCase()}
+                          </div>
+                        )}
+                        <span className="flex-1 min-w-0 truncate text-sm font-semibold">{g.name}</span>
+                        {isCurrent && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" strokeWidth={2.5} />}
+                      </button>
+                    );
+                  })}
+                  {switcherGuilds && switcherGuilds.length === 0 && (
+                    <div className="px-3 py-4 text-center text-xs text-white/40">
+                      Aucun autre serveur
+                    </div>
+                  )}
+                </div>
+                <div className="border-t border-white/[0.08]">
+                  <Link
+                    to="/shard/server"
+                    onClick={() => setSwitcherOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 text-white/70 hover:bg-white/[0.04] hover:text-white transition-colors"
+                  >
+                    <div className="w-7 h-7 rounded-md border border-dashed border-white/20 flex items-center justify-center flex-shrink-0">
+                      <Plus className="w-3.5 h-3.5" strokeWidth={2.2} />
+                    </div>
+                    <span className="text-sm font-semibold">Ajouter un nouveau serveur</span>
+                  </Link>
+                </div>
               </div>
-            </motion.div>
-          </div>
+            )}
+          </motion.div>
+
+          <motion.div
+            className={IS_DESKTOP ? "flex items-center gap-2.5 mt-3 flex-wrap" : "flex items-center gap-2.5 mt-5 flex-wrap"}
+            initial={{ opacity: 0, y: reduce ? 0 : 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.15, ease: heroEase }}
+          >
+            {security?.stats?.totalMembers !== undefined && (
+              <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-white/65 bg-white/[0.05] border border-white/[0.1] rounded-full px-3 py-1">
+                <Users2 className="w-3 h-3" />
+                {security.stats.totalMembers.toLocaleString("fr-FR")} membres
+              </span>
+            )}
+            {(security?.settings?.isPremium === 1 || security?.settings?.isPremium === "1") && (
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-amber-300 bg-amber-400/12 border border-amber-400/30 rounded-full px-3 py-1">
+                Premium
+              </span>
+            )}
+            <span className="text-[12px] text-white/30 font-mono-num">
+              ID&nbsp;<span className="text-white/50">{heroGuild.id}</span>
+            </span>
+          </motion.div>
         </header>
 
         <div className="flex-1 min-h-0 grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
