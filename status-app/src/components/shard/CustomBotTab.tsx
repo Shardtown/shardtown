@@ -846,18 +846,24 @@ function PermissionsModal({ clientId, guildId, onClose }: {
     return () => window.removeEventListener("message", onMessage);
   }, [onClose]);
 
-  // URL OAuth2 — scope=applications.commands pour pouvoir synchroniser les
-  // commandes slash. state=guildId pour que /custom-bot-auth sache quelle
-  // row mettre à jour. response_type=code → authorization code (échangé
-  // contre access_token via le client secret côté backend).
+  // URL OAuth2 — scopes `bot` + `applications.commands` avec
+  // permissions=8 (Administrator) et guild_id préfixé : le même clic
+  // invite le bot sur le serveur avec les pleins droits ET déclenche
+  // le callback OAuth pour qu'on récupère un access_token côté backend.
   //
-  // ⚠️ Ne PAS ajouter `applications.commands.update` ici : ce scope existe
-  // mais n'est valide qu'en client credentials grant — en flow utilisateur
-  // Discord le rejette avec "Scope1 invalid".
+  // disable_guild_select=true → Discord force l'install sur ce serveur,
+  // le user ne peut pas se tromper de guild.
+  //
+  // ⚠️ Ne PAS ajouter `applications.commands.update` ici : ce scope
+  // existe mais n'est valide qu'en client credentials grant — en flow
+  // utilisateur Discord le rejette avec "Scope1 invalid".
   const redirectUri = "https://shardtwn.fr/custom-bot-auth";
   const oauthParams = new URLSearchParams({
     client_id: clientId,
-    scope: "applications.commands",
+    scope: "bot applications.commands",
+    permissions: "8",
+    guild_id: guildId,
+    disable_guild_select: "true",
     response_type: "code",
     redirect_uri: redirectUri,
     state: guildId,
