@@ -55,12 +55,17 @@ const PRESENCE_OPTIONS: { value: string; label: string; dot: string }[] = [
   { value: "invisible", label: "Invisible",         dot: "bg-zinc-500" },
 ];
 
+// L'ordre suit l'UI Discord. `verb` est ce qu'on affiche dans la preview
+// avant le texte. `none` n'affiche pas d'activité ; `custom` affiche le
+// texte brut sans préfixe (Custom Status type 4 de l'API Discord).
 const ACTIVITY_OPTIONS: { value: string; label: string; verb: string }[] = [
-  { value: "playing",    label: "Joue à",      verb: "Joue à" },
-  { value: "listening",  label: "Écoute",      verb: "Écoute" },
-  { value: "watching",   label: "Regarde",     verb: "Regarde" },
-  { value: "streaming",  label: "En live",     verb: "En live" },
-  { value: "competing",  label: "Compétition", verb: "Compétition à" },
+  { value: "none",      label: "Aucun",        verb: "" },
+  { value: "playing",   label: "Joue",         verb: "Joue" },
+  { value: "streaming", label: "Streame",      verb: "Streame" },
+  { value: "listening", label: "Écoute",       verb: "Écoute" },
+  { value: "watching",  label: "Regarde",      verb: "Regarde" },
+  { value: "competing", label: "Participe à",  verb: "Participe à" },
+  { value: "custom",    label: "Personnalisé", verb: "" },
 ];
 
 export function CustomBotTab({ guildId }: Props) {
@@ -285,7 +290,10 @@ export function CustomBotTab({ guildId }: Props) {
   }
 
   const currentPresence = PRESENCE_OPTIONS.find(p => p.value === draftPresence) || PRESENCE_OPTIONS[0];
+  // Fallback "Joue" si l'activityType en BDD est inconnu (legacy ou typo).
   const currentActivity = ACTIVITY_OPTIONS.find(a => a.value === draftActivityType) || ACTIVITY_OPTIONS[1];
+  const isCustomActivity = draftActivityType === "custom";
+  const hasActivity = draftActivityType !== "none";
   // Quand le user est en "live" (activity Streaming), Discord override la
   // couleur du dot par du violet, peu importe la presence configurée.
   // On reproduit ça dans la preview.
@@ -588,10 +596,10 @@ export function CustomBotTab({ guildId }: Props) {
                   type="text"
                   value={draftActivityText}
                   onChange={e => setDraftActivityText(e.target.value)}
-                  disabled={locked}
+                  disabled={locked || !hasActivity}
                   maxLength={128}
-                  placeholder="/help"
-                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 transition-colors disabled:cursor-default disabled:text-white"
+                  placeholder={!hasActivity ? "—" : isCustomActivity ? "Mon statut" : "/help"}
+                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 transition-colors disabled:cursor-default disabled:text-white disabled:opacity-50"
                 />
               </div>
             </div>
@@ -706,7 +714,16 @@ export function CustomBotTab({ guildId }: Props) {
                       APP
                     </span>
                   </div>
-                  <p className="text-[11.5px] text-white/55 truncate">{previewActivityText}</p>
+                  {hasActivity && (
+                    <p className="text-[11.5px] text-white/55 truncate">
+                      {isCustomActivity ? previewActivityText : (
+                        <>
+                          <span className="text-white/45">{currentActivity.verb} </span>
+                          {previewActivityText}
+                        </>
+                      )}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -751,12 +768,16 @@ export function CustomBotTab({ guildId }: Props) {
                   <p className="text-[11.5px] text-white/45 mb-3">
                     {previewName.toLowerCase().replace(/\s+/g, "")}#0000
                   </p>
-                  <div className="rounded-lg bg-white/[0.04] p-2.5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/45 mb-0.5">
-                      {currentActivity.verb}
-                    </p>
-                    <p className="text-[12px] text-white truncate">{previewActivityText}</p>
-                  </div>
+                  {hasActivity && (
+                    <div className="rounded-lg bg-white/[0.04] p-2.5">
+                      {!isCustomActivity && (
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/45 mb-0.5">
+                          {currentActivity.verb}
+                        </p>
+                      )}
+                      <p className="text-[12px] text-white truncate">{previewActivityText}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

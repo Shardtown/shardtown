@@ -4138,7 +4138,7 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
     const safeBanner = typeof bannerUrl === 'string' && bannerUrl.length <= MAX_MEDIA ? bannerUrl.trim() : '';
     const validPresences = ['online', 'idle', 'dnd', 'invisible'];
     const safePresence = validPresences.includes(presence) ? presence : 'online';
-    const validActivities = ['playing', 'listening', 'watching', 'streaming', 'competing'];
+    const validActivities = ['none', 'playing', 'streaming', 'listening', 'watching', 'competing', 'custom'];
     const safeActivityType = validActivities.includes(activityType) ? activityType : 'listening';
     const safeActivityText = typeof activityText === 'string' && activityText.length <= 128
         ? activityText.trim()
