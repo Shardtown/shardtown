@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { Button } from "@/components/ui/button";
 import { apiGet, apiPost, isApiError } from "@/api/client";
 import { IS_DESKTOP } from "@/lib/desktop";
 import type { ShardGuildData, ShardSettings } from "@/api/shard";
@@ -528,28 +527,6 @@ export function ShardGuild() {
                 ))}
               </div>
 
-              {/* Master toggle : ouvre ou ferme toutes les catégories d'un coup. */}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setOpenGroups(prev =>
-                    prev.size === allGroupNames.length
-                      ? new Set()
-                      : new Set(allGroupNames),
-                  );
-                }}
-                className="hidden md:inline-flex w-full justify-between text-white/55 hover:text-white hover:bg-white/[0.05] mb-1"
-              >
-                {openGroups.size === allGroupNames.length ? "Tout fermer" : "Tout ouvrir"}
-                <ChevronDown
-                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                    openGroups.size === allGroupNames.length ? "rotate-0" : "-rotate-90"
-                  }`}
-                  strokeWidth={2.2}
-                />
-              </Button>
               {groups.filter(g => g !== "Tableau de bord").map(g => {
                 const isOpen = openGroups.has(g);
                 const tabsInGroup = TABS.filter(t => t.group === g);
