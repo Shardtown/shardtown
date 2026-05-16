@@ -540,7 +540,7 @@ export function ShardGuild() {
                   ? "absolute left-0 top-full mt-2 w-[320px] max-w-[90vw] rounded-xl border border-white/10 bg-[#0c0f17]/95 backdrop-blur shadow-2xl z-50 overflow-hidden"
                   : "absolute left-0 top-full mt-2 w-[380px] max-w-[90vw] rounded-2xl border border-white/10 bg-[#0c0f17]/95 backdrop-blur shadow-2xl z-50 overflow-hidden"}
               >
-                <div className="max-h-[320px] overflow-y-auto py-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-thumb]:rounded-full">
+                <div className="max-h-[320px] overflow-y-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {switcherLoading && !switcherGuilds && (
                     <div className="px-3 py-3 space-y-2">
                       {Array.from({ length: 3 }).map((_, i) => (
@@ -626,7 +626,7 @@ export function ShardGuild() {
         </header>
 
         <div className="grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
-          <aside className={`md:self-start md:sticky ${IS_DESKTOP ? "md:top-2 md:max-h-[calc(100dvh-96px)]" : "md:top-24 md:max-h-[calc(100dvh-7rem)]"} md:overflow-y-auto md:pr-2 md:-mr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-thumb]:rounded-full overscroll-contain`}>
+          <aside className={`md:self-start md:sticky ${IS_DESKTOP ? "md:top-2 md:max-h-[calc(100dvh-96px)]" : "md:top-24 md:max-h-[calc(100dvh-7rem)]"} md:overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
             <nav
               ref={navRef}
               className="space-y-7 relative"
