@@ -517,8 +517,8 @@ export function ShardGuild() {
           <Link
             to="/shard/server"
             className={IS_DESKTOP
-              ? "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] hover:border-white/[0.18] text-[10.5px] font-semibold tracking-wide text-white/55 hover:text-white transition-colors"
-              : "inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/[0.04] border border-white/10 hover:bg-white/[0.08] hover:border-white/20 text-[12px] font-bold uppercase tracking-[0.2em] text-white/55 hover:text-white transition-colors"}
+              ? "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#161c2e] border border-white/[0.08] hover:bg-[#1c2238] hover:border-white/[0.18] text-[10.5px] font-semibold tracking-wide text-white/65 hover:text-white transition-colors"
+              : "inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#161c2e] border border-white/10 hover:bg-[#1c2238] hover:border-white/20 text-[12px] font-bold uppercase tracking-[0.2em] text-white/65 hover:text-white transition-colors"}
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Mes serveurs
@@ -540,8 +540,8 @@ export function ShardGuild() {
                 if (!switcherOpen) loadSwitcherGuilds();
               }}
               className={IS_DESKTOP
-                ? "inline-flex items-center gap-3 pl-2 pr-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20 transition-colors max-w-[420px]"
-                : "inline-flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20 transition-colors max-w-[420px]"}
+                ? "inline-flex items-center gap-3 pl-2 pr-3 py-2 rounded-xl border border-white/[0.12] bg-[#161c2e] hover:bg-[#1c2238] hover:border-white/20 transition-colors max-w-[420px]"
+                : "inline-flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl border border-white/[0.12] bg-[#161c2e] hover:bg-[#1c2238] hover:border-white/20 transition-colors max-w-[420px]"}
               aria-expanded={switcherOpen}
               aria-haspopup="menu"
             >
@@ -552,7 +552,7 @@ export function ShardGuild() {
                   className="w-9 h-9 rounded-lg border border-white/10 flex-shrink-0"
                 />
               ) : (
-                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-sm font-extrabold text-white/70 flex-shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-[#1c2238] border border-white/[0.12] flex items-center justify-center text-sm font-extrabold text-white/80 flex-shrink-0">
                   {heroGuild.name[0]?.toUpperCase()}
                 </div>
               )}
@@ -569,8 +569,8 @@ export function ShardGuild() {
               <div
                 role="menu"
                 className={IS_DESKTOP
-                  ? "absolute left-0 top-full mt-2 w-[320px] max-w-[90vw] rounded-xl border border-white/10 bg-[#0c0f17]/95 backdrop-blur shadow-2xl z-50 overflow-hidden"
-                  : "absolute left-0 top-full mt-2 w-[380px] max-w-[90vw] rounded-2xl border border-white/10 bg-[#0c0f17]/95 backdrop-blur shadow-2xl z-50 overflow-hidden"}
+                  ? "absolute left-0 top-full mt-2 w-[320px] max-w-[90vw] rounded-xl border border-white/[0.12] bg-[#0e1322] shadow-2xl z-50 overflow-hidden"
+                  : "absolute left-0 top-full mt-2 w-[380px] max-w-[90vw] rounded-2xl border border-white/[0.12] bg-[#0e1322] shadow-2xl z-50 overflow-hidden"}
               >
                 <div className="max-h-[320px] overflow-y-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {switcherLoading && !switcherGuilds && (
@@ -595,15 +595,15 @@ export function ShardGuild() {
                         }}
                         className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${
                           isCurrent
-                            ? "bg-white/[0.06] text-white"
-                            : "text-white/75 hover:bg-white/[0.04] hover:text-white"
+                            ? "bg-[#1c2238] text-white"
+                            : "text-white/75 hover:bg-[#161c2e] hover:text-white"
                         }`}
                         role="menuitem"
                       >
                         {icon ? (
                           <img src={icon} alt="" className="w-7 h-7 rounded-md border border-white/10 flex-shrink-0" />
                         ) : (
-                          <div className="w-7 h-7 rounded-md bg-white/[0.04] border border-white/10 flex items-center justify-center text-[11px] font-extrabold text-white/70 flex-shrink-0">
+                          <div className="w-7 h-7 rounded-md bg-[#1c2238] border border-white/[0.12] flex items-center justify-center text-[11px] font-extrabold text-white/80 flex-shrink-0">
                             {g.name[0]?.toUpperCase()}
                           </div>
                         )}
@@ -622,7 +622,7 @@ export function ShardGuild() {
                   <Link
                     to="/shard/server"
                     onClick={() => setSwitcherOpen(false)}
-                    className="flex items-center gap-3 px-3 py-2.5 text-white/70 hover:bg-white/[0.04] hover:text-white transition-colors"
+                    className="flex items-center gap-3 px-3 py-2.5 text-white/70 hover:bg-[#161c2e] hover:text-white transition-colors"
                   >
                     <div className="w-7 h-7 rounded-md border border-dashed border-white/20 flex items-center justify-center flex-shrink-0">
                       <Plus className="w-3.5 h-3.5" strokeWidth={2.2} />
@@ -669,7 +669,7 @@ export function ShardGuild() {
                   transition CSS, retombe sur le tab actif au mouseleave. */}
               <span
                 aria-hidden
-                className="absolute pointer-events-none rounded-lg bg-white/[0.09] border border-white/10 transition-all duration-300 ease-out"
+                className="absolute pointer-events-none rounded-lg bg-[#1c2238] border border-white/[0.14] transition-all duration-300 ease-out"
                 style={{
                   top: indicator.top,
                   left: indicator.left,
@@ -701,7 +701,7 @@ export function ShardGuild() {
                     <button
                       type="button"
                       onClick={() => toggleGroup(g)}
-                      className="w-full flex items-center gap-2 mb-2 px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-[0.2em] text-white/45 hover:text-white/75 hover:bg-white/[0.03] transition-colors"
+                      className="w-full flex items-center gap-2 mb-2 px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-[0.2em] text-white/45 hover:text-white/75 hover:bg-[#161c2e] transition-colors"
                       aria-expanded={isOpen}
                     >
                       <ChevronDown
@@ -896,11 +896,11 @@ function ModuleCard({
     <button
       type="button"
       onClick={onClick}
-      className="group relative text-left rounded-2xl border p-5 transition-colors h-full bg-white/[0.025] border-white/[0.08] hover:bg-white/[0.05] hover:border-white/20"
+      className="group relative text-left rounded-2xl border p-5 transition-colors h-full bg-[#141a2c] border-white/[0.1] hover:bg-[#1a2138] hover:border-white/[0.22]"
       title={label}
     >
       <div className="flex items-start justify-between mb-4">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center border bg-white/[0.04] border-white/[0.08] text-white/80">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center border bg-[#1c2238] border-white/[0.12] text-white/85">
           <Icon className="w-5 h-5" strokeWidth={1.8} />
         </div>
         <span
