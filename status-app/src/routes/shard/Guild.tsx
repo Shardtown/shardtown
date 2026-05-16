@@ -389,12 +389,6 @@ export function ShardGuild() {
   // Build distinct group order from TABS array.
   const groups = Array.from(new Set(TABS.map(t => t.group)));
 
-  // Tout est Shard — les tabs sont toujours dispo. Si les données d'un côté
-  // ne sont pas encore chargées, le tab affiche son propre état vide.
-  function isTabAvailable(_t: typeof TABS[number]) {
-    return true;
-  }
-
   const currentTab = TABS.find(t => t.key === tab);
 
   // Tab content rendering.
@@ -407,7 +401,6 @@ export function ShardGuild() {
           sec={security}
           com={community}
           onJumpTo={setTab}
-          isTabAvailable={isTabAvailable}
           reduce={reduce}
           heroEase={heroEase}
         />
@@ -652,7 +645,6 @@ export function ShardGuild() {
                     key={t.key}
                     t={t}
                     active={t.key === tab}
-                    available={isTabAvailable(t)}
                     onClick={() => setTab(t.key)}
                     refCallback={el => { tabRefs.current[t.key] = el; }}
                     onHover={() => moveIndicatorTo(t.key)}
@@ -687,7 +679,6 @@ export function ShardGuild() {
                             key={t.key}
                             t={t}
                             active={t.key === tab}
-                            available={isTabAvailable(t)}
                             onClick={() => setTab(t.key)}
                             refCallback={el => { tabRefs.current[t.key] = el; }}
                             onHover={() => moveIndicatorTo(t.key)}
@@ -717,11 +708,10 @@ export function ShardGuild() {
 // ──────────────────────────────────────────────────────────────────────
 
 function SidebarTab({
-  t, active, available, onClick, refCallback, onHover,
+  t, active, onClick, refCallback, onHover,
 }: {
   t: typeof TABS[number];
   active: boolean;
-  available: boolean;
   onClick: () => void;
   refCallback?: (el: HTMLButtonElement | null) => void;
   onHover?: () => void;
@@ -762,12 +752,11 @@ type Reduce = boolean | null;
 type Ease = readonly [number, number, number, number];
 
 function OverviewPanel({
-  sec, com, onJumpTo, isTabAvailable, reduce, heroEase,
+  sec, com, onJumpTo, reduce, heroEase,
 }: {
   sec: ShardGuardGuildData | null;
   com: ShardGuildData | null;
   onJumpTo: (key: TabKey) => void;
-  isTabAvailable: (t: typeof TABS[number]) => boolean;
   reduce: Reduce;
   heroEase: Ease;
 }) {
@@ -809,7 +798,6 @@ function OverviewPanel({
                     icon={t.icon}
                     label={t.label}
                     status={getModuleStatus(t.key, sec?.settings ?? null, com?.settings ?? null)}
-                    available={isTabAvailable(t)}
                     onClick={() => onJumpTo(t.key)}
                   />
                 ))}
@@ -848,12 +836,11 @@ function getModuleStatus(
 }
 
 function ModuleCard({
-  icon: Icon, label, status, available, onClick,
+  icon: Icon, label, status, onClick,
 }: {
   icon: typeof Settings;
   label: string;
   status: ModuleStatus;
-  available: boolean;
   onClick: () => void;
 }) {
   const statusLabel =
