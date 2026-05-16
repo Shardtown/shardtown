@@ -463,10 +463,13 @@ export function ShardGuild() {
   return (
     <AppLayout>
       {/* Dual-scroll bounded : section bornée au viewport, chaque colonne
-          (aside + module) a son propre scroll, totalement indépendants. */}
+          (aside + module) a son propre scroll, totalement indépendants.
+          Web : -312px = pt-32 (128) + footer py-20 + contenu (~184) — pour
+          que le footer reste visible sans scroller la page.
+          Desktop : -168px = topbar 72 + pt-8 + pb-16 du DesktopShell. */}
       <section className={IS_DESKTOP
         ? "px-2 pt-2 flex flex-col h-[calc(100dvh-168px)]"
-        : "container-wide pt-24 md:pt-32 flex flex-col h-[calc(100dvh-128px)]"}>
+        : "container-wide pt-24 md:pt-32 flex flex-col h-[calc(100dvh-312px)]"}>
         <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}
