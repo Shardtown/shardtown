@@ -564,9 +564,9 @@ export function Account() {
           onClick={() => setShowAddPasskey(false)}
           onKeyDown={e => e.key === "Escape" && setShowAddPasskey(false)}
         >
-          <div className="absolute inset-0 bg-black/70" />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -628,9 +628,9 @@ export function Account() {
           onClick={() => setPasskeyToDelete(null)}
           onKeyDown={e => e.key === "Escape" && setPasskeyToDelete(null)}
         >
-          <div className="absolute inset-0 bg-black/70" />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -680,9 +680,9 @@ export function Account() {
           onClick={() => setShowAddToken(false)}
           onKeyDown={e => e.key === "Escape" && setShowAddToken(false)}
         >
-          <div className="absolute inset-0 bg-black/70" />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -744,9 +744,9 @@ export function Account() {
           onClick={() => setRevealedToken(null)}
           onKeyDown={e => e.key === "Escape" && setRevealedToken(null)}
         >
-          <div className="absolute inset-0 bg-black/70" />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 border border-white/10 rounded-2xl p-7 w-full max-w-md shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-md shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -802,9 +802,9 @@ export function Account() {
           onClick={() => setTokenToDelete(null)}
           onKeyDown={e => e.key === "Escape" && setTokenToDelete(null)}
         >
-          <div className="absolute inset-0 bg-black/70" />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button

@@ -490,7 +490,7 @@ function SearchBox({
   return (
     <div className="relative w-[min(720px,68vw)]">
       <div
-        className="flex items-center gap-3 h-[48px] px-5 rounded-full border cursor-text transition-all duration-300 bg-white/[0.06] border-white/15 hover:bg-white/[0.08] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)]"
+        className="flex items-center gap-3 h-[48px] px-5 rounded-full border cursor-text transition-all duration-300 backdrop-blur-xl bg-white/[0.06] border-white/15 hover:bg-white/[0.08] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)]"
         style={{
           borderColor: open ? "rgba(255,255,255,0.22)" : undefined,
         }}

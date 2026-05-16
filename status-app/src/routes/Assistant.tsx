@@ -383,7 +383,7 @@ export function Assistant() {
             initial={{ opacity: 0, y: reduce ? 0 : 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: hasConversation ? 0 : 0.65, ease: heroEase }}
-            className="relative flex items-center gap-2 rounded-full bg-white/[0.025] border border-white/[0.08] hover:border-white/15 focus-within:border-white/25 transition-colors shadow-[0_24px_64px_-12px_rgba(0,0,0,0.45)] pr-2"
+            className="relative flex items-center gap-2 rounded-full bg-white/[0.025] border border-white/[0.08] hover:border-white/15 focus-within:border-white/25 transition-colors backdrop-blur-md shadow-[0_24px_64px_-12px_rgba(0,0,0,0.45)] pr-2"
           >
             <Textarea
               ref={textareaRef}
@@ -502,7 +502,7 @@ function ConfirmResetCard({
             type="button"
             aria-label="Fermer"
             onClick={onCancel}
-            className="absolute inset-0 bg-black/70"
+            className="absolute inset-0 bg-black/70 backdrop-blur-md"
           />
 
           {/* Card */}
@@ -514,7 +514,7 @@ function ConfirmResetCard({
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-reset-title"
-            className="relative w-full max-w-sm rounded-2xl bg-[#0a0a0f]/95 border border-white/[0.08] shadow-[0_32px_80px_-12px_rgba(0,0,0,0.85)] p-7"
+            className="relative w-full max-w-sm rounded-2xl bg-[#0a0a0f]/95 border border-white/[0.08] shadow-[0_32px_80px_-12px_rgba(0,0,0,0.85)] backdrop-blur-xl p-7"
           >
             <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-300 mb-5">
               <RotateCcw className="w-5 h-5" />

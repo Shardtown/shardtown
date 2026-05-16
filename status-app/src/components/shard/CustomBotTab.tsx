@@ -505,7 +505,7 @@ export function CustomBotTab({ guildId }: Props) {
                 type="button"
                 onClick={() => { if (locked) setModal("activate"); else save(); }}
                 disabled={submitting || (!locked && !dirty)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-[13px] font-bold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-300 to-amber-500 text-black text-[13px] font-extrabold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity shadow-[0_8px_24px_-8px_rgba(251,191,36,0.5)]"
               >
                 {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                 {locked ? "Activer le bot personnalisé" : "Mettre à jour"}
@@ -662,7 +662,7 @@ function ModalShell({ children, onClose }: { children: React.ReactNode; onClose:
   }, []);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-[560px] rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl max-h-[90vh] overflow-y-auto">
         {children}
       </div>
@@ -1044,7 +1044,7 @@ function PresenceSelect({ value, onChange, disabled }: { value: string; onChange
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 rounded-xl border border-white/15 bg-zinc-950/95 shadow-2xl overflow-hidden">
+          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 rounded-xl border border-white/15 bg-zinc-950/95 backdrop-blur-xl shadow-2xl overflow-hidden">
             {PRESENCE_OPTIONS.map(p => (
               <button
                 key={p.value}
@@ -1082,7 +1082,7 @@ function ActivitySelect({ value, onChange, disabled }: { value: string; onChange
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 rounded-xl border border-white/15 bg-zinc-950/95 shadow-2xl overflow-hidden">
+          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 rounded-xl border border-white/15 bg-zinc-950/95 backdrop-blur-xl shadow-2xl overflow-hidden">
             {ACTIVITY_OPTIONS.map(a => (
               <button
                 key={a.value}
