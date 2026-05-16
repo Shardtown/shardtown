@@ -35,7 +35,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install deps
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Syntax check (server.js)
         run: node --check server.js
@@ -58,7 +58,7 @@ jobs:
 
       - name: Install deps
         working-directory: status-app
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       # Lint informatif : il y a ~58 issues pré-existantes (react-hooks
       # set-state-in-effect, react-refresh/only-export-components, etc.)
@@ -107,11 +107,11 @@ jobs:
 
       - name: Install status-app deps
         working-directory: status-app
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Install desktop-tauri deps
         working-directory: desktop-tauri
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       # `--no-bundle` saute toute l'étape de bundling (et donc la génération
       # de l'artefact updater qui requiert TAURI_SIGNING_PRIVATE_KEY, absent
