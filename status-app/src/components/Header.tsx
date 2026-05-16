@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
+import { Plus } from "lucide-react";
 import { useAuth, avatarUrl } from "@/api/auth";
 import { useAccount } from "@/api/account";
+import { apiGet } from "@/api/client";
+
+const INVITE_SCOPE = encodeURIComponent("bot applications.commands");
 
 type NavItem = { to: string; label: string; external?: boolean };
 
 const NAV: NavItem[] = [
-  { to: "/produits", label: "Produits" },
-  { to: "/#services", label: "Services", external: true },
-  { to: "/wiki", label: "Wiki" },
-  { to: "/status", label: "Statut" },
+  { to: "/#features", label: "Modules", external: true },
   { to: "/premium", label: "Premium" },
+  { to: "/status", label: "Statut" },
 ];
 
 export function Header() {
@@ -27,6 +29,16 @@ export function Header() {
 
   const { user } = useAuth();
   const { account } = useAccount();
+  const [clientId, setClientId] = useState<string>("");
+
+  useEffect(() => {
+    apiGet<{ clientId?: string }>("/api/shard/server")
+      .then(r => setClientId(r.clientId || ""))
+      .catch(() => {});
+  }, []);
+  const inviteHref = clientId
+    ? `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=${INVITE_SCOPE}`
+    : "";
   // "Connecté" = Discord OAuth OU compte Shardtown email/pseudo.
   // Sinon, après une inscription email, le header restait sur "Connexion"
   // parce qu'il ne regardait que le user Discord.
@@ -201,12 +213,40 @@ export function Header() {
                     </span>
                   </Link>
                 ) : null}
-                <Link
-                  to={isConnected ? "/outils" : "/account/login"}
-                  className="btn-liquid btn-liquid--primary inline-flex items-center rounded-full px-5 py-2.5 font-bold text-[13px] tracking-tight"
-                >
-                  <span className="relative">{isConnected ? "Outils" : "Connexion"}</span>
-                </Link>
+                {!isConnected && (
+                  <Link
+                    to="/account/login"
+                    className="hidden md:inline-flex items-center rounded-full px-4 py-2 font-bold text-[13px] tracking-tight text-white/70 hover:text-white transition-colors"
+                  >
+                    Connexion
+                  </Link>
+                )}
+                {isConnected && (
+                  <Link
+                    to="/outils"
+                    className="hidden md:inline-flex items-center rounded-full px-4 py-2 font-bold text-[13px] tracking-tight text-white/70 hover:text-white transition-colors"
+                  >
+                    Dashboard
+                  </Link>
+                )}
+                {inviteHref ? (
+                  <a
+                    href={inviteHref}
+                    target="_blank"
+                    rel="noopener"
+                    className="btn-liquid btn-liquid--primary inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 font-bold text-[13px] tracking-tight"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Ajouter à Discord
+                  </a>
+                ) : (
+                  <Link
+                    to={isConnected ? "/outils" : "/account/login"}
+                    className="btn-liquid btn-liquid--primary inline-flex items-center rounded-full px-5 py-2.5 font-bold text-[13px] tracking-tight"
+                  >
+                    <span className="relative">{isConnected ? "Dashboard" : "Connexion"}</span>
+                  </Link>
+                )}
               </>
             )}
 
