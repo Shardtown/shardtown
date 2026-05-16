@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Crown, Bot, Lock, Trash2, ExternalLink, Loader2, Check, AlertTriangle, Upload, ChevronDown } from "lucide-react";
+import { Crown, Bot, Lock, Trash2, ExternalLink, Loader2, Check, AlertTriangle, ChevronDown } from "lucide-react";
 import { apiGet, apiPut, apiDelete, isApiError } from "@/api/client";
 import { Admonition } from "@/components/ui/admonition";
 
@@ -27,6 +27,15 @@ interface CustomBotResp {
 interface Props {
   guildId: string;
 }
+
+// Defaults affichés tant que l'utilisateur n'a rien renseigné — on
+// utilise l'identité du bot Shard officiel comme repère visuel.
+const SHARD_DEFAULTS = {
+  name: "Shard",
+  avatar: "/image/shard.png",
+  banner: "/image/banner.png",
+  activityText: "/help",
+};
 
 const PRESENCE_OPTIONS: { value: string; label: string; dot: string }[] = [
   { value: "online",    label: "En ligne",          dot: "bg-emerald-500" },
@@ -185,10 +194,13 @@ export function CustomBotTab({ guildId }: Props) {
 
   const currentPresence = PRESENCE_OPTIONS.find(p => p.value === draftPresence) || PRESENCE_OPTIONS[0];
   const currentActivity = ACTIVITY_OPTIONS.find(a => a.value === draftActivityType) || ACTIVITY_OPTIONS[1];
-  const previewName = draftName.trim() || "Mon Bot";
-  const previewAvatar = draftAvatarUrl.trim();
-  const previewBanner = draftBannerUrl.trim();
-  const previewActivityText = draftActivityText.trim() || "/help";
+  // Tant que le user n'a rien renseigné, on affiche l'identité du bot
+  // Shard officiel comme repère visuel — il voit immédiatement le résultat
+  // qu'il remplacera par sa propre marque.
+  const previewName = draftName.trim() || SHARD_DEFAULTS.name;
+  const previewAvatar = draftAvatarUrl.trim() || SHARD_DEFAULTS.avatar;
+  const previewBanner = draftBannerUrl.trim() || SHARD_DEFAULTS.banner;
+  const previewActivityText = draftActivityText.trim() || SHARD_DEFAULTS.activityText;
 
   return (
     <div className="space-y-6">
@@ -228,9 +240,16 @@ export function CustomBotTab({ guildId }: Props) {
                 value={draftAvatarUrl}
                 onChange={setDraftAvatarUrl}
                 aspect="square"
-                placeholder="https://…/avatar.png"
-                fallback={<Bot className="w-10 h-10 text-white/30" />}
+                placeholder={SHARD_DEFAULTS.avatar}
+                fallback={
+                  <img
+                    src={SHARD_DEFAULTS.avatar}
+                    alt=""
+                    className="w-full h-full object-cover opacity-40"
+                  />
+                }
               />
+              <p className="text-[10.5px] text-white/35 mt-1.5">Défaut : avatar Shard</p>
             </div>
             <div>
               <label className="block text-[12px] text-white/60 mb-2">Bannière</label>
@@ -238,16 +257,16 @@ export function CustomBotTab({ guildId }: Props) {
                 value={draftBannerUrl}
                 onChange={setDraftBannerUrl}
                 aspect="banner"
-                placeholder="https://…/banner.png"
+                placeholder={SHARD_DEFAULTS.banner}
                 fallback={
-                  <div className="text-center">
-                    <Upload className="w-5 h-5 text-white/30 mx-auto mb-1.5" />
-                    <p className="text-[11px] text-white/35 px-2">
-                      Colle une URL d'image
-                    </p>
-                  </div>
+                  <img
+                    src={SHARD_DEFAULTS.banner}
+                    alt=""
+                    className="w-full h-full object-cover opacity-40"
+                  />
                 }
               />
+              <p className="text-[10.5px] text-white/35 mt-1.5">Défaut : bannière Shard</p>
             </div>
           </div>
 
@@ -260,7 +279,7 @@ export function CustomBotTab({ guildId }: Props) {
                 value={draftName}
                 onChange={e => setDraftName(e.target.value)}
                 maxLength={32}
-                placeholder={previewName}
+                placeholder={SHARD_DEFAULTS.name}
                 className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 transition-colors"
               />
             </div>
