@@ -749,13 +749,8 @@ function SidebarTab({
       onClick={onClick}
       onMouseEnter={onHover}
       onFocus={onHover}
-      disabled={!available}
       className={`relative z-10 inline-flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium whitespace-nowrap transition-colors duration-150 md:w-full md:justify-start ${
-        active
-          ? "text-white"
-          : available
-          ? "text-white/60 hover:text-white"
-          : "text-white/25 cursor-not-allowed"
+        active ? "text-white" : "text-white/60 hover:text-white"
       }`}
       title={!available ? "Données indisponibles — connecte le compte Discord correspondant" : undefined}
     >
@@ -885,18 +880,11 @@ function ModuleCard({
     <button
       type="button"
       onClick={onClick}
-      disabled={!available}
-      className={`group relative text-left rounded-2xl border p-5 transition-colors h-full ${
-        available
-          ? "bg-white/[0.025] border-white/[0.08] hover:bg-white/[0.05] hover:border-white/20"
-          : "bg-white/[0.015] border-white/[0.04] cursor-not-allowed opacity-50"
-      }`}
-      title={!available ? "Connecte le compte Discord correspondant pour activer cette section" : undefined}
+      className="group relative text-left rounded-2xl border p-5 transition-colors h-full bg-white/[0.025] border-white/[0.08] hover:bg-white/[0.05] hover:border-white/20"
+      title={!available ? "Section disponible après connexion du compte Discord correspondant" : undefined}
     >
       <div className="flex items-start justify-between mb-4">
-        <div className={`w-11 h-11 rounded-xl flex items-center justify-center border ${
-          available ? "bg-white/[0.04] border-white/[0.08] text-white/80" : "bg-white/[0.02] border-white/[0.04] text-white/30"
-        }`}>
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center border bg-white/[0.04] border-white/[0.08] text-white/80">
           <Icon className="w-5 h-5" strokeWidth={1.8} />
         </div>
         <span
