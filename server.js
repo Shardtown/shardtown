@@ -4248,10 +4248,13 @@ app.delete('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, r
     const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
     try {
-        // Stop le client discord.js avant de supprimer la row, sinon le
-        // manager garde une session orpheline jusqu'au prochain redémarrage.
-        await customBotManager.stop(guildID).catch(err => {
-            console.error('[customBot] stop before delete failed', guildID, err.message);
+        // Purge complète : le bot quitte tous ses serveurs Discord, ses
+        // slash commands sont wipées au niveau application, puis le client
+        // est détruit. Ensuite la row BDD est supprimée. Sans le purge, le
+        // bot resterait présent dans les serveurs du user sans que rien ne
+        // le contrôle depuis Shardtown.
+        await customBotManager.stop(guildID, { purge: true }).catch(err => {
+            console.error('[customBot] purge before delete failed', guildID, err.message);
         });
         await db.execute('DELETE FROM shard_custom_bots WHERE guildId = ?', [guildID]);
         res.json({ success: true });

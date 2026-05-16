@@ -200,6 +200,11 @@ export function CustomBotTab({ guildId }: Props) {
 
   const currentPresence = PRESENCE_OPTIONS.find(p => p.value === draftPresence) || PRESENCE_OPTIONS[0];
   const currentActivity = ACTIVITY_OPTIONS.find(a => a.value === draftActivityType) || ACTIVITY_OPTIONS[1];
+  // Quand le user est en "live" (activity Streaming), Discord override la
+  // couleur du dot par du violet, peu importe la presence configurée.
+  // On reproduit ça dans la preview.
+  const isStreaming = draftActivityType === 'streaming';
+  const dotClass = isStreaming ? 'bg-[#593695]' : currentPresence.dot;
   // Tant que le user n'a rien renseigné, on affiche l'identité du bot
   // Shard officiel comme repère visuel — il voit immédiatement le résultat
   // qu'il remplacera par sa propre marque.
@@ -411,7 +416,7 @@ export function CustomBotTab({ guildId }: Props) {
                       <Bot className="w-4 h-4" />
                     </div>
                   )}
-                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ${currentPresence.dot} border-2 border-black`} />
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full ${dotClass} border-2 border-black`} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
@@ -451,7 +456,7 @@ export function CustomBotTab({ guildId }: Props) {
                         <Bot className="w-6 h-6" />
                       </div>
                     )}
-                    <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full ${currentPresence.dot} ring-[3px] ring-black`} />
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full ${dotClass} ring-[3px] ring-black`} />
                   </div>
                 </div>
                 {/* Name + tag + activity */}
