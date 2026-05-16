@@ -326,8 +326,18 @@ export function ShardGuild() {
       if (communityDirty && communityDraft) ops.push(apiPost(`/shard/guild/${guildId}/config`, communityDraft));
       await Promise.all(ops);
 
-      // Re-fetch authoritative state — keep loading state intact so the page
-      // doesn't flash a skeleton mid-edit.
+      // Optimistic update : le POST a réussi, on commit le draft dans le state
+      // authoritative pour que dirty repasse à false immédiatement, même si
+      // le GET de re-fetch échoue plus tard.
+      if (securityDirty && securityDraft && security) {
+        setSecurity({ ...security, settings: securityDraft });
+      }
+      if (communityDirty && communityDraft && community) {
+        setCommunity({ ...community, settings: communityDraft });
+      }
+
+      // Reconciliation : re-fetch best-effort pour récupérer les valeurs
+      // normalisées par le backend. Si ça échoue, on garde le draft.
       const [secFresh, comFresh] = await Promise.allSettled([
         securityDirty ? apiGet<ShardGuardGuildData>(`/api/shardguard/guild/${guildId}`) : Promise.resolve(null),
         communityDirty ? apiGet<ShardGuildData>(`/api/shard/guild/${guildId}`) : Promise.resolve(null),
