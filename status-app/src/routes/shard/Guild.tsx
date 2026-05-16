@@ -5,7 +5,7 @@ import {
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   TrendingUp, TrendingDown, Heart, ShieldCheck, ShieldX, UserCheck, Percent,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
-  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight, ChevronDown,
+  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight, ChevronDown, Crown,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -25,6 +25,7 @@ import {
   GiveawaysTab, PollsTab, TempVoiceTab, EmbedBuilderTab, ReactionsTab, TicketsTab,
   StreamAlertsTab,
 } from "@/components/shard/tabs";
+import { CustomBotTab } from "@/components/shard/CustomBotTab";
 
 // 4 groupes logiques par mental model utilisateur, plus "Tableau de bord"
 // qui contient la vue d'ensemble landing (stats + grille de modules).
@@ -66,6 +67,11 @@ const TABS = [
   { key: "stats",     label: "Statistiques",    icon: BarChart3,          group: "Données",       side: "security" },
   { key: "logs",      label: "Logs",            icon: ScrollText,         group: "Données",       side: "security" },
   { key: "members",   label: "Membres",         icon: Users2,             group: "Données",       side: "security" },
+
+  // Premium — bot personnalisé (token + identité custom, code Shard).
+  // side: "any" car le composant fetch sa propre API et gère le premium-gate
+  // en interne, indépendant des deux blobs security/community.
+  { key: "custombot", label: "Bot personnalisé", icon: Crown,             group: "Premium",       side: "any" },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -362,6 +368,10 @@ export function ShardGuild() {
           heroEase={heroEase}
         />
       );
+    }
+
+    if (currentTab.key === "custombot") {
+      return <CustomBotTab guildId={gid} />;
     }
 
     if (currentTab.side === "security" && security && securityDraft) {

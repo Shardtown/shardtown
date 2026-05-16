@@ -611,6 +611,28 @@ async function connectDB() {
                     PRIMARY KEY (guildId, userId)
                 )
             `);
+            // Premium feature : bot Discord personnalisé (token apporté par
+            // l'utilisateur, le code reste celui de Shard). 1 ligne par
+            // guild ; le token est stocké chiffré via encryptToken().
+            // status : 'configured' (saved, pas encore lancé), 'running',
+            // 'stopped', 'error'. Le worker de spawn arrive plus tard ; pour
+            // l'instant la table sert juste à la UI.
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS shard_custom_bots (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    guildId VARCHAR(64) NOT NULL UNIQUE,
+                    accountId INT NOT NULL,
+                    name VARCHAR(100) NOT NULL,
+                    avatarUrl TEXT,
+                    botUserId VARCHAR(64),
+                    tokenEncrypted TEXT NOT NULL,
+                    status VARCHAR(32) DEFAULT 'configured',
+                    statusMessage TEXT,
+                    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX idx_account (accountId)
+                )
+            `);
             await db.execute(`
                 CREATE TABLE IF NOT EXISTS global_blacklist (
                     userId VARCHAR(255) NOT NULL PRIMARY KEY,
@@ -3990,6 +4012,146 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
         res.json({ success: true });
     } catch (err) {
         console.error('Erreur save shard config:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+// ─── Bot personnalisé (Premium) ──────────────────────────────────────
+// Le user Premium colle son propre token Discord ; on stocke chiffré
+// + on synchronise le nom / avatar de l'app via PATCH /users/@me.
+// Pour l'instant la config est juste persistée : le worker qui spawn
+// un Client Discord par bot custom arrivera plus tard.
+
+// Helper de validation du token : appelle GET /users/@me avec
+// Authorization: Bot <token>. Si Discord accepte, on récupère l'identité.
+async function fetchDiscordBotIdentity(rawToken) {
+    const r = await axios.get('https://discord.com/api/v10/users/@me', {
+        headers: { Authorization: `Bot ${rawToken}` },
+        timeout: 6000,
+        validateStatus: () => true,
+    });
+    if (r.status !== 200) {
+        const err = new Error(r.data?.message || `Discord ${r.status}`);
+        err.discordStatus = r.status;
+        throw err;
+    }
+    return { id: r.data.id, username: r.data.username, avatar: r.data.avatar || null };
+}
+
+// Renvoie la conf bot custom du serveur — token jamais exposé en clair.
+app.get('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res) => {
+    const guildID = req.params.guildID;
+    const shardUser = req.session.shardUser;
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
+    if (!userGuild) return res.status(403).json({ error: 'Accès refusé' });
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, guildId, name, avatarUrl, botUserId, status, statusMessage,
+                    createdAt, updatedAt
+             FROM shard_custom_bots WHERE guildId = ? LIMIT 1`,
+            [guildID],
+        );
+        const isPremium = await getShardPremium(guildID);
+        res.json({
+            isPremium,
+            bot: rows[0] || null,
+        });
+    } catch (err) {
+        console.error('GET /api/shard/guild/:id/custom-bot:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Upsert : crée ou met à jour la config. Token requis à la création,
+// optionnel à l'update (si vide on garde l'ancien). Validation Discord
+// faite avant l'INSERT pour éviter de stocker un token mort.
+app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res) => {
+    const guildID = req.params.guildID;
+    const shardUser = req.session.shardUser;
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
+    if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
+    if (!(await getShardPremium(guildID))) {
+        return res.status(403).json(premiumRequiredResponse('bot personnalisé'));
+    }
+    const accountId = req.session?.account?.id;
+    if (!accountId) {
+        return res.status(401).json({ success: false, error: 'Compte Shardtown requis pour cette fonctionnalité.' });
+    }
+    const { name, avatarUrl, token } = req.body || {};
+    if (!name || typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 32) {
+        return res.status(400).json({ success: false, error: 'Le nom doit faire entre 2 et 32 caractères.' });
+    }
+    const trimmedName = name.trim();
+    const safeAvatar = typeof avatarUrl === 'string' && avatarUrl.length <= 2048 ? avatarUrl.trim() : '';
+
+    const [existingRows] = await db.execute(
+        'SELECT id, tokenEncrypted, botUserId FROM shard_custom_bots WHERE guildId = ? LIMIT 1',
+        [guildID],
+    );
+    const existing = existingRows[0];
+
+    // Token : obligatoire à la création, optionnel ensuite (sinon on
+    // garde l'ancien). On valide le token via Discord avant d'écrire.
+    let tokenToStore = existing?.tokenEncrypted || null;
+    let identity = existing ? { id: existing.botUserId } : null;
+    if (token && typeof token === 'string' && token.trim().length > 0) {
+        const raw = token.trim();
+        // Sanity-check : un token Discord bot fait au moins 50 caractères et
+        // a 3 segments séparés par des points (id.timestamp.hmac, tous b64).
+        if (raw.length < 50 || raw.split('.').length !== 3) {
+            return res.status(400).json({ success: false, error: 'Token invalide (format inattendu).' });
+        }
+        try {
+            identity = await fetchDiscordBotIdentity(raw);
+        } catch (err) {
+            return res.status(400).json({
+                success: false,
+                error: `Token rejeté par Discord (${err.discordStatus || 'réseau'}). Vérifie que tu as copié le bon token et que le bot existe encore.`,
+            });
+        }
+        tokenToStore = encryptToken(raw);
+    } else if (!existing) {
+        return res.status(400).json({ success: false, error: 'Le token est requis pour créer le bot personnalisé.' });
+    }
+
+    try {
+        await db.execute(
+            `INSERT INTO shard_custom_bots
+                (guildId, accountId, name, avatarUrl, botUserId, tokenEncrypted, status, statusMessage)
+             VALUES (?, ?, ?, ?, ?, ?, 'configured', NULL)
+             ON DUPLICATE KEY UPDATE
+                accountId = VALUES(accountId),
+                name = VALUES(name),
+                avatarUrl = VALUES(avatarUrl),
+                botUserId = COALESCE(VALUES(botUserId), botUserId),
+                tokenEncrypted = VALUES(tokenEncrypted),
+                status = 'configured',
+                statusMessage = NULL`,
+            [guildID, accountId, trimmedName, safeAvatar, identity?.id || null, tokenToStore],
+        );
+        const [rows] = await db.execute(
+            `SELECT id, guildId, name, avatarUrl, botUserId, status, statusMessage,
+                    createdAt, updatedAt
+             FROM shard_custom_bots WHERE guildId = ? LIMIT 1`,
+            [guildID],
+        );
+        res.json({ success: true, bot: rows[0] });
+    } catch (err) {
+        console.error('PUT /api/shard/guild/:id/custom-bot:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+app.delete('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res) => {
+    const guildID = req.params.guildID;
+    const shardUser = req.session.shardUser;
+    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
+    if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
+    try {
+        await db.execute('DELETE FROM shard_custom_bots WHERE guildId = ?', [guildID]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('DELETE /api/shard/guild/:id/custom-bot:', err.message);
         res.status(500).json({ success: false, error: 'Erreur serveur' });
     }
 });

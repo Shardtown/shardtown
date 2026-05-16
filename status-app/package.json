@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-switch": "^1.2.6",
     "@simplewebauthn/browser": "^11.0.0",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-autostart": "^2.5.1",
