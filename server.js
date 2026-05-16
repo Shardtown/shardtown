@@ -650,6 +650,13 @@ async function connectDB() {
                 // côté client (avatar ~50-200KB, banner ~200-500KB en base64).
                 `ALTER TABLE shard_custom_bots MODIFY COLUMN avatarUrl MEDIUMTEXT`,
                 `ALTER TABLE shard_custom_bots MODIFY COLUMN bannerUrl MEDIUMTEXT`,
+                // Secret OAuth2 du bot (chiffré) — utilisé pour échanger le
+                // code d'autorisation contre un access token lors de la
+                // synchro des commandes via /custom-bot-auth.
+                `ALTER TABLE shard_custom_bots ADD COLUMN oauth2ClientSecretEncrypted TEXT AFTER tokenEncrypted`,
+                // Flag passé à 1 une fois que le user a complété le flow
+                // OAuth2 (étape 3 de l'activation).
+                `ALTER TABLE shard_custom_bots ADD COLUMN oauthAuthorized TINYINT(1) DEFAULT 0 AFTER oauth2ClientSecretEncrypted`,
             ];
             for (const ddl of customBotAlters) {
                 try { await db.execute(ddl); } catch (e) { /* idempotent */ }
@@ -4080,7 +4087,7 @@ app.get('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
         const [rows] = await db.execute(
             `SELECT id, guildId, name, avatarUrl, bannerUrl, botUserId,
                     presence, activityType, activityText,
-                    status, statusMessage, createdAt, updatedAt
+                    status, statusMessage, oauthAuthorized, createdAt, updatedAt
              FROM shard_custom_bots WHERE guildId = ? LIMIT 1`,
             [guildID],
         );
@@ -4115,11 +4122,15 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
     if (!accountId) {
         return res.status(401).json({ success: false, error: 'Compte Shardtown requis pour cette fonctionnalité.' });
     }
-    const { name, avatarUrl, bannerUrl, token, presence, activityType, activityText } = req.body || {};
-    if (!name || typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 32) {
+    const { name, avatarUrl, bannerUrl, token, presence, activityType, activityText, clientSecret } = req.body || {};
+    // Le nom est dérivé du username Discord à la création si l'utilisateur
+    // n'en a pas fourni (cas du flow "Activer le bot personnalisé" qui ne
+    // collecte que le token et le secret — la perso vient plus tard). Pour
+    // les mises à jour, on garde la contrainte 2-32 chars.
+    let trimmedName = typeof name === 'string' ? name.trim() : '';
+    if (trimmedName && (trimmedName.length < 2 || trimmedName.length > 32)) {
         return res.status(400).json({ success: false, error: 'Le nom doit faire entre 2 et 32 caractères.' });
     }
-    const trimmedName = name.trim();
     // 3 MB raisonnable pour un data URI base64 (image ~2 MB binaire). Au-delà
     // c'est probablement un upload incompressé.
     const MAX_MEDIA = 3_000_000;
@@ -4134,7 +4145,7 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
         : '';
 
     const [existingRows] = await db.execute(
-        'SELECT id, tokenEncrypted, botUserId, name, avatarUrl, bannerUrl FROM shard_custom_bots WHERE guildId = ? LIMIT 1',
+        'SELECT id, tokenEncrypted, botUserId, name, avatarUrl, bannerUrl, oauth2ClientSecretEncrypted FROM shard_custom_bots WHERE guildId = ? LIMIT 1',
         [guildID],
     );
     const existing = existingRows[0];
@@ -4169,6 +4180,26 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
         rawTokenForPush = decryptToken(existing.tokenEncrypted);
     }
 
+    // Création : si aucun nom n'a été fourni, on utilise le username Discord
+    // du bot comme valeur par défaut. Le user pourra le changer plus tard
+    // depuis le form principal (étape 5 du flow d'activation).
+    if (!trimmedName) {
+        if (!existing && identity?.username) {
+            trimmedName = identity.username.slice(0, 32);
+        } else if (existing) {
+            trimmedName = existing.name || 'Bot personnalisé';
+        } else {
+            return res.status(400).json({ success: false, error: 'Le nom est requis.' });
+        }
+    }
+
+    // Secret OAuth2 (optionnel) — stocké chiffré pour permettre l'échange
+    // code → access_token côté /custom-bot-auth (synchro des commandes).
+    let secretToStore = existing?.oauth2ClientSecretEncrypted ?? null;
+    if (typeof clientSecret === 'string' && clientSecret.trim().length > 0) {
+        secretToStore = encryptToken(clientSecret.trim());
+    }
+
     // PATCH /users/@me — pousse uniquement les champs qui ont changé.
     // Username rate-limit Discord = 2/h, donc on évite de spammer.
     // Une erreur ici (ex: rate-limit) ne fait pas échouer le save : on
@@ -4200,8 +4231,9 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
         await db.execute(
             `INSERT INTO shard_custom_bots
                 (guildId, accountId, name, avatarUrl, bannerUrl, botUserId, tokenEncrypted,
+                 oauth2ClientSecretEncrypted,
                  presence, activityType, activityText, status, statusMessage)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'configured', NULL)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'configured', NULL)
              ON DUPLICATE KEY UPDATE
                 accountId = VALUES(accountId),
                 name = VALUES(name),
@@ -4209,6 +4241,7 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
                 bannerUrl = VALUES(bannerUrl),
                 botUserId = COALESCE(VALUES(botUserId), botUserId),
                 tokenEncrypted = VALUES(tokenEncrypted),
+                oauth2ClientSecretEncrypted = COALESCE(VALUES(oauth2ClientSecretEncrypted), oauth2ClientSecretEncrypted),
                 presence = VALUES(presence),
                 activityType = VALUES(activityType),
                 activityText = VALUES(activityText),
@@ -4216,14 +4249,14 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
                 statusMessage = NULL`,
             [
                 guildID, accountId, trimmedName, safeAvatar, safeBanner,
-                identity?.id || null, tokenToStore,
+                identity?.id || null, tokenToStore, secretToStore,
                 safePresence, safeActivityType, safeActivityText,
             ],
         );
         const [rows] = await db.execute(
             `SELECT id, guildId, name, avatarUrl, bannerUrl, botUserId,
                     presence, activityType, activityText,
-                    status, statusMessage, createdAt, updatedAt, tokenEncrypted
+                    status, statusMessage, oauthAuthorized, createdAt, updatedAt, tokenEncrypted
              FROM shard_custom_bots WHERE guildId = ? LIMIT 1`,
             [guildID],
         );
@@ -4266,6 +4299,70 @@ app.delete('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, r
     } catch (err) {
         console.error('DELETE /api/shard/guild/:id/custom-bot:', err.message);
         res.status(500).json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+// Callback OAuth2 du flow de synchro des commandes (étape 3 d'activation).
+// Le user clique "Autoriser les Permissions" → Discord OAuth s'ouvre avec
+// redirect_uri=https://shardtwn.fr/custom-bot-auth&state=<guildId>. Au
+// retour ici, on échange le code contre un access_token via le client
+// secret stocké chiffré, puis on marque oauthAuthorized=1 et on rend une
+// page HTML qui ferme la popup ou redirige vers le dashboard.
+const CUSTOM_BOT_OAUTH_REDIRECT_URI = (process.env.PUBLIC_BASE_URL || 'https://shardtwn.fr') + '/custom-bot-auth';
+app.get('/custom-bot-auth', async (req, res) => {
+    const code = typeof req.query.code === 'string' ? req.query.code : '';
+    const state = typeof req.query.state === 'string' ? req.query.state : '';
+    const renderResult = (title, body, ok) => {
+        // Page minimaliste qui ferme la popup (window.opener) ou redirige.
+        res.set('Content-Type', 'text/html; charset=utf-8').send(`<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>${title}</title>
+<style>body{background:#0a0a0a;color:#fff;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;box-sizing:border-box}.card{max-width:480px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:32px;text-align:center}.ok{color:#10b981}.err{color:#ef4444}h1{font-size:20px;margin:0 0 12px}p{color:rgba(255,255,255,0.7);font-size:14px;line-height:1.5;margin:0 0 16px}button{background:linear-gradient(to right,#fcd34d,#f59e0b);color:#000;border:0;padding:10px 20px;border-radius:12px;font-weight:700;font-size:13px;cursor:pointer}</style>
+</head><body><div class="card">
+<h1 class="${ok ? 'ok' : 'err'}">${title}</h1>
+<p>${body}</p>
+<button onclick="if(window.opener){window.opener.postMessage({type:'custom-bot-oauth',ok:${ok}},'*');window.close()}else{location.href='/dashboard'}">Fermer</button>
+</div></body></html>`);
+    };
+    if (!code || !state) {
+        return renderResult('Autorisation refusée', "Discord n'a pas renvoyé de code (autorisation refusée ou expirée).", false);
+    }
+    try {
+        const [rows] = await db.execute(
+            'SELECT botUserId, oauth2ClientSecretEncrypted FROM shard_custom_bots WHERE guildId = ? LIMIT 1',
+            [state],
+        );
+        const row = rows[0];
+        if (!row || !row.botUserId || !row.oauth2ClientSecretEncrypted) {
+            return renderResult('Configuration manquante', "Le bot n'est pas configuré côté Shardtown ou le secret OAuth2 n'a pas été enregistré.", false);
+        }
+        const secret = decryptToken(row.oauth2ClientSecretEncrypted);
+        if (!secret) {
+            return renderResult('Configuration manquante', 'Secret OAuth2 illisible.', false);
+        }
+        const params = new URLSearchParams({
+            client_id: row.botUserId,
+            client_secret: secret,
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: CUSTOM_BOT_OAUTH_REDIRECT_URI,
+        });
+        const tokenRes = await axios.post('https://discord.com/api/v10/oauth2/token', params.toString(), {
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            timeout: 10000,
+            validateStatus: () => true,
+        });
+        if (tokenRes.status !== 200) {
+            console.error('[custom-bot-auth] token exchange failed', tokenRes.status, tokenRes.data);
+            return renderResult('Échange de code refusé', `Discord a rejeté l'échange (${tokenRes.status}). Vérifie que le client secret est correct et que ${CUSTOM_BOT_OAUTH_REDIRECT_URI} est bien dans les Redirects du portail.`, false);
+        }
+        await db.execute(
+            'UPDATE shard_custom_bots SET oauthAuthorized = 1 WHERE guildId = ?',
+            [state],
+        );
+        renderResult('Autorisation accordée ✓', 'Les commandes du bot personnalisé seront synchronisées sur ton serveur Discord. Tu peux fermer cette fenêtre.', true);
+    } catch (err) {
+        console.error('[custom-bot-auth] error', err.message);
+        renderResult('Erreur serveur', "Une erreur s'est produite pendant l'autorisation. Réessaie ou contacte le support.", false);
     }
 });
 

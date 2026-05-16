@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Crown, Bot, Lock, Trash2, ExternalLink, Loader2, Check, ChevronDown, UserPlus, CircleAlert, BookOpen, AlertTriangle } from "lucide-react";
+import { Crown, Bot, Lock, Trash2, ExternalLink, Loader2, Check, ChevronDown, UserPlus, CircleAlert, BookOpen, AlertTriangle, X } from "lucide-react";
 import { apiGet, apiPut, apiDelete, isApiError } from "@/api/client";
 import { Admonition } from "@/components/ui/admonition";
 
@@ -15,6 +15,7 @@ interface CustomBotRow {
   activityText: string | null;
   status: "configured" | "running" | "stopped" | "error" | string;
   statusMessage: string | null;
+  oauthAuthorized?: number | boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -78,6 +79,9 @@ export function CustomBotTab({ guildId }: Props) {
   // Guide pas à pas pour créer un bot Discord. Ouvert par défaut tant que
   // le user n'a pas configuré de bot — c'est sa première étape.
   const [guideOpen, setGuideOpen] = useState<boolean | null>(null);
+  // Modals du flow d'activation : step2 = collecte token + secret OAuth2,
+  // step3 = autorisation des permissions des commandes via OAuth.
+  const [modal, setModal] = useState<null | "activate" | "permissions">(null);
   // Poll intensif après save : le restart côté manager est async, le
   // status BDD passe à "running" qq secondes après. On rafraîchit toutes
   // les 2s pendant 30s max pour voir l'état réel.
@@ -171,6 +175,42 @@ export function CustomBotTab({ guildId }: Props) {
         }
         // Le restart côté manager est async — on poll le runtime status
         // pour voir quand le bot passe vraiment running (ou error).
+        startPolling();
+      } else {
+        setBanner({ kind: "error", text: res.error || "Erreur inconnue." });
+      }
+    } catch (e) {
+      const msg = isApiError(e) ? (e.data as { error?: string })?.error || e.message : (e as Error).message;
+      setBanner({ kind: "error", text: msg || "Erreur réseau." });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // Soumet l'étape 2 (token + secret OAuth2). Côté serveur, name est
+  // dérivé du username Discord si vide. À la résolution, on bascule sur
+  // l'étape 3 pour le flow d'autorisation des permissions.
+  async function activate({ token, clientSecret }: { token: string; clientSecret: string }) {
+    setBanner(null);
+    setSubmitting(true);
+    try {
+      const res = await apiPut<{ success: boolean; bot?: CustomBotRow; error?: string }>(
+        `/api/shard/guild/${guildId}/custom-bot`,
+        {
+          token: token.trim(),
+          clientSecret: clientSecret.trim() || undefined,
+          name: "",
+          avatarUrl: "",
+          bannerUrl: "",
+          presence: "online",
+          activityType: "listening",
+          activityText: "",
+        },
+      );
+      if (res.success && res.bot) {
+        setData(prev => ({ isPremium: prev?.isPremium ?? true, bot: res.bot!, runtime: prev?.runtime }));
+        setDraftName(res.bot.name);
+        setModal("permissions");
         startPolling();
       } else {
         setBanner({ kind: "error", text: res.error || "Erreur inconnue." });
@@ -620,7 +660,7 @@ export function CustomBotTab({ guildId }: Props) {
             <div className="flex items-center gap-3 flex-wrap pt-2">
               <button
                 type="button"
-                onClick={save}
+                onClick={() => { if (locked) setModal("activate"); else save(); }}
                 disabled={submitting || (!locked && !dirty)}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-300 to-amber-500 text-black text-[13px] font-extrabold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity shadow-[0_8px_24px_-8px_rgba(251,191,36,0.5)]"
               >
@@ -736,11 +776,246 @@ export function CustomBotTab({ guildId }: Props) {
           créneau (la config reste enregistrée en attendant).
         </div>
       </div>
+
+      {modal === "activate" && (
+        <ActivateModal
+          submitting={submitting}
+          onCancel={() => setModal(null)}
+          onSubmit={activate}
+          onOpenGuide={() => { setModal(null); setGuideOpen(true); }}
+        />
+      )}
+      {modal === "permissions" && bot?.botUserId && (
+        <PermissionsModal
+          clientId={bot.botUserId}
+          guildId={guildId}
+          onClose={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }
 
 /* ─── Sous-composants ─────────────────────────────────────────────── */
+
+function ModalShell({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  // Locks le scroll de la page tant que la modal est ouverte.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-[560px] rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl max-h-[90vh] overflow-y-auto">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ActivateModal({
+  submitting, onCancel, onSubmit, onOpenGuide,
+}: {
+  submitting: boolean;
+  onCancel: () => void;
+  onSubmit: (v: { token: string; clientSecret: string }) => void;
+  onOpenGuide: () => void;
+}) {
+  const [token, setToken] = useState("");
+  const [secret, setSecret] = useState("");
+  const [c1, setC1] = useState(false);
+  const [c2, setC2] = useState(false);
+  const [c3, setC3] = useState(false);
+  const allChecked = c1 && c2 && c3;
+  const canSubmit = allChecked && token.trim().length >= 50 && secret.trim().length > 0 && !submitting;
+
+  return (
+    <ModalShell onClose={onCancel}>
+      <div className="p-7">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="absolute top-4 right-4 w-8 h-8 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-white/60 hover:text-white"
+          aria-label="Fermer"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        <h2 className="text-[20px] font-bold mb-3 pr-8">Configure ton bot personnalisé</h2>
+        <p className="text-[13.5px] text-white/65 leading-relaxed mb-4">
+          Configurer le Bot Personnalisé est rapide et simple : tu peux personnaliser
+          l'avatar, le nom, la bannière, le statut et l'activité du bot.
+        </p>
+        <p className="text-[13.5px] text-white/65 leading-relaxed mb-4">
+          Pour configurer le Bot Personnalisé, suis ce{" "}
+          <button type="button" onClick={onOpenGuide} className="text-blue-300 underline decoration-blue-300/40 hover:decoration-blue-300 underline-offset-2">
+            guide d'installation
+          </button>.
+        </p>
+        <p className="text-[13.5px] text-white/65 leading-relaxed mb-3">
+          Avant de continuer, assure-toi que les paramètres suivants sont corrects dans le{" "}
+          <a
+            href="https://discord.com/developers/applications"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-300 underline decoration-blue-300/40 hover:decoration-blue-300 underline-offset-2 inline-flex items-center gap-1"
+          >
+            Portail Développeur Discord
+          </a>{" "}:
+        </p>
+        <div className="space-y-3 mb-5">
+          <CheckRow checked={c1} onChange={setC1}>
+            Le <strong className="text-white/85">SERVER MEMBERS INTENT</strong> est activé{" "}
+            <span className="text-white/45">(obligatoire pour les commandes mod).</span>
+          </CheckRow>
+          <CheckRow checked={c2} onChange={setC2}>
+            « <strong className="text-white/85">Require OAuth2 Code Grant</strong> » est désactivé.
+          </CheckRow>
+          <CheckRow checked={c3} onChange={setC3}>
+            <code className="text-white/85 text-[11.5px] bg-white/[0.06] px-1.5 py-0.5 rounded">https://shardtwn.fr/custom-bot-auth</code>{" "}
+            est ajouté dans <strong className="text-white/85">OAuth2 → Redirects</strong>.
+          </CheckRow>
+        </div>
+        <div className="space-y-3 mb-6">
+          <input
+            type="password"
+            value={secret}
+            onChange={e => setSecret(e.target.value)}
+            placeholder="Entre ici ton secret client OAuth2…"
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 font-mono-num tracking-tight transition-colors"
+          />
+          <input
+            type="password"
+            value={token}
+            onChange={e => setToken(e.target.value)}
+            placeholder="Mets le token du bot ici…"
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 font-mono-num tracking-tight transition-colors"
+          />
+        </div>
+        <div className="flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            className="px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-[13px] font-semibold transition-colors disabled:opacity-50"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={() => onSubmit({ token: token.trim(), clientSecret: secret.trim() })}
+            disabled={!canSubmit}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white text-[13px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Activer le bot personnalisé
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+function CheckRow({ checked, onChange, children }: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="flex items-start gap-2.5 cursor-pointer group">
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        aria-pressed={checked}
+        className={`mt-0.5 w-4 h-4 rounded shrink-0 border transition-colors flex items-center justify-center ${
+          checked ? "bg-blue-500 border-blue-500" : "border-white/25 group-hover:border-white/40"
+        }`}
+      >
+        {checked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+      </button>
+      <span className="text-[12.5px] text-white/70 leading-relaxed">{children}</span>
+    </label>
+  );
+}
+
+function PermissionsModal({ clientId, guildId, onClose }: {
+  clientId: string;
+  guildId: string;
+  onClose: () => void;
+}) {
+  // Écoute le postMessage envoyé par /custom-bot-auth quand le user a
+  // terminé l'autorisation OAuth dans la popup. À la réception, on ferme
+  // cette modal et on déclenche un refetch côté parent (qui poll déjà).
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (e.data && e.data.type === "custom-bot-oauth") onClose();
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [onClose]);
+
+  // URL OAuth2 — scope=applications.commands pour pouvoir synchroniser
+  // les commandes slash. state=guildId pour que /custom-bot-auth sache
+  // quelle row mettre à jour. response_type=code → flow authorization
+  // code (échangé contre access_token via le client secret).
+  const redirectUri = "https://shardtwn.fr/custom-bot-auth";
+  const oauthUrl =
+    `https://discord.com/oauth2/authorize?client_id=${clientId}` +
+    `&scope=applications.commands+applications.commands.update` +
+    `&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&state=${encodeURIComponent(guildId)}`;
+
+  function authorize() {
+    // Popup centré, dimensions Discord-standard.
+    const w = 520, h = 720;
+    const left = window.screenX + (window.outerWidth - w) / 2;
+    const top = window.screenY + (window.outerHeight - h) / 2;
+    window.open(oauthUrl, "custom-bot-oauth", `width=${w},height=${h},left=${left},top=${top}`);
+  }
+
+  return (
+    <ModalShell onClose={onClose}>
+      <div className="p-7">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 w-8 h-8 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-white/60 hover:text-white"
+          aria-label="Fermer"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        <h2 className="text-[20px] font-bold mb-3 pr-8">Autoriser les Permissions des Commandes</h2>
+        <p className="text-[13.5px] text-white/65 leading-relaxed mb-6">
+          Tu as presque terminé ! Clique sur le bouton ci-dessous pour permettre au bot
+          de synchroniser les commandes slash entre le tableau de bord Shardtown et ton
+          serveur Discord.
+        </p>
+        <div className="flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-[13px] font-semibold transition-colors"
+          >
+            Plus tard
+          </button>
+          <button
+            type="button"
+            onClick={authorize}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white text-[13px] font-bold transition-colors"
+          >
+            Autoriser les Permissions
+            <ExternalLink className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
 
 function GuideStep({ n, title, body, warning }: {
   n: number;
