@@ -487,7 +487,7 @@ export function ShardGuild() {
           </Link>
         </motion.div>
 
-        <header className={IS_DESKTOP ? "mb-6" : "mb-16 md:mb-20"}>
+        <header className="mb-6">
           <motion.div
             ref={switcherRef}
             className="relative inline-block"
@@ -503,7 +503,7 @@ export function ShardGuild() {
               }}
               className={IS_DESKTOP
                 ? "inline-flex items-center gap-3 pl-2 pr-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20 transition-colors max-w-[420px]"
-                : "inline-flex items-center gap-4 pl-3 pr-5 py-3 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20 transition-colors max-w-[560px]"}
+                : "inline-flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20 transition-colors max-w-[420px]"}
               aria-expanded={switcherOpen}
               aria-haspopup="menu"
             >
@@ -511,24 +511,18 @@ export function ShardGuild() {
                 <img
                   src={guildIcon}
                   alt=""
-                  className={IS_DESKTOP
-                    ? "w-9 h-9 rounded-lg border border-white/10 flex-shrink-0"
-                    : "w-12 h-12 md:w-14 md:h-14 rounded-xl border border-white/10 flex-shrink-0"}
+                  className="w-9 h-9 rounded-lg border border-white/10 flex-shrink-0"
                 />
               ) : (
-                <div className={IS_DESKTOP
-                  ? "w-9 h-9 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-sm font-extrabold text-white/70 flex-shrink-0"
-                  : "w-12 h-12 md:w-14 md:h-14 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center text-xl font-extrabold text-white/70 flex-shrink-0"}>
+                <div className="w-9 h-9 rounded-lg bg-white/[0.04] border border-white/10 flex items-center justify-center text-sm font-extrabold text-white/70 flex-shrink-0">
                   {heroGuild.name[0]?.toUpperCase()}
                 </div>
               )}
-              <h1 className={IS_DESKTOP
-                ? "font-extrabold tracking-tight leading-tight truncate text-[18px]"
-                : "font-extrabold tracking-tight leading-tight truncate text-2xl md:text-3xl"}>
+              <h1 className="font-extrabold tracking-tight leading-tight truncate text-[18px]">
                 {heroGuild.name}
               </h1>
               <ChevronDown
-                className={`flex-shrink-0 text-white/55 transition-transform duration-200 ${switcherOpen ? "rotate-180" : ""} ${IS_DESKTOP ? "w-4 h-4 ml-1" : "w-5 h-5 ml-2"}`}
+                className={`flex-shrink-0 text-white/55 transition-transform duration-200 w-4 h-4 ml-1 ${switcherOpen ? "rotate-180" : ""}`}
                 strokeWidth={2.2}
               />
             </button>
