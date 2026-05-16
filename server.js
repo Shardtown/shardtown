@@ -624,8 +624,12 @@ async function connectDB() {
                     accountId INT NOT NULL,
                     name VARCHAR(100) NOT NULL,
                     avatarUrl TEXT,
+                    bannerUrl TEXT,
                     botUserId VARCHAR(64),
                     tokenEncrypted TEXT NOT NULL,
+                    presence VARCHAR(16) DEFAULT 'online',
+                    activityType VARCHAR(16) DEFAULT 'listening',
+                    activityText VARCHAR(128) DEFAULT '',
                     status VARCHAR(32) DEFAULT 'configured',
                     statusMessage TEXT,
                     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -633,6 +637,18 @@ async function connectDB() {
                     INDEX idx_account (accountId)
                 )
             `);
+            // ALTERs idempotents pour les installs qui avaient déjà la table
+            // d'avant l'ajout de banner/presence/activity. Try/catch silencieux
+            // pour ignorer "Duplicate column" si déjà appliqué.
+            const customBotAlters = [
+                `ALTER TABLE shard_custom_bots ADD COLUMN bannerUrl TEXT AFTER avatarUrl`,
+                `ALTER TABLE shard_custom_bots ADD COLUMN presence VARCHAR(16) DEFAULT 'online' AFTER tokenEncrypted`,
+                `ALTER TABLE shard_custom_bots ADD COLUMN activityType VARCHAR(16) DEFAULT 'listening' AFTER presence`,
+                `ALTER TABLE shard_custom_bots ADD COLUMN activityText VARCHAR(128) DEFAULT '' AFTER activityType`,
+            ];
+            for (const ddl of customBotAlters) {
+                try { await db.execute(ddl); } catch (e) { /* idempotent */ }
+            }
             await db.execute(`
                 CREATE TABLE IF NOT EXISTS global_blacklist (
                     userId VARCHAR(255) NOT NULL PRIMARY KEY,
@@ -4046,8 +4062,9 @@ app.get('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
     if (!userGuild) return res.status(403).json({ error: 'Accès refusé' });
     try {
         const [rows] = await db.execute(
-            `SELECT id, guildId, name, avatarUrl, botUserId, status, statusMessage,
-                    createdAt, updatedAt
+            `SELECT id, guildId, name, avatarUrl, bannerUrl, botUserId,
+                    presence, activityType, activityText,
+                    status, statusMessage, createdAt, updatedAt
              FROM shard_custom_bots WHERE guildId = ? LIMIT 1`,
             [guildID],
         );
@@ -4077,12 +4094,20 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
     if (!accountId) {
         return res.status(401).json({ success: false, error: 'Compte Shardtown requis pour cette fonctionnalité.' });
     }
-    const { name, avatarUrl, token } = req.body || {};
+    const { name, avatarUrl, bannerUrl, token, presence, activityType, activityText } = req.body || {};
     if (!name || typeof name !== 'string' || name.trim().length < 2 || name.trim().length > 32) {
         return res.status(400).json({ success: false, error: 'Le nom doit faire entre 2 et 32 caractères.' });
     }
     const trimmedName = name.trim();
     const safeAvatar = typeof avatarUrl === 'string' && avatarUrl.length <= 2048 ? avatarUrl.trim() : '';
+    const safeBanner = typeof bannerUrl === 'string' && bannerUrl.length <= 2048 ? bannerUrl.trim() : '';
+    const validPresences = ['online', 'idle', 'dnd', 'invisible'];
+    const safePresence = validPresences.includes(presence) ? presence : 'online';
+    const validActivities = ['playing', 'listening', 'watching', 'streaming', 'competing'];
+    const safeActivityType = validActivities.includes(activityType) ? activityType : 'listening';
+    const safeActivityText = typeof activityText === 'string' && activityText.length <= 128
+        ? activityText.trim()
+        : '';
 
     const [existingRows] = await db.execute(
         'SELECT id, tokenEncrypted, botUserId FROM shard_custom_bots WHERE guildId = ? LIMIT 1',
@@ -4117,21 +4142,31 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
     try {
         await db.execute(
             `INSERT INTO shard_custom_bots
-                (guildId, accountId, name, avatarUrl, botUserId, tokenEncrypted, status, statusMessage)
-             VALUES (?, ?, ?, ?, ?, ?, 'configured', NULL)
+                (guildId, accountId, name, avatarUrl, bannerUrl, botUserId, tokenEncrypted,
+                 presence, activityType, activityText, status, statusMessage)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'configured', NULL)
              ON DUPLICATE KEY UPDATE
                 accountId = VALUES(accountId),
                 name = VALUES(name),
                 avatarUrl = VALUES(avatarUrl),
+                bannerUrl = VALUES(bannerUrl),
                 botUserId = COALESCE(VALUES(botUserId), botUserId),
                 tokenEncrypted = VALUES(tokenEncrypted),
+                presence = VALUES(presence),
+                activityType = VALUES(activityType),
+                activityText = VALUES(activityText),
                 status = 'configured',
                 statusMessage = NULL`,
-            [guildID, accountId, trimmedName, safeAvatar, identity?.id || null, tokenToStore],
+            [
+                guildID, accountId, trimmedName, safeAvatar, safeBanner,
+                identity?.id || null, tokenToStore,
+                safePresence, safeActivityType, safeActivityText,
+            ],
         );
         const [rows] = await db.execute(
-            `SELECT id, guildId, name, avatarUrl, botUserId, status, statusMessage,
-                    createdAt, updatedAt
+            `SELECT id, guildId, name, avatarUrl, bannerUrl, botUserId,
+                    presence, activityType, activityText,
+                    status, statusMessage, createdAt, updatedAt
              FROM shard_custom_bots WHERE guildId = ? LIMIT 1`,
             [guildID],
         );
