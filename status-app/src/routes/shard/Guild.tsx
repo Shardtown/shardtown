@@ -417,14 +417,15 @@ export function ShardGuild() {
 
   return (
     <AppLayout>
-      {/* Layout MEE6-like : section à hauteur naturelle, seul l'aside
-          catégories est sticky + scroll container interne. Dérouler les
-          catégories ne bouge pas le module, la colonne de droite suit
-          son contenu (pas de vide sous un module court, pas de footer
-          en plein milieu si le module est plus haut que le viewport). */}
+      {/* Layout MEE6-like : section à hauteur viewport. Les deux colonnes
+          (aside catégories + module) sont leurs propres scroll containers,
+          totalement indépendants. Scroller dans l'aside ne bouge pas le
+          module, et inversement. Offsets : desktop = topbar 72px + pt-8
+          + pb-16 du wrapper main DesktopShell (168px). Web = pt-32 du
+          main AppLayout (128px). */}
       <section className={IS_DESKTOP
-        ? `px-2 pt-2 ${dirty ? "pb-32" : "pb-8"}`
-        : `container-wide pt-24 md:pt-32 ${dirty ? "pb-32" : "pb-8"}`}>
+        ? "px-2 pt-2 flex flex-col h-[calc(100dvh-168px)]"
+        : "container-wide pt-24 md:pt-32 flex flex-col h-[calc(100dvh-128px)]"}>
         <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -497,8 +498,8 @@ export function ShardGuild() {
           </div>
         </header>
 
-        <div className="grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14 md:items-start">
-          <aside className="md:self-start">
+        <div className="flex-1 min-h-0 grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
+          <aside className="md:min-h-0 md:overflow-y-auto md:pr-2 md:-mr-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-thumb]:rounded-full">
             <nav
               ref={navRef}
               className="space-y-7 relative"
@@ -575,7 +576,7 @@ export function ShardGuild() {
             </nav>
           </aside>
 
-          <div className="min-w-0">
+          <div className={`min-w-0 md:min-h-0 md:overflow-y-auto md:pr-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-thumb]:rounded-full ${dirty ? "md:pb-28" : "md:pb-4"}`}>
             {currentAvailable ? renderTab() : (
               <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-2xl p-10 text-center">
                 <p className="text-white/50 text-sm">
