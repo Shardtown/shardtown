@@ -465,11 +465,11 @@ export function ShardGuild() {
 
   return (
     <AppLayout>
-      {/* MEE6-style : la page scroll naturellement, l'aside est sticky et
-          a son propre scroll interne si son contenu dépasse la hauteur viewport. */}
+      {/* Dual-scroll bounded : section bornée au viewport, chaque colonne
+          (aside + module) a son propre scroll, totalement indépendants. */}
       <section className={IS_DESKTOP
-        ? "px-2 pt-2 pb-16"
-        : "container-wide pt-24 md:pt-32 pb-16"}>
+        ? "px-2 pt-2 flex flex-col h-[calc(100dvh-168px)]"
+        : "container-wide pt-24 md:pt-32 flex flex-col h-[calc(100dvh-128px)]"}>
         <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -619,8 +619,8 @@ export function ShardGuild() {
           </motion.div>
         </header>
 
-        <div className="grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
-          <aside className={`md:self-start md:sticky ${IS_DESKTOP ? "md:top-2 md:max-h-[calc(100dvh-96px)]" : "md:top-24 md:max-h-[calc(100dvh-7rem)]"} md:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
+        <div className="flex-1 min-h-0 grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
+          <aside className="md:min-h-0 md:overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <nav
               ref={navRef}
               className="space-y-7 relative"
@@ -697,7 +697,7 @@ export function ShardGuild() {
             </nav>
           </aside>
 
-          <div className={`min-w-0 ${dirty ? "pb-28" : ""}`}>
+          <div className={`min-w-0 md:min-h-0 md:overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${dirty ? "md:pb-28" : "md:pb-4"}`}>
             {currentAvailable ? renderTab() : (
               <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-2xl p-10 text-center">
                 <p className="text-white/50 text-sm">
