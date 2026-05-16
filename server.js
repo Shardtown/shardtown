@@ -1327,13 +1327,16 @@ function liveGuildAdminGuard(getUserId, getBotToken) {
     };
 }
 
-app.use('/shardguard', liveGuildAdminGuard(req => req.user?.id, () => process.env.DISCORD_TOKEN));
-app.use('/shard', liveGuildAdminGuard(req => req.session?.shardUser?.id, () => process.env.SHARD_TOKEN));
+// Auth élargi : tout user authentifié (Discord OAuth OU Shard OAuth) peut
+// accéder à /shardguard/* et /shard/*. Plus de "connexion supplémentaire"
+// requise — la cible UX c'est que tout fonctionne via Shard seul.
+app.use('/shardguard', liveGuildAdminGuard(req => req.user?.id || req.session?.shardUser?.id, () => process.env.DISCORD_TOKEN));
+app.use('/shard', liveGuildAdminGuard(req => req.session?.shardUser?.id || req.user?.id, () => process.env.SHARD_TOKEN));
 // Same guard on the /api/* read endpoints. The session-cached
 // req.user.guilds is a 24h snapshot, so without this an admin who lost
 // their permissions still gets read access (config, members, audit
 // logs, warnings) until session expiry.
-app.use('/api/shardguard', liveGuildAdminGuard(req => req.user?.id, () => process.env.DISCORD_TOKEN));
+app.use('/api/shardguard', liveGuildAdminGuard(req => req.user?.id || req.session?.shardUser?.id, () => process.env.DISCORD_TOKEN));
 app.use('/api/shard', liveGuildAdminGuard(req => req.session?.shardUser?.id || req.user?.id, () => process.env.SHARD_TOKEN));
 
 // Migrated to React SPA — kept only as legacy fallback for the EJS template (unused once SPA catch-all is registered)
