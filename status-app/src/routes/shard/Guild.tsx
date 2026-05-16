@@ -504,8 +504,8 @@ export function ShardGuild() {
           </div>
         </header>
 
-        <div className="flex-1 min-h-0 grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
-          <aside className="md:min-h-0 md:overflow-y-auto md:pr-2 md:-mr-2">
+        <div className="grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14 md:items-start">
+          <aside className="md:sticky md:top-28 md:self-start md:max-h-[calc(100dvh-7rem)] md:overflow-y-auto md:pr-2 md:-mr-2">
             <nav
               ref={navRef}
               className="space-y-7 relative"
@@ -582,11 +582,7 @@ export function ShardGuild() {
             </nav>
           </aside>
 
-          <div
-            className={`min-w-0 md:min-h-0 md:overflow-y-auto md:pr-1 ${
-              dirty ? "md:pb-28" : "md:pb-4"
-            }`}
-          >
+          <div className="min-w-0">
             {currentAvailable ? renderTab() : (
               <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-2xl p-10 text-center">
                 <p className="text-white/50 text-sm">
