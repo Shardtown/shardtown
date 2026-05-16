@@ -500,34 +500,6 @@ export function CustomBotTab({ guildId }: Props) {
               </Admonition>
             )}
 
-            {/* Lien d'invitation OAuth — visible dès que botUserId est connu
-                (= post-validation du token). guild_id + disable_guild_select
-                forcent l'install sur ce serveur précisément. Permissions=8
-                (Administrateur) — standard pour un bot white-label qui
-                réutilise la logique de Shard. */}
-            {bot?.botUserId && (
-              <div className="rounded-xl border border-blue-400/20 bg-blue-400/[0.04] p-4">
-                <p className="text-[12px] font-bold text-blue-200 mb-1.5 inline-flex items-center gap-1.5">
-                  <UserPlus className="w-3.5 h-3.5" /> Ajoute ton bot au serveur
-                </p>
-                <p className="text-[11.5px] text-white/55 mb-3 leading-relaxed">
-                  Ton bot est configuré mais doit encore être invité sur ton serveur
-                  pour apparaître dans la liste des membres et exécuter les commandes.
-                </p>
-                <a
-                  href={`https://discord.com/oauth2/authorize?client_id=${bot.botUserId}&scope=bot+applications.commands&permissions=8&guild_id=${guildId}&disable_guild_select=true`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-400 text-white text-[12.5px] font-bold transition-colors"
-                >
-                  Inviter le bot <ExternalLink className="w-3 h-3" />
-                </a>
-                <p className="text-[10.5px] text-white/35 mt-2 font-mono-num">
-                  Client ID : {bot.botUserId}
-                </p>
-              </div>
-            )}
-
             <div className="flex items-center gap-3 flex-wrap pt-2">
               <button
                 type="button"
