@@ -3,7 +3,6 @@ import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Check, Settings, ScrollText, Shield, AlertTriangle,
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
-  TrendingUp, TrendingDown, Heart, ShieldCheck, ShieldX, UserCheck, Percent,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
   Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight, ChevronDown, Crown, Plus,
 } from "lucide-react";
@@ -14,7 +13,6 @@ import { IS_DESKTOP } from "@/lib/desktop";
 import type { ShardGuildData, ShardSettings } from "@/api/shard";
 import type { ShardGuardGuildData, SGSettings } from "@/api/shardguard";
 import { SaveBar } from "@/components/shardguard/SaveBar";
-import { ScreenTimeCard } from "@/components/ui/screen-time-card";
 import {
   GeneralTab, RulesTab, CaptchaTab, SecurityTab, WarnsTab, ModRolesTab, BannedWordsTab,
   AutomodTab, StatsTab, LogsTab, MembersTab, PanicTab,
@@ -814,10 +812,7 @@ function OverviewPanel({
       transition={{ duration: 0.45, ease: heroEase }}
       className="space-y-9"
     >
-      {/* Bloc 1 : KPI live (membres / arrivées / captcha rate) */}
-      {sec && <LiveStatsCards security={sec} reduce={reduce} heroEase={heroEase} />}
-
-      {/* Bloc 2 : grille de modules par groupe. Chaque card est cliquable
+      {/* Grille de modules par groupe. Chaque card est cliquable
           et porte un badge de statut (active / inactive / info). */}
       <div>
         <div className="flex items-baseline justify-between mb-6">
@@ -923,105 +918,3 @@ function ModuleCard({
   );
 }
 
-// Extrait de l'ancien IIFE inline pour réutilisation dans OverviewPanel.
-function LiveStatsCards({
-  security, reduce, heroEase,
-}: {
-  security: ShardGuardGuildData;
-  reduce: Reduce;
-  heroEase: Ease;
-}) {
-  const days = Object.keys(security.chartData).sort();
-  const joins = days.map(d => security.chartData[d].join);
-  const leaves = days.map(d => security.chartData[d].leave);
-  const success = days.map(d => security.chartData[d].success);
-  const failed = days.map(d => security.chartData[d].failed);
-  const totalJoin = joins.reduce((s, x) => s + x, 0);
-  const totalLeave = leaves.reduce((s, x) => s + x, 0);
-  const totalSuccess = success.reduce((s, x) => s + x, 0);
-  const totalFailed = failed.reduce((s, x) => s + x, 0);
-  const verifRate = security.stats.totalMembers > 0
-    ? Math.round((security.stats.verifiedCount / security.stats.totalMembers) * 100)
-    : 0;
-  const checkRate = totalSuccess + totalFailed > 0
-    ? Math.round((totalSuccess / (totalSuccess + totalFailed)) * 100)
-    : 100;
-  const netGrowth = totalJoin - totalLeave;
-  const growthScore = Math.max(0, Math.min(100, 50 + netGrowth));
-  const healthScore = Math.round(verifRate * 0.45 + checkRate * 0.35 + growthScore * 0.2);
-  const peakJoin = Math.max(...joins, 0);
-  const peakSuccess = Math.max(...success, 0);
-  const xLabels = days.length >= 3
-    ? [days[0], days[Math.floor(days.length / 2)], days[days.length - 1]].map(d => d.slice(5))
-    : [];
-  const healthTone = healthScore >= 75 ? "text-emerald-300"
-    : healthScore >= 50 ? "text-amber-300"
-    : "text-red-300";
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: reduce ? 0 : 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.1, ease: heroEase }}
-      className="grid grid-cols-1 lg:grid-cols-3 gap-3"
-    >
-      <ScreenTimeCard
-        total={security.stats.totalMembers.toLocaleString("fr-FR")}
-        totalLabel="Membres · communauté"
-        barData={joins.length ? joins : [0]}
-        timeLabels={xLabels}
-        yLabels={[`${peakJoin}`, `${Math.round(peakJoin / 2)}`, "0"]}
-        barAccentClass="bg-gradient-to-t from-emerald-500 to-emerald-400/80"
-        barMutedClass="bg-emerald-500/15"
-        stats={[
-          { icon: <UserCheck className="w-3.5 h-3.5 text-emerald-400" />, label: "Vérifiés", value: security.stats.verifiedCount.toLocaleString("fr-FR"), tone: "text-emerald-300" },
-          { icon: <Percent className="w-3.5 h-3.5 text-white/60" />, label: "Du serveur", value: `${verifRate}%`, tone: "text-white" },
-          { icon: <Users2 className="w-3.5 h-3.5 text-white/60" />, label: "Non vérifiés", value: Math.max(0, security.stats.totalMembers - security.stats.verifiedCount).toLocaleString("fr-FR"), tone: "text-white/80" },
-        ]}
-      />
-      <ScreenTimeCard
-        total={totalJoin.toLocaleString("fr-FR")}
-        totalLabel="Arrivées · 14 derniers jours"
-        barData={joins.length ? joins : [0]}
-        timeLabels={xLabels}
-        yLabels={[`${peakJoin}`, `${Math.round(peakJoin / 2)}`, "0"]}
-        barAccentClass="bg-gradient-to-t from-blue-500 to-blue-400/80"
-        barMutedClass="bg-blue-500/15"
-        stats={[
-          { icon: <TrendingUp className="w-3.5 h-3.5 text-blue-400" />, label: "Pic / jour", value: peakJoin.toLocaleString("fr-FR"), tone: "text-blue-300" },
-          { icon: <TrendingDown className="w-3.5 h-3.5 text-red-400" />, label: "Départs", value: totalLeave.toLocaleString("fr-FR"), tone: "text-red-300" },
-          {
-            icon: netGrowth >= 0
-              ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-              : <TrendingDown className="w-3.5 h-3.5 text-red-400" />,
-            label: "Net 14j",
-            value: `${netGrowth >= 0 ? "+" : ""}${netGrowth.toLocaleString("fr-FR")}`,
-            tone: netGrowth >= 0 ? "text-emerald-300" : "text-red-300",
-          },
-        ]}
-      />
-      <ScreenTimeCard
-        total={`${checkRate}%`}
-        totalLabel={`Captchas OK · ${totalSuccess + totalFailed} tentatives`}
-        barData={success.length ? success : [0]}
-        timeLabels={xLabels}
-        yLabels={[`${peakSuccess}`, `${Math.round(peakSuccess / 2)}`, "0"]}
-        barAccentClass={
-          healthScore >= 75 ? "bg-gradient-to-t from-emerald-500 to-emerald-400/80"
-          : healthScore >= 50 ? "bg-gradient-to-t from-amber-500 to-amber-400/80"
-          : "bg-gradient-to-t from-red-500 to-red-400/80"
-        }
-        barMutedClass={
-          healthScore >= 75 ? "bg-emerald-500/15"
-          : healthScore >= 50 ? "bg-amber-500/15"
-          : "bg-red-500/15"
-        }
-        stats={[
-          { icon: <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />, label: "Succès", value: totalSuccess.toLocaleString("fr-FR"), tone: "text-emerald-300" },
-          { icon: <ShieldX className="w-3.5 h-3.5 text-amber-400" />, label: "Échecs", value: totalFailed.toLocaleString("fr-FR"), tone: "text-amber-300" },
-          { icon: <Heart className={`w-3.5 h-3.5 ${healthTone.replace("300","400")}`} />, label: "Santé", value: `${healthScore}`, tone: healthTone },
-        ]}
-      />
-    </motion.div>
-  );
-}
