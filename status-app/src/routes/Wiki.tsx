@@ -497,6 +497,35 @@ const SECTIONS: Section[] = [
 
   /* ───────── Compte & Premium ───────── */
   {
+    id: "custom-bot",
+    group: "Compte & Premium",
+    title: "Bot personnalisé · création pas à pas",
+    tagline: "Du Discord Developer Portal au flow d'activation Shardtown.",
+    intro: [
+      "Le Bot Personnalisé Premium te permet d'avoir TON propre bot Discord (icône, bannière, nom, statut, activité personnalisés) qui fait tourner exactement le même code que Shard officiel. Une seule application Discord pour tout ton serveur, sous ta marque.",
+      "Le token est stocké chiffré AES-256-GCM côté Shardtown et n'est jamais ré-affiché après stockage. Si tu supprimes le bot depuis le dashboard, il quitte automatiquement tous tes serveurs et ses slash commands sont wipées.",
+    ],
+    steps: [
+      "Va sur le Discord Developer Portal (discord.com/developers/applications), clique sur « New Application », donne-lui le nom de ton futur bot puis « Create ». L'icône de l'app pourra être remplacée plus tard via la pp uploadée dans Shardtown.",
+      "Dans ta nouvelle app, ouvre l'onglet « Bot » (menu de gauche). Sous la section Token, clique sur « Reset Token » puis « Yes, do it! ». Discord affiche le token une seule fois — copie-le immédiatement.",
+      "Toujours dans l'onglet « Bot », scroll jusqu'à « Privileged Gateway Intents ». Active SERVER MEMBERS INTENT (obligatoire pour /warn, /kick, /ban, /mute et la vérification des membres). MESSAGE CONTENT INTENT et PRESENCE INTENT ne sont pas requis. Clique sur « Save Changes » en bas.",
+      "Toujours dans « Bot », tu peux désactiver « Public Bot » si tu ne veux pas que d'autres puissent l'inviter ailleurs. Recommandé pour un bot communautaire perso.",
+      "Onglet « OAuth2 » → « General ». Vérifie que « Require OAuth2 Code Grant » est désactivé. Sous « Redirects », ajoute exactement : https://shardtwn.fr/custom-bot-auth puis « Save Changes ». Copie également ton « Client Secret » depuis cette page (visible une seule fois après reset).",
+      "Reviens sur ton dashboard Shardtown → onglet « Bot personnalisé » → bouton « Activer le bot personnalisé ». Coche les 3 cases de la modal, colle ton Client Secret OAuth2 et ton token, puis valide. Shardtown chiffre les deux, valide le token côté Discord et lance le client.",
+      "Une seconde modal apparaît : « Autoriser les Permissions des Commandes ». Clique sur le bouton, autorise dans la popup Discord — Shardtown récupère le code, l'échange contre un access_token et marque l'autorisation OK. Tu peux fermer la popup.",
+      "Le badge passe en « En ligne » sur le dashboard. La card bleue « Inviter le bot » apparaît plus bas avec un lien OAuth pré-rempli pour ce serveur — clique pour ajouter le bot, permissions Administrateur.",
+    ],
+    notes: [
+      { kind: "warning", title: "Ne partage jamais ton token", body: "Toute personne qui a ton token peut contrôler ton bot. Si tu soupçonnes une fuite, retourne dans le Developer Portal → Bot → Reset Token, puis remets le nouveau dans Shardtown via « Mettre à jour »." },
+      { kind: "warning", title: "SERVER MEMBERS INTENT requis", body: "Sans cet intent activé dans le portail, le bot se connectera mais la plupart des commandes mod plantent silencieusement côté Discord (le bot ne peut pas fetch les membres par ID)." },
+      { kind: "info", title: "Discord rate-limit les changements de nom à 2/heure", body: "Si tu modifies trop souvent le nom du bot depuis Shardtown, l'API renvoie un 429 — la config locale est sauvegardée et l'identité Discord sera mise à jour au prochain créneau." },
+      { kind: "premium", body: "Le Bot Personnalisé est une fonctionnalité Premium. La licence est liée au serveur Discord." },
+    ],
+    seeAlso: [
+      { id: "premium", label: "Premium — formules et limites" },
+    ],
+  },
+  {
     id: "premium",
     group: "Compte & Premium",
     title: "Premium · à quoi ça sert",
