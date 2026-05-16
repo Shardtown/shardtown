@@ -417,12 +417,21 @@ export function ShardGuild() {
 
   return (
     <AppLayout>
-      {/* Padding bas dynamique : pb-32 quand la SaveBar flotte (dirty)
-          pour ne pas qu'elle masque la fin du module ; sinon pb-8 →
-          la page ne scroll plus inutilement sous un module court. */}
+      {/* Layout MEE6-like : la section occupe pile la hauteur viewport
+          dispo, et chacune des deux colonnes (catégories à gauche, module
+          à droite) est son propre scroll container. Conséquence : on peut
+          dérouler les catégories sans bouger le module, et il n'y a
+          jamais d'espace vide en dessous du module si son contenu est
+          court — la colonne s'arrête simplement et on ne peut pas
+          descendre plus bas que le viewport.
+
+          Offsets de hauteur :
+          - Desktop : viewport − topbar (72px) − pt-8 (32px) − pb-16 (64px)
+            du wrapper de <main> dans DesktopShell ⇒ −168px.
+          - Web    : viewport − pt-32 (128px) d'AppLayout <main>. */}
       <section className={IS_DESKTOP
-        ? `px-2 pt-2 ${dirty ? "pb-32" : "pb-8"}`
-        : `container-wide pt-24 md:pt-32 ${dirty ? "pb-32" : "pb-8"}`}>
+        ? "px-2 pt-2 flex flex-col h-[calc(100dvh-168px)]"
+        : "container-wide pt-24 md:pt-32 flex flex-col h-[calc(100dvh-128px)]"}>
         <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -495,8 +504,8 @@ export function ShardGuild() {
           </div>
         </header>
 
-        <div className="grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
-          <aside className="md:sticky md:top-28 md:self-start">
+        <div className="flex-1 min-h-0 grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
+          <aside className="md:min-h-0 md:overflow-y-auto md:pr-2 md:-mr-2">
             <nav
               ref={navRef}
               className="space-y-7 relative"
@@ -573,7 +582,11 @@ export function ShardGuild() {
             </nav>
           </aside>
 
-          <div className="min-w-0">
+          <div
+            className={`min-w-0 md:min-h-0 md:overflow-y-auto md:pr-1 ${
+              dirty ? "md:pb-28" : "md:pb-4"
+            }`}
+          >
             {currentAvailable ? renderTab() : (
               <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-2xl p-10 text-center">
                 <p className="text-white/50 text-sm">
