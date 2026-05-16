@@ -417,21 +417,14 @@ export function ShardGuild() {
 
   return (
     <AppLayout>
-      {/* Layout MEE6-like : la section occupe pile la hauteur viewport
-          dispo, et chacune des deux colonnes (catégories à gauche, module
-          à droite) est son propre scroll container. Conséquence : on peut
-          dérouler les catégories sans bouger le module, et il n'y a
-          jamais d'espace vide en dessous du module si son contenu est
-          court — la colonne s'arrête simplement et on ne peut pas
-          descendre plus bas que le viewport.
-
-          Offsets de hauteur :
-          - Desktop : viewport − topbar (72px) − pt-8 (32px) − pb-16 (64px)
-            du wrapper de <main> dans DesktopShell ⇒ −168px.
-          - Web    : viewport − pt-32 (128px) d'AppLayout <main>. */}
+      {/* Layout MEE6-like : section à hauteur naturelle, seul l'aside
+          catégories est sticky + scroll container interne. Dérouler les
+          catégories ne bouge pas le module, la colonne de droite suit
+          son contenu (pas de vide sous un module court, pas de footer
+          en plein milieu si le module est plus haut que le viewport). */}
       <section className={IS_DESKTOP
-        ? "px-2 pt-2 flex flex-col h-[calc(100dvh-168px)]"
-        : "container-wide pt-24 md:pt-32 flex flex-col h-[calc(100dvh-128px)]"}>
+        ? `px-2 pt-2 ${dirty ? "pb-32" : "pb-8"}`
+        : `container-wide pt-24 md:pt-32 ${dirty ? "pb-32" : "pb-8"}`}>
         <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}
