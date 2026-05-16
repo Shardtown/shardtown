@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Crown, Bot, Lock, Trash2, ExternalLink, Loader2, Check, ChevronDown, UserPlus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Crown, Bot, Lock, Trash2, ExternalLink, Loader2, Check, ChevronDown, UserPlus, CircleAlert } from "lucide-react";
 import { apiGet, apiPut, apiDelete, isApiError } from "@/api/client";
 import { Admonition } from "@/components/ui/admonition";
 
@@ -19,9 +19,19 @@ interface CustomBotRow {
   updatedAt: string;
 }
 
+interface RuntimeStatus {
+  running: boolean;
+  inMemory: boolean;
+  status?: string;
+  lastError?: string | null;
+  botTag?: string | null;
+  guildCount?: number;
+}
+
 interface CustomBotResp {
   isPremium: boolean;
   bot: CustomBotRow | null;
+  runtime?: RuntimeStatus;
 }
 
 interface Props {
@@ -65,6 +75,36 @@ export function CustomBotTab({ guildId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [banner, setBanner] = useState<{ kind: "ok" | "error" | "info"; text: string } | null>(null);
+  // Poll intensif après save : le restart côté manager est async, le
+  // status BDD passe à "running" qq secondes après. On rafraîchit toutes
+  // les 2s pendant 30s max pour voir l'état réel.
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function refetch(): Promise<CustomBotResp | null> {
+    return apiGet<CustomBotResp>(`/api/shard/guild/${guildId}/custom-bot`)
+      .then(r => { setData(r); return r; })
+      .catch(() => null);
+  }
+
+  function startPolling() {
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+    const startedAt = Date.now();
+    pollTimerRef.current = setInterval(async () => {
+      const r = await refetch();
+      const stop = !r
+        || r.runtime?.status === 'running'
+        || r.runtime?.status === 'error'
+        || Date.now() - startedAt > 30_000;
+      if (stop && pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    }, 2000);
+  }
+
+  useEffect(() => () => {
+    if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -117,7 +157,7 @@ export function CustomBotTab({ guildId }: Props) {
         },
       );
       if (res.success && res.bot) {
-        setData(prev => ({ isPremium: prev?.isPremium ?? true, bot: res.bot! }));
+        setData(prev => ({ isPremium: prev?.isPremium ?? true, bot: res.bot!, runtime: prev?.runtime }));
         setDraftToken("");
         if (res.identityWarning) {
           // Save OK mais l'identité Discord n'a pas pu être poussée (typiquement
@@ -126,6 +166,9 @@ export function CustomBotTab({ guildId }: Props) {
         } else {
           setBanner({ kind: "ok", text: "Bot personnalisé enregistré. Identité Discord mise à jour, bot relancé." });
         }
+        // Le restart côté manager est async — on poll le runtime status
+        // pour voir quand le bot passe vraiment running (ou error).
+        startPolling();
       } else {
         setBanner({ kind: "error", text: res.error || "Erreur inconnue." });
       }
@@ -213,6 +256,18 @@ export function CustomBotTab({ guildId }: Props) {
   const previewBanner = draftBannerUrl.trim() || SHARD_DEFAULTS.banner;
   const previewActivityText = draftActivityText.trim() || SHARD_DEFAULTS.activityText;
 
+  // Status runtime — vient du manager (mémoire process) + des colonnes
+  // status/statusMessage en BDD. running > configured > stopped > error.
+  const runtime = data?.runtime;
+  const runtimeStatus = runtime?.status || bot?.status || "configured";
+  const statusBadge =
+    runtimeStatus === "running" ? { dot: "bg-emerald-500", label: "En ligne", color: "text-emerald-300" } :
+    runtimeStatus === "starting" ? { dot: "bg-amber-400 animate-pulse", label: "Démarrage…", color: "text-amber-300" } :
+    runtimeStatus === "error" ? { dot: "bg-red-500", label: "Erreur", color: "text-red-300" } :
+    runtimeStatus === "stopped" ? { dot: "bg-zinc-500", label: "Arrêté", color: "text-white/55" } :
+    { dot: "bg-blue-400", label: "Configuré", color: "text-blue-200" };
+  const notInAnyGuild = runtime?.running && (runtime.guildCount ?? 0) === 0;
+
   return (
     <div className="space-y-6">
       {/* Header / intro */}
@@ -222,7 +277,16 @@ export function CustomBotTab({ guildId }: Props) {
             <Bot className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold mb-1.5">Ton bot Shard, à ton image</h3>
+            <div className="flex items-center gap-3 mb-1.5 flex-wrap">
+              <h3 className="text-lg font-bold">Ton bot Shard, à ton image</h3>
+              {bot && (
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-semibold ${statusBadge.color}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${statusBadge.dot}`} />
+                  {statusBadge.label}
+                  {runtime?.botTag && <span className="text-white/40 font-normal">· {runtime.botTag}</span>}
+                </span>
+              )}
+            </div>
             <p className="text-[13.5px] text-white/65 leading-relaxed">
               Crée une application Discord sur le{" "}
               <a
@@ -239,6 +303,35 @@ export function CustomBotTab({ guildId }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Erreur runtime — token rejeté, rate-limit, etc. */}
+      {bot && runtimeStatus === "error" && (
+        <div className="rounded-2xl border border-red-500/25 bg-red-500/[0.05] p-5 flex items-start gap-3">
+          <CircleAlert className="w-4 h-4 text-red-300 mt-0.5 shrink-0" />
+          <div className="text-[12.5px] text-white/75 leading-relaxed">
+            <strong className="text-red-200">Le bot n'a pas pu démarrer.</strong>{" "}
+            {bot.statusMessage || runtime?.lastError || "Cause inconnue."}
+            <br />
+            <span className="text-white/55 text-[11.5px]">
+              Vérifie que le token est valide (Discord Developer Portal → Bot → Reset Token),
+              puis mets à jour ici. Si tu as supprimé le bot du serveur précédemment, il faut
+              aussi cliquer « Inviter le bot » ci-dessous une fois en ligne.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Bot en ligne mais dans 0 serveur — typique après un delete/recreate. */}
+      {notInAnyGuild && (
+        <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.04] p-5 flex items-start gap-3">
+          <UserPlus className="w-4 h-4 text-amber-300 mt-0.5 shrink-0" />
+          <div className="text-[12.5px] text-white/75 leading-relaxed">
+            <strong className="text-amber-200">Le bot est en ligne mais pas (encore) sur ton serveur.</strong>{" "}
+            Si tu viens de le re-créer après une suppression, il a quitté tes serveurs lors du delete.
+            Clique sur le bouton « Inviter le bot » ci-dessous pour le ré-ajouter à ce serveur.
+          </div>
+        </div>
+      )}
 
       {/* 3-col layout MEE6-style. Col 1: media uploads. Col 2: form. Col 3: live preview. */}
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">

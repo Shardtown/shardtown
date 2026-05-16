@@ -4085,9 +4085,14 @@ app.get('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
             [guildID],
         );
         const isPremium = await getShardPremium(guildID);
+        // Runtime status — l'état mémoire du manager dit si la session
+        // discord.js est vraiment connectée, et combien de serveurs le bot
+        // a rejoint (0 = il est en ligne mais pas invité sur ce serveur).
+        const runtime = customBotManager.getRuntimeStatus(guildID);
         res.json({
             isPremium,
             bot: rows[0] || null,
+            runtime,
         });
     } catch (err) {
         console.error('GET /api/shard/guild/:id/custom-bot:', err.message);
