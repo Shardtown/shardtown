@@ -417,7 +417,12 @@ export function ShardGuild() {
 
   return (
     <AppLayout>
-      <section className={IS_DESKTOP ? "px-2 pt-2 pb-32" : "container-wide pt-24 md:pt-32 pb-32"}>
+      {/* Padding bas dynamique : pb-32 quand la SaveBar flotte (dirty)
+          pour ne pas qu'elle masque la fin du module ; sinon pb-8 →
+          la page ne scroll plus inutilement sous un module court. */}
+      <section className={IS_DESKTOP
+        ? `px-2 pt-2 ${dirty ? "pb-32" : "pb-8"}`
+        : `container-wide pt-24 md:pt-32 ${dirty ? "pb-32" : "pb-8"}`}>
         <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}

@@ -25,6 +25,7 @@ const { SHARDTOWN_KNOWLEDGE } = require('./chatbot-knowledge');
 const presence = require('./presence');
 const { cryptoShuffle, timingSafeEqual, verifyAdminPassword } = require('./lib/security');
 const apns = require('./lib/apns');
+const customBotManager = require('./lib/customBotManager');
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -645,6 +646,10 @@ async function connectDB() {
                 `ALTER TABLE shard_custom_bots ADD COLUMN presence VARCHAR(16) DEFAULT 'online' AFTER tokenEncrypted`,
                 `ALTER TABLE shard_custom_bots ADD COLUMN activityType VARCHAR(16) DEFAULT 'listening' AFTER presence`,
                 `ALTER TABLE shard_custom_bots ADD COLUMN activityText VARCHAR(128) DEFAULT '' AFTER activityType`,
+                // Pour accueillir les data URIs base64 d'images uploadées
+                // côté client (avatar ~50-200KB, banner ~200-500KB en base64).
+                `ALTER TABLE shard_custom_bots MODIFY COLUMN avatarUrl MEDIUMTEXT`,
+                `ALTER TABLE shard_custom_bots MODIFY COLUMN bannerUrl MEDIUMTEXT`,
             ];
             for (const ddl of customBotAlters) {
                 try { await db.execute(ddl); } catch (e) { /* idempotent */ }
@@ -728,7 +733,15 @@ async function connectDB() {
     }
 }
 console.log('Démarrage de connectDB()...');
-connectDB().then(() => console.log('connectDB() terminé.'));
+connectDB().then(() => {
+    console.log('connectDB() terminé.');
+    // Init du manager une fois `db` peuplé + encryptToken/decryptToken
+    // définis, puis on relance les bots custom des serveurs Premium.
+    customBotManager.init({ db, decryptToken });
+    customBotManager.startAll().catch(err => {
+        console.error('[customBot] startAll fatal', err.message);
+    });
+});
 console.log('Chargement des routes...');
 
 passport.serializeUser((user, done) => done(null, user));
@@ -1010,8 +1023,11 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
     res.json({ received: true });
 });
 
-app.use(express.json({ limit: '64kb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '64kb' }));
+// Limit pour le custom-bot PUT (avatar + banner en base64 ~1 MB combiné).
+// 4 MB global est confortable et reste loin du DoS — l'auth middleware
+// rejette de toute façon les requêtes anonymes.
+app.use(express.json({ limit: '4mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '4mb' }));
 
 const MAX_STRING_LEN = 4000;
 function clampStrings(value, depth = 0) {
@@ -4099,8 +4115,11 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
         return res.status(400).json({ success: false, error: 'Le nom doit faire entre 2 et 32 caractères.' });
     }
     const trimmedName = name.trim();
-    const safeAvatar = typeof avatarUrl === 'string' && avatarUrl.length <= 2048 ? avatarUrl.trim() : '';
-    const safeBanner = typeof bannerUrl === 'string' && bannerUrl.length <= 2048 ? bannerUrl.trim() : '';
+    // 3 MB raisonnable pour un data URI base64 (image ~2 MB binaire). Au-delà
+    // c'est probablement un upload incompressé.
+    const MAX_MEDIA = 3_000_000;
+    const safeAvatar = typeof avatarUrl === 'string' && avatarUrl.length <= MAX_MEDIA ? avatarUrl.trim() : '';
+    const safeBanner = typeof bannerUrl === 'string' && bannerUrl.length <= MAX_MEDIA ? bannerUrl.trim() : '';
     const validPresences = ['online', 'idle', 'dnd', 'invisible'];
     const safePresence = validPresences.includes(presence) ? presence : 'online';
     const validActivities = ['playing', 'listening', 'watching', 'streaming', 'competing'];
@@ -4110,7 +4129,7 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
         : '';
 
     const [existingRows] = await db.execute(
-        'SELECT id, tokenEncrypted, botUserId FROM shard_custom_bots WHERE guildId = ? LIMIT 1',
+        'SELECT id, tokenEncrypted, botUserId, name, avatarUrl, bannerUrl FROM shard_custom_bots WHERE guildId = ? LIMIT 1',
         [guildID],
     );
     const existing = existingRows[0];
@@ -4118,6 +4137,7 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
     // Token : obligatoire à la création, optionnel ensuite (sinon on
     // garde l'ancien). On valide le token via Discord avant d'écrire.
     let tokenToStore = existing?.tokenEncrypted || null;
+    let rawTokenForPush = null; // utilisé pour PATCH /users/@me + restart manager
     let identity = existing ? { id: existing.botUserId } : null;
     if (token && typeof token === 'string' && token.trim().length > 0) {
         const raw = token.trim();
@@ -4135,8 +4155,40 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
             });
         }
         tokenToStore = encryptToken(raw);
+        rawTokenForPush = raw;
     } else if (!existing) {
         return res.status(400).json({ success: false, error: 'Le token est requis pour créer le bot personnalisé.' });
+    } else {
+        // Pas de nouveau token : on déchiffre l'existant pour pouvoir push
+        // l'identité et redémarrer le client.
+        rawTokenForPush = decryptToken(existing.tokenEncrypted);
+    }
+
+    // PATCH /users/@me — pousse uniquement les champs qui ont changé.
+    // Username rate-limit Discord = 2/h, donc on évite de spammer.
+    // Une erreur ici (ex: rate-limit) ne fait pas échouer le save : on
+    // remonte juste un `identityWarning` au client.
+    let identityWarning = null;
+    if (rawTokenForPush) {
+        const patch = {};
+        if (trimmedName && trimmedName !== existing?.name) patch.username = trimmedName;
+        if (safeAvatar !== (existing?.avatarUrl || '')) patch.avatar = safeAvatar || null;
+        if (safeBanner !== (existing?.bannerUrl || '')) patch.banner = safeBanner || null;
+        if (Object.keys(patch).length > 0) {
+            try {
+                await customBotManager.pushIdentity(rawTokenForPush, patch);
+            } catch (err) {
+                console.error('[customBot] pushIdentity failed', guildID, err.discordStatus, err.message);
+                if (err.discordStatus === 429) {
+                    identityWarning = 'Discord limite les changements de nom à 2 par heure — la config est enregistrée mais l\'identité Discord sera mise à jour plus tard.';
+                } else if (err.discordStatus === 400) {
+                    const detail = err.discordBody?.errors ? JSON.stringify(err.discordBody.errors) : (err.message || '');
+                    identityWarning = `Discord a refusé la mise à jour d'identité : ${detail.slice(0, 200)}`;
+                } else {
+                    identityWarning = `Mise à jour identité Discord échouée (${err.discordStatus || 'réseau'}). La config locale est enregistrée.`;
+                }
+            }
+        }
     }
 
     try {
@@ -4166,11 +4218,24 @@ app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
         const [rows] = await db.execute(
             `SELECT id, guildId, name, avatarUrl, bannerUrl, botUserId,
                     presence, activityType, activityText,
-                    status, statusMessage, createdAt, updatedAt
+                    status, statusMessage, createdAt, updatedAt, tokenEncrypted
              FROM shard_custom_bots WHERE guildId = ? LIMIT 1`,
             [guildID],
         );
-        res.json({ success: true, bot: rows[0] });
+        const fresh = rows[0];
+        // Restart en arrière-plan — on attend pas la fin pour répondre.
+        // Le client va appliquer la nouvelle presence/activity au prochain
+        // ready event, et setStatus() écrira "running" en BDD. On passe
+        // une copie au manager pour pouvoir delete tokenEncrypted de la
+        // réponse HTTP sans race avec la lecture async côté manager.
+        if (fresh) {
+            const rowForManager = { ...fresh };
+            customBotManager.restart(rowForManager).catch(err => {
+                console.error('[customBot] restart failed', guildID, err.message);
+            });
+            delete fresh.tokenEncrypted;
+        }
+        res.json({ success: true, bot: fresh, identityWarning });
     } catch (err) {
         console.error('PUT /api/shard/guild/:id/custom-bot:', err.message);
         res.status(500).json({ success: false, error: 'Erreur serveur' });
@@ -4183,6 +4248,11 @@ app.delete('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, r
     const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
     try {
+        // Stop le client discord.js avant de supprimer la row, sinon le
+        // manager garde une session orpheline jusqu'au prochain redémarrage.
+        await customBotManager.stop(guildID).catch(err => {
+            console.error('[customBot] stop before delete failed', guildID, err.message);
+        });
         await db.execute('DELETE FROM shard_custom_bots WHERE guildId = ?', [guildID]);
         res.json({ success: true });
     } catch (err) {

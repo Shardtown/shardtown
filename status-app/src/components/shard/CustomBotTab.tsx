@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Crown, Bot, Lock, Trash2, ExternalLink, Loader2, Check, AlertTriangle, ChevronDown } from "lucide-react";
+import { Crown, Bot, Lock, Trash2, ExternalLink, Loader2, Check, ChevronDown } from "lucide-react";
 import { apiGet, apiPut, apiDelete, isApiError } from "@/api/client";
 import { Admonition } from "@/components/ui/admonition";
 
@@ -104,7 +104,7 @@ export function CustomBotTab({ guildId }: Props) {
     setBanner(null);
     setSubmitting(true);
     try {
-      const res = await apiPut<{ success: boolean; bot?: CustomBotRow; error?: string }>(
+      const res = await apiPut<{ success: boolean; bot?: CustomBotRow; error?: string; identityWarning?: string | null }>(
         `/api/shard/guild/${guildId}/custom-bot`,
         {
           name: draftName.trim(),
@@ -119,7 +119,13 @@ export function CustomBotTab({ guildId }: Props) {
       if (res.success && res.bot) {
         setData(prev => ({ isPremium: prev?.isPremium ?? true, bot: res.bot! }));
         setDraftToken("");
-        setBanner({ kind: "ok", text: "Bot personnalisé enregistré." });
+        if (res.identityWarning) {
+          // Save OK mais l'identité Discord n'a pas pu être poussée (typiquement
+          // rate-limit username 2/h). On le dit au user, plutôt que de planter.
+          setBanner({ kind: "info", text: res.identityWarning });
+        } else {
+          setBanner({ kind: "ok", text: "Bot personnalisé enregistré. Identité Discord mise à jour, bot relancé." });
+        }
       } else {
         setBanner({ kind: "error", text: res.error || "Erreur inconnue." });
       }
@@ -231,7 +237,7 @@ export function CustomBotTab({ guildId }: Props) {
 
       {/* 3-col layout MEE6-style. Col 1: media uploads. Col 2: form. Col 3: live preview. */}
       <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[180px_1fr_300px] gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[180px_1fr_300px] gap-8 items-start">
           {/* ───── Col 1: Icône + Bannière ───── */}
           <div className="space-y-6">
             <div>
@@ -361,8 +367,11 @@ export function CustomBotTab({ guildId }: Props) {
             </div>
           </div>
 
-          {/* ───── Col 3: Live preview Discord ───── */}
-          <div className="space-y-4">
+          {/* ───── Col 3: Live preview Discord ─────
+              Sticky : la preview suit le scroll et reste visible quand la
+              col 2 (form) est plus longue — du coup pas d'espace vide à
+              droite quand l'utilisateur descend dans le form. */}
+          <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
             <div>
               <p className="text-[12px] text-white/60 mb-2">Aperçu de la liste des membres</p>
               <div className="rounded-xl border border-white/[0.08] bg-black/40 p-3 flex items-center gap-2.5">
@@ -441,14 +450,16 @@ export function CustomBotTab({ guildId }: Props) {
         </div>
       </div>
 
-      {/* Note : worker de spawn pas encore en place. */}
-      <div className="rounded-2xl border border-amber-400/15 bg-amber-400/[0.03] p-5 flex items-start gap-3">
-        <AlertTriangle className="w-4 h-4 text-amber-300 mt-0.5 shrink-0" />
-        <div className="text-[12.5px] text-white/65 leading-relaxed">
-          <strong className="text-amber-200">Lancement automatique en cours de déploiement.</strong>{" "}
-          La config est sauvegardée mais le bot n'est pas encore démarré automatiquement.
-          Le worker qui spawn ton bot Discord arrive dans une prochaine mise à jour — ton
-          token reste chiffré et prêt en base.
+      {/* Info Discord rate-limits — le user doit savoir que renommer trop
+          souvent va être bloqué côté Discord (2 changements de nom / heure). */}
+      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 flex items-start gap-3">
+        <Bot className="w-4 h-4 text-white/50 mt-0.5 shrink-0" />
+        <div className="text-[12.5px] text-white/55 leading-relaxed">
+          À la sauvegarde, l'avatar / bannière / nom sont poussés sur l'application
+          Discord, puis Shardtown relance ton bot avec le statut configuré.
+          Discord limite les changements de nom à <strong className="text-white/75">2 par heure</strong> —
+          si tu touches au nom trop souvent, l'identité s'appliquera au prochain
+          créneau (la config reste enregistrée en attendant).
         </div>
       </div>
     </div>
@@ -457,36 +468,129 @@ export function CustomBotTab({ guildId }: Props) {
 
 /* ─── Sous-composants ─────────────────────────────────────────────── */
 
+// Resize côté client puis encode en data URI. Évite d'uploader des PNG
+// de 5Mo bruts en DB ; on cible des tailles raisonnables pour avatar/banner
+// Discord. JPEG q=88 pour le banner (compresse mieux), PNG transparent
+// préservé pour l'avatar.
+async function fileToResizedDataUri(
+  file: File,
+  maxW: number,
+  maxH: number,
+  preserveAlpha: boolean,
+): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Lecture du fichier impossible."));
+    reader.onload = ev => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Image illisible."));
+      img.onload = () => {
+        let { width, height } = img;
+        const ratio = Math.min(maxW / width, maxH / height, 1);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("Canvas indisponible.")); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        const mime = preserveAlpha ? "image/png" : "image/jpeg";
+        const quality = preserveAlpha ? undefined : 0.88;
+        resolve(canvas.toDataURL(mime, quality));
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 function MediaInput({
-  value, onChange, aspect, placeholder, fallback,
+  value, onChange, aspect, fallback,
 }: {
   value: string;
   onChange: (v: string) => void;
   aspect: "square" | "banner";
-  placeholder: string;
+  /** Conservé pour compat — plus utilisé depuis le passage à un file input. */
+  placeholder?: string;
   fallback: React.ReactNode;
 }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const aspectClass = aspect === "square" ? "aspect-square" : "h-[110px]";
+  // Avatar : 512x512 max, PNG (transparence). Banner : 1280x540, JPEG.
+  const maxW = aspect === "square" ? 512 : 1280;
+  const maxH = aspect === "square" ? 512 : 540;
+  const preserveAlpha = aspect === "square";
+
+  async function onPick(file: File) {
+    setErr(null);
+    if (!file.type.startsWith("image/")) {
+      setErr("Format non supporté (image attendue).");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setErr("Fichier trop lourd (8 Mo max avant compression).");
+      return;
+    }
+    setBusy(true);
+    try {
+      const dataUri = await fileToResizedDataUri(file, maxW, maxH, preserveAlpha);
+      onChange(dataUri);
+    } catch (e) {
+      setErr((e as Error).message || "Conversion impossible.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-2">
       <label
         className={`block ${aspectClass} rounded-2xl border-2 border-dashed border-white/15 bg-black/40 hover:border-white/30 hover:bg-black/50 transition-colors cursor-pointer overflow-hidden relative flex items-center justify-center group`}
       >
         {value ? (
-          <img src={value} alt="" className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
+          <img
+            src={value}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
         ) : (
           fallback
         )}
+        {/* Overlay "Changer / Importer" — visible au hover sur la zone. */}
+        <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+          <span className="text-[11px] font-bold tracking-widest uppercase text-white">
+            {busy ? "…" : value ? "Changer" : "Importer"}
+          </span>
+        </div>
         <input
-          type="url"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="absolute inset-x-2 bottom-2 text-[10px] font-mono-num px-2 py-1 rounded bg-black/70 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-blue-400/50 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
-          autoComplete="off"
-          spellCheck={false}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          onChange={e => {
+            const f = e.target.files?.[0];
+            if (f) void onPick(f);
+            // Reset value so picking the same file again re-fires onChange.
+            e.target.value = "";
+          }}
+          disabled={busy}
+          className="absolute inset-0 opacity-0 cursor-pointer"
         />
       </label>
+      {/* Bouton "Retirer" si une image custom est posée. */}
+      {value && !value.startsWith("/image/") && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="text-[10.5px] text-white/45 hover:text-white/80 transition-colors underline underline-offset-2"
+        >
+          Retirer l'image
+        </button>
+      )}
+      {err && (
+        <p className="text-[11px] text-red-300">{err}</p>
+      )}
     </div>
   );
 }
