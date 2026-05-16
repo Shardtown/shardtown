@@ -219,6 +219,37 @@ export function ShardGuild() {
       setError(comRes.reason instanceof Error ? comRes.reason.message : "Erreur de chargement (communauté)");
     }
 
+    // Fallback : si l'endpoint ShardGuard a échoué mais que Shard a chargé,
+    // on bootstrap un blob security vide depuis les channels/roles Shard pour
+    // que les tabs security s'affichent au lieu de tourner à l'infini.
+    if (!silent && secRes.status === "rejected" && comRes.status === "fulfilled") {
+      const com = comRes.value;
+      const emptySettings: SGSettings = {
+        language: "fr", verifiedRole: "", rules_fr: "", rules_en: "",
+        serverLocked: "false", accessCode: "", verificationChannelId: "",
+        accessCodeChannelId: "", captchaDigits: 6, captchaNoise: "medium",
+        captchaAttempts: 3, verificationTimeout: 600, autoKickUnverified: "false",
+        modRoles: "[]", bannedWords: "[]", bannedWordsEnabled: "false",
+        bannedWordsAction: "delete", automodAntiSpam: "false", automodSpamThreshold: 5,
+        automodSpamInterval: 5, automodSpamAction: "warn", automodAntiLinks: "false",
+        automodLinksAction: "delete", automodAntiRaid: "false", automodRaidThreshold: 10,
+        automodRaidAction: "lockdown", warnMessage: "", muteMessage: "", kickMessage: "",
+        banMessage: "", notifAutoDelete: "false", notifDeleteDelay: 5,
+        automodAntiCaps: "false", automodCapsThreshold: 70, automodCapsAction: "warn",
+        automodSlowmodeEnabled: "false", automodSlowmodeDuration: 5, automodSlowmodeExpiry: 300,
+        warnThresholdMute: 3, warnThresholdKick: 5, warnThresholdBan: 7, warnMuteDuration: 600,
+      };
+      setSecurity({
+        guild: { id: guildId, name: com.guild?.name ?? "", icon: com.guild?.icon ?? null },
+        channels: com.channels,
+        roles: com.roles,
+        settings: emptySettings,
+        stats: { totalMembers: 0, verifiedCount: 0 },
+        chartData: {},
+      });
+      setSecurityDraft(emptySettings);
+    }
+
     if (!silent) setLoading(false);
   }, [guildId, nav]);
 
