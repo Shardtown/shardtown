@@ -272,6 +272,10 @@ export function CustomBotTab({ guildId }: Props) {
   const notInAnyGuild = runtime?.running && (runtime.guildCount ?? 0) === 0;
   // Premier passage : si pas de bot configuré, on ouvre le guide par défaut.
   const guideExpanded = guideOpen ?? !bot;
+  // Bot pas encore activé → form complètement verrouillé en preview-only.
+  // Le user voit la structure mais ne peut rien modifier tant qu'il n'a
+  // pas cliqué sur "Activer le bot personnalisé".
+  const locked = !bot;
 
   return (
     <div className="space-y-6">
@@ -482,6 +486,7 @@ export function CustomBotTab({ guildId }: Props) {
                 onChange={setDraftAvatarUrl}
                 aspect="square"
                 placeholder={SHARD_DEFAULTS.avatar}
+                disabled={locked}
                 fallback={
                   <img
                     src={SHARD_DEFAULTS.avatar}
@@ -499,6 +504,7 @@ export function CustomBotTab({ guildId }: Props) {
                 onChange={setDraftBannerUrl}
                 aspect="banner"
                 placeholder={SHARD_DEFAULTS.banner}
+                disabled={locked}
                 fallback={
                   <img
                     src={SHARD_DEFAULTS.banner}
@@ -519,21 +525,22 @@ export function CustomBotTab({ guildId }: Props) {
                 type="text"
                 value={draftName}
                 onChange={e => setDraftName(e.target.value)}
+                disabled={locked}
                 maxLength={32}
                 placeholder={SHARD_DEFAULTS.name}
-                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 transition-colors"
+                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 transition-colors disabled:cursor-default disabled:text-white"
               />
             </div>
 
             <div>
               <label className="block text-[12px] text-white/60 mb-2">Statut du bot</label>
-              <PresenceSelect value={draftPresence} onChange={setDraftPresence} />
+              <PresenceSelect value={draftPresence} onChange={setDraftPresence} disabled={locked} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3">
               <div>
                 <label className="block text-[12px] text-white/60 mb-2">Type d'activité</label>
-                <ActivitySelect value={draftActivityType} onChange={setDraftActivityType} />
+                <ActivitySelect value={draftActivityType} onChange={setDraftActivityType} disabled={locked} />
               </div>
               <div>
                 <label className="block text-[12px] text-white/60 mb-2">Texte du statut</label>
@@ -541,33 +548,37 @@ export function CustomBotTab({ guildId }: Props) {
                   type="text"
                   value={draftActivityText}
                   onChange={e => setDraftActivityText(e.target.value)}
+                  disabled={locked}
                   maxLength={128}
                   placeholder="/help"
-                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 transition-colors"
+                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 transition-colors disabled:cursor-default disabled:text-white"
                 />
               </div>
             </div>
 
-            {/* Token — pas dans la maquette MEE6 puisqu'eux possèdent l'app.
-                Chez nous le user apporte son token. On le garde en bas du form. */}
-            <div className="pt-2 border-t border-white/[0.05]">
-              <label className="block text-[12px] text-white/60 mb-2 flex items-center gap-1.5">
-                <Lock className="w-3 h-3" /> Token du bot Discord
-              </label>
-              <input
-                type="password"
-                value={draftToken}
-                onChange={e => setDraftToken(e.target.value)}
-                placeholder={bot ? "Conserver l'actuel (laisse vide)" : "MTIzNDU2Nzg5MDEy.G…"}
-                autoComplete="off"
-                spellCheck={false}
-                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 font-mono-num tracking-tight transition-colors"
-              />
-              <p className="text-[11px] text-white/35 mt-1.5">
-                Developer Portal → ton app → Bot → Reset Token. Chiffré avant stockage,
-                jamais ré-affiché ensuite.
-              </p>
-            </div>
+            {/* Token — masqué tant que le bot n'est pas activé. Le champ
+                apparaîtra après le clic sur "Activer le bot personnalisé"
+                (étape 2 du flow, à venir). */}
+            {!locked && (
+              <div className="pt-2 border-t border-white/[0.05]">
+                <label className="block text-[12px] text-white/60 mb-2 flex items-center gap-1.5">
+                  <Lock className="w-3 h-3" /> Token du bot Discord
+                </label>
+                <input
+                  type="password"
+                  value={draftToken}
+                  onChange={e => setDraftToken(e.target.value)}
+                  placeholder="Conserver l'actuel (laisse vide)"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 font-mono-num tracking-tight transition-colors"
+                />
+                <p className="text-[11px] text-white/35 mt-1.5">
+                  Developer Portal → ton app → Bot → Reset Token. Chiffré avant stockage,
+                  jamais ré-affiché ensuite.
+                </p>
+              </div>
+            )}
 
             {banner && (
               <Admonition
@@ -610,11 +621,11 @@ export function CustomBotTab({ guildId }: Props) {
               <button
                 type="button"
                 onClick={save}
-                disabled={submitting || !dirty}
+                disabled={submitting || (!locked && !dirty)}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-300 to-amber-500 text-black text-[13px] font-extrabold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity shadow-[0_8px_24px_-8px_rgba(251,191,36,0.5)]"
               >
                 {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                {bot ? "Mettre à jour" : "Débloquer le Bot Personnalisé"}
+                {locked ? "Activer le bot personnalisé" : "Mettre à jour"}
               </button>
               {bot && (
                 <button
@@ -802,7 +813,7 @@ async function fileToResizedDataUri(
 }
 
 function MediaInput({
-  value, onChange, aspect, fallback,
+  value, onChange, aspect, fallback, disabled,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -810,6 +821,7 @@ function MediaInput({
   /** Conservé pour compat — plus utilisé depuis le passage à un file input. */
   placeholder?: string;
   fallback: React.ReactNode;
+  disabled?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -840,10 +852,12 @@ function MediaInput({
     }
   }
 
+  // Locked = on garde le visuel intact mais on bloque toute interaction
+  // (pas de hover overlay, pas de file input cliquable, curseur normal).
   return (
     <div className="space-y-2">
       <label
-        className={`block ${aspectClass} rounded-2xl border-2 border-dashed border-white/15 bg-black/40 hover:border-white/30 hover:bg-black/50 transition-colors cursor-pointer overflow-hidden relative flex items-center justify-center group`}
+        className={`block ${aspectClass} rounded-2xl border-2 border-dashed border-white/15 bg-black/40 ${disabled ? "cursor-default" : "hover:border-white/30 hover:bg-black/50 cursor-pointer"} transition-colors overflow-hidden relative flex items-center justify-center group`}
       >
         {value ? (
           <img
@@ -855,27 +869,32 @@ function MediaInput({
         ) : (
           fallback
         )}
-        {/* Overlay "Changer / Importer" — visible au hover sur la zone. */}
-        <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-          <span className="text-[11px] font-bold tracking-widest uppercase text-white">
-            {busy ? "…" : value ? "Changer" : "Importer"}
-          </span>
-        </div>
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          onChange={e => {
-            const f = e.target.files?.[0];
-            if (f) void onPick(f);
-            // Reset value so picking the same file again re-fires onChange.
-            e.target.value = "";
-          }}
-          disabled={busy}
-          className="absolute inset-0 opacity-0 cursor-pointer"
-        />
+        {/* Overlay "Changer / Importer" — visible au hover sur la zone,
+            masqué quand le form est locked. */}
+        {!disabled && (
+          <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+            <span className="text-[11px] font-bold tracking-widest uppercase text-white">
+              {busy ? "…" : value ? "Changer" : "Importer"}
+            </span>
+          </div>
+        )}
+        {!disabled && (
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={e => {
+              const f = e.target.files?.[0];
+              if (f) void onPick(f);
+              // Reset value so picking the same file again re-fires onChange.
+              e.target.value = "";
+            }}
+            disabled={busy}
+            className="absolute inset-0 opacity-0 cursor-pointer"
+          />
+        )}
       </label>
-      {/* Bouton "Retirer" si une image custom est posée. */}
-      {value && !value.startsWith("/image/") && (
+      {/* Bouton "Retirer" si une image custom est posée (masqué quand locked). */}
+      {!disabled && value && !value.startsWith("/image/") && (
         <button
           type="button"
           onClick={() => onChange("")}
@@ -891,15 +910,16 @@ function MediaInput({
   );
 }
 
-function PresenceSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function PresenceSelect({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const current = PRESENCE_OPTIONS.find(p => p.value === value) || PRESENCE_OPTIONS[0];
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] hover:border-white/15 focus:border-blue-400/50 focus:outline-none transition-colors text-left"
+        disabled={disabled}
+        onClick={() => { if (!disabled) setOpen(o => !o); }}
+        className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] ${disabled ? "cursor-default" : "hover:border-white/15 focus:border-blue-400/50"} focus:outline-none transition-colors text-left disabled:cursor-default`}
       >
         <span className="inline-flex items-center gap-2.5 text-[14px] text-white">
           <span className={`w-2.5 h-2.5 rounded-full ${current.dot}`} />
@@ -931,15 +951,16 @@ function PresenceSelect({ value, onChange }: { value: string; onChange: (v: stri
   );
 }
 
-function ActivitySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function ActivitySelect({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const current = ACTIVITY_OPTIONS.find(a => a.value === value) || ACTIVITY_OPTIONS[1];
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] hover:border-white/15 focus:border-blue-400/50 focus:outline-none transition-colors text-left"
+        disabled={disabled}
+        onClick={() => { if (!disabled) setOpen(o => !o); }}
+        className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] ${disabled ? "cursor-default" : "hover:border-white/15 focus:border-blue-400/50"} focus:outline-none transition-colors text-left disabled:cursor-default`}
       >
         <span className="text-[14px] text-white">{current.label}</span>
         <ChevronDown className={`w-4 h-4 text-white/50 transition-transform ${open ? "rotate-180" : ""}`} />
