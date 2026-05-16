@@ -846,16 +846,23 @@ function PermissionsModal({ clientId, guildId, onClose }: {
     return () => window.removeEventListener("message", onMessage);
   }, [onClose]);
 
-  // URL OAuth2 — scope=applications.commands pour pouvoir synchroniser
-  // les commandes slash. state=guildId pour que /custom-bot-auth sache
-  // quelle row mettre à jour. response_type=code → flow authorization
-  // code (échangé contre access_token via le client secret).
+  // URL OAuth2 — scope=applications.commands pour pouvoir synchroniser les
+  // commandes slash. state=guildId pour que /custom-bot-auth sache quelle
+  // row mettre à jour. response_type=code → authorization code (échangé
+  // contre access_token via le client secret côté backend).
+  //
+  // ⚠️ Ne PAS ajouter `applications.commands.update` ici : ce scope existe
+  // mais n'est valide qu'en client credentials grant — en flow utilisateur
+  // Discord le rejette avec "Scope1 invalid".
   const redirectUri = "https://shardtwn.fr/custom-bot-auth";
-  const oauthUrl =
-    `https://discord.com/oauth2/authorize?client_id=${clientId}` +
-    `&scope=applications.commands+applications.commands.update` +
-    `&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&state=${encodeURIComponent(guildId)}`;
+  const oauthParams = new URLSearchParams({
+    client_id: clientId,
+    scope: "applications.commands",
+    response_type: "code",
+    redirect_uri: redirectUri,
+    state: guildId,
+  });
+  const oauthUrl = `https://discord.com/oauth2/authorize?${oauthParams.toString()}`;
 
   function authorize() {
     // Popup centré, dimensions Discord-standard.
