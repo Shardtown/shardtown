@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  Check, Crown, Lock, Star, ChevronDown, Shield, Heart,
+  Crown, Lock, Star, ChevronDown, Shield, Heart,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/api/auth";
 import { apiGet, apiPost } from "@/api/client";
 import { Admonition } from "@/components/ui/admonition";
+import { PricingModule, type PricingPlan } from "@/components/ui/pricing-module";
 
 interface AdminGuild { id: string; name: string }
 interface PremiumData { adminGuilds: AdminGuild[] }
@@ -253,70 +254,55 @@ export function Premium() {
         <div className="h-px w-full bg-white/[0.06] mb-14" />
 
 
-        {/* Pricing cards */}
-        <div id="pricing" className="grid md:grid-cols-2 gap-5 max-w-4xl mx-auto mb-20">
-          {/* Monthly */}
-          <div className="relative rounded-2xl p-7 md:p-8 bg-white/[0.025] border border-white/[0.08] hover:border-white/15 transition-colors backdrop-blur-sm">
-            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/30 mb-4">
-              Pour tester sans engagement
-            </p>
-            <h3 className="text-2xl font-bold mb-3">Mensuel</h3>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-5xl md:text-6xl font-extrabold font-mono-num">{PRICE.monthly.label}</span>
-              <span className="text-white/40 font-bold">{PRICE.monthly.suffix}</span>
-            </div>
-            <p className="text-xs text-emerald-300 font-bold mb-7">{PRICE.monthly.elsewhere}</p>
-            <ul className="space-y-2.5 mb-8">
-              {FEATURES.monthly.map(f => (
-                <li key={f} className="flex items-start gap-2.5 text-[13.5px] text-white/75">
-                  <span className="flex-shrink-0 w-4 h-4 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 mt-0.5">
-                    <Check className="w-2.5 h-2.5" strokeWidth={3.5} />
-                  </span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => { setPlan("monthly"); document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" }); }}
-              className="btn-liquid w-full rounded-full px-6 py-3.5 font-bold text-sm"
-            >
-              Choisir le mensuel
-            </button>
-          </div>
-
-          {/* Lifetime — featured with glow border */}
-          <div className="glow-border relative rounded-2xl p-7 md:p-8 bg-gradient-to-br from-amber-500/[0.12] via-amber-500/[0.04] to-transparent backdrop-blur-sm">
-            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 text-black text-[10px] font-extrabold tracking-[0.18em] uppercase flex items-center gap-1 shadow-lg">
-              <Star className="w-3 h-3" fill="currentColor" /> Meilleure offre
-            </div>
-            <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-amber-300 mb-4">
-              La meilleure valeur à long terme
-            </p>
-            <h3 className="text-2xl font-bold mb-3">À vie</h3>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-5xl md:text-6xl font-extrabold font-mono-num text-amber-300">{PRICE.lifetime.label}</span>
-              <span className="text-white/40 font-bold">{PRICE.lifetime.suffix}</span>
-            </div>
-            <p className="text-xs text-emerald-300 font-bold mb-7">{PRICE.lifetime.elsewhere}</p>
-            <ul className="space-y-2.5 mb-8">
-              {FEATURES.lifetime.map(f => (
-                <li key={f} className="flex items-start gap-2.5 text-[13.5px] text-white/85">
-                  <span className="flex-shrink-0 w-4 h-4 rounded-full bg-amber-500/25 border border-amber-500/50 flex items-center justify-center text-amber-300 mt-0.5">
-                    <Check className="w-2.5 h-2.5" strokeWidth={3.5} />
-                  </span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => { setPlan("lifetime"); document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" }); }}
-              className="btn-liquid btn-liquid--gold w-full rounded-full px-6 py-3.5 font-extrabold text-sm"
-            >
-              Choisir l'offre à vie
-            </button>
-          </div>
+        {/* Pricing cards — module shadcn-style avec 2 plans (Mensuel + À vie).
+            Toggle Monthly/Yearly désactivé : les prix sont fixes et "à vie"
+            n'est pas un cycle annuel mais un paiement unique. */}
+        <div id="pricing" className="mb-12 scroll-mt-32">
+          <PricingModule
+            title="Choisis ton offre"
+            subtitle="Mensuel sans engagement, ou à vie pour les serveurs installés."
+            showToggle={false}
+            buttonLabel="Choisir cette offre"
+            plans={(() => {
+              const plans: PricingPlan[] = [
+                {
+                  id: "monthly",
+                  name: "Mensuel",
+                  description: "Pour tester sans engagement.",
+                  icon: <Crown className="w-7 h-7 text-white/70" />,
+                  priceMonthly: PRICE.monthly.amount,
+                  priceYearly: PRICE.monthly.amount,
+                  priceSuffix: { monthly: PRICE.monthly.suffix, yearly: PRICE.monthly.suffix },
+                  users: "Un serveur Discord",
+                  features: FEATURES.monthly.map(f => ({ label: f, included: true })),
+                  onSelect: () => {
+                    setPlan("monthly");
+                    document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" });
+                  },
+                },
+                {
+                  id: "lifetime",
+                  name: "À vie",
+                  description: "Paiement unique, aucun renouvellement.",
+                  icon: <Star className="w-7 h-7 text-amber-300" fill="currentColor" />,
+                  priceMonthly: PRICE.lifetime.amount,
+                  priceYearly: PRICE.lifetime.amount,
+                  priceSuffix: { monthly: PRICE.lifetime.suffix, yearly: PRICE.lifetime.suffix },
+                  users: "Un serveur Discord, à vie",
+                  features: FEATURES.lifetime.map(f => ({ label: f, included: true })),
+                  recommended: true,
+                  onSelect: () => {
+                    setPlan("lifetime");
+                    document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" });
+                  },
+                },
+              ];
+              return plans;
+            })()}
+          />
+          <p className="text-center text-[12px] text-emerald-300 font-bold -mt-4">
+            {PRICE.monthly.elsewhere} · {PRICE.lifetime.elsewhere}
+          </p>
         </div>
 
         {/* Activate */}
