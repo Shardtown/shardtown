@@ -462,14 +462,11 @@ export function ShardGuild() {
 
   return (
     <AppLayout>
-      {/* Dual-scroll bounded : section bornée au viewport, chaque colonne
-          (aside + module) a son propre scroll, totalement indépendants.
-          Web : -312px = pt-32 (128) + footer py-20 + contenu (~184) — pour
-          que le footer reste visible sans scroller la page.
-          Desktop : -168px = topbar 72 + pt-8 + pb-16 du DesktopShell. */}
+      {/* Flow naturel page (MEE6) : la page scroll, l'aside est sticky.
+          Rien n'est jamais coupé, le footer arrive naturellement en bas. */}
       <section className={IS_DESKTOP
-        ? "px-2 pt-2 flex flex-col h-[calc(100dvh-168px)]"
-        : "container-wide pt-24 md:pt-32 flex flex-col h-[calc(100dvh-312px)]"}>
+        ? "px-2 pt-2 pb-12"
+        : "container-wide pt-24 md:pt-32 pb-16"}>
         <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -619,8 +616,8 @@ export function ShardGuild() {
           </motion.div>
         </header>
 
-        <div className="flex-1 min-h-0 grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
-          <aside className="md:min-h-0 md:overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
+          <aside className={`md:self-start md:sticky ${IS_DESKTOP ? "md:top-2 md:max-h-[calc(100dvh-96px)]" : "md:top-24 md:max-h-[calc(100dvh-7rem)]"} md:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
             <nav
               ref={navRef}
               className="space-y-7 relative"
@@ -695,7 +692,7 @@ export function ShardGuild() {
             </nav>
           </aside>
 
-          <div className={`min-w-0 md:min-h-0 md:overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${dirty ? "md:pb-28" : "md:pb-4"}`}>
+          <div className={`min-w-0 ${dirty ? "pb-28" : ""}`}>
             {renderTab()}
           </div>
         </div>
