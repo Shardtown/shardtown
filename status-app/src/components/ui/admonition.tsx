@@ -97,7 +97,7 @@ export function Admonition({
         ${config.border}
         ${config.glow}
         ${animate ? "animate-count-pop" : ""}
-        border rounded-xl p-3.5 backdrop-blur-sm
+        border rounded-xl p-3.5
         ${className}
       `.trim()}
     >

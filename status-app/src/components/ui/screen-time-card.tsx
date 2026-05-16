@@ -64,7 +64,7 @@ export const ScreenTimeCard = ({
   return (
     <div
       className={cn(
-        "w-full rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-sm shadow-[0_0_32px_-12px_rgba(0,0,0,0.6)] px-5 py-5",
+        "w-full rounded-2xl border border-white/[0.06] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent shadow-[0_0_32px_-12px_rgba(0,0,0,0.6)] px-5 py-5",
         className,
       )}
     >

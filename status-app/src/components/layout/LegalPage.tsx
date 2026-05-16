@@ -126,7 +126,7 @@ export function LegalPage({
 
           {/* Content card */}
           <div className="min-w-0">
-            <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-7 md:p-12 space-y-12 backdrop-blur-sm">
+            <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-7 md:p-12 space-y-12">
               {children}
             </div>
           </div>

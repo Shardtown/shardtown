@@ -128,7 +128,7 @@ function GuildSelect({
         <ChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""} text-white/40`} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 mt-2 bg-[#0f0f0f]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-80 overflow-y-auto">
+        <div className="absolute left-0 right-0 mt-2 bg-[#0f0f0f]/95 border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden max-h-80 overflow-y-auto">
           {guilds.length === 0 && (
             <div className="px-5 py-4 text-sm text-white/40">Aucun serveur administrable trouvé.</div>
           )}
@@ -325,7 +325,7 @@ export function Premium() {
             </div>
           )}
 
-          <div className="rounded-2xl bg-white/[0.025] border border-white/[0.08] p-6 md:p-8 backdrop-blur-sm">
+          <div className="rounded-2xl bg-white/[0.025] border border-white/[0.08] p-6 md:p-8">
             {!user && !loading ? (
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
@@ -404,7 +404,7 @@ export function Premium() {
         <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-8">Free vs Premium</h2>
         <div className="space-y-5 mb-20">
           {COMPARISON.map(group => (
-            <div key={group.title} className="rounded-2xl bg-white/[0.025] border border-white/[0.08] backdrop-blur-sm overflow-hidden">
+            <div key={group.title} className="rounded-2xl bg-white/[0.025] border border-white/[0.08] overflow-hidden">
               <div className="px-5 md:px-6 py-3.5 border-b border-white/[0.06] grid grid-cols-3 md:grid-cols-[1fr_repeat(2,minmax(120px,160px))] items-center gap-4">
                 <h3 className="font-bold text-[15px]">{group.title}</h3>
                 <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/40">Free</span>
@@ -441,7 +441,7 @@ export function Premium() {
             return (
               <div
                 key={i}
-                className={`rounded-2xl border backdrop-blur-sm transition-colors ${
+                className={`rounded-2xl border transition-colors ${
                   open ? "border-amber-500/25 bg-amber-500/[0.04]" : "border-white/[0.08] bg-white/[0.02] hover:border-white/15"
                 }`}
               >

@@ -386,7 +386,7 @@ export function AccountLogin() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-6 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]"
+            className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent px-8 py-6 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]"
           >
             {mode !== "verify" && (
               <div className="grid grid-cols-2 gap-1 p-1 bg-white/[0.03] rounded-full mb-6">

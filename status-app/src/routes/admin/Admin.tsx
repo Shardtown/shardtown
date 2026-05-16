@@ -600,7 +600,7 @@ export function Admin() {
         <div
           role="status"
           aria-live="polite"
-          className={`fixed bottom-6 right-6 z-[200] bg-[#0a0a0a]/95 backdrop-blur-xl border px-5 py-3.5 rounded-2xl text-sm font-semibold shadow-2xl ${
+          className={`fixed bottom-6 right-6 z-[200] bg-[#0a0a0a]/95 border px-5 py-3.5 rounded-2xl text-sm font-semibold shadow-2xl ${
             toast.type === "success"
               ? "border-emerald-500/30 text-emerald-300"
               : "border-red-500/30 text-red-300"
@@ -617,9 +617,9 @@ export function Admin() {
           onClick={() => setPending(null)}
           onKeyDown={e => e.key === "Escape" && setPending(null)}
         >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+          <div className="absolute inset-0 bg-black/70" />
           <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
+            className="relative bg-[#0a0a0a]/95 border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button

@@ -48,7 +48,7 @@ export function SaveBar({ dirty, saving, saved, error, onSave, onReset }: Props)
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 max-w-3xl w-[calc(100%-3rem)]">
       <div
-        className="flex items-center justify-between gap-4 px-5 py-3 rounded-2xl border bg-[#0a0a0a]/95 border-white/15 backdrop-blur-xl shadow-2xl"
+        className="flex items-center justify-between gap-4 px-5 py-3 rounded-2xl border bg-[#0a0a0a]/95 border-white/15 shadow-2xl"
         role="status"
         aria-live="polite"
       >

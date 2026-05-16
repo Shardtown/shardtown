@@ -106,7 +106,7 @@ export function Status() {
             </p>
           </div>
 
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm overflow-hidden divide-y divide-white/[0.06]">
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden divide-y divide-white/[0.06]">
             {stats.loading ? (
               <>
                 <ServiceRowSkeleton />
@@ -128,7 +128,7 @@ export function Status() {
           </div>
 
           {/* KPI compact row */}
-          <div className="grid grid-cols-2 md:grid-cols-5 mt-8 rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm overflow-hidden">
+          <div className="grid grid-cols-2 md:grid-cols-5 mt-8 rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
             <Kpi label="Clusters"  value={stats.loading ? "—" : `${stats.onlineBots}/${stats.bots.length}`}  down={stats.offlineBots > 0} />
             <Kpi label="Shards"    value={stats.loading ? "—" : `${stats.onlineShards}/${stats.totalShards}`} down={stats.offlineShards > 0} />
             <Kpi label="Serveurs"  value={stats.loading ? "—" : stats.totalGuilds.toLocaleString("fr-FR")} />

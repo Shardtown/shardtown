@@ -315,9 +315,9 @@ export function ShardServer() {
           onClick={() => setPickerGuildId(null)}
           onKeyDown={e => e.key === "Escape" && setPickerGuildId(null)}
         >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/70" />
           <div
-            className="relative bg-[#0d0d10]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl"
+            className="relative bg-[#0d0d10]/95 border border-white/10 rounded-2xl p-8 w-full max-w-md shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             <button

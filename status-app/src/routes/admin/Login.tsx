@@ -46,7 +46,7 @@ export function AdminLogin() {
           </div>
 
           {/* Card */}
-          <div className="relative rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl p-7 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
+          <div className="relative rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent p-7 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
             {error && (
               <div className="mb-6 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/25 text-red-300 text-sm font-semibold flex items-start gap-2.5">
                 <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
