@@ -389,20 +389,17 @@ export function ShardGuild() {
   // Build distinct group order from TABS array.
   const groups = Array.from(new Set(TABS.map(t => t.group)));
 
-  // Disable tabs for sides that failed to load. "any" = pas de dépendance
-  // (cas du tableau de bord, toujours dispo).
-  function isTabAvailable(t: typeof TABS[number]) {
-    if (t.side === "any") return true;
-    if (t.side === "security") return !!security && !!securityDraft;
-    return !!community && !!communityDraft;
+  // Tout est Shard — les tabs sont toujours dispo. Si les données d'un côté
+  // ne sont pas encore chargées, le tab affiche son propre état vide.
+  function isTabAvailable(_t: typeof TABS[number]) {
+    return true;
   }
 
   const currentTab = TABS.find(t => t.key === tab);
-  const currentAvailable = currentTab ? isTabAvailable(currentTab) : false;
 
-  // Tab content rendering — only render if the side is loaded.
+  // Tab content rendering.
   function renderTab(): React.ReactNode {
-    if (!currentTab || !currentAvailable) return null;
+    if (!currentTab) return null;
 
     if (currentTab.key === "overview") {
       return (
@@ -460,7 +457,14 @@ export function ShardGuild() {
         case "streams":   return <StreamAlertsTab {...tp} />;
       }
     }
-    return null;
+    // Données pas encore chargées pour ce côté — skeleton générique.
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-48 bg-white/[0.04] rounded animate-pulse" />
+        <div className="h-32 bg-white/[0.03] rounded-2xl animate-pulse" />
+        <div className="h-32 bg-white/[0.03] rounded-2xl animate-pulse" />
+      </div>
+    );
   }
 
   return (
@@ -698,13 +702,7 @@ export function ShardGuild() {
           </aside>
 
           <div className={`min-w-0 md:min-h-0 md:overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${dirty ? "md:pb-28" : "md:pb-4"}`}>
-            {currentAvailable ? renderTab() : (
-              <div className="bg-white/[0.02] border border-dashed border-white/10 rounded-2xl p-10 text-center">
-                <p className="text-white/50 text-sm">
-                  Cette section nécessite une connexion supplémentaire à Discord pour être chargée.
-                </p>
-              </div>
-            )}
+            {renderTab()}
           </div>
         </div>
       </section>
@@ -742,7 +740,7 @@ function SidebarTab({
       className={`relative z-10 inline-flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium whitespace-nowrap transition-colors duration-150 md:w-full md:justify-start ${
         active ? "text-white" : "text-white/60 hover:text-white"
       }`}
-      title={!available ? "Données indisponibles — connecte le compte Discord correspondant" : undefined}
+      title={t.label}
     >
       {active && (
         <span
@@ -871,7 +869,7 @@ function ModuleCard({
       type="button"
       onClick={onClick}
       className="group relative text-left rounded-2xl border p-5 transition-colors h-full bg-white/[0.025] border-white/[0.08] hover:bg-white/[0.05] hover:border-white/20"
-      title={!available ? "Section disponible après connexion du compte Discord correspondant" : undefined}
+      title={label}
     >
       <div className="flex items-start justify-between mb-4">
         <div className="w-11 h-11 rounded-xl flex items-center justify-center border bg-white/[0.04] border-white/[0.08] text-white/80">
