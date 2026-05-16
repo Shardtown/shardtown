@@ -498,7 +498,7 @@ export function ShardGuild() {
         </header>
 
         <div className="grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14 md:items-start">
-          <aside className="md:sticky md:top-28 md:self-start md:max-h-[calc(100dvh-7rem)] md:overflow-y-auto md:pr-2 md:-mr-2">
+          <aside className="md:self-start">
             <nav
               ref={navRef}
               className="space-y-7 relative"
