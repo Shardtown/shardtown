@@ -354,7 +354,7 @@ export function CustomBotTab({ guildId }: Props) {
                   <UserPlus className="w-3.5 h-3.5" /> Ajoute ton bot au serveur
                 </p>
                 <p className="text-[11.5px] text-white/55 mb-3 leading-relaxed">
-                  Ton bot est configuré mais doit être invité sur <span className="text-white/80">{guildId}</span>{" "}
+                  Ton bot est configuré mais doit encore être invité sur ton serveur
                   pour apparaître dans la liste des membres et exécuter les commandes.
                 </p>
                 <a
