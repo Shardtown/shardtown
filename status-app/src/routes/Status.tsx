@@ -20,6 +20,7 @@ const WINDOW_LABEL = "12 dernières min";
 // Map legacy bot_label values stored in the DB to the unified display name.
 function displayBotLabel(raw: string): string {
   const v = (raw || "").toLowerCase();
+  // "shardguard" est l'ancien label persisté en DB depuis les bots séparés.
   if (v === "shard" || v === "shardguard") return "Shard";
   return raw;
 }

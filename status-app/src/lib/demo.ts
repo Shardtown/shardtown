@@ -139,8 +139,9 @@ export function mockApiCall(method: string, path: string, _body?: unknown): Mock
 
   /* ── /api/account/{discord|shard}/refresh-guilds ── */
   if (method === "POST" && /^\/api\/account\/(discord|shard)\/refresh-guilds$/.test(p)) {
-    const bot = p.includes("discord") ? "shardguard" : "shard";
-    const list = bot === "shardguard" ? DEMO_GUILDS_SG : DEMO_GUILDS_SHARD;
+    // "discord" oauth = side moderation (le bot Discord historique).
+    const isMod = p.includes("discord");
+    const list = isMod ? DEMO_GUILDS_SG : DEMO_GUILDS_SHARD;
     return ok({ success: true, guilds_count: list.length });
   }
 
@@ -162,10 +163,10 @@ export function mockApiCall(method: string, path: string, _body?: unknown): Mock
     return ok({ success: true });
   }
 
-  /* ── /api/{bot}/server ── (legacy dashboard data shape) */
-  if (method === "GET" && /^\/api\/(shardguard|shard)\/server$/.test(p)) {
-    const bot = p.includes("shardguard") ? "shardguard" : "shard";
-    const list = bot === "shardguard" ? DEMO_GUILDS_SG : DEMO_GUILDS_SHARD;
+  /* ── /api/shard/server + /api/shard/mod/server (legacy: /api/shardguard/server) ── */
+  if (method === "GET" && /^\/api\/(shardguard|shard\/mod|shard)\/server$/.test(p)) {
+    const isMod = p.includes("/mod/") || p.includes("shardguard");
+    const list = isMod ? DEMO_GUILDS_SG : DEMO_GUILDS_SHARD;
     return ok({
       user: { id: DEMO_DISCORD_ID, username: "demo-user", avatar: null },
       guilds: list.map(g => ({ id: g.id, name: g.name, icon: g.icon })),
@@ -175,15 +176,18 @@ export function mockApiCall(method: string, path: string, _body?: unknown): Mock
   }
 
   /* ── /api/{bot}/guild/:id — config view ── */
+  if (method === "GET" && /^\/api\/shard\/mod\/guild\/\d+$/.test(p)) {
+    return ok(mockShardModGuild(p.split("/").pop()!));
+  }
   if (method === "GET" && /^\/api\/shardguard\/guild\/\d+$/.test(p)) {
-    return ok(mockShardGuardGuild(p.split("/").pop()!));
+    return ok(mockShardModGuild(p.split("/").pop()!));
   }
   if (method === "GET" && /^\/api\/shard\/guild\/\d+$/.test(p)) {
     return ok(mockShardGuild(p.split("/").pop()!));
   }
 
   /* ── POST endpoints (settings, etc.) — pretend success ── */
-  if (method === "POST" && /^\/(shardguard|shard)\//.test(p)) {
+  if (method === "POST" && /^\/(shardguard|shard\/mod|shard)\//.test(p)) {
     return ok({ success: true });
   }
   if (method === "POST" && p.startsWith("/api/")) {
@@ -216,7 +220,7 @@ function buildChartData(): Record<string, { join: number; leave: number; success
   return out;
 }
 
-function mockShardGuardGuild(guildId: string) {
+function mockShardModGuild(guildId: string) {
   const guild = DEMO_GUILDS_SG.find(g => g.id === guildId) ?? DEMO_GUILDS_SG[0];
   return {
     guild: { id: guild.id, name: guild.name, icon: guild.icon },

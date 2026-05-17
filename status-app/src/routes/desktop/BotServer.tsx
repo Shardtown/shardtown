@@ -17,7 +17,7 @@ interface Guild {
 }
 
 interface GuildsResponse {
-  bot: "shardguard" | "shard";
+  bot: "mod" | "shard";
   guilds: Guild[];
   fetched_at: string | null;
   stale: boolean;
@@ -41,17 +41,17 @@ export function DesktopBotServer() {
   async function load() {
     // On affiche la liste des serveurs admin de l'utilisateur (issue des deux
     // OAuth, certains comptes n'en ont qu'un). Mais pour le badge "bot présent",
-    // on n'écoute QUE la réponse Shard : si l'ancien bot ShardGuard est encore
-    // sur un serveur, ça ne veut pas dire que Shard y est.
+    // on n'écoute QUE la réponse Shard : l'ancien bot moderation peut encore
+    // traîner sur un serveur sans que Shard y soit.
     try {
       const [sec, com, comSrv] = await Promise.all([
-        apiGet<GuildsResponse>("/api/account/guilds?bot=shardguard").catch(() => null),
+        apiGet<GuildsResponse>("/api/account/guilds?bot=mod").catch(() => null),
         apiGet<GuildsResponse>("/api/account/guilds?bot=shard").catch(() => null),
         apiGet<{ clientId?: string }>("/api/shard/server").catch(() => ({ clientId: "" })),
       ]);
 
       const merged = new Map<string, Guild>();
-      // 1) Seed avec les guildes côté ShardGuard, en forçant bot_present=false.
+      // 1) Seed avec les guildes côté moderation, en forçant bot_present=false.
       sec?.guilds.forEach(g => merged.set(g.id, { ...g, bot_present: false }));
       // 2) Override avec les guildes côté Shard — c'est la source de vérité
       //    pour bot_present (présence du bot Shard).

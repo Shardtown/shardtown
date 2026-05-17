@@ -18,11 +18,11 @@ interface Guild {
   icon: string | null;
   owner: boolean;
   bot_present: boolean;
-  bot: "shardguard" | "shard";
+  bot: "mod" | "shard";
 }
 
 interface SummaryData {
-  shardguard: Guild[];
+  mod: Guild[];
   shard: Guild[];
 }
 
@@ -42,11 +42,11 @@ export function TrayPanel() {
       setBearerToken(token);
       try {
         const [sg, s] = await Promise.all([
-          apiGet<{ guilds: Omit<Guild, "bot">[] }>("/api/account/guilds?bot=shardguard"),
+          apiGet<{ guilds: Omit<Guild, "bot">[] }>("/api/account/guilds?bot=mod"),
           apiGet<{ guilds: Omit<Guild, "bot">[] }>("/api/account/guilds?bot=shard"),
         ]);
         if (!cancelled) setData({
-          shardguard: sg.guilds.map(g => ({ ...g, bot: "shardguard" })),
+          mod: sg.guilds.map(g => ({ ...g, bot: "mod" })),
           shard: s.guilds.map(g => ({ ...g, bot: "shard" })),
         });
       } catch {
@@ -58,7 +58,7 @@ export function TrayPanel() {
 
   const allGuilds = useMemo(() => {
     if (!data) return [];
-    return [...data.shardguard, ...data.shard];
+    return [...data.mod, ...data.shard];
   }, [data]);
 
   const filtered = useMemo(() => {
@@ -67,8 +67,8 @@ export function TrayPanel() {
     return allGuilds.filter(g => g.name.toLowerCase().includes(q)).slice(0, 6);
   }, [allGuilds, query]);
 
-  const sgActive = data?.shardguard.filter(g => g.bot_present).length ?? 0;
-  const sgTotal = data?.shardguard.length ?? 0;
+  const sgActive = data?.mod.filter(g => g.bot_present).length ?? 0;
+  const sgTotal = data?.mod.length ?? 0;
   const sActive = data?.shard.filter(g => g.bot_present).length ?? 0;
   const sTotal = data?.shard.length ?? 0;
   // Unified bot — count distinct guilds across both OAuth flows so the
@@ -277,7 +277,7 @@ function TrayRecentCard({ guild }: { guild: Guild }) {
 function TrayBotRow({
   icon, label, active, total, onClick,
 }: {
-  kind: "shardguard" | "shard";
+  kind: "mod" | "shard";
   icon: React.ReactNode;
   label: string;
   active: number;

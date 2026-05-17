@@ -17,7 +17,7 @@ interface GuildSummary {
 }
 
 interface GuildsState {
-  shardguard: GuildSummary[];
+  mod: GuildSummary[];
   shard: GuildSummary[];
   loading: boolean;
 }
@@ -30,7 +30,7 @@ const DISMISS_TIP_KEY = "shardtown.overview.dismiss-tip.v1";
  */
 export function DesktopOverview() {
   const { user } = useAuth();
-  const [g, setG] = useState<GuildsState>({ shardguard: [], shard: [], loading: true });
+  const [g, setG] = useState<GuildsState>({ mod: [], shard: [], loading: true });
   const [refreshing, setRefreshing] = useState(false);
   const [tipDismissed, setTipDismissed] = useState(() => {
     try { return localStorage.getItem(DISMISS_TIP_KEY) === "1"; } catch { return false; }
@@ -39,12 +39,12 @@ export function DesktopOverview() {
   async function load() {
     try {
       const [sg, s] = await Promise.all([
-        apiGet<{ guilds: GuildSummary[] }>("/api/account/guilds?bot=shardguard"),
+        apiGet<{ guilds: GuildSummary[] }>("/api/account/guilds?bot=mod"),
         apiGet<{ guilds: GuildSummary[] }>("/api/account/guilds?bot=shard"),
       ]);
-      setG({ shardguard: sg.guilds, shard: s.guilds, loading: false });
+      setG({ mod: sg.guilds, shard: s.guilds, loading: false });
     } catch {
-      setG({ shardguard: [], shard: [], loading: false });
+      setG({ mod: [], shard: [], loading: false });
     }
   }
   useEffect(() => { load(); }, []);
@@ -67,9 +67,9 @@ export function DesktopOverview() {
 
   // Combined recents = first configured guilds, merging both bots when both are present
   const recents = useMemo(() => {
-    const byId = new Map<string, GuildSummary & { bots: ("shardguard" | "shard")[] }>();
-    for (const x of g.shardguard.filter(x => x.bot_present)) {
-      byId.set(x.id, { ...x, bots: ["shardguard"] });
+    const byId = new Map<string, GuildSummary & { bots: ("mod" | "shard")[] }>();
+    for (const x of g.mod.filter(x => x.bot_present)) {
+      byId.set(x.id, { ...x, bots: ["mod"] });
     }
     for (const x of g.shard.filter(x => x.bot_present)) {
       const existing = byId.get(x.id);
@@ -79,8 +79,8 @@ export function DesktopOverview() {
     return [...byId.values()].slice(0, 8);
   }, [g]);
 
-  const sgConfigured = g.shardguard.filter(x => x.bot_present).length;
-  const sgTotal = g.shardguard.length;
+  const sgConfigured = g.mod.filter(x => x.bot_present).length;
+  const sgTotal = g.mod.length;
   const sConfigured = g.shard.filter(x => x.bot_present).length;
   const sTotal = g.shard.length;
   const totalConfigured = sgConfigured + sConfigured;
@@ -300,7 +300,7 @@ function SectionHead({
   );
 }
 
-function RecentCard({ guild }: { guild: GuildSummary & { bots: ("shardguard" | "shard")[] } }) {
+function RecentCard({ guild }: { guild: GuildSummary & { bots: ("mod" | "shard")[] } }) {
   const iconUrl = guild.icon
     ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=128`
     : null;

@@ -27,8 +27,8 @@ function initials(name: string) {
 }
 
 // Single Discord bot ("Shard"). Behind the scenes two legacy bot identities
-// still answer (community via /api/shard/server, security via
-// /api/shardguard/server) — we query both in parallel and merge so the user
+// still answer (community via /api/shard/server, moderation via
+// /api/shard/mod/server) — we query both in parallel and merge so the user
 // sees one unified list whether they linked Discord OAuth, Shard OAuth, or
 // both.
 export function ShardServer() {
@@ -46,7 +46,7 @@ export function ShardServer() {
     let cancelled = false;
     (async () => {
       const [securityRes, communityRes] = await Promise.allSettled([
-        apiGet<BotServerData>("/api/shardguard/server"),
+        apiGet<BotServerData>("/api/shard/mod/server"),
         apiGet<BotServerData>("/api/shard/server"),
       ]);
 
@@ -70,14 +70,14 @@ export function ShardServer() {
         d?.guilds.forEach(g => guildsMap.set(g.id, g));
       });
       // Présence du bot : on ne regarde QUE la liste Shard. L'ancien bot
-      // ShardGuard peut encore traîner sur certains serveurs sans que Shard
+      // L'ancien bot moderation peut encore traîner sur certains serveurs sans que Shard
       // y soit — l'union faisait apparaître Shard comme présent à tort.
       const botGuildIds = new Set<string>(community?.botGuildIds ?? []);
 
       const user = security?.user ?? community?.user ?? null;
       // Shard est désormais un bot unifié — n'utilise QUE le clientId Shard.
       // Sans ce garde, un SHARD_CLIENT_ID vide faisait basculer le lien
-      // d'invitation sur l'ancien clientId ShardGuard.
+      // d'invitation sur l'ancien clientId moderation.
       const clientId = community?.clientId || "";
 
       setData({

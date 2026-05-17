@@ -1330,13 +1330,13 @@ function liveGuildAdminGuard(getUserId, getBotToken) {
     };
 }
 
-// Tout passe sous Shard : les routes /shardguard/* sont des chemins legacy
-// qui pointent vers les mêmes handlers, mais l'auth utilise shardUser +
-// SHARD_TOKEN. Pas de Discord OAuth historique requis pour accéder à
-// quoi que ce soit.
-app.use('/shardguard', liveGuildAdminGuard(req => req.session?.shardUser?.id, () => process.env.SHARD_TOKEN));
+// Tout passe sous Shard. Les routes /shardguard/* sont les chemins legacy
+// (gardés pour les anciens clients/bookmarks) ; le client à jour utilise
+// /shard/mod/*. Les deux pointent vers les mêmes handlers. L'auth utilise
+// shardUser + SHARD_TOKEN ; pas de Discord OAuth historique requis.
+app.use(['/shardguard', '/shard/mod'], liveGuildAdminGuard(req => req.session?.shardUser?.id, () => process.env.SHARD_TOKEN));
 app.use('/shard', liveGuildAdminGuard(req => req.session?.shardUser?.id, () => process.env.SHARD_TOKEN));
-app.use('/api/shardguard', liveGuildAdminGuard(req => req.session?.shardUser?.id, () => process.env.SHARD_TOKEN));
+app.use(['/api/shardguard', '/api/shard/mod'], liveGuildAdminGuard(req => req.session?.shardUser?.id, () => process.env.SHARD_TOKEN));
 app.use('/api/shard', liveGuildAdminGuard(req => req.session?.shardUser?.id, () => process.env.SHARD_TOKEN));
 
 // Migrated to React SPA — kept only as legacy fallback for the EJS template (unused once SPA catch-all is registered)
@@ -2273,9 +2273,13 @@ async function fetchBotGuildIds(botKey) {
 // to admin-only and annotate each guild with `bot_present` so the desktop
 // app can mark guilds where the bot still needs to be invited.
 app.get('/api/account/guilds', requireAccount, async (req, res) => {
-    const bot = String(req.query.bot || '').toLowerCase();
+    // bot=mod est l'alias canonique de bot=shardguard (legacy). On normalise
+    // tôt pour que toute la suite raisonne en termes de "side": community vs
+    // moderation, sans plus jamais avoir à parler de "shardguard".
+    const rawBot = String(req.query.bot || '').toLowerCase();
+    const bot = rawBot === 'mod' ? 'shardguard' : rawBot;
     if (bot !== 'shardguard' && bot !== 'shard') {
-        return res.status(400).json({ error: 'bot=shardguard|shard requis' });
+        return res.status(400).json({ error: 'bot=shard|mod requis (legacy: shardguard)' });
     }
     const col = bot === 'shardguard' ? 'discord_guilds_json' : 'shard_guilds_json';
     const fetchedCol = bot === 'shardguard' ? 'discord_guilds_fetched_at' : 'shard_guilds_fetched_at';
@@ -5485,7 +5489,7 @@ app.post('/shard/guild/:guildID/test', checkAuthShard, async (req, res) => {
 });
 
 // ShardGuard dashboard data — consumed by React /shardguard/server
-app.get('/api/shardguard/server', checkAuth, async (req, res) => {
+app.get(['/api/shardguard/server', '/api/shard/mod/server'], checkAuth, async (req, res) => {
     const userPayload = { id: req.user.id, username: req.user.username, avatar: req.user.avatar || null };
     const adminGuilds = req.user.guilds
         .filter(guild => hasGuildAdmin(guild))
@@ -5512,7 +5516,7 @@ app.get('/api/shardguard/server', checkAuth, async (req, res) => {
 app.get('/guild/:guildID', (req, res) => res.redirect(301, `/shard/guild/${req.params.guildID}`));
 
 // ShardGuard guild config — consumed by React /shardguard/guild/:id
-app.get('/api/shardguard/guild/:guildID', checkAuth, async (req, res) => {
+app.get(['/api/shardguard/guild/:guildID', '/api/shard/mod/guild/:guildID'], checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ error: 'Accès refusé' });
@@ -5643,7 +5647,7 @@ app.get('/api/shardguard/guild/:guildID', checkAuth, async (req, res) => {
 
 app.post('/guild/:guildID/config', (req, res) => res.redirect(301, `/shardguard/guild/${req.params.guildID}/config`));
 
-app.post('/shardguard/guild/:guildID/config', checkAuth, async (req, res) => {
+app.post(['/shardguard/guild/:guildID/config', '/shard/mod/guild/:guildID/config'], checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     let { 
         language = 'fr', 
@@ -5930,17 +5934,17 @@ const apiLimiter = rateLimit({
     legacyHeaders: false
 });
 
-app.use('/shardguard/api', apiLimiter);
+app.use(['/shardguard/api', '/shard/mod/api'], apiLimiter);
 app.use('/shard/api', apiLimiter);
 // The non-/api guild routes (config save, giveaway/poll/scheduled
 // creation, etc.) write to Discord and were previously unrate-limited.
 // Each successful call hits the Discord API at least once, so an
 // authenticated attacker could spam them to either bloat the audit log
 // or get the bot token rate-limited globally by Discord.
-app.use('/shardguard/guild', apiLimiter);
+app.use(['/shardguard/guild', '/shard/mod/guild'], apiLimiter);
 app.use('/shard/guild', apiLimiter);
 
-app.get('/shardguard/api/guild/:guildID/members', checkAuth, async (req, res) => {
+app.get(['/shardguard/api/guild/:guildID/members', '/shard/mod/api/guild/:guildID/members'], checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
@@ -6006,7 +6010,7 @@ app.get('/shardguard/api/guild/:guildID/members', checkAuth, async (req, res) =>
     }
 });
 
-app.post('/shardguard/api/guild/:guildID/member/:userId/action', checkAuth, async (req, res) => {
+app.post(['/shardguard/api/guild/:guildID/member/:userId/action', '/shard/mod/api/guild/:guildID/member/:userId/action'], checkAuth, async (req, res) => {
     const { guildID, userId } = req.params;
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
@@ -6101,7 +6105,7 @@ app.post('/shardguard/api/guild/:guildID/member/:userId/action', checkAuth, asyn
     }
 });
 
-app.get('/shardguard/api/guild/:guildID/member/:userId/warns', checkAuth, async (req, res) => {
+app.get(['/shardguard/api/guild/:guildID/member/:userId/warns', '/shard/mod/api/guild/:guildID/member/:userId/warns'], checkAuth, async (req, res) => {
     const { guildID, userId } = req.params;
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
@@ -6116,7 +6120,7 @@ app.get('/shardguard/api/guild/:guildID/member/:userId/warns', checkAuth, async 
     }
 });
 
-app.get('/shardguard/api/guild/:guildID/member/:userId/sanctions', checkAuth, async (req, res) => {
+app.get(['/shardguard/api/guild/:guildID/member/:userId/sanctions', '/shard/mod/api/guild/:guildID/member/:userId/sanctions'], checkAuth, async (req, res) => {
     const { guildID, userId } = req.params;
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
@@ -6131,7 +6135,7 @@ app.get('/shardguard/api/guild/:guildID/member/:userId/sanctions', checkAuth, as
     }
 });
 
-app.get('/shardguard/api/guild/:guildID/logs', checkAuth, async (req, res) => {
+app.get(['/shardguard/api/guild/:guildID/logs', '/shard/mod/api/guild/:guildID/logs'], checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
@@ -6150,7 +6154,7 @@ app.get('/shardguard/api/guild/:guildID/logs', checkAuth, async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-app.get('/shardguard/api/guild/:guildID/audit', checkAuth, async (req, res) => {
+app.get(['/shardguard/api/guild/:guildID/audit', '/shard/mod/api/guild/:guildID/audit'], checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false });
@@ -6161,7 +6165,7 @@ app.get('/shardguard/api/guild/:guildID/audit', checkAuth, async (req, res) => {
     } catch (e) { res.status(500).json({ success: false }); }
 });
 
-app.post('/shardguard/api/guild/:guildID/panic', checkAuth, async (req, res) => {
+app.post(['/shardguard/api/guild/:guildID/panic', '/shard/mod/api/guild/:guildID/panic'], checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
@@ -6242,7 +6246,7 @@ setInterval(() => {
 // keep iterating the Discord API in the background, since the full run on
 // a multi-thousand member guild takes minutes. The client polls
 // /verify-all/status to know when it's done.
-app.post('/shardguard/api/guild/:guildID/verify-all', checkAuth, async (req, res) => {
+app.post(['/shardguard/api/guild/:guildID/verify-all', '/shard/mod/api/guild/:guildID/verify-all'], checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Accès refusé' });
@@ -6371,7 +6375,7 @@ app.post('/shardguard/api/guild/:guildID/verify-all', checkAuth, async (req, res
 
 // Frontend polling endpoint. Returns the current state of the most recent
 // verification job for that guild (running counts, doneAt, error).
-app.get('/shardguard/api/guild/:guildID/verify-all/status', checkAuth, (req, res) => {
+app.get(['/shardguard/api/guild/:guildID/verify-all/status', '/shard/mod/api/guild/:guildID/verify-all/status'], checkAuth, (req, res) => {
     const guildID = req.params.guildID;
     const userGuild = req.user.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ error: 'Accès refusé' });
@@ -6388,7 +6392,7 @@ app.get('/shardguard/api/guild/:guildID/verify-all/status', checkAuth, (req, res
     });
 });
 
-app.post('/shardguard/api/guild/:guildID/deploy', checkAuth, async (req, res) => {
+app.post(['/shardguard/api/guild/:guildID/deploy', '/shard/mod/api/guild/:guildID/deploy'], checkAuth, async (req, res) => {
     const guildID = req.params.guildID;
     const VALID_DEPLOY_TYPES = ['all', 'verification', 'accesscode'];
     const deployType = VALID_DEPLOY_TYPES.includes(req.query.type) ? req.query.type : 'all';
@@ -6496,7 +6500,7 @@ app.post('/shardguard/api/guild/:guildID/deploy', checkAuth, async (req, res) =>
 });
 
 // Actions groupées (Kick / Verify all)
-app.post('/shardguard/api/guild/:guildID/bulk/:action', checkAuth, async (req, res) => {
+app.post(['/shardguard/api/guild/:guildID/bulk/:action', '/shard/mod/api/guild/:guildID/bulk/:action'], checkAuth, async (req, res) => {
     const { guildID, action } = req.params;
     const VALID_BULK_ACTIONS = ['verify', 'kick'];
     if (!VALID_BULK_ACTIONS.includes(action)) return res.status(400).json({ success: false, error: 'Action invalide' });

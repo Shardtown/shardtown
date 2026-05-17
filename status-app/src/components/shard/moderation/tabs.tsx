@@ -359,7 +359,7 @@ function VerifyAllPanel({ hasVerifiedRole }: { hasVerifiedRole: boolean }) {
     const guildId = match?.[1] || "";
     try {
       const d = await apiPost<{ success?: boolean; error?: string; queued?: boolean }>(
-        window.location.pathname.replace("/shardguard/guild/", "/shardguard/api/guild/") + "/verify-all",
+        window.location.pathname.replace("/shard/mod/guild/", "/shard/mod/api/guild/") + "/verify-all",
       );
       if (d.success) {
         // The HTTP request returns immediately; the actual role-granting
@@ -879,7 +879,7 @@ export function PanicTab({ settings }: { settings: ShardModSettings }) {
     setState({ kind: "loading" });
     try {
       const d = await apiPost<PanicResponse>(
-        window.location.pathname.replace("/shardguard/guild/", "/shardguard/api/guild/") + "/panic",
+        window.location.pathname.replace("/shard/mod/guild/", "/shard/mod/api/guild/") + "/panic",
         { activate },
       );
       if (d.success) {

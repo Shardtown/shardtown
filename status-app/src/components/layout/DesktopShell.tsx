@@ -459,7 +459,7 @@ function SearchBox({
     (async () => {
       try {
         const [sg, s] = await Promise.all([
-          apiGet<{ guilds: { id: string; name: string }[] }>("/api/account/guilds?bot=shardguard").catch(() => ({ guilds: [] })),
+          apiGet<{ guilds: { id: string; name: string }[] }>("/api/account/guilds?bot=mod").catch(() => ({ guilds: [] })),
           apiGet<{ guilds: { id: string; name: string }[] }>("/api/account/guilds?bot=shard").catch(() => ({ guilds: [] })),
         ]);
         const seen = new Set<string>();

@@ -64,7 +64,7 @@ export function VerifyAllNotifier() {
 
       try {
         const status = await apiGet<JobStatus>(
-          `/shardguard/api/guild/${job.guildId}/verify-all/status`,
+          `/shard/mod/api/guild/${job.guildId}/verify-all/status`,
         );
         if (cancelled) return;
         if (!status.exists) {

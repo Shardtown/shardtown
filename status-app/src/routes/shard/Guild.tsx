@@ -29,8 +29,8 @@ import { SamiaChat } from "@/routes/Assistant";
 // Sidebar mee6-style : section haute épinglée (pinned: true, sans en-tête de
 // groupe) + catégories collapsibles en dessous. Le champ `side` reste
 // critique : il dicte quelle API alimente l'onglet
-// ("security"/moderation = /api/shardguard/guild [legacy URL côté serveur],
-//  "community" = /api/shard/guild, "any" = dashboard, pas de dépendance directe).
+// ("security"/moderation = /api/shard/mod/guild, "community" = /api/shard/guild,
+//  "any" = dashboard, pas de dépendance directe).
 // `placeholder: true` = onglet sans implémentation encore, rend un panneau
 // "Bientôt". `externalTo` = lien hors-dashboard (ex: Premium → /premium).
 const TABS = [
@@ -138,7 +138,7 @@ export function ShardGuild() {
     setSwitcherLoading(true);
     type ServerResp = { guilds: SwitcherGuild[]; botGuildIds: string[] };
     const [sec, com] = await Promise.allSettled([
-      apiGet<ServerResp>("/api/shardguard/server"),
+      apiGet<ServerResp>("/api/shard/mod/server"),
       apiGet<ServerResp>("/api/shard/server"),
     ]);
     const map = new Map<string, SwitcherGuild>();
@@ -200,7 +200,7 @@ export function ShardGuild() {
     if (!guildId) return;
     if (!silent) setLoading(true);
     const [secRes, comRes] = await Promise.allSettled([
-      apiGet<ShardModGuildData>(`/api/shardguard/guild/${guildId}`),
+      apiGet<ShardModGuildData>(`/api/shard/mod/guild/${guildId}`),
       apiGet<ShardGuildData>(`/api/shard/guild/${guildId}`),
     ]);
 
@@ -228,7 +228,7 @@ export function ShardGuild() {
       setError(comRes.reason instanceof Error ? comRes.reason.message : "Erreur de chargement (communauté)");
     }
 
-    // Fallback : si l'endpoint ShardGuard a échoué mais que Shard a chargé,
+    // Fallback : si l'endpoint moderation a échoué mais que Shard a chargé,
     // on bootstrap un blob security vide depuis les channels/roles Shard pour
     // que les tabs security s'affichent au lieu de tourner à l'infini.
     if (!silent && secRes.status === "rejected" && comRes.status === "fulfilled") {
@@ -333,7 +333,7 @@ export function ShardGuild() {
     setSaveError(null);
     try {
       const ops: Promise<unknown>[] = [];
-      if (securityDirty && securityDraft) ops.push(apiPost(`/shardguard/guild/${guildId}/config`, securityDraft));
+      if (securityDirty && securityDraft) ops.push(apiPost(`/shard/mod/guild/${guildId}/config`, securityDraft));
       if (communityDirty && communityDraft) ops.push(apiPost(`/shard/guild/${guildId}/config`, communityDraft));
       await Promise.all(ops);
 
@@ -350,7 +350,7 @@ export function ShardGuild() {
       // Reconciliation : re-fetch best-effort pour récupérer les valeurs
       // normalisées par le backend. Si ça échoue, on garde le draft.
       const [secFresh, comFresh] = await Promise.allSettled([
-        securityDirty ? apiGet<ShardModGuildData>(`/api/shardguard/guild/${guildId}`) : Promise.resolve(null),
+        securityDirty ? apiGet<ShardModGuildData>(`/api/shard/mod/guild/${guildId}`) : Promise.resolve(null),
         communityDirty ? apiGet<ShardGuildData>(`/api/shard/guild/${guildId}`) : Promise.resolve(null),
       ]);
       if (secFresh.status === "fulfilled" && secFresh.value) {

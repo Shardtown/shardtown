@@ -142,7 +142,7 @@ export function LogsTab({ guildId }: { guildId: string }) {
     if (search) params.set("search", search);
     const t = setTimeout(async () => {
       try {
-        const d = await apiGet<unknown>(`/shardguard/api/guild/${guildId}/logs?${params}`);
+        const d = await apiGet<unknown>(`/shard/mod/api/guild/${guildId}/logs?${params}`);
         if (ctrl.signal.aborted) return;
         setLogs(Array.isArray(d) ? d : ((d as { logs?: unknown[] })?.logs || []));
       } catch { /* aborted or error */ }
@@ -234,7 +234,7 @@ export function MembersTab({ guildId }: { guildId: string }) {
 
   useEffect(() => {
     setLoading(true);
-    apiGet<unknown>(`/shardguard/api/guild/${guildId}/members`)
+    apiGet<unknown>(`/shard/mod/api/guild/${guildId}/members`)
       .then(d => setMembers(Array.isArray(d) ? d : ((d as { members?: unknown[] })?.members || [])))
       .catch(() => setMembers([]))
       .finally(() => setLoading(false));
@@ -350,7 +350,7 @@ function MemberModal({ guildId, member, onClose }: { guildId: string; member: Me
       let d: { success?: boolean; error?: string };
       try {
         d = await apiPost<{ success?: boolean; error?: string }>(
-          `/shardguard/api/guild/${guildId}/member/${member.id}/action`,
+          `/shard/mod/api/guild/${guildId}/member/${member.id}/action`,
           { action, reason, duration, username: member.username },
         );
       } catch (e) {
