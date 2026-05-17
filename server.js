@@ -910,24 +910,28 @@ app.use((req, res, next) => {
     }
 
     // Vite-built React SPA emits only external <script src="..."> tags so
-    // it doesn't need 'unsafe-inline'. The legacy EJS templates rendered
-    // under /_legacy/ still contain inline <script> blocks and onclick="..."
-    // handlers AND pull Tailwind from a CDN, so for those paths we keep
-    // the looser policy. cdnjs/jsdelivr were allowed historically but
-    // aren't referenced anywhere in the current code — dropped.
+    // il n'a pas besoin de 'unsafe-inline'. The legacy EJS templates
+    // rendered under /_legacy/ still contain inline <script> blocks and
+    // onclick="..." handlers AND pull Tailwind from a CDN, so for those
+    // paths we keep the looser policy. cdnjs/jsdelivr were allowed
+    // historically but aren't referenced anywhere in the current code.
+    //
+    // Stripe.js : autorisé en script-src + frame-src (iframe PaymentElement
+    // + popup 3D Secure) + connect-src (API stripe.com) + img-src (pixels).
+    // Recommandations officielles : stripe.com/docs/security/guide#content-security-policy
     const isLegacy = req.path.startsWith('/_legacy/');
     const scriptSrc = isLegacy
-        ? "'self' 'unsafe-inline' https://cdn.tailwindcss.com"
-        : "'self'";
+        ? "'self' 'unsafe-inline' https://cdn.tailwindcss.com https://js.stripe.com"
+        : "'self' https://js.stripe.com";
 
     res.setHeader('Content-Security-Policy',
         "default-src 'self'; " +
         `script-src ${scriptSrc}; ` +
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
         "font-src 'self' https://fonts.gstatic.com; " +
-        "img-src 'self' https://cdn.discordapp.com data:; " +
-        "connect-src 'self'; " +
-        "frame-src 'none'; " +
+        "img-src 'self' https://cdn.discordapp.com data: https://*.stripe.com; " +
+        "connect-src 'self' https://api.stripe.com https://m.stripe.network https://m.stripe.com; " +
+        "frame-src https://js.stripe.com https://hooks.stripe.com; " +
         "frame-ancestors 'none'; " +
         "object-src 'none'; " +
         "base-uri 'self';"
