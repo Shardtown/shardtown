@@ -5,6 +5,7 @@ import {
   parseJsonArray, isTrue, toFlag, to01,
   NOISE_OPTIONS, ACTION_OPTIONS, RAID_ACTION_OPTIONS, LANGUAGE_OPTIONS,
 } from "@/api/shardguard";
+import type { ShardSettings } from "@/api/shard";
 import { Field, NumberInput, TextInput, Toggle, Select, SectionCard } from "./Field";
 import { apiPost } from "@/api/client";
 
@@ -46,7 +47,18 @@ const TIMEZONE_OPTIONS = [
   { value: "UTC",               label: "🌐 UTC" },
 ];
 
-export function GeneralTab({ settings, update, channels, roles }: TabProps) {
+interface ParametersExtraProps {
+  /** Settings côté Shard (community) — pour timezone et embedColor. */
+  comSettings?: ShardSettings | null;
+  /** Update Shard. Optionnel : si absent, les champs côté community
+   *  restent en lecture seule (rare — toujours présent dans le dashboard). */
+  comUpdate?: (patch: Partial<ShardSettings>) => void;
+}
+
+export function GeneralTab({
+  settings, update, channels, roles,
+  comSettings, comUpdate,
+}: TabProps & ParametersExtraProps) {
   // Gérants supplémentaires — on réutilise modRoles (semantiquement proche
   // des "Bot Masters" mee6 : rôles qui peuvent piloter le bot, hors admins).
   const masterRoleIds = new Set(parseJsonArray(settings.modRoles));
@@ -57,11 +69,12 @@ export function GeneralTab({ settings, update, channels, roles }: TabProps) {
   }
   const eligibleRoles = roles.filter(r => r.name !== "@everyone");
 
-  // Champs futurs (non encore persistés). On les stocke côté UI pour que
-  // le placeholder soit interactif ; toute valeur saisie sera perdue au
-  // refresh tant que le backend ne porte pas ces colonnes.
-  const [tz, setTz] = useState("Europe/Paris");
-  const [embedColor, setEmbedColor] = useState("#5865F2");
+  // Persistance côté shard_settings (community side). Si comUpdate est
+  // dispo : write live. Sinon : fallback state local (mode lecture seule).
+  const tz = comSettings?.timezone || "Europe/Paris";
+  const setTz = (v: string) => comUpdate?.({ timezone: v });
+  const embedColor = comSettings?.embedColor || "#5865F2";
+  const setEmbedColor = (v: string) => comUpdate?.({ embedColor: v });
 
   const isLocked = settings.serverLocked === "true";
 
@@ -151,9 +164,6 @@ export function GeneralTab({ settings, update, channels, roles }: TabProps) {
               value={tz}
               onChange={setTz}
             />
-            <p className="text-[10.5px] text-amber-200/70 mt-2 italic">
-              Bientôt — le réglage est saisi côté UI mais le backend ne le persiste pas encore.
-            </p>
           </Field>
         </div>
       </SectionCard>
@@ -200,9 +210,6 @@ export function GeneralTab({ settings, update, channels, roles }: TabProps) {
               </div>
             </div>
           </div>
-          <p className="text-[10.5px] text-amber-200/70 mt-3 italic">
-            Bientôt — la couleur s'affiche dans l'aperçu mais le backend ne la persiste pas encore.
-          </p>
         </Field>
       </SectionCard>
 

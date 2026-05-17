@@ -488,6 +488,9 @@ async function connectDB() {
                 `ALTER TABLE shard_settings ADD COLUMN referralReward INT DEFAULT 100`,
                 `ALTER TABLE shard_settings ADD COLUMN twitchAlerts JSON`,
                 `ALTER TABLE shard_settings ADD COLUMN youtubeAlerts JSON`,
+                // Paramètres globaux serveur (mee6-style) — fuseau horaire + couleur embed
+                `ALTER TABLE shard_settings ADD COLUMN timezone VARCHAR(64) DEFAULT 'Europe/Paris'`,
+                `ALTER TABLE shard_settings ADD COLUMN embedColor VARCHAR(7) DEFAULT '#5865F2'`,
             ];
             for (const ddl of shardSettingsAlters) {
                 try { await db.execute(ddl); } catch { /* already exists */ }
@@ -3894,7 +3897,8 @@ app.get('/api/shard/guild/:guildID', checkAuthShard, async (req, res) => {
             ticketEnabled: 0, ticketCategoryId: '', ticketSupportRoleId: '', ticketLogChannelId: '', ticketMaxPerUser: 1,
             ticketPanelChannelId: '', ticketPanelTitle: '', ticketPanelDescription: '', ticketPanelColor: '#3b82f6',
             birthdayChannelId: '', birthdayMessage: '', birthdayRoleId: '',
-            economyEnabled: 0, economyCurrencyName: 'coins', economyDailyMin: 50, economyDailyMax: 200
+            economyEnabled: 0, economyCurrencyName: 'coins', economyDailyMin: 50, economyDailyMax: 200,
+            timezone: 'Europe/Paris', embedColor: '#5865F2',
         };
         const safeParse = (v, fb) => {
             if (v == null) return fb;
@@ -3973,7 +3977,15 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
         referralReward = 100,
         xpMultRoleId = [],
         xpMultValue = [],
+        // Paramètres globaux du serveur (mee6-style)
+        timezone = 'Europe/Paris',
+        embedColor = '#5865F2',
     } = req.body;
+    // Normalise embedColor : on n'accepte que #RRGGBB (sinon défaut).
+    const normalizedEmbedColor = /^#[0-9a-fA-F]{6}$/.test(String(embedColor || '')) ? String(embedColor) : '#5865F2';
+    // Timezone : on whiteliste à une chaîne de longueur raisonnable, format
+    // "Region/City" ou "UTC". Si invalide → fallback Europe/Paris.
+    const normalizedTimezone = /^[A-Za-z][A-Za-z0-9_+\-/]{0,63}$/.test(String(timezone || '')) ? String(timezone) : 'Europe/Paris';
     const levelsEnabledVal = levelsEnabled ? 1 : 0;
     const ticketEnabledVal = ticketEnabled ? 1 : 0;
     const ticketTranscriptEnabledVal = ticketTranscriptEnabled ? 1 : 0;
@@ -4011,8 +4023,8 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
     }
     try {
         await db.execute(`
-            INSERT INTO shard_settings (guildId, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabled, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, levelThresholds, ticketEnabled, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, ticketPanelButtonLabel, ticketPanelButtonEmoji, ticketPanelButtonStyle, ticketOpenTitle, ticketOpenDescription, ticketOpenFooter, ticketOpenColor, ticketCloseButtonLabel, ticketCloseButtonEmoji, ticketCloseButtonStyle, ticketTranscriptEnabled, ticketLogOpenTitle, ticketLogOpenColor, ticketLogCloseTitle, ticketLogCloseColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabled, economyCurrencyName, economyDailyMin, economyDailyMax, isPremium, referralEnabled, referralReward, xpRoleMultipliers)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO shard_settings (guildId, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabled, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, levelThresholds, ticketEnabled, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, ticketPanelButtonLabel, ticketPanelButtonEmoji, ticketPanelButtonStyle, ticketOpenTitle, ticketOpenDescription, ticketOpenFooter, ticketOpenColor, ticketCloseButtonLabel, ticketCloseButtonEmoji, ticketCloseButtonStyle, ticketTranscriptEnabled, ticketLogOpenTitle, ticketLogOpenColor, ticketLogCloseTitle, ticketLogCloseColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabled, economyCurrencyName, economyDailyMin, economyDailyMax, isPremium, referralEnabled, referralReward, xpRoleMultipliers, timezone, embedColor)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 welcomeChannelId = VALUES(welcomeChannelId), welcomeTitle = VALUES(welcomeTitle),
                 welcomeMessage = VALUES(welcomeMessage), welcomeFooter = VALUES(welcomeFooter),
@@ -4046,8 +4058,9 @@ app.post('/shard/guild/:guildID/config', checkAuthShard, async (req, res) => {
                 economyEnabled = VALUES(economyEnabled), economyCurrencyName = VALUES(economyCurrencyName),
                 economyDailyMin = VALUES(economyDailyMin), economyDailyMax = VALUES(economyDailyMax),
                 isPremium = VALUES(isPremium), referralEnabled = VALUES(referralEnabled),
-                referralReward = VALUES(referralReward), xpRoleMultipliers = VALUES(xpRoleMultipliers)
-        `, [guildID, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabledVal, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, thresholdsJson, ticketEnabledVal, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, ticketPanelButtonLabel, ticketPanelButtonEmoji, panelBtnStyle, ticketOpenTitle, ticketOpenDescription, ticketOpenFooter, ticketOpenColor, ticketCloseButtonLabel, ticketCloseButtonEmoji, closeBtnStyle, ticketTranscriptEnabledVal, ticketLogOpenTitle, ticketLogOpenColor, ticketLogCloseTitle, ticketLogCloseColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabledVal, economyCurrencyName, economyDailyMin, economyDailyMax, isPremiumSVal, referralEnabledVal, parseInt(referralReward) || 100, xpRoleMultipliersJson]);
+                referralReward = VALUES(referralReward), xpRoleMultipliers = VALUES(xpRoleMultipliers),
+                timezone = VALUES(timezone), embedColor = VALUES(embedColor)
+        `, [guildID, welcomeChannelId, welcomeTitle, welcomeMessage, welcomeFooter, welcomeColor, leaveChannelId, leaveTitle, leaveMessage, leaveFooter, leaveColor, autoRoleId, tempVoiceTrigger, tempVoiceCategory, tempVoiceName, levelsEnabledVal, xpMin, xpMax, xpCooldown, levelUpChannelId, levelUpMessage, levelUpColor, thresholdsJson, ticketEnabledVal, ticketCategoryId, ticketSupportRoleId, ticketLogChannelId, ticketMaxPerUser, ticketPanelChannelId, ticketPanelTitle, ticketPanelDescription, ticketPanelColor, ticketPanelButtonLabel, ticketPanelButtonEmoji, panelBtnStyle, ticketOpenTitle, ticketOpenDescription, ticketOpenFooter, ticketOpenColor, ticketCloseButtonLabel, ticketCloseButtonEmoji, closeBtnStyle, ticketTranscriptEnabledVal, ticketLogOpenTitle, ticketLogOpenColor, ticketLogCloseTitle, ticketLogCloseColor, birthdayChannelId, birthdayMessage, birthdayRoleId, economyEnabledVal, economyCurrencyName, economyDailyMin, economyDailyMax, isPremiumSVal, referralEnabledVal, parseInt(referralReward) || 100, xpRoleMultipliersJson, normalizedTimezone, normalizedEmbedColor]);
         res.json({ success: true });
     } catch (err) {
         console.error('Erreur save shard config:', err.message);

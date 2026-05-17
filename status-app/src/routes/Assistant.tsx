@@ -59,7 +59,18 @@ function useAutoResize(min: number, max: number) {
   return { ref, adjust };
 }
 
+/** Wrapper "page standalone" — accessible directement via /assistant. */
 export function Assistant() {
+  return (
+    <AppLayout>
+      <SamiaChat />
+    </AppLayout>
+  );
+}
+
+/** Chat UI réutilisable — pas d'AppLayout, pour pouvoir être intégré
+ *  inline dans le dashboard guild (tab "Samia"). */
+export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -248,11 +259,10 @@ export function Assistant() {
   // Rendered as soon as /history reports 503 + maintenance:true.
   if (maintenance) {
     return (
-      <AppLayout>
-        <section
-          className="container-wide pt-8 pb-12 flex items-center justify-center"
-          style={{ minHeight: "calc(100vh - 18rem)" }}
-        >
+      <section
+        className={embedded ? "py-12 flex items-center justify-center" : "container-wide pt-8 pb-12 flex items-center justify-center"}
+        style={embedded ? { minHeight: "320px" } : { minHeight: "calc(100vh - 18rem)" }}
+      >
           <div className="text-center max-w-xl mx-auto">
             <motion.p
               initial={{ opacity: 0, y: reduce ? 0 : 12 }}
@@ -280,7 +290,6 @@ export function Assistant() {
             </motion.p>
           </div>
         </section>
-      </AppLayout>
     );
   }
 
@@ -288,25 +297,23 @@ export function Assistant() {
   // chat avant la bascule en page maintenance si le serveur renvoie 503).
   if (!historyLoaded) {
     return (
-      <AppLayout>
-        <section
-          className="container-wide pt-8 pb-12 flex items-center justify-center"
-          style={{ minHeight: "calc(100vh - 18rem)" }}
-        >
-          <Loader2 className="w-6 h-6 animate-spin text-white/30" />
-        </section>
-      </AppLayout>
+      <section
+        className={embedded ? "py-12 flex items-center justify-center" : "container-wide pt-8 pb-12 flex items-center justify-center"}
+        style={embedded ? { minHeight: "320px" } : { minHeight: "calc(100vh - 18rem)" }}
+      >
+        <Loader2 className="w-6 h-6 animate-spin text-white/30" />
+      </section>
     );
   }
 
   return (
-    <AppLayout>
+    <>
       {/* La section remplit l'espace disponible entre le header (pt-32 dans
           AppLayout.main) et le footer. Empty state = hero centré ; conversation
           = colonne flex avec messages qui scrollent et input en bas. */}
       <section
-        className="container-wide pt-8 pb-12 flex flex-col"
-        style={{ minHeight: "calc(100vh - 18rem)" }}
+        className={embedded ? "flex flex-col" : "container-wide pt-8 pb-12 flex flex-col"}
+        style={embedded ? { minHeight: "calc(100dvh - 16rem)" } : { minHeight: "calc(100vh - 18rem)" }}
       >
         {!hasConversation ? (
           // Empty state — hero in the same uppercase Inter-Black style as the home
@@ -464,7 +471,7 @@ export function Assistant() {
         onCancel={() => setConfirmReset(false)}
         onConfirm={doReset}
       />
-    </AppLayout>
+    </>
   );
 }
 

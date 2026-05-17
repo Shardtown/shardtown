@@ -24,6 +24,7 @@ import {
   StreamAlertsTab,
 } from "@/components/shard/tabs";
 import { CustomBotTab } from "@/components/shard/CustomBotTab";
+import { SamiaChat } from "@/routes/Assistant";
 
 // Sidebar mee6-style : section haute épinglée (pinned: true, sans en-tête de
 // groupe) + catégories collapsibles en dessous. Le champ `side` reste
@@ -35,7 +36,7 @@ import { CustomBotTab } from "@/components/shard/CustomBotTab";
 const TABS = [
   // ─── Section haute (épinglée, pas d'en-tête de groupe) ──────────────
   { key: "overview",    label: "Tableau de bord",   icon: LayoutGrid,    group: "Pinned", side: "any",      pinned: true },
-  { key: "samia",       label: "Samia",             icon: Wand2,         group: "Pinned", side: "any",      pinned: true, externalTo: "/assistant", badge: "Bêta" },
+  { key: "samia",       label: "Samia",             icon: Wand2,         group: "Pinned", side: "any",      pinned: true, badge: "Bêta" },
   { key: "custombot",   label: "Bot personnalisé",  icon: Smile,         group: "Pinned", side: "any",      pinned: true },
   { key: "general",     label: "Paramètres",        icon: Settings,      group: "Pinned", side: "security", pinned: true },
   { key: "premium",     label: "Premium",           icon: Crown,         group: "Pinned", side: "any",      pinned: true, externalTo: "/premium" },
@@ -469,10 +470,21 @@ export function ShardGuild() {
       return <CustomBotTab guildId={gid} />;
     }
 
+    // Samia — chat IA inline, sans wrapping AppLayout (le dashboard gère déjà).
+    if (currentTab.key === "samia") {
+      return <SamiaChat embedded />;
+    }
+
     if (currentTab.side === "security" && security && securityDraft) {
       const tp = { settings: securityDraft, update: updateSecurity, channels: security.channels, roles: security.roles };
       switch (currentTab.key) {
-        case "general":  return <GeneralTab {...tp} />;
+        case "general":  return (
+          <GeneralTab
+            {...tp}
+            comSettings={communityDraft}
+            comUpdate={updateCommunity}
+          />
+        );
         case "rules":    return <RulesTab {...tp} />;
         case "captcha":  return <CaptchaTab {...tp} />;
         case "security": return <SecurityTab {...tp} />;
@@ -546,7 +558,7 @@ export function ShardGuild() {
         <header className="mb-6">
           <motion.div
             ref={switcherRef}
-            className="relative inline-block"
+            className="relative block max-w-[640px]"
             initial={{ opacity: 0, y: reduce ? 0 : 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.05, ease: heroEase }}
@@ -557,9 +569,7 @@ export function ShardGuild() {
                 setSwitcherOpen(o => !o);
                 if (!switcherOpen) loadSwitcherGuilds();
               }}
-              className={IS_DESKTOP
-                ? "inline-flex items-center gap-3 pl-2 pr-3 py-2 rounded-xl border border-white/[0.12] bg-[#161c2e] hover:bg-[#1c2238] hover:border-white/20 transition-colors max-w-[420px]"
-                : "inline-flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl border border-white/[0.12] bg-[#161c2e] hover:bg-[#1c2238] hover:border-white/20 transition-colors max-w-[420px]"}
+              className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/15 backdrop-blur-sm transition-colors w-full max-w-[640px]"
               aria-expanded={switcherOpen}
               aria-haspopup="menu"
             >
@@ -567,18 +577,18 @@ export function ShardGuild() {
                 <img
                   src={guildIcon}
                   alt=""
-                  className="w-9 h-9 rounded-lg border border-white/10 flex-shrink-0"
+                  className="w-7 h-7 rounded-full border border-white/10 flex-shrink-0"
                 />
               ) : (
-                <div className="w-9 h-9 rounded-lg bg-[#1c2238] border border-white/[0.12] flex items-center justify-center text-sm font-extrabold text-white/80 flex-shrink-0">
+                <div className="w-7 h-7 rounded-full bg-white/[0.05] border border-white/[0.1] flex items-center justify-center text-[12px] font-extrabold text-white/80 flex-shrink-0">
                   {heroGuild.name[0]?.toUpperCase()}
                 </div>
               )}
-              <h1 className="font-extrabold tracking-tight leading-tight truncate text-[18px]">
+              <h1 className="font-bold tracking-tight leading-tight truncate text-[14px] flex-1 text-left">
                 {heroGuild.name}
               </h1>
               <ChevronDown
-                className={`flex-shrink-0 text-white/55 transition-transform duration-200 w-4 h-4 ml-1 ${switcherOpen ? "rotate-180" : ""}`}
+                className={`flex-shrink-0 text-white/45 transition-transform duration-200 w-3.5 h-3.5 ${switcherOpen ? "rotate-180" : ""}`}
                 strokeWidth={2.2}
               />
             </button>
@@ -652,27 +662,6 @@ export function ShardGuild() {
             )}
           </motion.div>
 
-          <motion.div
-            className={IS_DESKTOP ? "flex items-center gap-2.5 mt-3 flex-wrap" : "flex items-center gap-2.5 mt-5 flex-wrap"}
-            initial={{ opacity: 0, y: reduce ? 0 : 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.15, ease: heroEase }}
-          >
-            {security?.stats?.totalMembers !== undefined && (
-              <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-white/65 bg-white/[0.05] border border-white/[0.1] rounded-full px-3 py-1">
-                <Users2 className="w-3 h-3" />
-                {security.stats.totalMembers.toLocaleString("fr-FR")} membres
-              </span>
-            )}
-            {(security?.settings?.isPremium === 1 || security?.settings?.isPremium === "1") && (
-              <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-amber-300 bg-amber-400/12 border border-amber-400/30 rounded-full px-3 py-1">
-                Premium
-              </span>
-            )}
-            <span className="text-[12px] text-white/30 font-mono-num">
-              ID&nbsp;<span className="text-white/50">{heroGuild.id}</span>
-            </span>
-          </motion.div>
         </header>
 
         <div className="grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
@@ -698,31 +687,39 @@ export function ShardGuild() {
               />
               {/* "Vue d'ensemble" → traitée en standalone (pas de header de
                   groupe), elle joue le rôle de landing par défaut. */}
-              {/* Section haute — items épinglés (style mee6, sans en-tête
-                  de groupe). Premium est un lien externe vers /premium. */}
-              <div className="flex md:flex-col gap-1 mb-3">
-                {TABS.filter(t => "pinned" in t && t.pinned).map(t => (
-                  <SidebarTab
-                    key={t.key}
-                    t={t}
-                    active={t.key === tab}
-                    onClick={() => {
-                      if ("externalTo" in t && t.externalTo) {
-                        nav(t.externalTo);
-                      } else {
-                        setTab(t.key);
-                      }
-                    }}
-                    refCallback={el => { tabRefs.current[t.key] = el; }}
-                    onHover={() => moveIndicatorTo(t.key)}
-                  />
-                ))}
-              </div>
+              {/* Fond unique englobant TOUT (items épinglés + catégories).
+                  Transparent + simple bordure, conformément à la demande
+                  de DA "transparente". */}
+              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] backdrop-blur-sm p-2 space-y-3">
+                {/* Section haute — items épinglés (style mee6, sans
+                    en-tête de groupe). Premium et Samia restent dans
+                    l'ensemble unifié. */}
+                <div className="flex md:flex-col gap-0.5">
+                  {TABS.filter(t => "pinned" in t && t.pinned).map(t => (
+                    <SidebarTab
+                      key={t.key}
+                      t={t}
+                      active={t.key === tab}
+                      onClick={() => {
+                        if ("externalTo" in t && t.externalTo) {
+                          nav(t.externalTo);
+                        } else {
+                          setTab(t.key);
+                        }
+                      }}
+                      refCallback={el => { tabRefs.current[t.key] = el; }}
+                      onHover={() => moveIndicatorTo(t.key)}
+                    />
+                  ))}
+                </div>
 
-              {/* Bloc "catégories" — fond unifié pour visuellement séparer
-                  des items épinglés du haut. */}
-              <div className="rounded-2xl bg-[#0f1322]/70 border border-white/[0.06] backdrop-blur-sm p-2 space-y-1">
-                {groups.map(g => {
+                {/* Séparateur fin entre les épinglés et les catégories
+                    pour rappeler la division mee6, sans casser le fond. */}
+                <div className="h-px bg-white/[0.06] mx-2" aria-hidden />
+
+                {/* Catégories collapsibles. */}
+                <div className="space-y-1">
+                  {groups.map(g => {
                   const isOpen = openGroups.has(g);
                   const tabsInGroup = TABS.filter(t => t.group === g);
                   return (
@@ -760,6 +757,7 @@ export function ShardGuild() {
                     </div>
                   );
                 })}
+                </div>
               </div>
             </nav>
           </aside>
