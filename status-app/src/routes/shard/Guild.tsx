@@ -5,6 +5,7 @@ import {
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
   Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight, ChevronDown, Crown, Plus,
+  Wand2, Trophy, UserCircle2, Sparkles, HandCoins,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -24,51 +25,60 @@ import {
 } from "@/components/shard/tabs";
 import { CustomBotTab } from "@/components/shard/CustomBotTab";
 
-// 4 groupes logiques par mental model utilisateur, plus "Tableau de bord"
-// qui contient la vue d'ensemble landing (stats + grille de modules).
-// Le champ `side` reste critique : il dicte quelle API alimente l'onglet
+// Sidebar mee6-style : section haute épinglée (pinned: true, sans en-tête de
+// groupe) + catégories collapsibles en dessous. Le champ `side` reste
+// critique : il dicte quelle API alimente l'onglet
 // (security = /api/shardguard/guild, community = /api/shard/guild,
 //  any = dashboard, pas de dépendance directe).
+// `placeholder: true` = onglet sans implémentation encore, rend un panneau
+// "Bientôt". `externalTo` = lien hors-dashboard (ex: Premium → /premium).
 const TABS = [
-  // Tableau de bord (landing)
-  { key: "overview",  label: "Vue d'ensemble",  icon: LayoutGrid,         group: "Tableau de bord", side: "any" },
+  // ─── Section haute (épinglée, pas d'en-tête de groupe) ──────────────
+  { key: "overview",    label: "Tableau de bord",   icon: LayoutGrid,    group: "Pinned", side: "any",      pinned: true },
+  { key: "copilot",     label: "Discord Copilot",   icon: Wand2,         group: "Pinned", side: "any",      pinned: true, placeholder: true, badge: "Bêta" },
+  { key: "leaderboard", label: "Classement",        icon: Trophy,        group: "Pinned", side: "any",      pinned: true, placeholder: true },
+  { key: "custombot",   label: "Bot personnalisé",  icon: Smile,         group: "Pinned", side: "any",      pinned: true },
+  { key: "characters",  label: "Personnages IA",    icon: UserCircle2,   group: "Pinned", side: "any",      pinned: true, placeholder: true },
+  { key: "ai",          label: "Shard IA",          icon: Sparkles,      group: "Pinned", side: "any",      pinned: true, placeholder: true },
+  { key: "general",     label: "Paramètres",        icon: Settings,      group: "Pinned", side: "security", pinned: true },
+  { key: "premium",     label: "Premium",           icon: Crown,         group: "Pinned", side: "any",      pinned: true, externalTo: "/premium" },
+  { key: "emojis",      label: "Émojis",            icon: Smile,         group: "Pinned", side: "any",      pinned: true, placeholder: true },
 
-  // Mise en place
-  { key: "general",   label: "Général",         icon: Settings,           group: "Mise en place", side: "security" },
-  { key: "rules",     label: "Règlement",       icon: FileText,           group: "Mise en place", side: "security" },
-  { key: "welcome",   label: "Arrivée & Départ",icon: MessageSquare,      group: "Mise en place", side: "community" },
-  { key: "autorole",  label: "Auto Rôle",       icon: UserPlus,           group: "Mise en place", side: "community" },
-  { key: "birthdays", label: "Anniversaires",   icon: Cake,               group: "Mise en place", side: "community" },
+  // ─── ESSENTIELS ──────────────────────────────────────────────────────
+  { key: "welcome",   label: "Arrivée & Départ", icon: MessageSquare,      group: "Essentiels", side: "community" },
+  { key: "autorole",  label: "Auto Rôle",        icon: UserPlus,           group: "Essentiels", side: "community" },
+  { key: "rules",     label: "Règlement",        icon: FileText,           group: "Essentiels", side: "security" },
+  { key: "birthdays", label: "Anniversaires",    icon: Cake,               group: "Essentiels", side: "community" },
 
-  // Modération
-  { key: "captcha",   label: "Captcha",         icon: Check,              group: "Modération",    side: "security" },
-  { key: "security",  label: "Anti-raid",       icon: Shield,             group: "Modération",    side: "security" },
-  { key: "warns",     label: "Avertissements",  icon: AlertTriangle,      group: "Modération",    side: "security" },
-  { key: "modroles",  label: "Modérateurs",     icon: Users2,             group: "Modération",    side: "security" },
-  { key: "banned",    label: "Mots interdits",  icon: Filter,             group: "Modération",    side: "security" },
-  { key: "automod",   label: "Automod",         icon: Bot,                group: "Modération",    side: "security" },
-  { key: "panic",     label: "Mode Panic",      icon: ShieldOff,          group: "Modération",    side: "security" },
+  // ─── GESTION DE SERVEUR ──────────────────────────────────────────────
+  { key: "captcha",  label: "Captcha",         icon: Check,         group: "Gestion de serveur", side: "security" },
+  { key: "security", label: "Anti-raid",       icon: Shield,        group: "Gestion de serveur", side: "security" },
+  { key: "warns",    label: "Avertissements",  icon: AlertTriangle, group: "Gestion de serveur", side: "security" },
+  { key: "modroles", label: "Modérateurs",     icon: Users2,        group: "Gestion de serveur", side: "security" },
+  { key: "banned",   label: "Mots interdits",  icon: Filter,        group: "Gestion de serveur", side: "security" },
+  { key: "automod",  label: "Automod",         icon: Bot,           group: "Gestion de serveur", side: "security" },
+  { key: "panic",    label: "Mode Panic",      icon: ShieldOff,     group: "Gestion de serveur", side: "security" },
 
-  // Engagement
-  { key: "levels",    label: "Niveaux",         icon: Award,              group: "Engagement",    side: "community" },
-  { key: "economy",   label: "Économie",        icon: Coins,              group: "Engagement",    side: "community" },
-  { key: "giveaways", label: "Giveaways",       icon: Gift,               group: "Engagement",    side: "community" },
-  { key: "polls",     label: "Sondages",        icon: Vote,               group: "Engagement",    side: "community" },
-  { key: "tempvoice", label: "Vocal temporaire",icon: Volume2,            group: "Engagement",    side: "community" },
-  { key: "tickets",   label: "Tickets",         icon: MessageCircleHeart, group: "Engagement",    side: "community" },
-  { key: "embed",     label: "Embed Builder",   icon: Code2,              group: "Engagement",    side: "community" },
-  { key: "reactions", label: "Réactions auto",  icon: Smile,              group: "Engagement",    side: "community" },
-  { key: "streams",   label: "Alertes stream",  icon: Radio,              group: "Engagement",    side: "community" },
+  // ─── UTILITAIRES ─────────────────────────────────────────────────────
+  { key: "stats",   label: "Statistiques",  icon: BarChart3,  group: "Utilitaires", side: "security" },
+  { key: "logs",    label: "Logs",          icon: ScrollText, group: "Utilitaires", side: "security" },
+  { key: "members", label: "Membres",       icon: Users2,     group: "Utilitaires", side: "security" },
+  { key: "embed",   label: "Embed Builder", icon: Code2,      group: "Utilitaires", side: "community" },
 
-  // Données
-  { key: "stats",     label: "Statistiques",    icon: BarChart3,          group: "Données",       side: "security" },
-  { key: "logs",      label: "Logs",            icon: ScrollText,         group: "Données",       side: "security" },
-  { key: "members",   label: "Membres",         icon: Users2,             group: "Données",       side: "security" },
+  // ─── ALERTES SOCIALES ────────────────────────────────────────────────
+  { key: "streams", label: "Alertes stream", icon: Radio, group: "Alertes sociales", side: "community" },
 
-  // Premium — bot personnalisé (token + identité custom, code Shard).
-  // side: "any" car le composant fetch sa propre API et gère le premium-gate
-  // en interne, indépendant des deux blobs security/community.
-  { key: "custombot", label: "Bot personnalisé", icon: Crown,             group: "Premium",       side: "any" },
+  // ─── JEUX ET DIVERTISSEMENTS ─────────────────────────────────────────
+  { key: "levels",    label: "Niveaux",          icon: Award,              group: "Jeux et divertissements", side: "community" },
+  { key: "economy",   label: "Économie",         icon: Coins,              group: "Jeux et divertissements", side: "community" },
+  { key: "giveaways", label: "Giveaways",        icon: Gift,               group: "Jeux et divertissements", side: "community" },
+  { key: "polls",     label: "Sondages",         icon: Vote,               group: "Jeux et divertissements", side: "community" },
+  { key: "tempvoice", label: "Vocal temporaire", icon: Volume2,            group: "Jeux et divertissements", side: "community" },
+  { key: "tickets",   label: "Tickets",          icon: MessageCircleHeart, group: "Jeux et divertissements", side: "community" },
+  { key: "reactions", label: "Réactions auto",   icon: Smile,              group: "Jeux et divertissements", side: "community" },
+
+  // ─── MONÉTISATION (futur système d'affiliation) ──────────────────────
+  { key: "affiliation", label: "Affiliation", icon: HandCoins, group: "Monétisation", side: "any", placeholder: true },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -89,8 +99,10 @@ export function ShardGuild() {
   // Groupes de la sidebar repliés/dépliés. Tout ouvert par défaut pour ne
   // pas masquer la nav au premier coup d'œil ; un useEffect plus bas
   // ré-ouvre automatiquement le groupe du tab actif.
+  // Catégories collapsibles = tout sauf le groupe "Pinned" (section haute
+  // épinglée). Tout ouvert par défaut.
   const allGroupNames = useMemo(
-    () => Array.from(new Set(TABS.map(t => t.group))).filter(g => g !== "Tableau de bord"),
+    () => Array.from(new Set(TABS.filter(t => !("pinned" in t && t.pinned)).map(t => t.group))),
     [],
   );
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(allGroupNames));
@@ -254,11 +266,13 @@ export function ShardGuild() {
   useEffect(() => { refresh(); }, [refresh]);
 
   // Quand on saute vers un tab (depuis Vue d'ensemble par exemple), ouvre
-  // automatiquement son groupe dans la sidebar.
+  // automatiquement son groupe dans la sidebar (sauf si l'item est dans la
+  // section haute épinglée, qui n'a pas de groupe à déplier).
   useEffect(() => {
-    const g = TABS.find(t => t.key === tab)?.group;
-    if (g && g !== "Tableau de bord") {
-      setOpenGroups(prev => prev.has(g) ? prev : new Set([...prev, g]));
+    const t = TABS.find(t => t.key === tab);
+    const isPinned = !!t && "pinned" in t && t.pinned;
+    if (t && !isPinned) {
+      setOpenGroups(prev => prev.has(t.group) ? prev : new Set([...prev, t.group]));
     }
   }, [tab]);
 
@@ -425,14 +439,21 @@ export function ShardGuild() {
     ? `https://cdn.discordapp.com/icons/${heroGuild.id}/${heroGuild.icon}.png?size=128`
     : null;
 
-  // Build distinct group order from TABS array.
-  const groups = Array.from(new Set(TABS.map(t => t.group)));
+  // Build distinct group order from TABS array, en retirant le bucket
+  // "Pinned" (rendu séparément en haut de la sidebar).
+  const groups = Array.from(new Set(TABS.filter(t => !("pinned" in t && t.pinned)).map(t => t.group)));
 
   const currentTab = TABS.find(t => t.key === tab);
 
   // Tab content rendering.
   function renderTab(): React.ReactNode {
     if (!currentTab) return null;
+
+    // Onglets épinglés sans implémentation encore : on rend un panneau
+    // "Bientôt" générique. Évite le fallback skeleton qui tournerait à vide.
+    if ("placeholder" in currentTab && currentTab.placeholder) {
+      return <ComingSoonPanel label={currentTab.label} />;
+    }
 
     if (currentTab.key === "overview") {
       return (
@@ -678,20 +699,28 @@ export function ShardGuild() {
               />
               {/* "Vue d'ensemble" → traitée en standalone (pas de header de
                   groupe), elle joue le rôle de landing par défaut. */}
-              <div className="flex md:flex-col gap-1 mb-2">
-                {TABS.filter(t => t.group === "Tableau de bord").map(t => (
+              {/* Section haute — items épinglés (style mee6, sans en-tête
+                  de groupe). Premium est un lien externe vers /premium. */}
+              <div className="flex md:flex-col gap-1 mb-3">
+                {TABS.filter(t => "pinned" in t && t.pinned).map(t => (
                   <SidebarTab
                     key={t.key}
                     t={t}
                     active={t.key === tab}
-                    onClick={() => setTab(t.key)}
+                    onClick={() => {
+                      if ("externalTo" in t && t.externalTo) {
+                        nav(t.externalTo);
+                      } else {
+                        setTab(t.key);
+                      }
+                    }}
                     refCallback={el => { tabRefs.current[t.key] = el; }}
                     onHover={() => moveIndicatorTo(t.key)}
                   />
                 ))}
               </div>
 
-              {groups.filter(g => g !== "Tableau de bord").map(g => {
+              {groups.map(g => {
                 const isOpen = openGroups.has(g);
                 const tabsInGroup = TABS.filter(t => t.group === g);
                 return (
@@ -756,6 +785,7 @@ function SidebarTab({
   onHover?: () => void;
 }) {
   const Icon = t.icon;
+  const badge = "badge" in t ? t.badge : undefined;
   // Pas de background ici quand actif : c'est l'indicateur coulissant du
   // parent qui rend le surlignage. On garde juste le contraste de texte
   // et la barre verticale d'accent à gauche.
@@ -778,8 +808,35 @@ function SidebarTab({
         />
       )}
       <Icon className="w-[17px] h-[17px] flex-shrink-0" strokeWidth={1.8} />
-      {t.label}
+      <span className="flex-1 text-left">{t.label}</span>
+      {badge && (
+        <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-blue-500/20 text-blue-200 border border-blue-400/30">
+          {badge}
+        </span>
+      )}
     </button>
+  );
+}
+
+// Onglets épinglés sans implémentation encore — panneau standard "Bientôt".
+function ComingSoonPanel({ label }: { label: string }) {
+  return (
+    <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-10 md:p-16 text-center">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/[0.05] border border-white/10 mb-6">
+        <Sparkles className="w-6 h-6 text-white/80" />
+      </div>
+      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/40 mb-3">
+        Bientôt disponible
+      </p>
+      <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
+        {label}
+      </h2>
+      <p className="text-[15px] text-white/55 max-w-md mx-auto leading-relaxed">
+        Cette section n'est pas encore active sur Shard. On bosse dessus —
+        reviens vite la voir, ou rejoins notre Discord pour suivre les
+        avancées en temps réel.
+      </p>
+    </div>
   );
 }
 
@@ -799,11 +856,15 @@ function OverviewPanel({
   reduce: Reduce;
   heroEase: Ease;
 }) {
-  // Liste des groupes de modules à afficher dans le hub (on exclut
-  // "Tableau de bord" qui est l'overview lui-même).
+  // Liste des groupes de modules à afficher dans le hub. On exclut :
+  //  - les items épinglés (overview / placeholders / Premium / Paramètres),
+  //  - les onglets en placeholder (Bientôt).
+  const isVisibleModule = (t: typeof TABS[number]) =>
+    !("pinned" in t && t.pinned) && !("placeholder" in t && t.placeholder);
   const moduleGroups = Array.from(
-    new Set(TABS.filter(t => t.group !== "Tableau de bord").map(t => t.group)),
+    new Set(TABS.filter(isVisibleModule).map(t => t.group)),
   );
+  const visibleModulesCount = TABS.filter(isVisibleModule).length;
 
   return (
     <motion.div
@@ -820,7 +881,7 @@ function OverviewPanel({
             Modules
           </h2>
           <p className="text-[12.5px] text-white/40">
-            {TABS.filter(t => t.group !== "Tableau de bord").length} disponibles
+            {visibleModulesCount} disponibles
           </p>
         </div>
         <div className="space-y-9">
@@ -828,7 +889,7 @@ function OverviewPanel({
             <section key={g}>
               <h3 className="text-[14px] font-bold text-white/75 mb-4 px-0.5">{g}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {TABS.filter(t => t.group === g).map(t => (
+                {TABS.filter(t => t.group === g && isVisibleModule(t)).map(t => (
                   <ModuleCard
                     key={t.key}
                     icon={t.icon}
