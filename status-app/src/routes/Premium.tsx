@@ -13,26 +13,53 @@ import { PricingModule, type PricingPlan } from "@/components/ui/pricing-module"
 interface AdminGuild { id: string; name: string }
 interface PremiumData { adminGuilds: AdminGuild[] }
 
+// 3-tier pricing (mee6-style) — intro price → tarif plein, sauf Lifetime.
 const PRICE = {
-  monthly:  { amount: 4.97,  label: "4,97 €",  suffix: "/mois",          elsewhere: "9,99 €/mois ailleurs · −50 %" },
-  lifetime: { amount: 49.97, label: "49,97 €", suffix: "paiement unique", elsewhere: "59,64 €/an en mensuel · −16 %" },
-};
+  monthly: {
+    amount: 3.99,
+    label: "3,99 €",
+    suffix: "/mois",
+    badge: "Économise 50 %",
+    introNote: "3,99 € pour le premier mois, 7,99 € ensuite",
+  },
+  yearly: {
+    amount: 1.66,          // équivalent /mois affiché sur la card
+    label: "1,66 €",
+    suffix: "/mois",
+    badge: "Économise 79 %",
+    introNote: "19,99 € pour la 1ʳᵉ année, 39,99 € ensuite",
+  },
+  lifetime: {
+    amount: 34.99,
+    label: "34,99 €",
+    suffix: "/life",
+    badge: "Meilleur rapport qualité-prix",
+    introNote: "34,99 € payé une seule fois",
+  },
+} as const;
 
-const FEATURES = {
+type Plan = keyof typeof PRICE;
+
+const FEATURES: Record<Plan, string[]> = {
   monthly: [
     "Toutes les fonctionnalités Premium",
-    "Sécurité + Communauté inclus",
-    "Mises à jour permanentes",
-    "Sans engagement",
+    "Entièrement remboursable pendant 7 jours",
+    "Transférable vers un autre serveur",
     "Annulation en 1 clic",
+  ],
+  yearly: [
+    "Toutes les fonctionnalités Premium",
+    "Entièrement remboursable pendant 7 jours",
+    "Transférable vers un autre serveur",
+    "Option Bot Personnalisé incluse",
   ],
   lifetime: [
     "Toutes les fonctionnalités Premium",
     "Aucun renouvellement, jamais",
-    "Toutes les futures mises à jour",
-    "Équivaut à ~10 mois d'abonnement",
+    "Entièrement remboursable pendant 7 jours",
+    "Transférable vers un autre serveur",
+    "Option Bot Personnalisé incluse",
     "Support prioritaire",
-    "Accès anticipé aux nouveautés",
   ],
 };
 
@@ -159,7 +186,7 @@ export function Premium() {
 
   const [data, setData] = useState<PremiumData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [plan, setPlan] = useState<"monthly" | "lifetime">("lifetime");
+  const [plan, setPlan] = useState<Plan>("lifetime");
   const [guildId, setGuildId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -236,7 +263,7 @@ export function Premium() {
             transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
           >
             Tous les modules. <span className="text-white">Aucune limite.</span>{" "}
-            Une seule offre couvre toute la suite Shard, mensuel ou à vie.
+            Trois formules — Lifetime, Annuel ou Mensuel — toutes complètes.
           </motion.p>
 
           <motion.div
@@ -260,11 +287,42 @@ export function Premium() {
         <div id="pricing" className="mb-12 scroll-mt-32">
           <PricingModule
             title="Choisis ton offre"
-            subtitle="Mensuel sans engagement, ou à vie pour les serveurs installés."
+            subtitle="Lifetime, annuel ou mensuel — toutes les fonctionnalités Premium incluses dans chaque formule."
             showToggle={false}
             buttonLabel="Choisir cette offre"
             plans={(() => {
               const plans: PricingPlan[] = [
+                {
+                  id: "lifetime",
+                  name: "Lifetime",
+                  description: "Paiement unique, aucun renouvellement.",
+                  icon: <Star className="w-7 h-7 text-amber-300" fill="currentColor" />,
+                  priceMonthly: PRICE.lifetime.amount,
+                  priceYearly: PRICE.lifetime.amount,
+                  priceSuffix: { monthly: PRICE.lifetime.suffix, yearly: PRICE.lifetime.suffix },
+                  users: PRICE.lifetime.introNote,
+                  features: FEATURES.lifetime.map(f => ({ label: f, included: true })),
+                  recommended: true,
+                  onSelect: () => {
+                    setPlan("lifetime");
+                    document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" });
+                  },
+                },
+                {
+                  id: "yearly",
+                  name: "Annuel",
+                  description: "Le meilleur compromis prix/flexibilité.",
+                  icon: <Crown className="w-7 h-7 text-amber-200/80" />,
+                  priceMonthly: PRICE.yearly.amount,
+                  priceYearly: PRICE.yearly.amount,
+                  priceSuffix: { monthly: PRICE.yearly.suffix, yearly: PRICE.yearly.suffix },
+                  users: PRICE.yearly.introNote,
+                  features: FEATURES.yearly.map(f => ({ label: f, included: true })),
+                  onSelect: () => {
+                    setPlan("yearly");
+                    document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" });
+                  },
+                },
                 {
                   id: "monthly",
                   name: "Mensuel",
@@ -273,26 +331,10 @@ export function Premium() {
                   priceMonthly: PRICE.monthly.amount,
                   priceYearly: PRICE.monthly.amount,
                   priceSuffix: { monthly: PRICE.monthly.suffix, yearly: PRICE.monthly.suffix },
-                  users: "Un serveur Discord",
+                  users: PRICE.monthly.introNote,
                   features: FEATURES.monthly.map(f => ({ label: f, included: true })),
                   onSelect: () => {
                     setPlan("monthly");
-                    document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" });
-                  },
-                },
-                {
-                  id: "lifetime",
-                  name: "À vie",
-                  description: "Paiement unique, aucun renouvellement.",
-                  icon: <Star className="w-7 h-7 text-amber-300" fill="currentColor" />,
-                  priceMonthly: PRICE.lifetime.amount,
-                  priceYearly: PRICE.lifetime.amount,
-                  priceSuffix: { monthly: PRICE.lifetime.suffix, yearly: PRICE.lifetime.suffix },
-                  users: "Un serveur Discord, à vie",
-                  features: FEATURES.lifetime.map(f => ({ label: f, included: true })),
-                  recommended: true,
-                  onSelect: () => {
-                    setPlan("lifetime");
                     document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" });
                   },
                 },
@@ -301,7 +343,7 @@ export function Premium() {
             })()}
           />
           <p className="text-center text-[12px] text-emerald-300 font-bold -mt-4">
-            {PRICE.monthly.elsewhere} · {PRICE.lifetime.elsewhere}
+            Lifetime : {PRICE.lifetime.badge} · Annuel : {PRICE.yearly.badge} · Mensuel : {PRICE.monthly.badge}
           </p>
         </div>
 
@@ -345,28 +387,34 @@ export function Premium() {
               <div className="h-32 animate-pulse" />
             ) : (
               <div className="space-y-5">
-                {/* Plan toggle */}
+                {/* Plan toggle — 3 formules */}
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-white/40 mb-2.5">
                     Formule
                   </label>
-                  <div className="grid grid-cols-2 gap-2 p-1 bg-white/[0.03] border border-white/[0.06] rounded-2xl">
-                    {(["monthly", "lifetime"] as const).map(p => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setPlan(p)}
-                        className={`px-4 py-3 rounded-xl text-sm font-bold transition-all ${
-                          plan === p
-                            ? "bg-amber-500/15 text-amber-200 border border-amber-500/40 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.15)]"
-                            : "text-white/50 hover:text-white border border-transparent"
-                        }`}
-                      >
-                        {p === "monthly" ? "Mensuel" : "À vie"}{" "}
-                        <span className="text-white/30 font-mono-num">— {PRICE[p].label}</span>
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1 bg-white/[0.03] border border-white/[0.06] rounded-2xl">
+                    {(["lifetime", "yearly", "monthly"] as const).map(p => {
+                      const labelByPlan = { lifetime: "Lifetime", yearly: "Annuel", monthly: "Mensuel" } as const;
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPlan(p)}
+                          className={`px-4 py-3 rounded-xl text-sm font-bold transition-all text-left sm:text-center ${
+                            plan === p
+                              ? "bg-amber-500/15 text-amber-200 border border-amber-500/40 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.15)]"
+                              : "text-white/50 hover:text-white border border-transparent"
+                          }`}
+                        >
+                          {labelByPlan[p]}{" "}
+                          <span className="text-white/30 font-mono-num">— {PRICE[p].label}{PRICE[p].suffix}</span>
+                        </button>
+                      );
+                    })}
                   </div>
+                  <p className="mt-2 text-[11px] text-white/40 leading-relaxed">
+                    {PRICE[plan].introNote}
+                  </p>
                 </div>
 
                 {/* Guild selector */}
