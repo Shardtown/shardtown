@@ -352,10 +352,51 @@ function StripePaymentForm({
   }, [submitting]);
 
   if (loadError) {
+    // Fallback : si Stripe.js n'a pas pu charger (AdBlock, CSP, réseau),
+    // on propose le flow legacy /api/create-checkout qui redirige vers
+    // la page Stripe Checkout hostée — aucune dépendance JS chargée
+    // depuis js.stripe.com, ça contourne les bloqueurs.
+    const isLikelyAdblock = /load error|Stripe\.js indisponible/i.test(loadError);
+    async function fallbackLegacy() {
+      try {
+        const r = await apiPost<{ success: boolean; url?: string; error?: string }>(
+          "/api/create-checkout",
+          { guildId, plan },
+        );
+        if (r.success && r.url) {
+          window.location.href = r.url;
+          return;
+        }
+        setLoadError(r.error || "Impossible d'initialiser le paiement (fallback).");
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : "Erreur réseau (fallback).");
+      }
+    }
     return (
-      <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3">
-        <p className="text-[13px] text-red-700 font-semibold mb-1">Erreur</p>
-        <p className="text-[12px] text-red-600 leading-relaxed">{loadError}</p>
+      <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 space-y-3">
+        <div>
+          <p className="text-[13px] text-red-700 font-semibold mb-1">
+            Terminal indisponible
+          </p>
+          <p className="text-[12px] text-red-600 leading-relaxed">
+            {loadError}
+          </p>
+          {isLikelyAdblock && (
+            <p className="text-[11.5px] text-red-600/85 leading-relaxed mt-2">
+              <strong>AdBlock / uBlock Origin / Brave Shields</strong> bloque
+              probablement <code>js.stripe.com</code>. Désactive-les pour ce
+              site, ou utilise le bouton ci-dessous pour passer par la page
+              de paiement Stripe externe.
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={fallbackLegacy}
+          className="w-full rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-bold py-2.5 transition-colors"
+        >
+          Continuer via Stripe Checkout (redirection)
+        </button>
       </div>
     );
   }
