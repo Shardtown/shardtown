@@ -24,6 +24,7 @@ import {
   StreamAlertsTab,
 } from "@/components/shard/tabs";
 import { CustomBotTab } from "@/components/shard/CustomBotTab";
+import { PremiumTab } from "@/components/shard/PremiumTab";
 import { SamiaChat } from "@/routes/Assistant";
 
 // Sidebar mee6-style : section haute épinglée (pinned: true, sans en-tête de
@@ -39,7 +40,7 @@ const TABS = [
   { key: "samia",       label: "Samia",             icon: Wand2,         group: "Pinned", side: "any",      pinned: true, badge: "Bêta" },
   { key: "custombot",   label: "Bot personnalisé",  icon: Smile,         group: "Pinned", side: "any",      pinned: true },
   { key: "general",     label: "Paramètres",        icon: Settings,      group: "Pinned", side: "security", pinned: true },
-  { key: "premium",     label: "Premium",           icon: Crown,         group: "Pinned", side: "any",      pinned: true, externalTo: "/premium" },
+  { key: "premium",     label: "Premium",           icon: Crown,         group: "Pinned", side: "any",      pinned: true },
   { key: "emojis",      label: "Émojis",            icon: Smile,         group: "Pinned", side: "any",      pinned: true, placeholder: true },
 
   // ─── ESSENTIELS ──────────────────────────────────────────────────────
@@ -475,6 +476,22 @@ export function ShardGuild() {
       return <SamiaChat embedded />;
     }
 
+    // Premium — panneau de gestion inline (pas un redirect vers /premium).
+    if (currentTab.key === "premium") {
+      const isPremium =
+        community?.settings?.isPremium === 1 ||
+        community?.settings?.isPremium === "1" ||
+        security?.settings?.isPremium === 1 ||
+        security?.settings?.isPremium === "1";
+      return (
+        <PremiumTab
+          guildId={gid}
+          guildName={heroGuild?.name ?? null}
+          isPremium={isPremium}
+        />
+      );
+    }
+
     if (currentTab.side === "security" && security && securityDraft) {
       const tp = { settings: securityDraft, update: updateSecurity, channels: security.channels, roles: security.roles };
       switch (currentTab.key) {
@@ -700,6 +717,7 @@ export function ShardGuild() {
                       key={t.key}
                       t={t}
                       active={t.key === tab}
+                      status={getModuleStatus(t.key, security?.settings ?? null, community?.settings ?? null)}
                       onClick={() => {
                         if ("externalTo" in t && t.externalTo) {
                           nav(t.externalTo);
@@ -947,6 +965,7 @@ function getModuleStatus(
     case "economy":   return truthy(com?.economyEnabled) ? "active" : "inactive";
     case "tickets":   return truthy(com?.ticketEnabled) ? "active" : "inactive";
     case "tempvoice": return com?.tempVoiceTrigger ? "active" : "inactive";
+    case "premium":   return (com?.isPremium === 1 || com?.isPremium === "1" || sec?.isPremium === 1 || sec?.isPremium === "1") ? "active" : "inactive";
     // Modules sans flag on/off direct dans les settings — l'utilisateur
     // doit pouvoir voir un statut quand même : on les considère "Désactivé"
     // par défaut. Le compteur réel (warns / streamers / etc.) demanderait
