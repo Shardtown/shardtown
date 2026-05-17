@@ -5,7 +5,7 @@ import {
   type ScheduledAnnouncement, type ShopItem,
   parseInts, parseObjects, isOn, to01, DURATION_UNITS,
 } from "@/api/shard";
-import { Field, NumberInput, TextInput, TextArea, Toggle, Select, SectionCard } from "@/components/shardguard/Field";
+import { Field, NumberInput, TextInput, TextArea, Toggle, Select, SectionCard } from "@/components/shard/moderation/Field";
 import { ColorPicker } from "@/components/forms/ColorPicker";
 import { apiPost, apiDelete, apiGet } from "@/api/client";
 import { IS_DESKTOP } from "@/lib/desktop";

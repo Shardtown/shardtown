@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, ShieldOff, Loader2, CheckCircle2, AlertTriangle, X, ShieldCheck, Sparkles } from "lucide-react";
 import {
-  type DiscordChannel, type DiscordRole, type SGSettings,
+  type DiscordChannel, type DiscordRole, type ShardModSettings,
   parseJsonArray, isTrue, toFlag, to01,
   NOISE_OPTIONS, ACTION_OPTIONS, RAID_ACTION_OPTIONS, LANGUAGE_OPTIONS,
-} from "@/api/shardguard";
+} from "@/api/shardMod";
 import type { ShardSettings } from "@/api/shard";
 import { Field, NumberInput, TextInput, Toggle, Select, SectionCard } from "./Field";
 import { apiPost } from "@/api/client";
 
-type Update = (patch: Partial<SGSettings>) => void;
+type Update = (patch: Partial<ShardModSettings>) => void;
 
 interface TabProps {
-  settings: SGSettings;
+  settings: ShardModSettings;
   update: Update;
   channels: DiscordChannel[];
   roles: DiscordRole[];
@@ -863,7 +863,7 @@ interface PanicResponse {
   invites_deleted?: number;
 }
 
-export function PanicTab({ settings }: { settings: SGSettings }) {
+export function PanicTab({ settings }: { settings: ShardModSettings }) {
   const [state, setState] = useState<PanicState>({ kind: "idle" });
   // Mirror the persisted flag so we can flip the button label optimistically
   // — the /panic endpoint mutates the DB directly, not via the regular

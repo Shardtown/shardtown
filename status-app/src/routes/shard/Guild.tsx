@@ -12,12 +12,12 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost, isApiError } from "@/api/client";
 import { IS_DESKTOP } from "@/lib/desktop";
 import type { ShardGuildData, ShardSettings } from "@/api/shard";
-import type { ShardGuardGuildData, SGSettings } from "@/api/shardguard";
-import { SaveBar } from "@/components/shardguard/SaveBar";
+import type { ShardModGuildData, ShardModSettings } from "@/api/shardMod";
+import { SaveBar } from "@/components/shard/moderation/SaveBar";
 import {
   GeneralTab, RulesTab, CaptchaTab, SecurityTab, WarnsTab, ModRolesTab, BannedWordsTab,
   AutomodTab, StatsTab, LogsTab, MembersTab, PanicTab,
-} from "@/components/shardguard/tabs";
+} from "@/components/shard/moderation/tabs";
 import {
   WelcomeTab, AutoRoleTab, BirthdaysTab, LevelsTab, EconomyTab,
   GiveawaysTab, PollsTab, TempVoiceTab, EmbedBuilderTab, ReactionsTab, TicketsTab,
@@ -29,8 +29,8 @@ import { SamiaChat } from "@/routes/Assistant";
 // Sidebar mee6-style : section haute épinglée (pinned: true, sans en-tête de
 // groupe) + catégories collapsibles en dessous. Le champ `side` reste
 // critique : il dicte quelle API alimente l'onglet
-// (security = /api/shardguard/guild, community = /api/shard/guild,
-//  any = dashboard, pas de dépendance directe).
+// ("security"/moderation = /api/shardguard/guild [legacy URL côté serveur],
+//  "community" = /api/shard/guild, "any" = dashboard, pas de dépendance directe).
 // `placeholder: true` = onglet sans implémentation encore, rend un panneau
 // "Bientôt". `externalTo` = lien hors-dashboard (ex: Premium → /premium).
 const TABS = [
@@ -88,9 +88,9 @@ export function ShardGuild() {
   const reduce = useReducedMotion();
   const heroEase = [0.22, 1, 0.36, 1] as const;
 
-  const [security, setSecurity] = useState<ShardGuardGuildData | null>(null);
+  const [security, setSecurity] = useState<ShardModGuildData | null>(null);
   const [community, setCommunity] = useState<ShardGuildData | null>(null);
-  const [securityDraft, setSecurityDraft] = useState<SGSettings | null>(null);
+  const [securityDraft, setSecurityDraft] = useState<ShardModSettings | null>(null);
   const [communityDraft, setCommunityDraft] = useState<ShardSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -200,7 +200,7 @@ export function ShardGuild() {
     if (!guildId) return;
     if (!silent) setLoading(true);
     const [secRes, comRes] = await Promise.allSettled([
-      apiGet<ShardGuardGuildData>(`/api/shardguard/guild/${guildId}`),
+      apiGet<ShardModGuildData>(`/api/shardguard/guild/${guildId}`),
       apiGet<ShardGuildData>(`/api/shard/guild/${guildId}`),
     ]);
 
@@ -233,7 +233,7 @@ export function ShardGuild() {
     // que les tabs security s'affichent au lieu de tourner à l'infini.
     if (!silent && secRes.status === "rejected" && comRes.status === "fulfilled") {
       const com = comRes.value;
-      const emptySettings: SGSettings = {
+      const emptySettings: ShardModSettings = {
         language: "fr", verifiedRole: "", rules_fr: "", rules_en: "",
         serverLocked: "false", accessCode: "", verificationChannelId: "",
         accessCodeChannelId: "", captchaDigits: 6, captchaNoise: "medium",
@@ -316,7 +316,7 @@ export function ShardGuild() {
   }, [community, communityDraft]);
   const dirty = securityDirty || communityDirty;
 
-  function updateSecurity(patch: Partial<SGSettings>) {
+  function updateSecurity(patch: Partial<ShardModSettings>) {
     setSecurityDraft(d => (d ? { ...d, ...patch } : d));
     setSaved(false);
     setSaveError(null);
@@ -350,7 +350,7 @@ export function ShardGuild() {
       // Reconciliation : re-fetch best-effort pour récupérer les valeurs
       // normalisées par le backend. Si ça échoue, on garde le draft.
       const [secFresh, comFresh] = await Promise.allSettled([
-        securityDirty ? apiGet<ShardGuardGuildData>(`/api/shardguard/guild/${guildId}`) : Promise.resolve(null),
+        securityDirty ? apiGet<ShardModGuildData>(`/api/shardguard/guild/${guildId}`) : Promise.resolve(null),
         communityDirty ? apiGet<ShardGuildData>(`/api/shard/guild/${guildId}`) : Promise.resolve(null),
       ]);
       if (secFresh.status === "fulfilled" && secFresh.value) {
@@ -869,7 +869,7 @@ type Ease = readonly [number, number, number, number];
 function OverviewPanel({
   sec, com, onJumpTo, reduce, heroEase,
 }: {
-  sec: ShardGuardGuildData | null;
+  sec: ShardModGuildData | null;
   com: ShardGuildData | null;
   onJumpTo: (key: TabKey) => void;
   reduce: Reduce;
@@ -930,7 +930,7 @@ type ModuleStatus = "active" | "inactive" | "info";
 
 function getModuleStatus(
   key: TabKey,
-  sec: SGSettings | null,
+  sec: ShardModSettings | null,
   com: ShardSettings | null,
 ): ModuleStatus {
   const truthy = (v: unknown) => v === 1 || v === "1" || v === true;

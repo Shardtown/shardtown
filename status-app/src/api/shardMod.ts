@@ -2,7 +2,7 @@ export interface DiscordRole { id: string; name: string; color: number }
 export interface DiscordChannel { id: string; name: string }
 export interface GuildInfo { id: string; name: string; icon: string | null }
 
-export interface SGSettings {
+export interface ShardModSettings {
   language: string;
   verifiedRole: string;
   rules_fr: string;
@@ -58,11 +58,11 @@ export interface SGSettings {
   panicModeActive?: string | number;
 }
 
-export interface ShardGuardGuildData {
+export interface ShardModGuildData {
   guild: GuildInfo;
   roles: DiscordRole[];
   channels: DiscordChannel[];
-  settings: SGSettings;
+  settings: ShardModSettings;
   stats: { totalMembers: number; verifiedCount: number };
   chartData: Record<string, { join: number; leave: number; success: number; failed: number }>;
 }

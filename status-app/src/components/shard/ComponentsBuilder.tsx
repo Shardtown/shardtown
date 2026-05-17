@@ -4,7 +4,7 @@ import {
   Plus, Trash2, GripVertical, Pencil, Check, X, Link as LinkIcon, Image as ImageIcon,
 } from "lucide-react";
 import type { DChannel } from "@/api/shard";
-import { SectionCard, Field, TextInput, TextArea, Select, Toggle } from "@/components/shardguard/Field";
+import { SectionCard, Field, TextInput, TextArea, Select, Toggle } from "@/components/shard/moderation/Field";
 import { ColorPicker } from "@/components/forms/ColorPicker";
 import { apiPost } from "@/api/client";
 
