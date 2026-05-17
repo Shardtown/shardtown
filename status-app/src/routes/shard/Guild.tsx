@@ -35,7 +35,7 @@ import { CustomBotTab } from "@/components/shard/CustomBotTab";
 const TABS = [
   // ─── Section haute (épinglée, pas d'en-tête de groupe) ──────────────
   { key: "overview",    label: "Tableau de bord",   icon: LayoutGrid,    group: "Pinned", side: "any",      pinned: true },
-  { key: "copilot",     label: "Discord Copilot",   icon: Wand2,         group: "Pinned", side: "any",      pinned: true, placeholder: true, badge: "Bêta" },
+  { key: "samia",       label: "Samia",             icon: Wand2,         group: "Pinned", side: "any",      pinned: true, externalTo: "/assistant", badge: "Bêta" },
   { key: "leaderboard", label: "Classement",        icon: Trophy,        group: "Pinned", side: "any",      pinned: true, placeholder: true },
   { key: "custombot",   label: "Bot personnalisé",  icon: Smile,         group: "Pinned", side: "any",      pinned: true },
   { key: "characters",  label: "Personnages IA",    icon: UserCircle2,   group: "Pinned", side: "any",      pinned: true, placeholder: true },
