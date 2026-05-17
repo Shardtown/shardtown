@@ -558,7 +558,7 @@ export function ShardGuild() {
         <header className="mb-6">
           <motion.div
             ref={switcherRef}
-            className="relative block max-w-[640px]"
+            className="relative block max-w-[340px]"
             initial={{ opacity: 0, y: reduce ? 0 : 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.05, ease: heroEase }}
@@ -569,7 +569,7 @@ export function ShardGuild() {
                 setSwitcherOpen(o => !o);
                 if (!switcherOpen) loadSwitcherGuilds();
               }}
-              className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/15 backdrop-blur-sm transition-colors w-full max-w-[640px]"
+              className="flex items-center gap-2.5 pl-1.5 pr-3 py-1 rounded-full border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/15 backdrop-blur-sm transition-colors w-full"
               aria-expanded={switcherOpen}
               aria-haspopup="menu"
             >
