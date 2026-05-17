@@ -3550,7 +3550,10 @@ app.post('/api/premium/payment-intent', checkoutRateLimiter, async (req, res) =>
 
     const userGuild = req.user.guilds.find(g => g.id === guildId && hasGuildAdmin(g));
     if (!userGuild) return res.status(403).json({ success: false, error: 'Vous n\'êtes pas administrateur de ce serveur.' });
-    if (!(await isGuildAdminLive(req.user.id, guildId, process.env.DISCORD_TOKEN))) {
+    // Vérif live avec SHARD_TOKEN — c'est le bot unifié qui est présent
+    // sur les serveurs de l'utilisateur. DISCORD_TOKEN est l'ancien
+    // legacy ShardGuard et n'est plus garanti d'être sur les guilds.
+    if (!(await isGuildAdminLive(req.user.id, guildId, process.env.SHARD_TOKEN))) {
         return res.status(403).json({ success: false, error: 'Vous n\'êtes plus administrateur de ce serveur.' });
     }
 
