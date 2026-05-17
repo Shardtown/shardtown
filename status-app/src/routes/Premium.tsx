@@ -189,12 +189,11 @@ export function Premium() {
   const [loading, setLoading] = useState(true);
   const [plan, setPlan] = useState<Plan>("lifetime");
   const [guildId, setGuildId] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  // Modal de récap pré-Stripe : on ouvre quand l'utilisateur clique sur
-  // "Payer" depuis le toggle, et on relaie l'action confirmer vers
-  // startCheckout (qui appelle l'API et redirige vers Stripe).
+  // Modal de paiement Shardtown — fenêtre blanche embedded Stripe Elements.
+  // Plus de redirect vers checkout.stripe.com : carte saisie ici, intent
+  // confirmé direct. Le modal gère son propre cycle de vie.
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   useEffect(() => {
@@ -220,13 +219,15 @@ export function Premium() {
   const selectedGuildName = data?.adminGuilds.find(g => g.id === guildId)?.name ?? "—";
   const accountName = user?.global_name || user?.username || "—";
 
-  async function startCheckout() {
+  // Kept for backwards compat — l'ancien flow Stripe Checkout reste
+  // disponible si jamais le terminal embedded échoue (ex: Stripe.js
+  // bloqué par un AdBlock). Non utilisé par le bouton principal.
+  async function startLegacyCheckout() {
     if (!guildId) {
       setError("Sélectionne d'abord le serveur Discord à activer.");
       return;
     }
     setError(null);
-    setSubmitting(true);
     try {
       const res = await apiPost<{ success: boolean; url?: string; error?: string }>("/api/create-checkout", { guildId, plan });
       if (res.success && res.url) {
@@ -236,10 +237,10 @@ export function Premium() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur réseau.");
-    } finally {
-      setSubmitting(false);
     }
   }
+  // Référence retenue pour pouvoir relancer le flow legacy si besoin.
+  void startLegacyCheckout;
 
   return (
     <AppLayout>
@@ -459,13 +460,13 @@ export function Premium() {
                     setError(null);
                     setCheckoutOpen(true);
                   }}
-                  disabled={submitting || !guildId}
+                  disabled={!guildId}
                   className="btn-liquid btn-liquid--gold w-full rounded-full px-6 py-4 font-extrabold text-sm flex items-center justify-center"
                 >
-                  {submitting ? "Redirection…" : buttonLabel}
+                  {buttonLabel}
                 </button>
                 <p className="text-[11px] text-white/35 text-center leading-relaxed">
-                  Paiement sécurisé via Stripe. Annulation à tout moment depuis le portail client.
+                  Paiement sécurisé · carte saisie directement chez Shardtown via Stripe Elements (zéro redirection).
                 </p>
               </div>
             )}
@@ -544,17 +545,17 @@ export function Premium() {
         </p>
       </section>
 
-      {/* Terminal de paiement Shardtown — modal de récap pré-Stripe. */}
+      {/* Terminal de paiement Shardtown — Stripe Elements embedded. */}
       <CheckoutModal
         open={checkoutOpen}
-        onClose={() => { if (!submitting) setCheckoutOpen(false); }}
+        onClose={() => setCheckoutOpen(false)}
         planLabel={selectedPlan.label}
         amountNow={selectedPlan.amountNow}
         amountNote={selectedPlan.note}
         accountName={accountName}
         guildName={selectedGuildName}
-        submitting={submitting}
-        onConfirm={startCheckout}
+        guildId={guildId}
+        plan={plan}
       />
     </AppLayout>
   );

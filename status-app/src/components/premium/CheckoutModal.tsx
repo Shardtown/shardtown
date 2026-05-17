@@ -1,47 +1,103 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
-  X, ChevronRight, Lock, Info, CreditCard, ShieldCheck,
+  X, Lock, Info, CreditCard, ShieldCheck, Loader2, CheckCircle2,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { apiGet, apiPost } from "@/api/client";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  /** Label humain du plan ("Lifetime" / "Annuel" / "Mensuel"). */
   planLabel: string;
-  /** Montant à payer maintenant (ex: "34,99 €", "19,99 €", "3,99 €"). */
   amountNow: string;
-  /** Détail du pricing affiché sous le total : "Payé une seule fois",
-   *  "19,99 € la 1ʳᵉ année, 39,99 € ensuite", etc. */
   amountNote: string;
-  /** Nom Discord du payeur (pour la ligne "Compte"). */
   accountName: string;
-  /** Nom du serveur cible. */
   guildName: string;
-  /** Sous-titre montrant le serveur (ex: "Premium pour le serveur Shardtown"). */
-  /** Handler appelé quand l'utilisateur valide. Doit déclencher le
-   *  redirect vers Stripe Checkout (ou, à terme, confirmer un
-   *  PaymentIntent via Stripe Elements). */
-  onConfirm: () => void;
-  submitting: boolean;
+  guildId: string | null;
+  plan: "monthly" | "yearly" | "lifetime";
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//  Stripe.js via CDN — sans dépendance npm
+//
+//  On charge https://js.stripe.com/v3/ une seule fois dans une <script>
+//  tag injectée. Cela donne `window.Stripe` qu'on utilise directement.
+//  Pas de @stripe/stripe-js, pas de @stripe/react-stripe-js. La modale
+//  monte le PaymentElement à la main via paymentElement.mount(ref) et
+//  écoute les événements via stripe.confirmPayment().
+//
+//  Avantage : zéro npm install, déploiement aussi rapide qu'un PR de
+//  changement de copy. Inconvénient : pas de types Stripe → on type
+//  ce qu'on utilise localement et on tolère `any` pour le reste.
+// ──────────────────────────────────────────────────────────────────────
+
+interface StripeError { message?: string; type?: string; code?: string }
+interface PaymentIntent { status: string; client_secret?: string }
+interface StripeElement {
+  mount: (el: HTMLElement) => void;
+  unmount: () => void;
+  destroy: () => void;
+  on?: (event: string, handler: (e: { error?: StripeError }) => void) => void;
+}
+interface StripeElements {
+  create: (type: string, options?: Record<string, unknown>) => StripeElement;
+}
+interface StripeClient {
+  elements: (options: { clientSecret: string; appearance?: Record<string, unknown> }) => StripeElements;
+  confirmPayment: (params: {
+    elements: StripeElements;
+    redirect?: "if_required" | "always";
+    confirmParams?: { return_url?: string };
+  }) => Promise<{ paymentIntent?: PaymentIntent; error?: StripeError }>;
+}
+
+// stripe.js v3 expose `window.Stripe(publishableKey) -> StripeClient`.
+declare global {
+  interface Window {
+    Stripe?: (publishableKey: string) => StripeClient;
+  }
+}
+
+const STRIPE_JS_URL = "https://js.stripe.com/v3/";
+let stripeScriptPromise: Promise<void> | null = null;
+
+function loadStripeJs(): Promise<void> {
+  if (stripeScriptPromise) return stripeScriptPromise;
+  if (typeof window !== "undefined" && window.Stripe) {
+    stripeScriptPromise = Promise.resolve();
+    return stripeScriptPromise;
+  }
+  stripeScriptPromise = new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${STRIPE_JS_URL}"]`);
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Stripe.js load error")), { once: true });
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = STRIPE_JS_URL;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Stripe.js load error"));
+    document.head.appendChild(s);
+  });
+  return stripeScriptPromise;
 }
 
 /**
- * Terminal de paiement Shardtown — modal de récap pré-Stripe.
+ * Terminal de paiement Shardtown — Stripe Elements embedded sans npm.
  *
- * Mimique la modale "Complete your order" de mee6 : carte blanche
- * centrée avec récap commande, compte, mode de paiement, total, bouton
- * "Payer & souscrire". Le bouton délègue ensuite au flow Stripe
- * Checkout existant (POST /api/create-checkout → redirect Stripe).
- *
- * Pour passer à un VRAI terminal embedded (carte saisie ici sans
- * redirect), il faudrait ajouter @stripe/stripe-js + @stripe/react-stripe-js
- * et brancher Stripe Elements sur la ligne "Payment". On garde ce modal
- * pour pouvoir basculer sans changer l'API plus tard.
+ *  1. Charge Stripe.js depuis le CDN si pas déjà fait
+ *  2. POST /api/premium/payment-intent → reçoit clientSecret
+ *  3. Crée elements + monte le PaymentElement dans la modale
+ *  4. Submit → stripe.confirmPayment() → 3DS si nécessaire
+ *  5. Webhook backend reçoit payment_intent.succeeded → flag Premium
+ *  6. Redirige vers /premium?payment=success
  */
 export function CheckoutModal({
-  open, onClose, planLabel, amountNow, amountNote,
-  accountName, guildName, onConfirm, submitting,
+  open, onClose,
+  planLabel, amountNow, amountNote,
+  accountName, guildName, guildId, plan,
 }: Props) {
   // ESC pour fermer + lock body scroll.
   useEffect(() => {
@@ -66,7 +122,6 @@ export function CheckoutModal({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {/* Backdrop */}
           <button
             type="button"
             aria-label="Fermer"
@@ -74,7 +129,6 @@ export function CheckoutModal({
             className="absolute inset-0 bg-black/75 backdrop-blur-md"
           />
 
-          {/* Card — fond blanc cassé style mee6, contraste DA dark */}
           <motion.div
             initial={{ opacity: 0, y: 24, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -85,12 +139,11 @@ export function CheckoutModal({
             aria-labelledby="checkout-title"
             className="relative w-full max-w-md rounded-3xl bg-white text-zinc-900 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.9)] overflow-hidden"
           >
-            {/* Header blanc avec close */}
             <button
               type="button"
               onClick={onClose}
               aria-label="Fermer"
-              className="absolute top-4 right-4 w-9 h-9 rounded-full bg-zinc-200 hover:bg-zinc-300 text-zinc-700 inline-flex items-center justify-center transition-colors"
+              className="absolute top-4 right-4 w-9 h-9 rounded-full bg-zinc-200 hover:bg-zinc-300 text-zinc-700 inline-flex items-center justify-center transition-colors z-10"
             >
               <X className="w-4 h-4" strokeWidth={2.5} />
             </button>
@@ -109,9 +162,8 @@ export function CheckoutModal({
               </p>
             </div>
 
-            {/* Body */}
             <div className="px-7 pt-6 pb-7 bg-zinc-50 space-y-5">
-              {/* Total — bouton-like compactable */}
+              {/* Total */}
               <div className="bg-white rounded-2xl border border-zinc-200 px-5 py-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-violet-600 mb-0.5">Payer maintenant</p>
@@ -119,86 +171,35 @@ export function CheckoutModal({
                     {planLabel} — {amountNote}
                   </p>
                 </div>
-                <div className="inline-flex items-center gap-2">
-                  <span className="text-lg font-extrabold text-zinc-900 tabular-nums">{amountNow}</span>
-                  <ChevronRight className="w-4 h-4 text-zinc-400" />
-                </div>
+                <span className="text-lg font-extrabold text-zinc-900 tabular-nums">{amountNow}</span>
               </div>
 
-              {/* Coupon */}
-              <div className="text-center">
-                <button
-                  type="button"
-                  className="text-sm font-semibold text-violet-600 hover:text-violet-700 hover:underline underline-offset-2"
-                  onClick={() => {/* Placeholder — coupons à brancher plus tard. */}}
-                >
-                  Appliquer un code promo
-                </button>
-              </div>
-
-              {/* Compte + Paiement */}
+              {/* Compte + Serveur */}
               <div className="space-y-3 pl-1">
-                <Row
-                  label="Compte"
-                  value={accountName}
-                  actionLabel="Modifier"
-                />
-                <Row
-                  label="Serveur"
-                  value={guildName}
-                  actionLabel="Modifier"
-                />
-                <Row
-                  label="Paiement"
-                  value={
-                    <span className="inline-flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-zinc-500" />
-                      Carte saisie sur Stripe
-                    </span>
-                  }
-                  actionLabel={null}
-                />
+                <Row label="Compte" value={accountName} />
+                <Row label="Serveur" value={guildName} />
               </div>
 
-              {/* CGU */}
-              <p className="text-[12px] text-zinc-500 leading-relaxed">
-                En souscrivant, tu acceptes nos{" "}
-                <a
-                  href="/terms"
-                  target="_blank"
-                  rel="noopener"
-                  className="text-violet-600 hover:underline underline-offset-2 font-semibold"
-                >
-                  Conditions générales
-                </a>
-                .
-              </p>
+              {/* Payment Element */}
+              <StripePaymentForm
+                key={`${plan}-${guildId ?? ""}`}
+                open={open}
+                guildId={guildId}
+                plan={plan}
+                amountNow={amountNow}
+              />
 
-              {/* CTA principal */}
-              <button
-                type="button"
-                onClick={onConfirm}
-                disabled={submitting}
-                className="w-full rounded-2xl bg-gradient-to-b from-violet-500 to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold text-base py-3.5 transition-all shadow-[0_8px_20px_-8px_rgba(139,92,246,0.6)]"
-              >
-                {submitting
-                  ? "Redirection…"
-                  : `Payer ${amountNow} & souscrire`}
-              </button>
-
-              {/* Secure */}
+              {/* Secure / 3DS */}
               <p className="text-[12px] text-zinc-500 text-center inline-flex items-center justify-center gap-1.5 w-full">
                 <Lock className="w-3 h-3" />
                 Paiement sécurisé · TLS · PCI-DSS via Stripe
               </p>
 
-              {/* Info 3DS */}
               <div className="bg-zinc-100 border border-zinc-200 rounded-2xl px-4 py-3 flex items-start gap-2.5">
                 <Info className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" />
                 <p className="text-[12px] text-zinc-600 leading-relaxed">
-                  Tu peux être redirigé vers la page de ta banque pour la
-                  vérification 3D Secure. Aucune carte n'est stockée chez
-                  Shardtown — tout passe par Stripe.
+                  Tu peux être invité à valider 3D Secure dans une fenêtre
+                  de ta banque. Aucune carte n'est stockée chez Shardtown.
                 </p>
               </div>
 
@@ -214,33 +215,231 @@ export function CheckoutModal({
   );
 }
 
+// ──────────────────────────────────────────────────────────────────────
+//  Formulaire de paiement Stripe — monté à la main, sans React bindings
+// ──────────────────────────────────────────────────────────────────────
+
+function StripePaymentForm({
+  open, guildId, plan, amountNow,
+}: {
+  open: boolean;
+  guildId: string | null;
+  plan: "monthly" | "yearly" | "lifetime";
+  amountNow: string;
+}) {
+  const mountRef = useRef<HTMLDivElement>(null);
+  const stripeRef = useRef<StripeClient | null>(null);
+  const elementsRef = useRef<StripeElements | null>(null);
+  const paymentElementRef = useRef<StripeElement | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  // 1) charger Stripe.js  →  2) fetch publishable key  →  3) créer intent
+  //   →  4) instancier elements  →  5) monter PaymentElement
+  useEffect(() => {
+    if (!open || !guildId) return;
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+
+    (async () => {
+      try {
+        await loadStripeJs();
+        if (cancelled) return;
+        const StripeCtor = window.Stripe;
+        if (!StripeCtor) {
+          setLoadError("Stripe.js indisponible. Vérifie ta connexion.");
+          return;
+        }
+        const { publishableKey } = await apiGet<{ publishableKey: string }>("/api/stripe/config");
+        if (cancelled) return;
+        if (!publishableKey) {
+          setLoadError("Configuration Stripe absente côté serveur.");
+          return;
+        }
+        const stripe = StripeCtor(publishableKey);
+
+        const r = await apiPost<{
+          success: boolean; clientSecret?: string; error?: string;
+        }>("/api/premium/payment-intent", { guildId, plan });
+        if (cancelled) return;
+        if (!r.success || !r.clientSecret) {
+          setLoadError(r.error || "Impossible d'initialiser le paiement.");
+          return;
+        }
+
+        const elements = stripe.elements({
+          clientSecret: r.clientSecret,
+          appearance: {
+            theme: "stripe",
+            variables: {
+              colorPrimary: "#7c3aed",
+              colorBackground: "#ffffff",
+              colorText: "#18181b",
+              colorDanger: "#ef4444",
+              fontFamily: "Inter, system-ui, sans-serif",
+              borderRadius: "12px",
+            },
+          },
+        });
+        const paymentElement = elements.create("payment", { layout: "tabs" });
+
+        stripeRef.current = stripe;
+        elementsRef.current = elements;
+        paymentElementRef.current = paymentElement;
+
+        // Le mount nécessite que le ref soit déjà attaché — petite tick
+        // pour laisser React peindre le <div ref={mountRef} />.
+        requestAnimationFrame(() => {
+          if (cancelled || !mountRef.current) return;
+          try {
+            paymentElement.mount(mountRef.current);
+            setLoading(false);
+          } catch (e) {
+            setLoadError(e instanceof Error ? e.message : "Erreur de montage Stripe.");
+          }
+        });
+      } catch (e) {
+        if (cancelled) return;
+        setLoadError(e instanceof Error ? e.message : "Erreur réseau.");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      try { paymentElementRef.current?.destroy(); } catch { /* noop */ }
+      paymentElementRef.current = null;
+      elementsRef.current = null;
+      stripeRef.current = null;
+    };
+  }, [open, guildId, plan]);
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    const stripe = stripeRef.current;
+    const elements = elementsRef.current;
+    if (!stripe || !elements || submitting) return;
+    setSubmitError(null);
+    setSubmitting(true);
+
+    const result = await stripe.confirmPayment({
+      elements,
+      redirect: "if_required",
+      confirmParams: {
+        return_url: `${window.location.origin}/premium?payment=success`,
+      },
+    });
+
+    if (result.error) {
+      setSubmitError(result.error.message || "Erreur de paiement.");
+      setSubmitting(false);
+      return;
+    }
+    const intent = result.paymentIntent;
+    if (intent && (intent.status === "succeeded" || intent.status === "processing")) {
+      setDone(true);
+      // Laisse au webhook le temps d'écrire isPremium puis redirige.
+      setTimeout(() => {
+        window.location.href = "/premium?payment=success";
+      }, 1500);
+      return;
+    }
+    setSubmitting(false);
+  }, [submitting]);
+
+  if (loadError) {
+    return (
+      <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3">
+        <p className="text-[13px] text-red-700 font-semibold mb-1">Erreur</p>
+        <p className="text-[12px] text-red-600 leading-relaxed">{loadError}</p>
+      </div>
+    );
+  }
+
+  if (done) {
+    return (
+      <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-5 py-6 text-center">
+        <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-3" />
+        <p className="text-[15px] font-bold text-emerald-700 mb-1">Paiement confirmé</p>
+        <p className="text-[12.5px] text-emerald-600 leading-relaxed">
+          Premium est en cours d'activation… Redirection…
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="rounded-2xl bg-white border border-zinc-200 p-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3 inline-flex items-center gap-1.5">
+          <CreditCard className="w-3 h-3" /> Mode de paiement
+        </p>
+        {/* Mount cible pour Stripe Elements. Stripe injecte une iframe
+            sécurisée à l'intérieur — on ne voit jamais le numéro de carte. */}
+        <div ref={mountRef} className="min-h-[44px]" />
+        {loading && (
+          <div className="flex items-center justify-center py-4 text-zinc-500">
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            <span className="text-[13px]">Préparation du paiement…</span>
+          </div>
+        )}
+      </div>
+
+      {submitError && (
+        <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2.5">
+          <p className="text-[12px] text-red-700 leading-relaxed">{submitError}</p>
+        </div>
+      )}
+
+      <p className="text-[12px] text-zinc-500 leading-relaxed">
+        En souscrivant, tu acceptes nos{" "}
+        <a
+          href="/terms"
+          target="_blank"
+          rel="noopener"
+          className="text-violet-600 hover:underline underline-offset-2 font-semibold"
+        >
+          Conditions générales
+        </a>
+        .
+      </p>
+
+      <button
+        type="submit"
+        disabled={loading || submitting}
+        className="w-full rounded-2xl bg-gradient-to-b from-violet-500 to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold text-base py-3.5 transition-all shadow-[0_8px_20px_-8px_rgba(139,92,246,0.6)]"
+      >
+        {submitting ? (
+          <span className="inline-flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Traitement…
+          </span>
+        ) : (
+          `Payer ${amountNow} & souscrire`
+        )}
+      </button>
+    </form>
+  );
+}
+
 function Row({
-  label, value, actionLabel,
+  label, value,
 }: {
   label: string;
   value: React.ReactNode;
-  actionLabel: string | null;
 }) {
   return (
-    <div className="border-l-2 border-zinc-300 pl-3 flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-0.5">
-          {label}
-        </p>
-        <div className="text-sm font-semibold text-zinc-900 truncate">
-          {value}
-        </div>
+    <div className="border-l-2 border-zinc-300 pl-3">
+      <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-0.5">
+        {label}
+      </p>
+      <div className="text-sm font-semibold text-zinc-900 truncate">
+        {value}
       </div>
-      {actionLabel && (
-        <button
-          type="button"
-          className="text-[13px] font-bold text-violet-600 hover:text-violet-700 hover:underline underline-offset-2 inline-flex items-center gap-0.5 flex-shrink-0"
-          onClick={() => {/* placeholder — édit account/serveur via les selecteurs en dehors du modal */}}
-        >
-          {actionLabel}
-          <span aria-hidden>→</span>
-        </button>
-      )}
     </div>
   );
 }

@@ -1003,7 +1003,7 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
         return res.json({ received: true, duplicate: true });
     }
 
-    if (event.type === 'checkout.session.completed' || event.type === 'invoice.paid') {
+    if (event.type === 'checkout.session.completed' || event.type === 'invoice.paid' || event.type === 'payment_intent.succeeded') {
         const obj = event.data.object;
         const guildId = obj.metadata?.guildId
             || obj.subscription_details?.metadata?.guildId
@@ -3513,6 +3513,153 @@ app.post('/api/create-checkout', checkoutRateLimiter, async (req, res) => {
         res.json({ success: true, url: session.url });
     } catch (err) {
         console.error('Erreur création session Stripe:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur lors de la création du paiement.' });
+    }
+});
+
+// ─── Stripe Elements (terminal de paiement embedded Shardtown) ──────
+//
+// Le flow "embedded" remplace progressivement le redirect vers Stripe
+// Checkout : la carte est saisie via Stripe Elements dans la modale
+// CheckoutModal, et confirmée côté client par stripe.confirmPayment().
+// On crée ici l'intent (PaymentIntent ou Subscription) côté serveur et
+// on renvoie un client_secret que le front utilise pour confirmer.
+//
+// Sécurité : la clé publishable est sûre à exposer côté client — c'est
+// son but. La clé secret reste exclusivement côté serveur. Le webhook
+// /webhook/stripe existant traite déjà invoice.paid + checkout.session.completed ;
+// on lui ajoute payment_intent.succeeded juste en dessous pour le cas
+// lifetime (one-shot).
+app.get('/api/stripe/config', (_req, res) => {
+    res.json({
+        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+    });
+});
+
+app.post('/api/premium/payment-intent', checkoutRateLimiter, async (req, res) => {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Non connecté.' });
+    const { guildId, plan } = req.body;
+    if (!guildId || !isValidSnowflake(String(guildId))) {
+        return res.status(400).json({ success: false, error: 'Serveur requis.' });
+    }
+    const planChoice = plan === 'monthly' || plan === 'yearly' ? plan : 'lifetime';
+
+    const userGuild = req.user.guilds.find(g => g.id === guildId && hasGuildAdmin(g));
+    if (!userGuild) return res.status(403).json({ success: false, error: 'Vous n\'êtes pas administrateur de ce serveur.' });
+    if (!(await isGuildAdminLive(req.user.id, guildId, process.env.DISCORD_TOKEN))) {
+        return res.status(403).json({ success: false, error: 'Vous n\'êtes plus administrateur de ce serveur.' });
+    }
+
+    try {
+        const currency = process.env.STRIPE_CURRENCY || 'eur';
+        const productId = process.env.STRIPE_PRODUCT_ID;
+
+        // Montants en centimes. Défauts cohérents avec l'UI client
+        // (3,99 € intro / 7,99 € full pour mensuel, 19,99 € intro /
+        // 39,99 € full pour annuel, 34,99 € pour lifetime). L'intro est
+        // pour l'instant ignoré côté Stripe — à brancher plus tard via
+        // un coupon "first month" pour matcher le pricing affiché.
+        const amount = planChoice === 'lifetime'
+            ? parseInt(process.env.STRIPE_LIFETIME_AMOUNT || '3499')
+            : planChoice === 'yearly'
+                ? parseInt(process.env.STRIPE_YEARLY_AMOUNT || '3999')
+                : parseInt(process.env.STRIPE_MONTHLY_AMOUNT || '799');
+
+        const rawEmail = typeof req.user?.email === 'string' ? req.user.email.trim() : '';
+        const safeEmail = rawEmail.length > 0 && rawEmail.length <= 254
+            && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)
+            ? rawEmail
+            : undefined;
+
+        const metadata = { guildId, guildName: userGuild.name, plan: planChoice, discordUserId: req.user.id };
+
+        if (planChoice === 'lifetime') {
+            // One-shot : un simple PaymentIntent. Pas besoin de Customer ;
+            // l'activation Premium se fait dans le webhook quand on reçoit
+            // payment_intent.succeeded (cf. plus bas).
+            const intent = await stripe.paymentIntents.create({
+                amount,
+                currency,
+                receipt_email: safeEmail,
+                metadata,
+                automatic_payment_methods: { enabled: true },
+                description: `Shardtown Premium Lifetime — ${userGuild.name}`,
+            });
+            return res.json({
+                success: true,
+                clientSecret: intent.client_secret,
+                mode: 'payment',
+                amount,
+                currency,
+            });
+        }
+
+        // ─── Abonnement (mensuel / annuel) ──────────────────────────────
+        // Pattern Stripe recommandé : créer un Customer (ou réutiliser),
+        // créer la Subscription avec payment_behavior: 'default_incomplete'
+        // et expand latest_invoice.payment_intent pour récupérer le
+        // client_secret du premier paiement. Le front confirme avec
+        // stripe.confirmPayment ; la sub passe en active sur succès.
+
+        // Customer : on tag avec l'ID Discord pour pouvoir le retrouver.
+        // Volontairement minimal pour ne pas dupliquer en cas de re-run :
+        // si on a déjà créé un customer pour ce discord_id, on le réutilise.
+        let customerId = null;
+        try {
+            const search = await stripe.customers.search({
+                query: `metadata['discordUserId']:'${req.user.id}'`,
+                limit: 1,
+            });
+            if (search.data[0]) customerId = search.data[0].id;
+        } catch { /* search peut être indispo selon le compte Stripe — on fallback */ }
+        if (!customerId) {
+            const cust = await stripe.customers.create({
+                email: safeEmail,
+                metadata: { discordUserId: req.user.id, discordUsername: req.user.username || '' },
+            });
+            customerId = cust.id;
+        }
+
+        const interval = planChoice === 'yearly' ? 'year' : 'month';
+        const subscription = await stripe.subscriptions.create({
+            customer: customerId,
+            items: [{
+                price_data: {
+                    currency,
+                    product: productId,
+                    unit_amount: amount,
+                    recurring: { interval },
+                },
+            }],
+            payment_behavior: 'default_incomplete',
+            payment_settings: { save_default_payment_method: 'on_subscription' },
+            expand: ['latest_invoice.payment_intent'],
+            metadata,
+        });
+
+        const invoice = subscription.latest_invoice;
+        const intent = invoice && typeof invoice !== 'string' ? invoice.payment_intent : null;
+        const clientSecret = intent && typeof intent !== 'string' ? intent.client_secret : null;
+
+        if (!clientSecret) {
+            // Rare : Stripe a accepté la sub mais pas généré d'invoice avec
+            // intent (ex: prix à 0). On rollback la sub pour éviter une
+            // souscription orpheline.
+            try { await stripe.subscriptions.cancel(subscription.id); } catch { /* best effort */ }
+            return res.status(500).json({ success: false, error: 'Impossible d\'initialiser le paiement.' });
+        }
+
+        return res.json({
+            success: true,
+            clientSecret,
+            subscriptionId: subscription.id,
+            mode: 'subscription',
+            amount,
+            currency,
+            interval,
+        });
+    } catch (err) {
+        console.error('Erreur /api/premium/payment-intent:', err.message);
         res.status(500).json({ success: false, error: 'Erreur lors de la création du paiement.' });
     }
 });
