@@ -969,11 +969,14 @@ interface StreamerRow {
   lastCheckedAt: string | null;
 }
 
-export function StreamAlertsTab({ guildId, channels, roles }: TabBase) {
+export function StreamAlertsTab({
+  guildId, channels, roles,
+  platformFilter,
+}: TabBase & { platformFilter?: "twitch" | "youtube" }) {
   const [list, setList] = useState<StreamerRow[] | null>(null);
   const [isPremium, setIsPremium] = useState<boolean | null>(null);
   const [form, setForm] = useState({
-    platform: "twitch" as "twitch" | "youtube",
+    platform: (platformFilter ?? "twitch") as "twitch" | "youtube",
     handle: "",
     discordChannelId: "",
     mentionRoleId: "",
@@ -1034,16 +1037,18 @@ export function StreamAlertsTab({ guildId, channels, roles }: TabBase) {
         description="Twitch : pseudo (sans @). YouTube : channelId 'UC…' ou handle '@nom'. Vérification toutes les ~90 secondes."
       >
         <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Plateforme">
-            <Select
-              options={[
-                { value: "twitch", label: "Twitch" },
-                { value: "youtube", label: "YouTube" },
-              ]}
-              value={form.platform}
-              onChange={v => setForm(f => ({ ...f, platform: v as "twitch" | "youtube" }))}
-            />
-          </Field>
+          {!platformFilter && (
+            <Field label="Plateforme">
+              <Select
+                options={[
+                  { value: "twitch", label: "Twitch" },
+                  { value: "youtube", label: "YouTube" },
+                ]}
+                value={form.platform}
+                onChange={v => setForm(f => ({ ...f, platform: v as "twitch" | "youtube" }))}
+              />
+            </Field>
+          )}
           <Field label={form.platform === "twitch" ? "Pseudo Twitch" : "channelId ou @handle YouTube"}>
             <TextInput
               value={form.handle}
@@ -1076,13 +1081,31 @@ export function StreamAlertsTab({ guildId, channels, roles }: TabBase) {
         </button>
       </SectionCard>
 
-      <SectionCard title="Streamers suivis" description={list === null ? "Chargement…" : `${list.length} streamer(s) configuré(s).`}>
-        {list && list.length === 0 && (
-          <p className="text-[12px] text-white/40 italic">Aucun streamer pour l'instant. Ajoutes-en un avec le formulaire ci-dessus.</p>
-        )}
-        {list && list.length > 0 && (
+      <SectionCard
+        title={platformFilter === "twitch" ? "Streamers Twitch suivis"
+              : platformFilter === "youtube" ? "Chaînes YouTube suivies"
+              : "Streamers suivis"}
+        description={(() => {
+          if (list === null) return "Chargement…";
+          const visible = platformFilter ? list.filter(s => s.platform === platformFilter) : list;
+          return `${visible.length} ${platformFilter === "youtube" ? "chaîne(s)" : "streamer(s)"} configuré(s).`;
+        })()}
+      >
+        {(() => {
+          if (!list) return null;
+          const visible = platformFilter ? list.filter(s => s.platform === platformFilter) : list;
+          if (visible.length === 0) {
+            return (
+              <p className="text-[12px] text-white/40 italic">
+                Aucun {platformFilter === "youtube" ? "channel YouTube" : platformFilter === "twitch" ? "streamer Twitch" : "streamer"} pour l'instant. Ajoutes-en un avec le formulaire ci-dessus.
+              </p>
+            );
+          }
+          return null;
+        })()}
+        {list && (platformFilter ? list.filter(s => s.platform === platformFilter) : list).length > 0 && (
           <div className="space-y-2">
-            {list.map(s => {
+            {(platformFilter ? list.filter(s => s.platform === platformFilter) : list).map(s => {
               const channel = channels.find(c => c.id === s.discordChannelId);
               const role = s.mentionRoleId ? roles.find(r => r.id === s.mentionRoleId) : null;
               return (

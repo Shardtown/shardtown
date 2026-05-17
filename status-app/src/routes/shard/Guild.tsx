@@ -5,7 +5,7 @@ import {
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
   Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight, ChevronDown, Crown, Plus,
-  Wand2, Trophy, UserCircle2, Sparkles, HandCoins,
+  Wand2, Sparkles, HandCoins,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -36,10 +36,7 @@ const TABS = [
   // ─── Section haute (épinglée, pas d'en-tête de groupe) ──────────────
   { key: "overview",    label: "Tableau de bord",   icon: LayoutGrid,    group: "Pinned", side: "any",      pinned: true },
   { key: "samia",       label: "Samia",             icon: Wand2,         group: "Pinned", side: "any",      pinned: true, externalTo: "/assistant", badge: "Bêta" },
-  { key: "leaderboard", label: "Classement",        icon: Trophy,        group: "Pinned", side: "any",      pinned: true, placeholder: true },
   { key: "custombot",   label: "Bot personnalisé",  icon: Smile,         group: "Pinned", side: "any",      pinned: true },
-  { key: "characters",  label: "Personnages IA",    icon: UserCircle2,   group: "Pinned", side: "any",      pinned: true, placeholder: true },
-  { key: "ai",          label: "Shard IA",          icon: Sparkles,      group: "Pinned", side: "any",      pinned: true, placeholder: true },
   { key: "general",     label: "Paramètres",        icon: Settings,      group: "Pinned", side: "security", pinned: true },
   { key: "premium",     label: "Premium",           icon: Crown,         group: "Pinned", side: "any",      pinned: true, externalTo: "/premium" },
   { key: "emojis",      label: "Émojis",            icon: Smile,         group: "Pinned", side: "any",      pinned: true, placeholder: true },
@@ -65,8 +62,9 @@ const TABS = [
   { key: "members", label: "Membres",       icon: Users2,     group: "Utilitaires", side: "security" },
   { key: "embed",   label: "Embed Builder", icon: Code2,      group: "Utilitaires", side: "community" },
 
-  // ─── ALERTES SOCIALES ────────────────────────────────────────────────
-  { key: "streams", label: "Alertes stream", icon: Radio, group: "Alertes sociales", side: "community" },
+  // ─── ALERTES SOCIALES (Twitch + YouTube séparés) ────────────────────
+  { key: "twitch",  label: "Alertes Twitch",  icon: Radio, group: "Alertes sociales", side: "community" },
+  { key: "youtube", label: "Alertes YouTube", icon: Radio, group: "Alertes sociales", side: "community" },
 
   // ─── JEUX ET DIVERTISSEMENTS ─────────────────────────────────────────
   { key: "levels",    label: "Niveaux",          icon: Award,              group: "Jeux et divertissements", side: "community" },
@@ -507,7 +505,8 @@ export function ShardGuild() {
         case "embed":     return <EmbedBuilderTab {...tp} />;
         case "reactions": return <ReactionsTab {...tp} />;
         case "tickets":   return <TicketsTab {...tp} />;
-        case "streams":   return <StreamAlertsTab {...tp} />;
+        case "twitch":    return <StreamAlertsTab {...tp} platformFilter="twitch" />;
+        case "youtube":   return <StreamAlertsTab {...tp} platformFilter="youtube" />;
       }
     }
     // Données pas encore chargées pour ce côté — skeleton générique.
@@ -720,43 +719,48 @@ export function ShardGuild() {
                 ))}
               </div>
 
-              {groups.map(g => {
-                const isOpen = openGroups.has(g);
-                const tabsInGroup = TABS.filter(t => t.group === g);
-                return (
-                  <div key={g}>
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(g)}
-                      className="w-full flex items-center gap-2 mb-2 px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-[0.2em] text-white/45 hover:text-white/75 hover:bg-[#161c2e] transition-colors"
-                      aria-expanded={isOpen}
-                    >
-                      <ChevronDown
-                        className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
-                        strokeWidth={2.5}
-                      />
-                      <span className="flex-1 text-left">{g}</span>
-                      <span className="text-[10px] font-mono-num text-white/30 normal-case tracking-normal">
-                        {tabsInGroup.length}
-                      </span>
-                    </button>
-                    {isOpen && (
-                      <div className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0">
-                        {tabsInGroup.map(t => (
-                          <SidebarTab
-                            key={t.key}
-                            t={t}
-                            active={t.key === tab}
-                            onClick={() => setTab(t.key)}
-                            refCallback={el => { tabRefs.current[t.key] = el; }}
-                            onHover={() => moveIndicatorTo(t.key)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {/* Bloc "catégories" — fond unifié pour visuellement séparer
+                  des items épinglés du haut. */}
+              <div className="rounded-2xl bg-[#0f1322]/70 border border-white/[0.06] backdrop-blur-sm p-2 space-y-1">
+                {groups.map(g => {
+                  const isOpen = openGroups.has(g);
+                  const tabsInGroup = TABS.filter(t => t.group === g);
+                  return (
+                    <div key={g}>
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(g)}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] text-white/55 hover:text-white/85 hover:bg-white/[0.04] transition-colors"
+                        aria-expanded={isOpen}
+                      >
+                        <ChevronDown
+                          className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
+                          strokeWidth={2.5}
+                        />
+                        <span className="flex-1 text-left">{g}</span>
+                        <span className="text-[10px] font-mono-num text-white/30 normal-case tracking-normal">
+                          {tabsInGroup.length}
+                        </span>
+                      </button>
+                      {isOpen && (
+                        <div className="flex md:flex-col gap-0.5 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0 mt-0.5">
+                          {tabsInGroup.map(t => (
+                            <SidebarTab
+                              key={t.key}
+                              t={t}
+                              active={t.key === tab}
+                              status={getModuleStatus(t.key, security?.settings ?? null, community?.settings ?? null)}
+                              onClick={() => setTab(t.key)}
+                              refCallback={el => { tabRefs.current[t.key] = el; }}
+                              onHover={() => moveIndicatorTo(t.key)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </nav>
           </aside>
 
@@ -776,16 +780,26 @@ export function ShardGuild() {
 // ──────────────────────────────────────────────────────────────────────
 
 function SidebarTab({
-  t, active, onClick, refCallback, onHover,
+  t, active, onClick, refCallback, onHover, status,
 }: {
   t: typeof TABS[number];
   active: boolean;
   onClick: () => void;
   refCallback?: (el: HTMLButtonElement | null) => void;
   onHover?: () => void;
+  /** Statut activé/désactivé du module — non-affiché pour les items "info". */
+  status?: ModuleStatus;
 }) {
   const Icon = t.icon;
   const badge = "badge" in t ? t.badge : undefined;
+  const dotTone =
+    status === "active"   ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.55)]" :
+    status === "inactive" ? "bg-white/20" :
+    null;
+  const dotTitle =
+    status === "active" ? "Activé" :
+    status === "inactive" ? "Désactivé" :
+    undefined;
   // Pas de background ici quand actif : c'est l'indicateur coulissant du
   // parent qui rend le surlignage. On garde juste le contraste de texte
   // et la barre verticale d'accent à gauche.
@@ -809,8 +823,15 @@ function SidebarTab({
       )}
       <Icon className="w-[17px] h-[17px] flex-shrink-0" strokeWidth={1.8} />
       <span className="flex-1 text-left">{t.label}</span>
+      {dotTone && (
+        <span
+          aria-label={dotTitle}
+          title={dotTitle}
+          className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotTone}`}
+        />
+      )}
       {badge && (
-        <span className="ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-blue-500/20 text-blue-200 border border-blue-400/30">
+        <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-blue-500/20 text-blue-200 border border-blue-400/30">
           {badge}
         </span>
       )}
@@ -928,6 +949,15 @@ function getModuleStatus(
     case "economy":   return truthy(com?.economyEnabled) ? "active" : "inactive";
     case "tickets":   return truthy(com?.ticketEnabled) ? "active" : "inactive";
     case "tempvoice": return com?.tempVoiceTrigger ? "active" : "inactive";
+    // Modules sans flag on/off direct dans les settings — l'utilisateur
+    // doit pouvoir voir un statut quand même : on les considère "Désactivé"
+    // par défaut. Le compteur réel (warns / streamers / etc.) demanderait
+    // un fetch dédié qu'on n'a pas dans le blob settings.
+    case "warns": case "modroles": case "rules":
+    case "giveaways": case "polls": case "reactions":
+    case "embed": case "twitch": case "youtube":
+    case "stats": case "logs": case "members":
+      return "inactive";
     default:          return "info";
   }
 }

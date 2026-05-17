@@ -6,7 +6,7 @@ import { Toggle as GooeyToggle } from "@/components/ui/toggle";
 export function Field({
   label, hint, children,
 }: {
-  label: string;
+  label: ReactNode;
   hint?: string;
   children: ReactNode;
 }) {

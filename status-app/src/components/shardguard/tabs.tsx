@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Trash2, ShieldOff, Loader2, CheckCircle2, AlertTriangle, X } from "lucide-react";
+import { Plus, Trash2, ShieldOff, Loader2, CheckCircle2, AlertTriangle, X, ShieldCheck, Sparkles } from "lucide-react";
 import {
   type DiscordChannel, type DiscordRole, type SGSettings,
   parseJsonArray, isTrue, toFlag, to01,
@@ -26,50 +26,219 @@ const roleOpts = (roles: DiscordRole[], excludeEveryone = true) => [
   ...roles.filter(r => !excludeEveryone || r.name !== "@everyone").map(r => ({ value: r.id, label: `@${r.name}` })),
 ];
 
-/* ========== GÉNÉRAL ========== */
+/* ========== PARAMÈTRES (ex-Général) ===========================
+   Layout style mee6 : Bot Masters + Localisation + Apparence,
+   avec la Vérification (Captcha) reléguée en bas pour ne pas perdre
+   les réglages qui n'ont pas d'autre maison. */
+
+// Liste de fuseaux horaires courants — pas de Intl.supportedValuesOf pour
+// rester ESLint-safe sur les anciens TS targets. Champ non encore persisté
+// côté backend (UI prête, à brancher quand on ajoute la colonne timezone).
+const TIMEZONE_OPTIONS = [
+  { value: "Europe/Paris",      label: "🇫🇷 Europe/Paris (UTC+1 / +2)" },
+  { value: "Europe/London",     label: "🇬🇧 Europe/London (UTC+0 / +1)" },
+  { value: "Europe/Brussels",   label: "🇧🇪 Europe/Brussels (UTC+1 / +2)" },
+  { value: "Europe/Madrid",     label: "🇪🇸 Europe/Madrid (UTC+1 / +2)" },
+  { value: "America/New_York",  label: "🇺🇸 America/New_York (UTC−5 / −4)" },
+  { value: "America/Los_Angeles", label: "🇺🇸 America/Los_Angeles (UTC−8 / −7)" },
+  { value: "America/Montreal",  label: "🇨🇦 America/Montreal (UTC−5 / −4)" },
+  { value: "Asia/Tokyo",        label: "🇯🇵 Asia/Tokyo (UTC+9)" },
+  { value: "UTC",               label: "🌐 UTC" },
+];
+
 export function GeneralTab({ settings, update, channels, roles }: TabProps) {
+  // Gérants supplémentaires — on réutilise modRoles (semantiquement proche
+  // des "Bot Masters" mee6 : rôles qui peuvent piloter le bot, hors admins).
+  const masterRoleIds = new Set(parseJsonArray(settings.modRoles));
+  function toggleMaster(roleId: string) {
+    const next = new Set(masterRoleIds);
+    if (next.has(roleId)) next.delete(roleId); else next.add(roleId);
+    update({ modRoles: JSON.stringify([...next]) });
+  }
+  const eligibleRoles = roles.filter(r => r.name !== "@everyone");
+
+  // Champs futurs (non encore persistés). On les stocke côté UI pour que
+  // le placeholder soit interactif ; toute valeur saisie sera perdue au
+  // refresh tant que le backend ne porte pas ces colonnes.
+  const [tz, setTz] = useState("Europe/Paris");
+  const [embedColor, setEmbedColor] = useState("#5865F2");
+
   const isLocked = settings.serverLocked === "true";
+
   return (
-    <div className="grid md:grid-cols-2 gap-4">
-      <SectionCard title="Vérification" description="Comment les nouveaux membres accèdent au serveur.">
-        <Field label="Salon de vérification">
-          <Select
-            options={channelOpts(channels)}
-            value={settings.verificationChannelId}
-            onChange={v => update({ verificationChannelId: v })}
-          />
+    <div className="space-y-5">
+      {/* Header style mee6 — titre + sous-titre éditorial. */}
+      <header className="space-y-2 px-1">
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Paramètres</h1>
+        <p className="text-[14.5px] text-white/55 leading-relaxed">
+          Ici, tu peux ajuster le bot Shard de ton serveur.
+        </p>
+      </header>
+
+      {/* ─── Gérants du Bot ─────────────────────────────────────── */}
+      <SectionCard
+        title="Gérants du Bot"
+        description="Les gérants du bot peuvent accéder à ton tableau de bord et éditer chaque commande et configuration de module. Ils contournent aussi les vérifications de rôle pour les commandes, peuvent voir tous les tickets du module Tickets, sont automatiquement considérés comme immunisés dans le module Modération et peuvent réinitialiser l'XP de n'importe qui."
+      >
+        {/* Rôles Administrateurs — auto-détectés Discord (lecture seule) */}
+        <Field label="Rôles Administrateurs">
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex items-start gap-3">
+            <ShieldCheck className="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-300/80" />
+            <p className="text-[12.5px] text-white/55 leading-relaxed">
+              Tout rôle disposant de la permission <span className="text-white/85 font-semibold">Administrateur</span> sur Discord est automatiquement considéré comme un gérant du bot. Aucune action requise ici — c'est synchronisé en temps réel.
+            </p>
+          </div>
         </Field>
-        <Field label="Rôle vérifié" hint="Attribué automatiquement après captcha réussi.">
-          <Select
-            options={roleOpts(roles)}
-            value={settings.verifiedRole}
-            onChange={v => update({ verifiedRole: v })}
-          />
-        </Field>
-        <Field label="Langue par défaut">
-          <Select
-            options={LANGUAGE_OPTIONS}
-            value={settings.language}
-            onChange={v => update({ language: v })}
-          />
+
+        {/* Rôles supplémentaires de gérants — multi-select */}
+        <Field
+          label="Rôles supplémentaires de gérants du Bot"
+          hint="Rôles qui seront également considérés comme gérants du bot, même s'ils ne disposent pas de la permission Administrateur."
+        >
+          {eligibleRoles.length === 0 ? (
+            <p className="text-sm text-white/40 italic">Aucun rôle disponible.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                {eligibleRoles.map(r => {
+                  const on = masterRoleIds.has(r.id);
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => toggleMaster(r.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-medium transition-colors ${
+                        on
+                          ? "bg-blue-500/10 border-blue-500/30 text-blue-300"
+                          : "bg-white/[0.03] border-white/10 text-white/60 hover:bg-white/[0.06] hover:text-white"
+                      }`}
+                      aria-pressed={on}
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        style={{ background: r.color ? `#${r.color.toString(16).padStart(6, "0")}` : "rgba(255,255,255,0.3)" }}
+                        aria-hidden
+                      />
+                      <span className="truncate">{r.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[11px] text-white/30 mt-3">
+                {masterRoleIds.size} rôle{masterRoleIds.size > 1 ? "s" : ""} sélectionné{masterRoleIds.size > 1 ? "s" : ""}
+              </p>
+            </>
+          )}
         </Field>
       </SectionCard>
 
-      <SectionCard title="Accès & verrouillage" description="Verrouillez le serveur ou exigez un code d'accès.">
-        <Field label="Serveur verrouillé">
-          <Toggle
-            checked={isLocked}
-            onChange={b => update({ serverLocked: toFlag(b) })}
-            label={isLocked ? "Verrouillé (nouveaux refusés)" : "Ouvert"}
-          />
+      {/* ─── Localisation ───────────────────────────────────────── */}
+      <SectionCard title="Localisation" description="Ajuste la langue et le fuseau horaire utilisés par Shard sur ton serveur.">
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Langue" hint="Change la langue par défaut de Shard pour ton serveur.">
+            <Select
+              options={LANGUAGE_OPTIONS}
+              value={settings.language}
+              onChange={v => update({ language: v })}
+            />
+          </Field>
+          <Field
+            label="Fuseau horaire"
+            hint="Change le fuseau horaire par défaut de Shard pour ton serveur."
+          >
+            <Select
+              options={TIMEZONE_OPTIONS}
+              value={tz}
+              onChange={setTz}
+            />
+            <p className="text-[10.5px] text-amber-200/70 mt-2 italic">
+              Bientôt — le réglage est saisi côté UI mais le backend ne le persiste pas encore.
+            </p>
+          </Field>
+        </div>
+      </SectionCard>
+
+      {/* ─── Apparence ──────────────────────────────────────────── */}
+      <SectionCard title="Apparence" description="Personnalise le rendu des messages envoyés par Shard.">
+        <Field
+          label={
+            <span className="inline-flex items-center gap-2">
+              Couleur de l'embed par défaut
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest bg-blue-500/15 text-blue-200 border border-blue-400/25 inline-flex items-center gap-1">
+                <Sparkles className="w-2.5 h-2.5" /> Nouveau
+              </span>
+            </span>
+          }
+          hint="Modifie la couleur de l'embed par défaut de Shard dans ton serveur."
+        >
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              value={embedColor}
+              onChange={e => setEmbedColor(e.target.value)}
+              className="h-10 w-14 rounded-lg border border-white/10 bg-white/[0.03] cursor-pointer"
+              aria-label="Couleur de l'embed par défaut"
+            />
+            <TextInput
+              value={embedColor}
+              onChange={e => setEmbedColor(e.target.value)}
+              placeholder="#5865F2"
+            />
+          </div>
+          {/* Prévisu embed style Discord */}
+          <div className="mt-4 rounded-xl border-l-4 bg-white/[0.025] p-4" style={{ borderLeftColor: embedColor }}>
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-bold">Shard</span>
+                  <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-200">Bot</span>
+                  <span className="text-[10.5px] text-white/35">aujourd'hui</span>
+                </div>
+                <p className="text-[14px] font-bold mb-1">Exemple de titre d'un embed</p>
+                <p className="text-[13px] text-white/65 leading-relaxed">Exemple de description d'un embed.</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-[10.5px] text-amber-200/70 mt-3 italic">
+            Bientôt — la couleur s'affiche dans l'aperçu mais le backend ne la persiste pas encore.
+          </p>
         </Field>
-        <Field label="Code d'accès" hint="Optionnel. Vide = pas de code.">
-          <TextInput
-            value={settings.accessCode}
-            onChange={e => update({ accessCode: e.target.value })}
-            placeholder="ex: SECRET2026"
-          />
-        </Field>
+      </SectionCard>
+
+      {/* ─── Vérification (Captcha) — conservé pour ne pas perdre
+          les réglages qui n'ont pas d'autre tab dédié. */}
+      <SectionCard title="Vérification" description="Comment les nouveaux membres accèdent au serveur. Détails supplémentaires dans l'onglet Captcha.">
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Salon de vérification">
+            <Select
+              options={channelOpts(channels)}
+              value={settings.verificationChannelId}
+              onChange={v => update({ verificationChannelId: v })}
+            />
+          </Field>
+          <Field label="Rôle vérifié" hint="Attribué automatiquement après captcha réussi.">
+            <Select
+              options={roleOpts(roles)}
+              value={settings.verifiedRole}
+              onChange={v => update({ verifiedRole: v })}
+            />
+          </Field>
+          <Field label="Serveur verrouillé">
+            <Toggle
+              checked={isLocked}
+              onChange={b => update({ serverLocked: toFlag(b) })}
+              label={isLocked ? "Verrouillé (nouveaux refusés)" : "Ouvert"}
+            />
+          </Field>
+          <Field label="Code d'accès" hint="Optionnel. Vide = pas de code.">
+            <TextInput
+              value={settings.accessCode}
+              onChange={e => update({ accessCode: e.target.value })}
+              placeholder="ex: SECRET2026"
+            />
+          </Field>
+        </div>
       </SectionCard>
     </div>
   );
