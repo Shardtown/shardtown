@@ -9,6 +9,7 @@ import { useAuth } from "@/api/auth";
 import { apiGet, apiPost } from "@/api/client";
 import { Admonition } from "@/components/ui/admonition";
 import { PricingModule, type PricingPlan } from "@/components/ui/pricing-module";
+import { CheckoutModal } from "@/components/premium/CheckoutModal";
 
 interface AdminGuild { id: string; name: string }
 interface PremiumData { adminGuilds: AdminGuild[] }
@@ -191,6 +192,10 @@ export function Premium() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  // Modal de récap pré-Stripe : on ouvre quand l'utilisateur clique sur
+  // "Payer" depuis le toggle, et on relaie l'action confirmer vers
+  // startCheckout (qui appelle l'API et redirige vers Stripe).
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   useEffect(() => {
     if (!user) { setLoading(false); return; }
@@ -200,7 +205,20 @@ export function Premium() {
       .finally(() => setLoading(false));
   }, [user]);
 
-  const buttonLabel = "Payer avec Stripe";
+  const buttonLabel = "Continuer vers le paiement";
+
+  // Détails du plan sélectionné — formatés pour passer au CheckoutModal.
+  const selectedPlan = {
+    label: plan === "lifetime" ? "Lifetime" : plan === "yearly" ? "Annuel" : "Mensuel",
+    // Premier prélèvement : pour lifetime, le total. Pour yearly/monthly,
+    // le tarif intro de la première période.
+    amountNow: plan === "lifetime" ? "34,99 €"
+             : plan === "yearly"   ? "19,99 €"
+             : "3,99 €",
+    note: PRICE[plan].introNote,
+  };
+  const selectedGuildName = data?.adminGuilds.find(g => g.id === guildId)?.name ?? "—";
+  const accountName = user?.global_name || user?.username || "—";
 
   async function startCheckout() {
     if (!guildId) {
@@ -433,11 +451,18 @@ export function Premium() {
 
                 <button
                   type="button"
-                  onClick={startCheckout}
+                  onClick={() => {
+                    if (!guildId) {
+                      setError("Sélectionne d'abord le serveur Discord à activer.");
+                      return;
+                    }
+                    setError(null);
+                    setCheckoutOpen(true);
+                  }}
                   disabled={submitting || !guildId}
                   className="btn-liquid btn-liquid--gold w-full rounded-full px-6 py-4 font-extrabold text-sm flex items-center justify-center"
                 >
-                  {submitting ? "Redirection vers Stripe…" : buttonLabel}
+                  {submitting ? "Redirection…" : buttonLabel}
                 </button>
                 <p className="text-[11px] text-white/35 text-center leading-relaxed">
                   Paiement sécurisé via Stripe. Annulation à tout moment depuis le portail client.
@@ -518,6 +543,19 @@ export function Premium() {
           Une question qui n'apparaît pas ? <Link to="/wiki#faq" className="text-emerald-300 hover:text-emerald-200 underline-offset-2 hover:underline">Consulte le wiki</Link> ou ouvre un ticket sur notre serveur.
         </p>
       </section>
+
+      {/* Terminal de paiement Shardtown — modal de récap pré-Stripe. */}
+      <CheckoutModal
+        open={checkoutOpen}
+        onClose={() => { if (!submitting) setCheckoutOpen(false); }}
+        planLabel={selectedPlan.label}
+        amountNow={selectedPlan.amountNow}
+        amountNote={selectedPlan.note}
+        accountName={accountName}
+        guildName={selectedGuildName}
+        submitting={submitting}
+        onConfirm={startCheckout}
+      />
     </AppLayout>
   );
 }
