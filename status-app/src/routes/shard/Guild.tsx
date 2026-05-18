@@ -461,6 +461,17 @@ export function ShardGuild() {
           sec={security}
           com={community}
           onJumpTo={setTab}
+          onToggleModule={(k, enable) => {
+            const m = MODULE_ENABLE[k];
+            if (!m) return false; // pas de flag → la modale fera juste un jump
+            const value = enable ? m.trueValue : m.falseValue;
+            if (m.side === "security") {
+              updateSecurity({ [m.field]: value } as Partial<ShardModSettings>);
+            } else {
+              updateCommunity({ [m.field]: value } as Partial<ShardSettings>);
+            }
+            return true;
+          }}
           reduce={reduce}
           heroEase={heroEase}
         />
@@ -885,11 +896,15 @@ type Reduce = boolean | null;
 type Ease = readonly [number, number, number, number];
 
 function OverviewPanel({
-  sec, com, onJumpTo, reduce, heroEase,
+  sec, com, onJumpTo, onToggleModule, reduce, heroEase,
 }: {
   sec: ShardModGuildData | null;
   com: ShardGuildData | null;
   onJumpTo: (key: TabKey) => void;
+  /** Active ou désactive un module. Retourne true si le toggle a fait
+   *  quelque chose (le module a un flag), false si le module n'a pas
+   *  de flag explicite (devient actif seulement quand configuré). */
+  onToggleModule: (key: TabKey, enable: boolean) => boolean;
   reduce: Reduce;
   heroEase: Ease;
 }) {
@@ -902,6 +917,13 @@ function OverviewPanel({
   // Tab actif pour le filtre par catégorie. "all" affiche toutes les
   // sections, sinon on n'affiche que la section sélectionnée.
   const [activeGroup, setActiveGroup] = useState<string>("all");
+
+  // Modal d'activation — null si fermé, sinon le tab cliqué.
+  const [activatingKey, setActivatingKey] = useState<TabKey | null>(null);
+  const activating = activatingKey ? TABS.find(t => t.key === activatingKey) : null;
+  const activatingStatus = activating
+    ? getModuleStatus(activating.key, sec?.settings ?? null, com?.settings ?? null)
+    : "info";
 
   const isPremium =
     com?.settings?.isPremium === 1 || com?.settings?.isPremium === "1" ||
@@ -980,7 +1002,7 @@ function OverviewPanel({
                       label={t.label}
                       description={MODULE_DESCRIPTIONS[t.key]}
                       status={getModuleStatus(t.key, sec?.settings ?? null, com?.settings ?? null)}
-                      onClick={() => onJumpTo(t.key)}
+                      onClick={() => setActivatingKey(t.key)}
                     />
                   ))}
                 </div>
@@ -988,6 +1010,33 @@ function OverviewPanel({
             ))}
         </div>
       </div>
+
+      {/* Modal d'activation — s'ouvre au clic d'une module card */}
+      {activating && (
+        <ActivateModuleModal
+          icon={activating.icon}
+          label={activating.label}
+          description={MODULE_DESCRIPTIONS[activating.key]}
+          status={activatingStatus}
+          hasEnableFlag={!!MODULE_ENABLE[activating.key]}
+          onClose={() => setActivatingKey(null)}
+          onToggle={enable => {
+            const k = activating.key;
+            const flipped = onToggleModule(k, enable);
+            setActivatingKey(null);
+            // Si on vient d'activer et que le module a besoin de config
+            // (welcome channel, autorole ID...), on saute direct au tab.
+            // Si on a juste flipé un flag binaire (levels, economy), on
+            // reste sur l'overview pour voir le statut mis à jour.
+            if (enable && !flipped) onJumpTo(k);
+          }}
+          onConfigure={() => {
+            const k = activating.key;
+            setActivatingKey(null);
+            onJumpTo(k);
+          }}
+        />
+      )}
     </motion.div>
   );
 }
@@ -1019,6 +1068,32 @@ function CategoryTab({
 }
 
 type ModuleStatus = "active" | "inactive" | "info";
+
+// ──────────────────────────────────────────────────────────────────────
+//  Flags d'activation des modules
+//
+//  Pour chaque module qui a un vrai flag binaire en base, on stocke
+//  l'info side ("security" → table settings / "community" → shard_settings)
+//  + nom du champ + valeur "vraie". Les modules sans flag (welcome,
+//  autorole, captcha, etc.) n'apparaissent pas ici — ils deviennent
+//  "actifs" dès qu'ils ont une configuration valide (channel/role posé).
+// ──────────────────────────────────────────────────────────────────────
+
+interface ModuleEnableMap {
+  side: "security" | "community";
+  field: string;
+  trueValue: 1 | "true";
+  falseValue: 0 | "false";
+}
+
+const MODULE_ENABLE: Partial<Record<TabKey, ModuleEnableMap>> = {
+  levels:   { side: "community", field: "levelsEnabled",       trueValue: 1,      falseValue: 0 },
+  economy:  { side: "community", field: "economyEnabled",      trueValue: 1,      falseValue: 0 },
+  tickets:  { side: "community", field: "ticketEnabled",       trueValue: 1,      falseValue: 0 },
+  banned:   { side: "security",  field: "bannedWordsEnabled",  trueValue: "true", falseValue: "false" },
+  security: { side: "security",  field: "antiRaidEnabled",     trueValue: "true", falseValue: "false" },
+  panic:    { side: "security",  field: "panicModeActive",     trueValue: 1,      falseValue: 0 },
+};
 
 function getModuleStatus(
   key: TabKey,
@@ -1142,6 +1217,159 @@ function ModuleCard({
         )}
       </div>
     </button>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//  ActivateModuleModal — popup mee6-style ouverte au clic sur une card
+//
+//  3 cas selon le statut du module :
+//   - inactif + a un flag d'enable → bouton "Activer ce module" qui
+//     flippe le flag en DB. Pas de redirect : l'admin reste sur le hub
+//     et voit la card devenir "Actif" en live.
+//   - inactif + sans flag (welcome, autorole...) → bouton "Configurer"
+//     qui saute directement au tab pour saisir le channel/role.
+//   - actif → boutons "Configurer" + "Désactiver".
+// ──────────────────────────────────────────────────────────────────────
+
+function ActivateModuleModal({
+  icon: Icon, label, description, status, hasEnableFlag,
+  onClose, onToggle, onConfigure,
+}: {
+  icon: typeof Settings;
+  label: string;
+  description?: string;
+  status: ModuleStatus;
+  hasEnableFlag: boolean;
+  onClose: () => void;
+  onToggle: (enable: boolean) => void;
+  onConfigure: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  const isActive = status === "active";
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 py-8">
+      {/* Backdrop */}
+      <button
+        type="button"
+        aria-label="Fermer"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/75 backdrop-blur-md"
+      />
+
+      {/* Card */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="module-activate-title"
+        className="relative w-full max-w-md rounded-3xl bg-[#13121b] border border-white/[0.08] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)] p-7 text-center"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fermer"
+          className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] inline-flex items-center justify-center transition-colors"
+        >
+          <Plus className="w-4 h-4 rotate-45 text-white/70" strokeWidth={2.5} />
+        </button>
+
+        {/* Icône carrée bleue, façon card */}
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-500/15 border border-blue-400/25 text-blue-300 mb-5 shadow-[inset_0_1px_0_rgba(96,165,250,0.18)]">
+          <Icon className="w-7 h-7" strokeWidth={2} />
+        </div>
+
+        <h2 id="module-activate-title" className="text-2xl font-extrabold tracking-tight mb-3">
+          {label}
+        </h2>
+
+        {description && (
+          <p className="text-[13.5px] text-white/55 leading-relaxed mb-5 max-w-[300px] mx-auto">
+            {description}
+          </p>
+        )}
+
+        {/* Status pill */}
+        <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px] font-bold uppercase tracking-widest mb-7 ${
+          isActive
+            ? "bg-emerald-500/15 text-emerald-300 border border-emerald-400/25"
+            : "bg-white/[0.04] text-white/45 border border-white/[0.08]"
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" : "bg-white/30"}`} />
+          {isActive ? "Actif" : "Désactivé"}
+        </div>
+
+        {/* Actions */}
+        <div className="space-y-2.5">
+          {isActive ? (
+            <>
+              <button
+                type="button"
+                onClick={onConfigure}
+                className="w-full rounded-2xl bg-white hover:bg-white/95 text-zinc-900 font-extrabold text-[14px] py-3 transition-colors"
+              >
+                Configurer le module
+              </button>
+              {hasEnableFlag && (
+                <button
+                  type="button"
+                  onClick={() => onToggle(false)}
+                  className="w-full rounded-2xl bg-red-500/10 hover:bg-red-500/15 border border-red-500/25 text-red-300 font-bold text-[13px] py-2.5 transition-colors"
+                >
+                  Désactiver le module
+                </button>
+              )}
+            </>
+          ) : hasEnableFlag ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onToggle(true)}
+                className="w-full rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-extrabold text-[14px] py-3 transition-colors shadow-[0_8px_20px_-8px_rgba(59,130,246,0.6)]"
+              >
+                Activer ce module
+              </button>
+              <button
+                type="button"
+                onClick={onConfigure}
+                className="w-full rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white/75 hover:text-white font-bold text-[13px] py-2.5 transition-colors"
+              >
+                Voir la configuration
+              </button>
+            </>
+          ) : (
+            // Pas de flag binaire — il faut configurer (channel/role) pour
+            // que le module devienne actif. On simplifie l'UX : un seul
+            // gros bouton "Configurer".
+            <button
+              type="button"
+              onClick={onConfigure}
+              className="w-full rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-extrabold text-[14px] py-3 transition-colors shadow-[0_8px_20px_-8px_rgba(59,130,246,0.6)]"
+            >
+              Configurer pour activer
+            </button>
+          )}
+        </div>
+
+        <p className="text-[11px] text-white/35 mt-5 leading-relaxed">
+          {isActive
+            ? "Tes réglages sont déjà appliqués sur le serveur."
+            : hasEnableFlag
+              ? "L'activation prend effet immédiatement après avoir cliqué Enregistrer."
+              : "Le module deviendra actif dès que tu auras renseigné les options requises."}
+        </p>
+      </div>
+    </div>
   );
 }
 
