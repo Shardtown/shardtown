@@ -137,45 +137,45 @@ export function CheckoutModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="checkout-title"
-            className="relative w-full max-w-md rounded-3xl bg-white text-zinc-900 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.9)] overflow-hidden"
+            className="relative w-full max-w-[380px] rounded-2xl bg-white text-zinc-900 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)] overflow-hidden"
           >
             <button
               type="button"
               onClick={onClose}
               aria-label="Fermer"
-              className="absolute top-4 right-4 w-9 h-9 rounded-full bg-zinc-200 hover:bg-zinc-300 text-zinc-700 inline-flex items-center justify-center transition-colors z-10"
+              className="absolute top-3 right-3 w-7 h-7 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 inline-flex items-center justify-center transition-colors z-10"
             >
-              <X className="w-4 h-4" strokeWidth={2.5} />
+              <X className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
 
-            <div className="pt-9 pb-7 px-7 text-center border-b border-zinc-200">
-              <div className="inline-flex items-center gap-2.5 mb-3">
+            <div className="pt-6 pb-5 px-5 text-center border-b border-zinc-200">
+              <div className="inline-flex items-center gap-2 mb-2">
                 <img
                   src="/image/shardtown.jpeg"
                   alt=""
-                  className="w-8 h-8 rounded-full object-cover ring-1 ring-zinc-200"
+                  className="w-6 h-6 rounded-full object-cover ring-1 ring-zinc-200"
                 />
-                <span className="text-2xl font-extrabold tracking-tight">SHARDTOWN</span>
+                <span className="text-lg font-extrabold tracking-tight">SHARDTOWN</span>
               </div>
-              <p id="checkout-title" className="text-base font-bold text-violet-600">
+              <p id="checkout-title" className="text-sm font-bold text-zinc-900">
                 Finalise ta commande
               </p>
             </div>
 
-            <div className="px-7 pt-6 pb-7 bg-zinc-50 space-y-5">
+            <div className="px-5 pt-4 pb-5 bg-zinc-50 space-y-3.5">
               {/* Total */}
-              <div className="bg-white rounded-2xl border border-zinc-200 px-5 py-4 flex items-center justify-between">
+              <div className="bg-white rounded-xl border border-zinc-200 px-4 py-3 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold text-violet-600 mb-0.5">Payer maintenant</p>
-                  <p className="text-[11px] text-zinc-500 leading-tight">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-900 mb-0.5">Payer maintenant</p>
+                  <p className="text-[10.5px] text-zinc-500 leading-tight">
                     {planLabel} — {amountNote}
                   </p>
                 </div>
-                <span className="text-lg font-extrabold text-zinc-900 tabular-nums">{amountNow}</span>
+                <span className="text-base font-extrabold text-zinc-900 tabular-nums">{amountNow}</span>
               </div>
 
               {/* Compte + Serveur */}
-              <div className="space-y-3 pl-1">
+              <div className="space-y-2.5">
                 <Row label="Compte" value={accountName} />
                 <Row label="Serveur" value={guildName} />
               </div>
@@ -190,20 +190,20 @@ export function CheckoutModal({
               />
 
               {/* Secure / 3DS */}
-              <p className="text-[12px] text-zinc-500 text-center inline-flex items-center justify-center gap-1.5 w-full">
+              <p className="text-[11px] text-zinc-500 text-center inline-flex items-center justify-center gap-1.5 w-full">
                 <Lock className="w-3 h-3" />
-                Paiement sécurisé · TLS · PCI-DSS via Stripe
+                Paiement sécurisé · PCI-DSS via Stripe
               </p>
 
-              <div className="bg-zinc-100 border border-zinc-200 rounded-2xl px-4 py-3 flex items-start gap-2.5">
-                <Info className="w-4 h-4 text-zinc-500 flex-shrink-0 mt-0.5" />
-                <p className="text-[12px] text-zinc-600 leading-relaxed">
-                  Tu peux être invité à valider 3D Secure dans une fenêtre
-                  de ta banque. Aucune carte n'est stockée chez Shardtown.
+              <div className="bg-zinc-100 border border-zinc-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
+                <Info className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0 mt-0.5" />
+                <p className="text-[11px] text-zinc-600 leading-relaxed">
+                  Une fenêtre 3D Secure peut s'ouvrir pour ta banque.
+                  Aucune carte n'est stockée chez Shardtown.
                 </p>
               </div>
 
-              <div className="flex items-center justify-center gap-1.5 text-[11px] text-zinc-400">
+              <div className="flex items-center justify-center gap-1.5 text-[10.5px] text-zinc-400">
                 <ShieldCheck className="w-3 h-3" />
                 Hébergement EU · Conforme RGPD
               </div>
@@ -277,12 +277,12 @@ function StripePaymentForm({
           appearance: {
             theme: "stripe",
             variables: {
-              colorPrimary: "#7c3aed",
+              colorPrimary: "#18181b",      // zinc-900 — accent noir
               colorBackground: "#ffffff",
               colorText: "#18181b",
               colorDanger: "#ef4444",
               fontFamily: "Inter, system-ui, sans-serif",
-              borderRadius: "12px",
+              borderRadius: "10px",
             },
           },
         });
@@ -393,7 +393,7 @@ function StripePaymentForm({
         <button
           type="button"
           onClick={fallbackLegacy}
-          className="w-full rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-[13px] font-bold py-2.5 transition-colors"
+          className="w-full rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-[12px] font-bold py-2 transition-colors"
         >
           Continuer via Stripe Checkout (redirection)
         </button>
@@ -403,10 +403,10 @@ function StripePaymentForm({
 
   if (done) {
     return (
-      <div className="rounded-2xl bg-emerald-50 border border-emerald-200 px-5 py-6 text-center">
-        <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-3" />
-        <p className="text-[15px] font-bold text-emerald-700 mb-1">Paiement confirmé</p>
-        <p className="text-[12.5px] text-emerald-600 leading-relaxed">
+      <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-5 text-center">
+        <CheckCircle2 className="w-7 h-7 text-emerald-500 mx-auto mb-2" />
+        <p className="text-[14px] font-bold text-emerald-700 mb-0.5">Paiement confirmé</p>
+        <p className="text-[11.5px] text-emerald-600 leading-relaxed">
           Premium est en cours d'activation… Redirection…
         </p>
       </div>
@@ -414,35 +414,35 @@ function StripePaymentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="rounded-2xl bg-white border border-zinc-200 p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-3 inline-flex items-center gap-1.5">
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="rounded-xl bg-white border border-zinc-200 p-3">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2 inline-flex items-center gap-1.5">
           <CreditCard className="w-3 h-3" /> Mode de paiement
         </p>
         {/* Mount cible pour Stripe Elements. Stripe injecte une iframe
             sécurisée à l'intérieur — on ne voit jamais le numéro de carte. */}
-        <div ref={mountRef} className="min-h-[44px]" />
+        <div ref={mountRef} className="min-h-[40px]" />
         {loading && (
-          <div className="flex items-center justify-center py-4 text-zinc-500">
-            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            <span className="text-[13px]">Préparation du paiement…</span>
+          <div className="flex items-center justify-center py-3 text-zinc-500">
+            <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
+            <span className="text-[12px]">Préparation du paiement…</span>
           </div>
         )}
       </div>
 
       {submitError && (
-        <div className="rounded-xl bg-red-50 border border-red-200 px-3 py-2.5">
-          <p className="text-[12px] text-red-700 leading-relaxed">{submitError}</p>
+        <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2">
+          <p className="text-[11.5px] text-red-700 leading-relaxed">{submitError}</p>
         </div>
       )}
 
-      <p className="text-[12px] text-zinc-500 leading-relaxed">
+      <p className="text-[11px] text-zinc-500 leading-relaxed">
         En souscrivant, tu acceptes nos{" "}
         <a
           href="/terms"
           target="_blank"
           rel="noopener"
-          className="text-violet-600 hover:underline underline-offset-2 font-semibold"
+          className="text-zinc-900 hover:underline underline-offset-2 font-semibold"
         >
           Conditions générales
         </a>
@@ -452,7 +452,7 @@ function StripePaymentForm({
       <button
         type="submit"
         disabled={loading || submitting}
-        className="w-full rounded-2xl bg-gradient-to-b from-violet-500 to-violet-600 hover:from-violet-500 hover:to-violet-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold text-base py-3.5 transition-all shadow-[0_8px_20px_-8px_rgba(139,92,246,0.6)]"
+        className="w-full rounded-xl bg-zinc-900 hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold text-[14px] py-3 transition-colors"
       >
         {submitting ? (
           <span className="inline-flex items-center justify-center gap-2">
