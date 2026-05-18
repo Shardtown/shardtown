@@ -1284,13 +1284,17 @@ app.use(async (req, res, next) => {
 
 // Global CSRF guard — applies to every state-changing request that carries a
 // session cookie. Skipped for safe methods, the Stripe webhook (signature-
-// verified, no session), bearer-authed requests, and the OAuth callback
-// (passport state-protected). Individual routes used to opt in via
-// `verifyCsrf`; this catches the ones that didn't.
+// verified, no session), bearer-authed requests, /api/bot/* (server-to-server,
+// authenticated by X-Bot-Key), and the OAuth callback (passport
+// state-protected). Individual routes used to opt in via `verifyCsrf`;
+// this catches the ones that didn't.
 app.use((req, res, next) => {
     if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
     if (req.path === '/webhook/stripe') return next();
     if (req.bearerAuthed) return next();
+    // Endpoints internes consommés par le bot Discord (server-to-server) :
+    // auth dédiée via header X-Bot-Key, donc pas de session ni de CSRF.
+    if (req.path.startsWith('/api/bot/')) return next();
     return verifyCsrf(req, res, next);
 });
 
