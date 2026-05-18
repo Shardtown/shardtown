@@ -1,0 +1,363 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0228EBDAEABCE12BDD68D707 /* RakNet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74A43D1D9FFA424B4B32FA02 /* RakNet.swift */; };
+		042351BBF4B9CD9E39A2D522 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF25741687B658E125B1C4A4 /* RootView.swift */; };
+		1465A9B585A90656FFAA91D0 /* Server.swift in Sources */ = {isa = PBXBuildFile; fileRef = C37A8CF85214674076689C5A /* Server.swift */; };
+		2A22C2610284B56FE3F30704 /* UDPRelay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 854FDA06C0171922FF4620C1 /* UDPRelay.swift */; };
+		3321934990E7BDA9080DACDA /* ShardLinkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385F08E3F9422C26B965041F /* ShardLinkApp.swift */; };
+		46118115AD07CC0DFE91FB1D /* ServerDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9A9EC3B41AFD33B48EF8B42 /* ServerDetailView.swift */; };
+		4B2096E645C7CEF026C75AB4 /* LANBroadcaster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D5725B1FED4592AFB4DBCC1 /* LANBroadcaster.swift */; };
+		717F0FB6A0615E41092F25CB /* ServerListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30B54417F36879048DF9ECDC /* ServerListView.swift */; };
+		C8CF5EFC6F012443D85D249B /* AddServerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DE3D8AA736E57DBAC1B9554 /* AddServerView.swift */; };
+		D3EE7822EC71748D64CDF137 /* ServerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 738AD679262238B20DAC337C /* ServerStore.swift */; };
+		EE77B0EC1D050DE9F1848488 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FC2596DA861054D99F83B67 /* EmptyStateView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0651AA54DCB05A42AF621E9F /* ShardLink.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ShardLink.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0FC2596DA861054D99F83B67 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		2DE3D8AA736E57DBAC1B9554 /* AddServerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddServerView.swift; sourceTree = "<group>"; };
+		30B54417F36879048DF9ECDC /* ServerListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerListView.swift; sourceTree = "<group>"; };
+		385F08E3F9422C26B965041F /* ShardLinkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShardLinkApp.swift; sourceTree = "<group>"; };
+		5D5725B1FED4592AFB4DBCC1 /* LANBroadcaster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LANBroadcaster.swift; sourceTree = "<group>"; };
+		738AD679262238B20DAC337C /* ServerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerStore.swift; sourceTree = "<group>"; };
+		74A43D1D9FFA424B4B32FA02 /* RakNet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RakNet.swift; sourceTree = "<group>"; };
+		854FDA06C0171922FF4620C1 /* UDPRelay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UDPRelay.swift; sourceTree = "<group>"; };
+		BF25741687B658E125B1C4A4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		C37A8CF85214674076689C5A /* Server.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Server.swift; sourceTree = "<group>"; };
+		C9A9EC3B41AFD33B48EF8B42 /* ServerDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerDetailView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		02301BE7E4EFD847C03C43A1 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				C37A8CF85214674076689C5A /* Server.swift */,
+				738AD679262238B20DAC337C /* ServerStore.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		4C7BEAD8CA268925753A390A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0651AA54DCB05A42AF621E9F /* ShardLink.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		795E3D2C471369215BB32038 /* ShardLink */ = {
+			isa = PBXGroup;
+			children = (
+				385F08E3F9422C26B965041F /* ShardLinkApp.swift */,
+				02301BE7E4EFD847C03C43A1 /* Models */,
+				E62FCD0825428C63BDE55D01 /* Networking */,
+				AE9A0BEE8BE13DF5CBBB9CD1 /* Views */,
+			);
+			path = ShardLink;
+			sourceTree = "<group>";
+		};
+		AE9A0BEE8BE13DF5CBBB9CD1 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				2DE3D8AA736E57DBAC1B9554 /* AddServerView.swift */,
+				0FC2596DA861054D99F83B67 /* EmptyStateView.swift */,
+				BF25741687B658E125B1C4A4 /* RootView.swift */,
+				C9A9EC3B41AFD33B48EF8B42 /* ServerDetailView.swift */,
+				30B54417F36879048DF9ECDC /* ServerListView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		C0F102B9200C4134F9C9E381 = {
+			isa = PBXGroup;
+			children = (
+				795E3D2C471369215BB32038 /* ShardLink */,
+				4C7BEAD8CA268925753A390A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E62FCD0825428C63BDE55D01 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				5D5725B1FED4592AFB4DBCC1 /* LANBroadcaster.swift */,
+				74A43D1D9FFA424B4B32FA02 /* RakNet.swift */,
+				854FDA06C0171922FF4620C1 /* UDPRelay.swift */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FB57C921FC4C21F0B69B97B4 /* ShardLink */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA576282B842922BFF8A0EFA /* Build configuration list for PBXNativeTarget "ShardLink" */;
+			buildPhases = (
+				88E6884ADE4D92BA644A1651 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShardLink;
+			packageProductDependencies = (
+			);
+			productName = ShardLink;
+			productReference = 0651AA54DCB05A42AF621E9F /* ShardLink.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AEBD6D4ED94C8DABC9C95FBE /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					FB57C921FC4C21F0B69B97B4 = {
+						DevelopmentTeam = "";
+					};
+				};
+			};
+			buildConfigurationList = 79A07520712132B304CD60CC /* Build configuration list for PBXProject "ShardLink" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = C0F102B9200C4134F9C9E381;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4C7BEAD8CA268925753A390A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FB57C921FC4C21F0B69B97B4 /* ShardLink */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		88E6884ADE4D92BA644A1651 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C8CF5EFC6F012443D85D249B /* AddServerView.swift in Sources */,
+				EE77B0EC1D050DE9F1848488 /* EmptyStateView.swift in Sources */,
+				4B2096E645C7CEF026C75AB4 /* LANBroadcaster.swift in Sources */,
+				0228EBDAEABCE12BDD68D707 /* RakNet.swift in Sources */,
+				042351BBF4B9CD9E39A2D522 /* RootView.swift in Sources */,
+				1465A9B585A90656FFAA91D0 /* Server.swift in Sources */,
+				46118115AD07CC0DFE91FB1D /* ServerDetailView.swift in Sources */,
+				717F0FB6A0615E41092F25CB /* ServerListView.swift in Sources */,
+				D3EE7822EC71748D64CDF137 /* ServerStore.swift in Sources */,
+				3321934990E7BDA9080DACDA /* ShardLinkApp.swift in Sources */,
+				2A22C2610284B56FE3F30704 /* UDPRelay.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		6B902F3115B965265891828D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ShardLink/Resources/ShardLink.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = ShardLink/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = fr.shardtown.shardlink;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AB0E3C6AB5CDC210B7B768C7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DA3862ADB2D4DE7D12D36B70 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		DDC99E728DD4EF70A230636A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = ShardLink/Resources/ShardLink.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = ShardLink/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = fr.shardtown.shardlink;
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		79A07520712132B304CD60CC /* Build configuration list for PBXProject "ShardLink" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB0E3C6AB5CDC210B7B768C7 /* Debug */,
+				DA3862ADB2D4DE7D12D36B70 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DA576282B842922BFF8A0EFA /* Build configuration list for PBXNativeTarget "ShardLink" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6B902F3115B965265891828D /* Debug */,
+				DDC99E728DD4EF70A230636A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AEBD6D4ED94C8DABC9C95FBE /* Project object */;
+}
