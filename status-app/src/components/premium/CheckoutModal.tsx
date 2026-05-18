@@ -19,6 +19,12 @@ interface Props {
   plan: "monthly" | "yearly" | "lifetime";
 }
 
+interface AppliedPromo {
+  code: string;
+  discountType: "percent" | "fixed";
+  discountValue: number;
+}
+
 // ──────────────────────────────────────────────────────────────────────
 //  Stripe.js via CDN — sans dépendance npm
 //
@@ -108,6 +114,22 @@ export function CheckoutModal({
   // Détail dépliant du total (style mee6 "Chargeable now")
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   useEffect(() => { if (!open) setBreakdownOpen(false); }, [open]);
+
+  // Code promo — déplié au clic sur "Appliquer un code promo".
+  // Quand un code est validé, le composant remonte l'info à
+  // StripePaymentForm via la prop `appliedPromo` pour qu'il l'envoie au
+  // backend lors de la création du PaymentIntent.
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
+  useEffect(() => {
+    if (!open) { setPromoOpen(false); setAppliedPromo(null); }
+  }, [open]);
+
+  // Calcule l'amount effectif TTC après discount. Reste affiché en
+  // chaîne formatée FR pour la cohérence du reste du modal.
+  const baseEUR = parseAmountEUR(amountNow);
+  const effectiveEUR = appliedPromo ? applyPromoEUR(baseEUR, appliedPromo) : baseEUR;
+  const effectiveAmountNow = formatEUR(effectiveEUR);
   // ESC pour fermer + lock body scroll.
   useEffect(() => {
     if (!open) return;
@@ -174,23 +196,24 @@ export function CheckoutModal({
             <div className="px-5 pt-4 pb-5 bg-zinc-50 space-y-3 overflow-y-auto flex-1 [scrollbar-width:thin]">
               {/* Pay now — ligne cliquable qui déplie le détail */}
               <PayNowBreakdown
-                amountNow={amountNow}
+                amountNow={effectiveAmountNow}
+                baseAmountNow={amountNow}
                 plan={plan}
+                appliedPromo={appliedPromo}
                 open={breakdownOpen}
                 onToggle={() => setBreakdownOpen(v => !v)}
                 onEditOrder={onClose}
               />
 
-              {/* Apply coupon (placeholder) */}
-              <div className="text-center">
-                <button
-                  type="button"
-                  className="text-[12px] font-semibold text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-2"
-                  onClick={() => {/* TODO: brancher Stripe Coupons */}}
-                >
-                  Appliquer un code promo
-                </button>
-              </div>
+              {/* Apply coupon */}
+              <PromoInput
+                plan={plan}
+                applied={appliedPromo}
+                open={promoOpen}
+                onOpen={() => setPromoOpen(true)}
+                onApplied={p => { setAppliedPromo(p); setPromoOpen(false); }}
+                onRemove={() => setAppliedPromo(null)}
+              />
 
               {/* Compte + Serveur (mee6-style, juste 2 lignes avec Edit) */}
               <div className="space-y-2.5">
@@ -198,13 +221,15 @@ export function CheckoutModal({
                 <Row label="Serveur" value={guildName} />
               </div>
 
-              {/* Payment Element */}
+              {/* Payment Element — key inclut le code promo pour recréer
+                  l'intent quand l'utilisateur applique/retire un code. */}
               <StripePaymentForm
-                key={`${plan}-${guildId ?? ""}`}
+                key={`${plan}-${guildId ?? ""}-${appliedPromo?.code ?? ""}`}
                 open={open}
                 guildId={guildId}
                 plan={plan}
-                amountNow={amountNow}
+                amountNow={effectiveAmountNow}
+                promoCode={appliedPromo?.code ?? null}
               />
             </div>
           </motion.div>
@@ -219,12 +244,13 @@ export function CheckoutModal({
 // ──────────────────────────────────────────────────────────────────────
 
 function StripePaymentForm({
-  open, guildId, plan, amountNow,
+  open, guildId, plan, amountNow, promoCode,
 }: {
   open: boolean;
   guildId: string | null;
   plan: "monthly" | "yearly" | "lifetime";
   amountNow: string;
+  promoCode: string | null;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stripeRef = useRef<StripeClient | null>(null);
@@ -264,7 +290,7 @@ function StripePaymentForm({
 
         const r = await apiPost<{
           success: boolean; clientSecret?: string; error?: string;
-        }>("/api/premium/payment-intent", { guildId, plan });
+        }>("/api/premium/payment-intent", { guildId, plan, promoCode });
         if (cancelled) return;
         if (!r.success || !r.clientSecret) {
           setLoadError(r.error || "Impossible d'initialiser le paiement.");
@@ -320,7 +346,7 @@ function StripePaymentForm({
       elementsRef.current = null;
       stripeRef.current = null;
     };
-  }, [open, guildId, plan]);
+  }, [open, guildId, plan, promoCode]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -478,6 +504,123 @@ function StripePaymentForm({
 }
 
 // ──────────────────────────────────────────────────────────────────────
+//  PromoInput — collapse/expand du champ "Appliquer un code promo"
+//  Validate via POST /api/premium/promo/validate, montre le discount
+//  appliqué, permet de retirer le code.
+// ──────────────────────────────────────────────────────────────────────
+
+function PromoInput({
+  plan, applied, open, onOpen, onApplied, onRemove,
+}: {
+  plan: "monthly" | "yearly" | "lifetime";
+  applied: AppliedPromo | null;
+  open: boolean;
+  onOpen: () => void;
+  onApplied: (p: AppliedPromo) => void;
+  onRemove: () => void;
+}) {
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) return;
+    setError(null);
+    setBusy(true);
+    try {
+      const r = await apiPost<{
+        success: boolean;
+        code?: string;
+        discountType?: "percent" | "fixed";
+        discountValue?: number;
+        error?: string;
+      }>("/api/premium/promo/validate", { code: trimmed, plan });
+      if (!r.success || !r.code || !r.discountType || r.discountValue === undefined) {
+        setError(r.error || "Code invalide.");
+        return;
+      }
+      onApplied({ code: r.code, discountType: r.discountType, discountValue: r.discountValue });
+      setCode("");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erreur réseau.";
+      setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Code appliqué — affiche un badge avec retrait possible.
+  if (applied) {
+    const label = applied.discountType === "percent"
+      ? `−${applied.discountValue} %`
+      : `−${(applied.discountValue / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+    return (
+      <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-700">
+            Code appliqué
+          </p>
+          <p className="text-[13px] font-bold text-emerald-900 truncate">
+            {applied.code} <span className="font-mono-num text-emerald-700 ml-1">{label}</span>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="text-[11.5px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2 flex-shrink-0"
+        >
+          Retirer
+        </button>
+      </div>
+    );
+  }
+
+  // Pas de code — soit le lien centré, soit l'input déplié.
+  if (!open) {
+    return (
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="text-[12px] font-semibold text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-2"
+        >
+          Appliquer un code promo
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-white border border-zinc-200 p-2.5 space-y-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+        Code promo
+      </p>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={code}
+          onChange={e => setCode(e.target.value.toUpperCase())}
+          onKeyDown={e => { if (e.key === "Enter") submit(); }}
+          placeholder="SHARDTOWN20"
+          autoFocus
+          className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-zinc-50 border border-zinc-200 focus:border-zinc-900 focus:bg-white focus:outline-none text-[13px] font-mono-num tracking-wide"
+        />
+        <button
+          type="button"
+          onClick={submit}
+          disabled={busy || code.trim().length === 0}
+          className="px-3 py-2 rounded-lg bg-zinc-900 hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold transition-colors flex-shrink-0"
+        >
+          {busy ? "…" : "Appliquer"}
+        </button>
+      </div>
+      {error && <p className="text-[11.5px] text-red-600 leading-relaxed">{error}</p>}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
 //  PayNowBreakdown — ligne "Payer maintenant" cliquable, dévoile le
 //  détail TTC / TVA façon mee6 "Chargeable now".
 //
@@ -500,18 +643,38 @@ function formatEUR(n: number): string {
   return `${n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
 }
 
+/** Applique un AppliedPromo à un montant EUR (€). Symétrique du
+ *  applyDiscount() côté backend pour que l'UI affiche exactement ce que
+ *  Stripe va facturer. Plancher à 0,50 € (limite Stripe). */
+function applyPromoEUR(amountEUR: number, promo: AppliedPromo): number {
+  let out = amountEUR;
+  if (promo.discountType === "percent") {
+    const pct = Math.max(0, Math.min(100, promo.discountValue));
+    out = amountEUR * (100 - pct) / 100;
+  } else if (promo.discountType === "fixed") {
+    out = amountEUR - promo.discountValue / 100;
+  }
+  return Math.max(0.5, Math.round(out * 100) / 100);
+}
+
 function PayNowBreakdown({
-  amountNow, plan, open, onToggle, onEditOrder,
+  amountNow, baseAmountNow, appliedPromo, plan, open, onToggle, onEditOrder,
 }: {
+  /** Montant effectif après discount (= ce qui est facturé). */
   amountNow: string;
+  /** Montant initial avant discount, affiché barré quand un promo est appliqué. */
+  baseAmountNow: string;
+  appliedPromo: AppliedPromo | null;
   plan: "monthly" | "yearly" | "lifetime";
   open: boolean;
   onToggle: () => void;
   onEditOrder: () => void;
 }) {
-  const ttc = parseAmountEUR(amountNow);
-  // VAT incluse dans le TTC : VAT = TTC * rate / (1 + rate)
-  const vatIncluded = (ttc * VAT_RATE) / (1 + VAT_RATE);
+  const baseTtc = parseAmountEUR(baseAmountNow);
+  const effectiveTtc = parseAmountEUR(amountNow);
+  const discount = Math.max(0, baseTtc - effectiveTtc);
+  // VAT incluse dans le TTC effectif : VAT = TTC * rate / (1 + rate)
+  const vatIncluded = (effectiveTtc * VAT_RATE) / (1 + VAT_RATE);
   const lineLabel =
     plan === "lifetime" ? "Shard Premium — Lifetime"
     : plan === "yearly" ? "Shard Premium — 1 an"
@@ -527,6 +690,11 @@ function PayNowBreakdown({
       >
         <p className="text-sm font-bold text-zinc-900">Payer maintenant</p>
         <div className="inline-flex items-center gap-2">
+          {appliedPromo && (
+            <span className="text-[12px] font-semibold text-zinc-400 tabular-nums line-through">
+              {baseAmountNow}
+            </span>
+          )}
           <span className="text-base font-extrabold text-zinc-900 tabular-nums">{amountNow}</span>
           <ChevronDown
             className={`w-4 h-4 text-zinc-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
@@ -541,20 +709,22 @@ function PayNowBreakdown({
             Détail de ta commande
           </p>
 
-          {/* Lignes d'items — placeholder pour quand on aura des add-ons */}
           <div className="space-y-1.5">
-            <BreakdownLine label={lineLabel} amount={formatEUR(ttc)} />
-            {/* Ex futur :
-                <BreakdownLine label="Custom Bot" amount="0,00 €" />
-                <BreakdownLine label="Crédits appliqués" amount={`-${formatEUR(credits)}`} negative />
-            */}
+            <BreakdownLine label={lineLabel} amount={formatEUR(baseTtc)} />
+            {appliedPromo && discount > 0 && (
+              <BreakdownLine
+                label={`Code promo ${appliedPromo.code}`}
+                amount={`−${formatEUR(discount)}`}
+                negative
+              />
+            )}
           </div>
 
           {/* Total */}
           <div className="border-t border-zinc-200 pt-2.5 flex items-center justify-between">
             <span className="text-[13px] font-bold text-zinc-900">Total</span>
             <span className="text-[14px] font-extrabold text-zinc-900 tabular-nums">
-              {formatEUR(ttc)}
+              {formatEUR(effectiveTtc)}
             </span>
           </div>
 

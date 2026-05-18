@@ -260,6 +260,34 @@ async function connectDB() {
                     PRIMARY KEY (code, guildId)
                 )
             `);
+
+            // Codes promo (discount appliqué au checkout, ≠ redeem_codes qui
+            // activent Premium gratuitement). Créés par l'admin ou par le
+            // bot Shard via /api/bot/promo-codes. discount_type: "percent"
+            // (1-100) ou "fixed" (centimes). applies_to: "all" | "monthly"
+            // | "yearly" | "lifetime".
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS promo_codes (
+                    code VARCHAR(64) PRIMARY KEY,
+                    discount_type ENUM('percent','fixed') NOT NULL DEFAULT 'percent',
+                    discount_value INT NOT NULL,
+                    applies_to VARCHAR(32) NOT NULL DEFAULT 'all',
+                    max_uses INT DEFAULT 0,
+                    used_count INT DEFAULT 0,
+                    expires_at DATETIME DEFAULT NULL,
+                    created_by VARCHAR(64) DEFAULT '',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS promo_code_uses (
+                    code VARCHAR(64) NOT NULL,
+                    discordUserId VARCHAR(255) NOT NULL,
+                    guildId VARCHAR(255) NOT NULL,
+                    used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (code, discordUserId, guildId)
+                )
+            `);
             // Disable the legacy "SHARDTOWN" universal code in case it was
             // ever seeded. It used to be created with max_uses=0 (= unlimited)
             // and zero expiry, which let anyone unlock Premium for free by
@@ -1009,9 +1037,11 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
 
     if (event.type === 'checkout.session.completed' || event.type === 'invoice.paid' || event.type === 'payment_intent.succeeded') {
         const obj = event.data.object;
-        const guildId = obj.metadata?.guildId
-            || obj.subscription_details?.metadata?.guildId
-            || obj.lines?.data?.[0]?.metadata?.guildId;
+        const meta = obj.metadata
+            || obj.subscription_details?.metadata
+            || obj.lines?.data?.[0]?.metadata
+            || {};
+        const guildId = meta.guildId;
         if (guildId && isValidSnowflake(String(guildId))) {
             try {
                 await db.execute(`UPDATE settings SET isPremium = 1 WHERE guildId = ?`, [guildId]);
@@ -1019,6 +1049,23 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
                 console.log(`✅ Premium activé via Stripe (${event.type}) pour le serveur ${guildId}`);
             } catch (err) {
                 console.error('Erreur activation premium Stripe:', err.message);
+            }
+        }
+        // Comptage d'utilisation des codes promo : on incrémente uniquement
+        // après confirmation du paiement, pour ne pas brûler un code si
+        // l'utilisateur abandonne après avoir ouvert la modale.
+        const promoCode = meta.promoCode;
+        if (promoCode && typeof promoCode === 'string') {
+            try {
+                await db.execute('UPDATE promo_codes SET used_count = used_count + 1 WHERE code = ?', [promoCode]);
+                if (guildId && meta.discordUserId) {
+                    await db.execute(
+                        `INSERT IGNORE INTO promo_code_uses (code, discordUserId, guildId) VALUES (?, ?, ?)`,
+                        [promoCode, meta.discordUserId, guildId],
+                    );
+                }
+            } catch (err) {
+                console.error('Erreur compteur promo code:', err.message);
             }
         }
     } else if (event.type === 'customer.subscription.deleted') {
@@ -3521,6 +3568,167 @@ app.post('/api/create-checkout', checkoutRateLimiter, async (req, res) => {
     }
 });
 
+// ─── Codes promo Shardtown ──────────────────────────────────────────
+//
+// Codes promo créés par l'admin ou par le bot Shard (slash command),
+// appliqués au checkout pour réduire le montant prélevé. Diffère des
+// redeem_codes qui activent Premium directement (skip checkout).
+//
+// Stockage : table promo_codes (cf. connectDB). Discount au format
+// percent (1-100) ou fixed (centimes). applies_to filtre par plan.
+//
+// Helpers exposés ici pour pouvoir réutiliser dans /api/premium/payment-intent
+// (validation + application au montant) et dans /api/premium/promo/validate
+// (pré-validation côté UI checkout).
+
+/** Charge + valide un code promo. Renvoie { ok, row } ou { ok:false, error }. */
+async function loadPromoCode(code, plan) {
+    if (!code || typeof code !== 'string') return { ok: false, error: 'Code invalide.' };
+    const normalized = code.trim().toUpperCase();
+    if (normalized.length === 0 || normalized.length > 64) return { ok: false, error: 'Code invalide.' };
+    try {
+        const [rows] = await db.execute('SELECT * FROM promo_codes WHERE code = ?', [normalized]);
+        const row = rows[0];
+        if (!row) return { ok: false, error: 'Code promo introuvable.' };
+        if (row.expires_at && new Date(row.expires_at) < new Date()) {
+            return { ok: false, error: 'Code expiré.' };
+        }
+        if (row.max_uses > 0 && row.used_count >= row.max_uses) {
+            return { ok: false, error: 'Code épuisé.' };
+        }
+        if (row.applies_to && row.applies_to !== 'all' && row.applies_to !== plan) {
+            return { ok: false, error: `Ce code n'est utilisable que sur le plan ${row.applies_to}.` };
+        }
+        return { ok: true, row };
+    } catch (err) {
+        console.error('loadPromoCode:', err.message);
+        return { ok: false, error: 'Erreur lors de la vérification du code.' };
+    }
+}
+
+/** Applique un discount à un montant en centimes. Plancher à 0. */
+function applyDiscount(amountCents, row) {
+    if (row.discount_type === 'percent') {
+        const pct = Math.max(0, Math.min(100, parseInt(row.discount_value) || 0));
+        return Math.max(0, Math.round(amountCents * (100 - pct) / 100));
+    }
+    if (row.discount_type === 'fixed') {
+        const off = Math.max(0, parseInt(row.discount_value) || 0);
+        return Math.max(0, amountCents - off);
+    }
+    return amountCents;
+}
+
+// Pré-validation côté UI : on permet à la modale checkout d'afficher
+// le discount appliqué avant que l'utilisateur clique "Payer".
+app.post('/api/premium/promo/validate', async (req, res) => {
+    if (!req.user) return res.status(401).json({ success: false, error: 'Non connecté.' });
+    const { code, plan } = req.body || {};
+    const planChoice = plan === 'monthly' || plan === 'yearly' ? plan : 'lifetime';
+    const r = await loadPromoCode(code, planChoice);
+    if (!r.ok) return res.status(400).json({ success: false, error: r.error });
+    // Renvoie au client la structure du discount sans exposer l'usage interne.
+    res.json({
+        success: true,
+        code: r.row.code,
+        discountType: r.row.discount_type,
+        discountValue: r.row.discount_value,
+        appliesTo: r.row.applies_to,
+        expiresAt: r.row.expires_at,
+    });
+});
+
+// ─── Bot Shard API (clé partagée) ─────────────────────────────────
+// Endpoints internes appelés par le bot Discord pour créer / lister
+// les codes promo via slash commands. Auth via header
+// `X-Bot-Key: <BOT_API_KEY>`. La clé doit matcher process.env.BOT_API_KEY.
+// Si la variable d'env est vide, ces endpoints sont désactivés.
+
+function checkBotKey(req, res, next) {
+    const expected = process.env.BOT_API_KEY;
+    if (!expected || expected.length < 16) {
+        return res.status(503).json({ success: false, error: 'API bot désactivée (BOT_API_KEY manquant).' });
+    }
+    const provided = req.headers['x-bot-key'];
+    if (typeof provided !== 'string' || !timingSafeEqual(provided, expected)) {
+        return res.status(401).json({ success: false, error: 'Clé bot invalide.' });
+    }
+    next();
+}
+
+// Crée un code promo. Le bot envoie discord_user_id du créateur dans
+// le body pour traçabilité (sera stocké dans created_by).
+app.post('/api/bot/promo-codes', checkBotKey, async (req, res) => {
+    const {
+        code, discountType, discountValue,
+        appliesTo, maxUses, expiresAt, createdBy,
+    } = req.body || {};
+    if (!code || typeof code !== 'string') return res.status(400).json({ success: false, error: 'code requis.' });
+    const normalized = code.trim().toUpperCase();
+    if (!/^[A-Z0-9_-]{3,64}$/.test(normalized)) {
+        return res.status(400).json({ success: false, error: 'code: 3-64 caractères, A-Z 0-9 _ - uniquement.' });
+    }
+    const dType = discountType === 'fixed' ? 'fixed' : 'percent';
+    const dValue = parseInt(discountValue);
+    if (!Number.isFinite(dValue) || dValue <= 0) {
+        return res.status(400).json({ success: false, error: 'discountValue: entier > 0 requis.' });
+    }
+    if (dType === 'percent' && dValue > 100) {
+        return res.status(400).json({ success: false, error: 'percent: max 100.' });
+    }
+    const allowedTargets = ['all', 'monthly', 'yearly', 'lifetime'];
+    const target = allowedTargets.includes(appliesTo) ? appliesTo : 'all';
+    const maxU = Number.isFinite(parseInt(maxUses)) ? Math.max(0, parseInt(maxUses)) : 0;
+    let expSql = null;
+    if (expiresAt) {
+        const d = new Date(expiresAt);
+        if (Number.isFinite(d.getTime())) expSql = d;
+    }
+    const createdByStr = typeof createdBy === 'string' ? createdBy.slice(0, 64) : '';
+
+    try {
+        await db.execute(
+            `INSERT INTO promo_codes (code, discount_type, discount_value, applies_to, max_uses, expires_at, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [normalized, dType, dValue, target, maxU, expSql, createdByStr],
+        );
+        res.json({ success: true, code: normalized });
+    } catch (err) {
+        if (err.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ success: false, error: 'Ce code existe déjà.' });
+        }
+        console.error('POST /api/bot/promo-codes:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur.' });
+    }
+});
+
+// Liste tous les codes promo (le bot peut afficher la liste à un admin).
+app.get('/api/bot/promo-codes', checkBotKey, async (_req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT code, discount_type, discount_value, applies_to,
+                    max_uses, used_count, expires_at, created_by, created_at
+             FROM promo_codes ORDER BY created_at DESC LIMIT 200`,
+        );
+        res.json({ success: true, codes: rows });
+    } catch (err) {
+        console.error('GET /api/bot/promo-codes:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur.' });
+    }
+});
+
+app.delete('/api/bot/promo-codes/:code', checkBotKey, async (req, res) => {
+    const normalized = String(req.params.code || '').trim().toUpperCase();
+    try {
+        const [r] = await db.execute('DELETE FROM promo_codes WHERE code = ?', [normalized]);
+        if (r.affectedRows === 0) return res.status(404).json({ success: false, error: 'Code introuvable.' });
+        res.json({ success: true });
+    } catch (err) {
+        console.error('DELETE /api/bot/promo-codes:', err.message);
+        res.status(500).json({ success: false, error: 'Erreur serveur.' });
+    }
+});
+
 // ─── Stripe Elements (terminal de paiement embedded Shardtown) ──────
 //
 // Le flow "embedded" remplace progressivement le redirect vers Stripe
@@ -3566,11 +3774,35 @@ app.post('/api/premium/payment-intent', checkoutRateLimiter, async (req, res) =>
         // 39,99 € full pour annuel, 34,99 € pour lifetime). L'intro est
         // pour l'instant ignoré côté Stripe — à brancher plus tard via
         // un coupon "first month" pour matcher le pricing affiché.
-        const amount = planChoice === 'lifetime'
+        const baseAmount = planChoice === 'lifetime'
             ? parseInt(process.env.STRIPE_LIFETIME_AMOUNT || '3499')
             : planChoice === 'yearly'
                 ? parseInt(process.env.STRIPE_YEARLY_AMOUNT || '3999')
                 : parseInt(process.env.STRIPE_MONTHLY_AMOUNT || '799');
+
+        // Code promo — optionnel. On valide ici aussi (en plus du
+        // /validate côté front) pour éviter qu'un client malicieux
+        // soumette directement un code après avoir contourné la
+        // validation. Si valide, on déduit du montant. On log
+        // l'utilisation seulement après confirmation du paiement
+        // (cf. webhook).
+        const rawPromo = typeof req.body.promoCode === 'string' ? req.body.promoCode.trim().toUpperCase() : '';
+        let promoApplied = null;
+        let amount = baseAmount;
+        if (rawPromo) {
+            const promo = await loadPromoCode(rawPromo, planChoice);
+            if (!promo.ok) {
+                return res.status(400).json({ success: false, error: promo.error });
+            }
+            amount = applyDiscount(baseAmount, promo.row);
+            promoApplied = {
+                code: promo.row.code,
+                discountType: promo.row.discount_type,
+                discountValue: promo.row.discount_value,
+            };
+        }
+        // Stripe refuse les montants < 50 cents. On floor à ce seuil.
+        if (amount < 50) amount = 50;
 
         const rawEmail = typeof req.user?.email === 'string' ? req.user.email.trim() : '';
         const safeEmail = rawEmail.length > 0 && rawEmail.length <= 254
@@ -3578,7 +3810,18 @@ app.post('/api/premium/payment-intent', checkoutRateLimiter, async (req, res) =>
             ? rawEmail
             : undefined;
 
-        const metadata = { guildId, guildName: userGuild.name, plan: planChoice, discordUserId: req.user.id };
+        const metadata = {
+            guildId,
+            guildName: userGuild.name,
+            plan: planChoice,
+            discordUserId: req.user.id,
+            // Si un code promo a été appliqué, on l'embarque dans le
+            // metadata Stripe — le webhook s'en sert pour incrémenter
+            // used_count après confirmation du paiement (et seulement à
+            // ce moment-là, pour éviter qu'un code soit "consommé"
+            // simplement parce que l'utilisateur a ouvert la modale).
+            ...(promoApplied ? { promoCode: promoApplied.code } : {}),
+        };
 
         if (planChoice === 'lifetime') {
             // One-shot : un simple PaymentIntent. Pas besoin de Customer ;
