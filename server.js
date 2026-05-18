@@ -3640,20 +3640,45 @@ app.post('/api/premium/payment-intent', checkoutRateLimiter, async (req, res) =>
             }],
             payment_behavior: 'default_incomplete',
             payment_settings: { save_default_payment_method: 'on_subscription' },
-            expand: ['latest_invoice.payment_intent'],
+            // L'API Stripe a évolué : sur les comptes récents,
+            // latest_invoice.payment_intent est null et c'est
+            // latest_invoice.confirmation_secret.client_secret qu'il faut
+            // utiliser. On expand les deux pour rester compat anciens +
+            // nouveaux comptes ; on lit le premier qui répond.
+            expand: ['latest_invoice.payment_intent', 'latest_invoice.confirmation_secret'],
             metadata,
         });
 
         const invoice = subscription.latest_invoice;
-        const intent = invoice && typeof invoice !== 'string' ? invoice.payment_intent : null;
-        const clientSecret = intent && typeof intent !== 'string' ? intent.client_secret : null;
+        let clientSecret = null;
+        if (invoice && typeof invoice !== 'string') {
+            // Nouvelle API : confirmation_secret.client_secret
+            if (invoice.confirmation_secret && invoice.confirmation_secret.client_secret) {
+                clientSecret = invoice.confirmation_secret.client_secret;
+            }
+            // Ancienne API : payment_intent.client_secret
+            if (!clientSecret && invoice.payment_intent && typeof invoice.payment_intent !== 'string') {
+                clientSecret = invoice.payment_intent.client_secret || null;
+            }
+        }
 
         if (!clientSecret) {
-            // Rare : Stripe a accepté la sub mais pas généré d'invoice avec
-            // intent (ex: prix à 0). On rollback la sub pour éviter une
-            // souscription orpheline.
+            // Le client_secret n'a pas pu être extrait — soit l'invoice est
+            // à 0 € (coupon 100 %, période d'essai), soit l'API a encore
+            // changé. On log la structure exacte pour debug, et on rollback
+            // la sub pour éviter une souscription orpheline.
+            console.error('payment-intent: pas de client_secret dans la sub', JSON.stringify({
+                subId: subscription.id,
+                invoiceStatus: invoice && typeof invoice !== 'string' ? invoice.status : null,
+                hasConfirmationSecret: !!(invoice && typeof invoice !== 'string' && invoice.confirmation_secret),
+                hasPaymentIntent: !!(invoice && typeof invoice !== 'string' && invoice.payment_intent),
+                amountDue: invoice && typeof invoice !== 'string' ? invoice.amount_due : null,
+            }));
             try { await stripe.subscriptions.cancel(subscription.id); } catch { /* best effort */ }
-            return res.status(500).json({ success: false, error: 'Impossible d\'initialiser le paiement.' });
+            return res.status(500).json({
+                success: false,
+                error: 'Subscription créée sans intent de paiement (Stripe API non standard). Voir les logs serveur.',
+            });
         }
 
         return res.json({
