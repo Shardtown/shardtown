@@ -157,7 +157,7 @@ export function CheckoutModal({
             type="button"
             aria-label="Fermer"
             onClick={onClose}
-            className="absolute inset-0 bg-black/75 backdrop-blur-md"
+            className="absolute inset-0 bg-black/55 backdrop-blur-sm"
           />
 
           <motion.div
@@ -168,7 +168,7 @@ export function CheckoutModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="checkout-title"
-            className="relative w-full max-w-[380px] max-h-[90vh] flex flex-col rounded-2xl bg-zinc-950/85 text-white border border-white/[0.08] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)] backdrop-blur-2xl overflow-hidden"
+            className="relative w-full max-w-[380px] max-h-[90vh] flex flex-col rounded-2xl bg-white/[0.04] text-white border border-white/15 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] backdrop-blur-3xl overflow-hidden"
           >
             <button
               type="button"
