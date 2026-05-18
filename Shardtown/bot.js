@@ -3,7 +3,8 @@
  *
  * Minimal Discord bot:
  *   1. Stays online with a "Watching shardtwn.fr" presence.
- *   2. Slash commands: /ping, /version, /release (owner only).
+ *   2. Slash commands: /ping, /version, /release (owner only),
+ *      /promo create|list|delete (owner only).
  *
  * Env (repo-root .env, loaded by sharder.js) :
  *   SHARDTOWN_TOKEN       — bot Discord token (requis)
@@ -11,6 +12,9 @@
  *                           Shardtown/shardtown (requis pour /release)
  *   SHARDTOWN_DEV_GUILD_ID — guild id pour enregistrement instantané (optionnel)
  *   MANIFEST_URL          — override de l'URL du manifest updater (optionnel)
+ *   SHARDTOWN_OWNER_ID    — owner(s) /promo, liste séparée par virgules (optionnel)
+ *   WEB_URL / APP_URL     — base URL du site (défaut http://localhost:3000)
+ *   BOT_API_KEY           — clé partagée avec /api/bot/promo-codes (≥16 chars)
  */
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
@@ -52,6 +56,31 @@ const commands = [
     new SlashCommandBuilder()
         .setName('release')
         .setDescription('Bump + build de l\'app desktop (owner only).')
+        .toJSON(),
+    new SlashCommandBuilder()
+        .setName('promo')
+        .setDescription('[Owner] Gérer les codes promo Shardtown Premium')
+        .addSubcommand(s => s.setName('create')
+            .setDescription('Créer un code promo')
+            .addStringOption(o => o.setName('code').setDescription('Ex: SUMMER25 (3-64 chars A-Z 0-9 _ -)').setRequired(true))
+            .addIntegerOption(o => o.setName('valeur').setDescription('Pourcentage 1-100, OU centimes pour fixed').setRequired(true).setMinValue(1))
+            .addStringOption(o => o.setName('type').setDescription('Type de discount').addChoices(
+                { name: 'Pourcentage (1-100)', value: 'percent' },
+                { name: 'Montant fixe (centimes)', value: 'fixed' },
+            ))
+            .addStringOption(o => o.setName('plan').setDescription('Plan concerné').addChoices(
+                { name: 'Tous les plans', value: 'all' },
+                { name: 'Mensuel uniquement', value: 'monthly' },
+                { name: 'Annuel uniquement', value: 'yearly' },
+                { name: 'Lifetime uniquement', value: 'lifetime' },
+            ))
+            .addIntegerOption(o => o.setName('utilisations').setDescription('Nombre max d\'utilisations (0 = illimité)').setMinValue(0))
+            .addStringOption(o => o.setName('expire').setDescription('Date d\'expiration ISO (ex: 2026-12-31) — laisser vide pour aucune')))
+        .addSubcommand(s => s.setName('list')
+            .setDescription('Lister tous les codes promo'))
+        .addSubcommand(s => s.setName('delete')
+            .setDescription('Supprimer un code promo')
+            .addStringOption(o => o.setName('code').setDescription('Code à supprimer').setRequired(true)))
         .toJSON(),
 ];
 
@@ -101,6 +130,7 @@ client.on('interactionCreate', async interaction => {
                 case 'ping':    return cmdPing(interaction);
                 case 'version': return cmdVersion(interaction);
                 case 'release': return cmdRelease(interaction);
+                case 'promo':   return cmdPromo(interaction);
             }
         } else if (interaction.isModalSubmit() && interaction.customId === 'release-modal') {
             return onReleaseSubmit(interaction);
@@ -136,6 +166,104 @@ async function cmdVersion(interaction) {
         );
     } catch (err) {
         await interaction.editReply(`Impossible de lire \`${MANIFEST_URL}\` : ${err.message}`);
+    }
+}
+
+/* ─── /promo (owner only) ──────────────────────────────────────────── */
+
+async function cmdPromo(interaction) {
+    const ownerIds = String(process.env.SHARDTOWN_OWNER_ID || '')
+        .split(',').map(s => s.trim()).filter(Boolean);
+    if (ownerIds.length === 0) ownerIds.push(RELEASE_OWNER_ID);
+    if (!ownerIds.includes(interaction.user.id)) {
+        return interaction.reply({
+            content: '⛔ Commande réservée au propriétaire du bot.',
+            flags: MessageFlags.Ephemeral,
+        });
+    }
+
+    const webUrl = process.env.WEB_URL || process.env.APP_URL || 'http://localhost:3000';
+    const botKey = process.env.BOT_API_KEY;
+    if (!botKey || botKey.length < 16) {
+        return interaction.reply({
+            content: '⚠️ `BOT_API_KEY` non configuré côté bot. Ajoute-le dans `.env` (≥16 chars).',
+            flags: MessageFlags.Ephemeral,
+        });
+    }
+    const headers = { 'Content-Type': 'application/json', 'X-Bot-Key': botKey };
+
+    const sub = interaction.options.getSubcommand();
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    try {
+        if (sub === 'create') {
+            const code = interaction.options.getString('code', true).trim().toUpperCase();
+            const valeur = interaction.options.getInteger('valeur', true);
+            const type = interaction.options.getString('type') || 'percent';
+            const plan = interaction.options.getString('plan') || 'all';
+            const utilisations = interaction.options.getInteger('utilisations') ?? 0;
+            const expire = interaction.options.getString('expire');
+
+            const body = {
+                code,
+                discountType: type,
+                discountValue: valeur,
+                appliesTo: plan,
+                maxUses: utilisations,
+                expiresAt: expire || null,
+                createdBy: interaction.user.id,
+            };
+            const res = await fetch(`${webUrl}/api/bot/promo-codes`, {
+                method: 'POST', headers, body: JSON.stringify(body),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                return interaction.editReply({ content: `❌ ${data.error || `HTTP ${res.status}`}` });
+            }
+            const valStr = type === 'percent' ? `-${valeur}%` : `-${(valeur/100).toFixed(2)} €`;
+            const usesStr = utilisations === 0 ? 'illimitées' : `${utilisations}`;
+            const expStr = expire ? ` · expire le ${expire}` : '';
+            return interaction.editReply({
+                content: `✅ Code **${code}** créé\n• Discount : **${valStr}**\n• Plan : ${plan}\n• Utilisations : ${usesStr}${expStr}`,
+            });
+        }
+
+        if (sub === 'list') {
+            const res = await fetch(`${webUrl}/api/bot/promo-codes`, { headers });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                return interaction.editReply({ content: `❌ ${data.error || `HTTP ${res.status}`}` });
+            }
+            const codes = Array.isArray(data.codes) ? data.codes : [];
+            if (codes.length === 0) {
+                return interaction.editReply({ content: 'Aucun code promo enregistré.' });
+            }
+            const lines = codes.slice(0, 25).map(c => {
+                const val = c.discount_type === 'percent' ? `-${c.discount_value}%` : `-${(c.discount_value/100).toFixed(2)}€`;
+                const uses = c.max_uses === 0 ? `${c.used_count} utilisations` : `${c.used_count}/${c.max_uses}`;
+                const exp = c.expires_at ? ` · exp ${new Date(c.expires_at).toISOString().slice(0,10)}` : '';
+                return `• **${c.code}** — ${val} sur ${c.applies_to} (${uses})${exp}`;
+            }).join('\n');
+            const footer = codes.length > 25 ? `\n\n…et ${codes.length - 25} autres.` : '';
+            return interaction.editReply({ content: `**Codes promo (${codes.length})**\n${lines}${footer}` });
+        }
+
+        if (sub === 'delete') {
+            const code = interaction.options.getString('code', true).trim().toUpperCase();
+            const res = await fetch(`${webUrl}/api/bot/promo-codes/${encodeURIComponent(code)}`, {
+                method: 'DELETE', headers,
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                return interaction.editReply({ content: `❌ ${data.error || `HTTP ${res.status}`}` });
+            }
+            return interaction.editReply({ content: `🗑️ Code **${code}** supprimé.` });
+        }
+
+        return interaction.editReply({ content: 'Sous-commande inconnue.' });
+    } catch (err) {
+        console.error('[Shardtown] Erreur /promo:', err);
+        return interaction.editReply({ content: `❌ Erreur réseau : ${err.message}` });
     }
 }
 
