@@ -458,8 +458,8 @@ export function ShardGuild() {
     if (currentTab.key === "overview") {
       return (
         <OverviewPanel
-          sec={security}
-          com={community}
+          secSettings={securityDraft}
+          comSettings={communityDraft}
           onJumpTo={setTab}
           onToggleModule={(k, enable) => {
             const m = MODULE_ENABLE[k];
@@ -896,10 +896,14 @@ type Reduce = boolean | null;
 type Ease = readonly [number, number, number, number];
 
 function OverviewPanel({
-  sec, com, onJumpTo, onToggleModule, reduce, heroEase,
+  secSettings, comSettings, onJumpTo, onToggleModule, reduce, heroEase,
 }: {
-  sec: ShardModGuildData | null;
-  com: ShardGuildData | null;
+  /** Settings DRAFT côté moderation (= ce que l'admin a modifié sans
+   *  encore Save). Utiliser le draft plutôt que le blob serveur
+   *  permet de voir la card devenir "Actif" instantanément quand on
+   *  clique Activer dans la modale, sans attendre le Save. */
+  secSettings: ShardModSettings | null;
+  comSettings: ShardSettings | null;
   onJumpTo: (key: TabKey) => void;
   /** Active ou désactive un module. Retourne true si le toggle a fait
    *  quelque chose (le module a un flag), false si le module n'a pas
@@ -922,12 +926,12 @@ function OverviewPanel({
   const [activatingKey, setActivatingKey] = useState<TabKey | null>(null);
   const activating = activatingKey ? TABS.find(t => t.key === activatingKey) : null;
   const activatingStatus = activating
-    ? getModuleStatus(activating.key, sec?.settings ?? null, com?.settings ?? null)
+    ? getModuleStatus(activating.key, secSettings, comSettings)
     : "info";
 
   const isPremium =
-    com?.settings?.isPremium === 1 || com?.settings?.isPremium === "1" ||
-    sec?.settings?.isPremium === 1 || sec?.settings?.isPremium === "1";
+    comSettings?.isPremium === 1 || comSettings?.isPremium === "1" ||
+    secSettings?.isPremium === 1 || secSettings?.isPremium === "1";
 
   return (
     <motion.div
@@ -1001,7 +1005,7 @@ function OverviewPanel({
                       icon={t.icon}
                       label={t.label}
                       description={MODULE_DESCRIPTIONS[t.key]}
-                      status={getModuleStatus(t.key, sec?.settings ?? null, com?.settings ?? null)}
+                      status={getModuleStatus(t.key, secSettings, comSettings)}
                       onClick={() => setActivatingKey(t.key)}
                     />
                   ))}
@@ -1180,7 +1184,7 @@ function ModuleCard({
     <button
       type="button"
       onClick={onClick}
-      className="group relative text-left rounded-2xl border p-5 transition-colors h-full flex flex-col bg-[#13121b] border-white/[0.06] hover:bg-[#1a1828] hover:border-white/[0.14]"
+      className="group relative text-left rounded-2xl border p-5 transition-colors h-full flex flex-col bg-white/[0.025] hover:bg-white/[0.05] border-white/[0.06] hover:border-white/[0.12] backdrop-blur-sm"
       title={label}
     >
       {/* Icône bleue carrée style mee6 */}
