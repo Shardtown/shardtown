@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
-  X, Lock, Info, CreditCard, ShieldCheck, Loader2, CheckCircle2,
+  X, Lock, Loader2, CheckCircle2,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { apiGet, apiPost } from "@/api/client";
@@ -8,9 +8,11 @@ import { apiGet, apiPost } from "@/api/client";
 interface Props {
   open: boolean;
   onClose: () => void;
-  planLabel: string;
+  /** Réservés pour réintégrer un sous-titre détaillé sous le total
+   *  ("Lifetime — 34,99 € payé une seule fois") si on veut un jour. */
+  planLabel?: string;
+  amountNote?: string;
   amountNow: string;
-  amountNote: string;
   accountName: string;
   guildName: string;
   guildId: string | null;
@@ -96,9 +98,12 @@ function loadStripeJs(): Promise<void> {
  */
 export function CheckoutModal({
   open, onClose,
-  planLabel, amountNow, amountNote,
+  amountNow,
   accountName, guildName, guildId, plan,
 }: Props) {
+  // planLabel / amountNote ne sont plus affichés dans la card stripped
+  // mee6-style ; on les garde dans l'interface pour pouvoir les remettre
+  // côté Premium.tsx sans casser l'API du composant.
   // ESC pour fermer + lock body scroll.
   useEffect(() => {
     if (!open) return;
@@ -162,19 +167,25 @@ export function CheckoutModal({
               </p>
             </div>
 
-            <div className="px-5 pt-4 pb-5 bg-zinc-50 space-y-3.5">
-              {/* Total */}
+            <div className="px-5 pt-4 pb-5 bg-zinc-50 space-y-3">
+              {/* Pay now — ligne minimaliste */}
               <div className="bg-white rounded-xl border border-zinc-200 px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-900 mb-0.5">Payer maintenant</p>
-                  <p className="text-[10.5px] text-zinc-500 leading-tight">
-                    {planLabel} — {amountNote}
-                  </p>
-                </div>
+                <p className="text-sm font-bold text-zinc-900">Payer maintenant</p>
                 <span className="text-base font-extrabold text-zinc-900 tabular-nums">{amountNow}</span>
               </div>
 
-              {/* Compte + Serveur */}
+              {/* Apply coupon (placeholder) */}
+              <div className="text-center">
+                <button
+                  type="button"
+                  className="text-[12px] font-semibold text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-2"
+                  onClick={() => {/* TODO: brancher Stripe Coupons */}}
+                >
+                  Appliquer un code promo
+                </button>
+              </div>
+
+              {/* Compte + Serveur (mee6-style, juste 2 lignes avec Edit) */}
               <div className="space-y-2.5">
                 <Row label="Compte" value={accountName} />
                 <Row label="Serveur" value={guildName} />
@@ -188,25 +199,6 @@ export function CheckoutModal({
                 plan={plan}
                 amountNow={amountNow}
               />
-
-              {/* Secure / 3DS */}
-              <p className="text-[11px] text-zinc-500 text-center inline-flex items-center justify-center gap-1.5 w-full">
-                <Lock className="w-3 h-3" />
-                Paiement sécurisé · PCI-DSS via Stripe
-              </p>
-
-              <div className="bg-zinc-100 border border-zinc-200 rounded-xl px-3 py-2.5 flex items-start gap-2">
-                <Info className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0 mt-0.5" />
-                <p className="text-[11px] text-zinc-600 leading-relaxed">
-                  Une fenêtre 3D Secure peut s'ouvrir pour ta banque.
-                  Aucune carte n'est stockée chez Shardtown.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-center gap-1.5 text-[10.5px] text-zinc-400">
-                <ShieldCheck className="w-3 h-3" />
-                Hébergement EU · Conforme RGPD
-              </div>
             </div>
           </motion.div>
         </motion.div>
@@ -415,20 +407,15 @@ function StripePaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="rounded-xl bg-white border border-zinc-200 p-3">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2 inline-flex items-center gap-1.5">
-          <CreditCard className="w-3 h-3" /> Mode de paiement
-        </p>
-        {/* Mount cible pour Stripe Elements. Stripe injecte une iframe
-            sécurisée à l'intérieur — on ne voit jamais le numéro de carte. */}
-        <div ref={mountRef} className="min-h-[40px]" />
-        {loading && (
-          <div className="flex items-center justify-center py-3 text-zinc-500">
-            <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
-            <span className="text-[12px]">Préparation du paiement…</span>
-          </div>
-        )}
-      </div>
+      {/* Mount cible pour Stripe Elements. Stripe injecte une iframe
+          sécurisée à l'intérieur — on ne voit jamais le numéro de carte. */}
+      <div ref={mountRef} className="min-h-[40px]" />
+      {loading && (
+        <div className="flex items-center justify-center py-3 text-zinc-500">
+          <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
+          <span className="text-[12px]">Préparation du paiement…</span>
+        </div>
+      )}
 
       {submitError && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2">
@@ -463,6 +450,17 @@ function StripePaymentForm({
           `Payer ${amountNow} & souscrire`
         )}
       </button>
+
+      {/* Footer "Secure Checkout" + 3DS — discret juste sous le bouton, style mee6 */}
+      <div className="text-center space-y-1 pt-1">
+        <p className="text-[11px] text-zinc-500 inline-flex items-center justify-center gap-1.5">
+          <Lock className="w-3 h-3" />
+          Paiement sécurisé
+        </p>
+        <p className="text-[10.5px] text-zinc-400 leading-relaxed">
+          Tu peux être redirigé vers la page de ta banque pour la vérification 3D Secure.
+        </p>
+      </div>
     </form>
   );
 }
@@ -474,13 +472,22 @@ function Row({
   value: React.ReactNode;
 }) {
   return (
-    <div className="border-l-2 border-zinc-300 pl-3">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-0.5">
-        {label}
-      </p>
-      <div className="text-sm font-semibold text-zinc-900 truncate">
-        {value}
+    <div className="border-l-2 border-zinc-300 pl-3 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-0.5">
+          {label}
+        </p>
+        <div className="text-sm font-semibold text-zinc-900 truncate">
+          {value}
+        </div>
       </div>
+      <button
+        type="button"
+        className="text-[12px] font-bold text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-2 inline-flex items-center gap-0.5 flex-shrink-0"
+      >
+        Modifier
+        <span aria-hidden>→</span>
+      </button>
     </div>
   );
 }

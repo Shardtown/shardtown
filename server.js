@@ -3666,8 +3666,16 @@ app.post('/api/premium/payment-intent', checkoutRateLimiter, async (req, res) =>
             interval,
         });
     } catch (err) {
-        console.error('Erreur /api/premium/payment-intent:', err.message);
-        res.status(500).json({ success: false, error: 'Erreur lors de la création du paiement.' });
+        console.error('Erreur /api/premium/payment-intent:', err.message, err.type, err.code);
+        // On expose le message Stripe au client pour faciliter le debug :
+        // "No such product", "Invalid API key", "currency not supported"…
+        // C'est sans secret et déjà visible côté Stripe Dashboard de toute façon.
+        res.status(500).json({
+            success: false,
+            error: err.message || 'Erreur lors de la création du paiement.',
+            code: err.code,
+            type: err.type,
+        });
     }
 });
 
