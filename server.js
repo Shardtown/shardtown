@@ -3584,12 +3584,15 @@ app.post('/api/premium/payment-intent', checkoutRateLimiter, async (req, res) =>
             // One-shot : un simple PaymentIntent. Pas besoin de Customer ;
             // l'activation Premium se fait dans le webhook quand on reçoit
             // payment_intent.succeeded (cf. plus bas).
+            // payment_method_types: ['card'] (au lieu de automatic_payment_methods)
+            // pour éviter l'éparpillement Klarna/Amazon Pay/Link qui rend la
+            // modale trop grande.
             const intent = await stripe.paymentIntents.create({
                 amount,
                 currency,
                 receipt_email: safeEmail,
                 metadata,
-                automatic_payment_methods: { enabled: true },
+                payment_method_types: ['card'],
                 description: `Shardtown Premium Lifetime — ${userGuild.name}`,
             });
             return res.json({
@@ -3639,7 +3642,10 @@ app.post('/api/premium/payment-intent', checkoutRateLimiter, async (req, res) =>
                 },
             }],
             payment_behavior: 'default_incomplete',
-            payment_settings: { save_default_payment_method: 'on_subscription' },
+            payment_settings: {
+                save_default_payment_method: 'on_subscription',
+                payment_method_types: ['card'],
+            },
             // L'API Stripe a évolué : sur les comptes récents,
             // latest_invoice.payment_intent est null et c'est
             // latest_invoice.confirmation_secret.client_secret qu'il faut

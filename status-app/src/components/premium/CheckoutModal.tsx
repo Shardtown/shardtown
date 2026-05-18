@@ -146,7 +146,7 @@ export function CheckoutModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="checkout-title"
-            className="relative w-full max-w-[380px] rounded-2xl bg-white text-zinc-900 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)] overflow-hidden"
+            className="relative w-full max-w-[380px] max-h-[90vh] flex flex-col rounded-2xl bg-white text-zinc-900 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)] overflow-hidden"
           >
             <button
               type="button"
@@ -157,7 +157,7 @@ export function CheckoutModal({
               <X className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
 
-            <div className="pt-6 pb-5 px-5 text-center border-b border-zinc-200">
+            <div className="pt-6 pb-5 px-5 text-center border-b border-zinc-200 flex-shrink-0">
               <div className="inline-flex items-center gap-2 mb-2">
                 <img
                   src="/image/shardtown.jpeg"
@@ -171,7 +171,7 @@ export function CheckoutModal({
               </p>
             </div>
 
-            <div className="px-5 pt-4 pb-5 bg-zinc-50 space-y-3">
+            <div className="px-5 pt-4 pb-5 bg-zinc-50 space-y-3 overflow-y-auto flex-1 [scrollbar-width:thin]">
               {/* Pay now — ligne cliquable qui déplie le détail */}
               <PayNowBreakdown
                 amountNow={amountNow}
@@ -285,7 +285,12 @@ function StripePaymentForm({
             },
           },
         });
-        const paymentElement = elements.create("payment", { layout: "tabs" });
+        // layout: "accordion" → un seul mode dépliable à la fois → modale compacte.
+        // (vs "tabs" qui affiche Carte + Klarna + Amazon Pay côte à côte et
+        //  prend toute la hauteur de l'écran).
+        const paymentElement = elements.create("payment", {
+          layout: { type: "accordion", defaultCollapsed: false, radios: false, spacedAccordionItems: false },
+        });
 
         stripeRef.current = stripe;
         elementsRef.current = elements;
