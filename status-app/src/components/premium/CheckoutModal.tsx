@@ -168,32 +168,32 @@ export function CheckoutModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="checkout-title"
-            className="relative w-full max-w-[380px] max-h-[90vh] flex flex-col rounded-2xl bg-white text-zinc-900 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85)] overflow-hidden"
+            className="relative w-full max-w-[380px] max-h-[90vh] flex flex-col rounded-2xl bg-zinc-950/85 text-white border border-white/[0.08] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)] backdrop-blur-2xl overflow-hidden"
           >
             <button
               type="button"
               onClick={onClose}
               aria-label="Fermer"
-              className="absolute top-3 right-3 w-7 h-7 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 inline-flex items-center justify-center transition-colors z-10"
+              className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-white/70 hover:text-white inline-flex items-center justify-center transition-colors z-10"
             >
               <X className="w-3.5 h-3.5" strokeWidth={2.5} />
             </button>
 
-            <div className="pt-6 pb-5 px-5 text-center border-b border-zinc-200 flex-shrink-0">
+            <div className="pt-6 pb-5 px-5 text-center border-b border-white/[0.06] flex-shrink-0">
               <div className="inline-flex items-center gap-2 mb-2">
                 <img
                   src="/image/shardtown.jpeg"
                   alt=""
-                  className="w-6 h-6 rounded-full object-cover ring-1 ring-zinc-200"
+                  className="w-6 h-6 rounded-full object-cover ring-1 ring-white/15"
                 />
                 <span className="text-lg font-extrabold tracking-tight">SHARDTOWN</span>
               </div>
-              <p id="checkout-title" className="text-sm font-bold text-zinc-900">
+              <p id="checkout-title" className="text-sm font-bold text-white/70">
                 Finalise ta commande
               </p>
             </div>
 
-            <div className="px-5 pt-4 pb-5 bg-zinc-50 space-y-3 overflow-y-auto flex-1 [scrollbar-width:thin]">
+            <div className="px-5 pt-4 pb-5 space-y-3 overflow-y-auto flex-1 [scrollbar-width:thin]">
               {/* Pay now — ligne cliquable qui déplie le détail */}
               <PayNowBreakdown
                 amountNow={effectiveAmountNow}
@@ -300,14 +300,32 @@ function StripePaymentForm({
         const elements = stripe.elements({
           clientSecret: r.clientSecret,
           appearance: {
-            theme: "stripe",
+            // Theme "night" — Stripe rend des champs sur fond sombre,
+            // aligné avec la DA glassy du modal Shardtown.
+            theme: "night",
             variables: {
-              colorPrimary: "#18181b",      // zinc-900 — accent noir
-              colorBackground: "#ffffff",
-              colorText: "#18181b",
-              colorDanger: "#ef4444",
+              colorPrimary: "#ffffff",
+              colorBackground: "rgba(255,255,255,0.04)",
+              colorText: "#ffffff",
+              colorTextSecondary: "rgba(255,255,255,0.6)",
+              colorTextPlaceholder: "rgba(255,255,255,0.35)",
+              colorDanger: "#f87171",
               fontFamily: "Inter, system-ui, sans-serif",
               borderRadius: "10px",
+            },
+            rules: {
+              ".Input": {
+                border: "1px solid rgba(255,255,255,0.10)",
+                boxShadow: "none",
+              },
+              ".Input:focus": {
+                border: "1px solid rgba(255,255,255,0.35)",
+                boxShadow: "none",
+              },
+              ".Label": {
+                color: "rgba(255,255,255,0.55)",
+                fontWeight: "600",
+              },
             },
           },
         });
@@ -403,16 +421,16 @@ function StripePaymentForm({
       }
     }
     return (
-      <div className="rounded-2xl bg-red-50 border border-red-200 px-4 py-3 space-y-3">
+      <div className="rounded-2xl bg-red-500/10 border border-red-500/25 px-4 py-3 space-y-3">
         <div>
-          <p className="text-[13px] text-red-700 font-semibold mb-1">
+          <p className="text-[13px] text-red-300 font-semibold mb-1">
             Terminal indisponible
           </p>
-          <p className="text-[12px] text-red-600 leading-relaxed">
+          <p className="text-[12px] text-red-300/85 leading-relaxed">
             {loadError}
           </p>
           {isLikelyAdblock && (
-            <p className="text-[11.5px] text-red-600/85 leading-relaxed mt-2">
+            <p className="text-[11.5px] text-red-300/85/85 leading-relaxed mt-2">
               <strong>AdBlock / uBlock Origin / Brave Shields</strong> bloque
               probablement <code>js.stripe.com</code>. Désactive-les pour ce
               site, ou utilise le bouton ci-dessous pour passer par la page
@@ -423,7 +441,7 @@ function StripePaymentForm({
         <button
           type="button"
           onClick={fallbackLegacy}
-          className="w-full rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-[12px] font-bold py-2 transition-colors"
+          className="w-full rounded-lg bg-white hover:bg-white/95 text-black text-[12px] font-bold py-2 transition-colors"
         >
           Continuer via Stripe Checkout (redirection)
         </button>
@@ -433,10 +451,10 @@ function StripePaymentForm({
 
   if (done) {
     return (
-      <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-5 text-center">
+      <div className="rounded-xl bg-emerald-500/10 border border-emerald-400/25 px-4 py-5 text-center">
         <CheckCircle2 className="w-7 h-7 text-emerald-500 mx-auto mb-2" />
-        <p className="text-[14px] font-bold text-emerald-700 mb-0.5">Paiement confirmé</p>
-        <p className="text-[11.5px] text-emerald-600 leading-relaxed">
+        <p className="text-[14px] font-bold text-emerald-300 mb-0.5">Paiement confirmé</p>
+        <p className="text-[11.5px] text-emerald-300/85 leading-relaxed">
           Premium est en cours d'activation… Redirection…
         </p>
       </div>
@@ -449,25 +467,25 @@ function StripePaymentForm({
           sécurisée à l'intérieur — on ne voit jamais le numéro de carte. */}
       <div ref={mountRef} className="min-h-[40px]" />
       {loading && (
-        <div className="flex items-center justify-center py-3 text-zinc-500">
+        <div className="flex items-center justify-center py-3 text-white/45">
           <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
           <span className="text-[12px]">Préparation du paiement…</span>
         </div>
       )}
 
       {submitError && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2">
-          <p className="text-[11.5px] text-red-700 leading-relaxed">{submitError}</p>
+        <div className="rounded-lg bg-red-500/10 border border-red-500/25 px-3 py-2">
+          <p className="text-[11.5px] text-red-300 leading-relaxed">{submitError}</p>
         </div>
       )}
 
-      <p className="text-[11px] text-zinc-500 leading-relaxed">
+      <p className="text-[11px] text-white/45 leading-relaxed">
         En souscrivant, tu acceptes nos{" "}
         <a
           href="/terms"
           target="_blank"
           rel="noopener"
-          className="text-zinc-900 hover:underline underline-offset-2 font-semibold"
+          className="text-white hover:underline underline-offset-2 font-semibold"
         >
           Conditions générales
         </a>
@@ -477,7 +495,7 @@ function StripePaymentForm({
       <button
         type="submit"
         disabled={loading || submitting}
-        className="w-full rounded-xl bg-zinc-900 hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed text-white font-extrabold text-[14px] py-3 transition-colors"
+        className="w-full rounded-xl bg-white hover:bg-white/95 disabled:opacity-60 disabled:cursor-not-allowed text-black font-extrabold text-[14px] py-3 transition-colors"
       >
         {submitting ? (
           <span className="inline-flex items-center justify-center gap-2">
@@ -491,11 +509,11 @@ function StripePaymentForm({
 
       {/* Footer "Secure Checkout" + 3DS — discret juste sous le bouton, style mee6 */}
       <div className="text-center space-y-1 pt-1">
-        <p className="text-[11px] text-zinc-500 inline-flex items-center justify-center gap-1.5">
+        <p className="text-[11px] text-white/45 inline-flex items-center justify-center gap-1.5">
           <Lock className="w-3 h-3" />
           Paiement sécurisé
         </p>
-        <p className="text-[10.5px] text-zinc-400 leading-relaxed">
+        <p className="text-[10.5px] text-white/35 leading-relaxed">
           Tu peux être redirigé vers la page de ta banque pour la vérification 3D Secure.
         </p>
       </div>
@@ -556,19 +574,19 @@ function PromoInput({
       ? `−${applied.discountValue} %`
       : `−${(applied.discountValue / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
     return (
-      <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 flex items-center justify-between gap-2">
+      <div className="rounded-xl bg-emerald-500/10 border border-emerald-400/25 px-3 py-2.5 flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-700">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-300">
             Code appliqué
           </p>
-          <p className="text-[13px] font-bold text-emerald-900 truncate">
-            {applied.code} <span className="font-mono-num text-emerald-700 ml-1">{label}</span>
+          <p className="text-[13px] font-bold text-emerald-100 truncate">
+            {applied.code} <span className="font-mono-num text-emerald-300 ml-1">{label}</span>
           </p>
         </div>
         <button
           type="button"
           onClick={onRemove}
-          className="text-[11.5px] font-bold text-emerald-700 hover:text-emerald-900 hover:underline underline-offset-2 flex-shrink-0"
+          className="text-[11.5px] font-bold text-emerald-300 hover:text-emerald-100 hover:underline underline-offset-2 flex-shrink-0"
         >
           Retirer
         </button>
@@ -583,7 +601,7 @@ function PromoInput({
         <button
           type="button"
           onClick={onOpen}
-          className="text-[12px] font-semibold text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-2"
+          className="text-[12px] font-semibold text-white/70 hover:text-white hover:underline underline-offset-2"
         >
           Appliquer un code promo
         </button>
@@ -592,8 +610,8 @@ function PromoInput({
   }
 
   return (
-    <div className="rounded-xl bg-white border border-zinc-200 p-2.5 space-y-2">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+    <div className="rounded-xl bg-white/[0.03] border border-white/[0.08] p-2.5 space-y-2">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-white/45">
         Code promo
       </p>
       <div className="flex gap-2">
@@ -604,18 +622,18 @@ function PromoInput({
           onKeyDown={e => { if (e.key === "Enter") submit(); }}
           placeholder="SHARDTOWN20"
           autoFocus
-          className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-zinc-50 border border-zinc-200 focus:border-zinc-900 focus:bg-white focus:outline-none text-[13px] font-mono-num tracking-wide"
+          className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] focus:border-white/30 focus:bg-white/[0.06] focus:outline-none text-[13px] font-mono-num tracking-wide text-white placeholder:text-white/25"
         />
         <button
           type="button"
           onClick={submit}
           disabled={busy || code.trim().length === 0}
-          className="px-3 py-2 rounded-lg bg-zinc-900 hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed text-white text-[12px] font-bold transition-colors flex-shrink-0"
+          className="px-3 py-2 rounded-lg bg-white hover:bg-white/95 disabled:opacity-50 disabled:cursor-not-allowed text-black text-[12px] font-bold transition-colors flex-shrink-0"
         >
           {busy ? "…" : "Appliquer"}
         </button>
       </div>
-      {error && <p className="text-[11.5px] text-red-600 leading-relaxed">{error}</p>}
+      {error && <p className="text-[11.5px] text-red-300/85 leading-relaxed">{error}</p>}
     </div>
   );
 }
@@ -681,31 +699,31 @@ function PayNowBreakdown({
     : "Shard Premium — 1 mois";
 
   return (
-    <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+    <div className="bg-white/[0.03] rounded-xl border border-white/[0.08] overflow-hidden">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-zinc-50 transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/[0.04] transition-colors"
       >
-        <p className="text-sm font-bold text-zinc-900">Payer maintenant</p>
+        <p className="text-sm font-bold text-white">Payer maintenant</p>
         <div className="inline-flex items-center gap-2">
           {appliedPromo && (
-            <span className="text-[12px] font-semibold text-zinc-400 tabular-nums line-through">
+            <span className="text-[12px] font-semibold text-white/35 tabular-nums line-through">
               {baseAmountNow}
             </span>
           )}
-          <span className="text-base font-extrabold text-zinc-900 tabular-nums">{amountNow}</span>
+          <span className="text-base font-extrabold text-white tabular-nums">{amountNow}</span>
           <ChevronDown
-            className={`w-4 h-4 text-zinc-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            className={`w-4 h-4 text-white/45 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
             strokeWidth={2.2}
           />
         </div>
       </button>
 
       {open && (
-        <div className="border-t border-zinc-200 bg-zinc-50/60 px-4 py-3 space-y-2.5">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+        <div className="border-t border-white/[0.08] bg-white/[0.02] px-4 py-3 space-y-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/45">
             Détail de ta commande
           </p>
 
@@ -721,23 +739,23 @@ function PayNowBreakdown({
           </div>
 
           {/* Total */}
-          <div className="border-t border-zinc-200 pt-2.5 flex items-center justify-between">
-            <span className="text-[13px] font-bold text-zinc-900">Total</span>
-            <span className="text-[14px] font-extrabold text-zinc-900 tabular-nums">
+          <div className="border-t border-white/[0.08] pt-2.5 flex items-center justify-between">
+            <span className="text-[13px] font-bold text-white">Total</span>
+            <span className="text-[14px] font-extrabold text-white tabular-nums">
               {formatEUR(effectiveTtc)}
             </span>
           </div>
 
           {/* VAT */}
-          <p className="text-[11px] text-zinc-500">
-            TVA 20 % incluse : <span className="font-semibold text-zinc-700 tabular-nums">{formatEUR(vatIncluded)}</span>
+          <p className="text-[11px] text-white/45">
+            TVA 20 % incluse : <span className="font-semibold text-white/70 tabular-nums">{formatEUR(vatIncluded)}</span>
           </p>
 
           {/* Edit order — referme la modale pour aller changer plan/serveur */}
           <button
             type="button"
             onClick={onEditOrder}
-            className="text-[12px] font-bold text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-2 inline-flex items-center gap-0.5"
+            className="text-[12px] font-bold text-white/70 hover:text-white hover:underline underline-offset-2 inline-flex items-center gap-0.5"
           >
             Modifier la commande
             <span aria-hidden>→</span>
@@ -757,8 +775,8 @@ function BreakdownLine({
 }) {
   return (
     <div className="flex items-start justify-between gap-3 text-[12.5px]">
-      <span className="text-zinc-700 leading-snug">{label}</span>
-      <span className={`tabular-nums font-semibold flex-shrink-0 ${negative ? "text-emerald-600" : "text-zinc-900"}`}>
+      <span className="text-white/70 leading-snug">{label}</span>
+      <span className={`tabular-nums font-semibold flex-shrink-0 ${negative ? "text-emerald-300/85" : "text-white"}`}>
         {amount}
       </span>
     </div>
@@ -772,18 +790,18 @@ function Row({
   value: React.ReactNode;
 }) {
   return (
-    <div className="border-l-2 border-zinc-300 pl-3 flex items-start justify-between gap-3">
+    <div className="border-l-2 border-white/15 pl-3 flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-500 mb-0.5">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-white/45 mb-0.5">
           {label}
         </p>
-        <div className="text-sm font-semibold text-zinc-900 truncate">
+        <div className="text-sm font-semibold text-white truncate">
           {value}
         </div>
       </div>
       <button
         type="button"
-        className="text-[12px] font-bold text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-2 inline-flex items-center gap-0.5 flex-shrink-0"
+        className="text-[12px] font-bold text-white/70 hover:text-white hover:underline underline-offset-2 inline-flex items-center gap-0.5 flex-shrink-0"
       >
         Modifier
         <span aria-hidden>→</span>
