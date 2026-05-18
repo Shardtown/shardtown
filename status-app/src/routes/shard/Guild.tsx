@@ -4,8 +4,8 @@ import {
   ArrowLeft, Check, Settings, ScrollText, Shield, AlertTriangle,
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
-  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronRight, ChevronDown, Crown, Plus,
-  Wand2, Sparkles, HandCoins,
+  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronDown, Crown, Plus,
+  Wand2, Sparkles, HandCoins, CheckCircle2, ArrowRight,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -893,54 +893,128 @@ function OverviewPanel({
   reduce: Reduce;
   heroEase: Ease;
 }) {
-  // Liste des groupes de modules à afficher dans le hub. On exclut :
-  //  - les items épinglés (overview / placeholders / Premium / Paramètres),
-  //  - les onglets en placeholder (Bientôt).
   const isVisibleModule = (t: typeof TABS[number]) =>
     !("pinned" in t && t.pinned) && !("placeholder" in t && t.placeholder);
   const moduleGroups = Array.from(
     new Set(TABS.filter(isVisibleModule).map(t => t.group)),
   );
-  const visibleModulesCount = TABS.filter(isVisibleModule).length;
+
+  // Tab actif pour le filtre par catégorie. "all" affiche toutes les
+  // sections, sinon on n'affiche que la section sélectionnée.
+  const [activeGroup, setActiveGroup] = useState<string>("all");
+
+  const isPremium =
+    com?.settings?.isPremium === 1 || com?.settings?.isPremium === "1" ||
+    sec?.settings?.isPremium === 1 || sec?.settings?.isPremium === "1";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: reduce ? 0 : 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: heroEase }}
-      className="space-y-9"
+      className="space-y-8"
     >
-      {/* Grille de modules par groupe. Chaque card est cliquable
-          et porte un badge de statut (active / inactive / info). */}
+      {/* ─── Hero promo (mee6 "ESSAYE-LE GRATUITEMENT") ──────────────── */}
+      {!isPremium && (
+        <button
+          type="button"
+          onClick={() => onJumpTo("premium" as TabKey)}
+          className="group relative w-full text-left rounded-3xl overflow-hidden border border-violet-400/30 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-purple-700 px-7 py-9 md:px-10 md:py-12 transition-transform hover:scale-[1.005]"
+        >
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.18),transparent_60%)] pointer-events-none" />
+          <div className="absolute -top-12 -right-8 w-56 h-56 rounded-full bg-pink-300/20 blur-3xl pointer-events-none" />
+          <div className="relative max-w-xl">
+            <p className="text-[11px] font-extrabold tracking-[0.22em] uppercase text-white/80 mb-3">
+              Shard Premium
+            </p>
+            <h2 className="text-3xl md:text-4xl font-extrabold leading-[1.05] tracking-tight text-white mb-5">
+              Débloque tout le potentiel
+              <br />
+              de ton serveur.
+            </h2>
+            <span className="inline-flex items-center gap-2 bg-white text-violet-700 font-extrabold text-[13px] tracking-tight px-5 py-3 rounded-full shadow-lg group-hover:bg-violet-50 transition-colors">
+              ESSAIE-LE GRATUITEMENT
+              <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+            </span>
+          </div>
+        </button>
+      )}
+
+      {/* ─── Modules ────────────────────────────────────────────────── */}
       <div>
-        <div className="flex items-baseline justify-between mb-6">
-          <h2 className="text-xl font-extrabold tracking-tight">
-            Modules
-          </h2>
-          <p className="text-[12.5px] text-white/40">
-            {visibleModulesCount} disponibles
-          </p>
+        <h2 className="text-2xl font-extrabold tracking-tight mb-5">
+          Modules
+        </h2>
+
+        {/* Tabs catégories — scroll horizontal sur mobile */}
+        <div className="border-b border-white/[0.06] mb-7">
+          <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mb-px">
+            <CategoryTab
+              label="Tous Les Modules"
+              active={activeGroup === "all"}
+              onClick={() => setActiveGroup("all")}
+            />
+            {moduleGroups.map(g => (
+              <CategoryTab
+                key={g}
+                label={g}
+                active={activeGroup === g}
+                onClick={() => setActiveGroup(g)}
+              />
+            ))}
+          </div>
         </div>
+
+        {/* Sections de modules — toutes si "all", sinon juste la sélectionnée */}
         <div className="space-y-9">
-          {moduleGroups.map(g => (
-            <section key={g}>
-              <h3 className="text-[14px] font-bold text-white/75 mb-4 px-0.5">{g}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {TABS.filter(t => t.group === g && isVisibleModule(t)).map(t => (
-                  <ModuleCard
-                    key={t.key}
-                    icon={t.icon}
-                    label={t.label}
-                    status={getModuleStatus(t.key, sec?.settings ?? null, com?.settings ?? null)}
-                    onClick={() => onJumpTo(t.key)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
+          {moduleGroups
+            .filter(g => activeGroup === "all" || activeGroup === g)
+            .map(g => (
+              <section key={g}>
+                <h3 className="text-2xl font-extrabold tracking-tight text-white mb-5">{g}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {TABS.filter(t => t.group === g && isVisibleModule(t)).map(t => (
+                    <ModuleCard
+                      key={t.key}
+                      icon={t.icon}
+                      label={t.label}
+                      description={MODULE_DESCRIPTIONS[t.key]}
+                      status={getModuleStatus(t.key, sec?.settings ?? null, com?.settings ?? null)}
+                      onClick={() => onJumpTo(t.key)}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function CategoryTab({
+  label, active, onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative px-4 py-3 text-[14px] font-semibold whitespace-nowrap transition-colors flex-shrink-0 ${
+        active ? "text-white" : "text-white/45 hover:text-white/75"
+      }`}
+    >
+      {label}
+      {active && (
+        <span
+          aria-hidden
+          className="absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-white"
+        />
+      )}
+    </button>
   );
 }
 
@@ -979,48 +1053,93 @@ function getModuleStatus(
   }
 }
 
+// Descriptions courtes (1-2 phrases) affichées sous le nom du module
+// dans le hub. Style mee6 — chaque card a une mini-description pour
+// que l'admin n'ait pas à cliquer pour savoir ce que le module fait.
+const MODULE_DESCRIPTIONS: Partial<Record<TabKey, string>> = {
+  welcome:   "Envoie automatiquement des messages et attribue des rôles à tes nouveaux membres.",
+  autorole:  "Attribue automatiquement un ou plusieurs rôles à chaque nouveau membre.",
+  rules:     "Affiche le règlement de ton serveur avec une mise en page propre et bilingue.",
+  birthdays: "Souhaite un joyeux anniversaire à tes membres et offre-leur un rôle pour la journée.",
+  captcha:   "Vérifie les nouveaux membres avec un captcha pour bloquer les bots avant l'accès.",
+  security:  "Détecte les vagues de joins anormales et verrouille le serveur en quelques secondes.",
+  warns:     "Système d'avertissements progressifs avec mute/kick/ban automatiques selon le seuil.",
+  modroles:  "Définis qui peut utiliser les commandes de modération et les exemptions.",
+  banned:    "Filtre les messages contenant des mots interdits avec wildcards et action paramétrable.",
+  automod:   "Anti-spam, anti-pub, anti-caps, anti-raid — modération automatique en temps réel.",
+  panic:     "Bouton d'urgence qui verrouille tout le serveur en un clic en cas d'attaque.",
+  stats:     "Statistiques détaillées : joins/leaves, captchas réussis, sanctions par période.",
+  logs:      "Log complet de tout ce qui se passe sur ton serveur, par salon dédié.",
+  members:   "Liste tous tes membres avec leurs rôles, avertissements et historique d'actions.",
+  embed:     "Crée et envoie des messages embeds personnalisés depuis ton dashboard.",
+  twitch:    "Notifie ton serveur quand un streamer Twitch favori passe en live.",
+  youtube:   "Annonce les nouvelles vidéos / lives YouTube de tes créateurs favoris.",
+  levels:    "Système de XP, niveaux et rôles automatiques pour récompenser tes membres actifs.",
+  economy:   "Monnaie virtuelle, daily, shop de rôles, transferts — tu pilotes l'économie.",
+  giveaways: "Lance des giveaways avec timer, multi-gagnants, conditions de participation.",
+  polls:     "Crée des sondages à choix multiples avec timer optionnel et vote anonyme.",
+  tempvoice: "Salons vocaux temporaires créés automatiquement quand un user rejoint un hub.",
+  tickets:   "Système de tickets de support avec catégories, transcripts et logs.",
+  reactions: "Ajoute des réactions automatiques aux messages contenant certains mots-clés.",
+  // Pinned items (rarement affichés en card module)
+  overview:    "Vue d'ensemble de la configuration et de l'état de ton serveur.",
+  samia:       "Assistante IA Shardtown — pose une question, obtiens une réponse instantanée.",
+  custombot:   "Renomme et personnalise le bot avec ton propre token Discord (Premium).",
+  general:     "Paramètres globaux du serveur : gérants, langue, fuseau horaire, embed.",
+  premium:     "Gère ton abonnement Premium, change de plan, transfère ou annule.",
+  emojis:      "Importe et gère tous tes emojis serveur depuis le dashboard.",
+  affiliation: "Programme d'affiliation Shardtown — gagne en faisant connaître le bot.",
+};
+
 function ModuleCard({
-  icon: Icon, label, status, onClick,
+  icon: Icon, label, status, onClick, description,
 }: {
   icon: typeof Settings;
   label: string;
   status: ModuleStatus;
   onClick: () => void;
+  description?: string;
 }) {
-  const statusLabel =
-    status === "active"   ? "Activé"     :
-    status === "inactive" ? "Désactivé"  :
-    "—";
-  const statusTone =
-    status === "active"   ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" :
-    status === "inactive" ? "bg-white/15" :
-    "bg-white/10";
+  const isActive = status === "active";
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative text-left rounded-2xl border p-5 transition-colors h-full bg-[#141a2c] border-white/[0.1] hover:bg-[#1a2138] hover:border-white/[0.22]"
+      className="group relative text-left rounded-2xl border p-5 transition-colors h-full flex flex-col bg-[#13121b] border-white/[0.06] hover:bg-[#1a1828] hover:border-white/[0.14]"
       title={label}
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className="w-11 h-11 rounded-xl flex items-center justify-center border bg-[#1c2238] border-white/[0.12] text-white/85">
-          <Icon className="w-5 h-5" strokeWidth={1.8} />
-        </div>
-        <span
-          className={`w-2 h-2 rounded-full mt-3.5 ${statusTone}`}
-          aria-label={statusLabel}
-        />
+      {/* Icône bleue carrée style mee6 */}
+      <div className="w-14 h-14 rounded-2xl bg-blue-500/15 border border-blue-400/25 flex items-center justify-center text-blue-300 mb-5 shadow-[inset_0_1px_0_rgba(96,165,250,0.15)]">
+        <Icon className="w-6 h-6" strokeWidth={2} />
       </div>
-      <p className="text-[15px] font-bold leading-tight mb-1.5">{label}</p>
-      <div className="flex items-center justify-between">
-        <span className={`text-[12px] font-semibold ${
-          status === "active"   ? "text-emerald-300/90" :
-          status === "inactive" ? "text-white/40" :
-          "text-white/35"
-        }`}>
-          {statusLabel}
-        </span>
-        <ChevronRight className="w-3.5 h-3.5 text-white/30 group-hover:text-white/65 group-hover:translate-x-0.5 transition-all" />
+
+      <h4 className="text-[15.5px] font-extrabold tracking-tight leading-snug mb-1.5 text-white">
+        {label}
+      </h4>
+
+      {description && (
+        <p className="text-[12.5px] text-white/45 leading-relaxed line-clamp-3 mb-4 flex-1">
+          {description}
+        </p>
+      )}
+
+      {/* Pill statut mee6-style — bleue si actif, grise si non */}
+      <div className={`mt-auto inline-flex items-center gap-1.5 self-start px-3 py-1.5 rounded-lg text-[11.5px] font-bold ${
+        isActive
+          ? "bg-blue-500/15 text-blue-300 border border-blue-400/25"
+          : "bg-white/[0.04] text-white/40 border border-white/[0.06]"
+      }`}>
+        {isActive ? (
+          <>
+            <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.5} />
+            Actif
+          </>
+        ) : (
+          <>
+            <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
+            Désactivé
+          </>
+        )}
       </div>
     </button>
   );
