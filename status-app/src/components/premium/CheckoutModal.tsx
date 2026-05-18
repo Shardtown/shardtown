@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
-  X, Lock, Loader2, CheckCircle2,
+  X, Lock, Loader2, CheckCircle2, ChevronDown,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { apiGet, apiPost } from "@/api/client";
@@ -104,6 +104,10 @@ export function CheckoutModal({
   // planLabel / amountNote ne sont plus affichés dans la card stripped
   // mee6-style ; on les garde dans l'interface pour pouvoir les remettre
   // côté Premium.tsx sans casser l'API du composant.
+
+  // Détail dépliant du total (style mee6 "Chargeable now")
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
+  useEffect(() => { if (!open) setBreakdownOpen(false); }, [open]);
   // ESC pour fermer + lock body scroll.
   useEffect(() => {
     if (!open) return;
@@ -168,11 +172,14 @@ export function CheckoutModal({
             </div>
 
             <div className="px-5 pt-4 pb-5 bg-zinc-50 space-y-3">
-              {/* Pay now — ligne minimaliste */}
-              <div className="bg-white rounded-xl border border-zinc-200 px-4 py-3 flex items-center justify-between">
-                <p className="text-sm font-bold text-zinc-900">Payer maintenant</p>
-                <span className="text-base font-extrabold text-zinc-900 tabular-nums">{amountNow}</span>
-              </div>
+              {/* Pay now — ligne cliquable qui déplie le détail */}
+              <PayNowBreakdown
+                amountNow={amountNow}
+                plan={plan}
+                open={breakdownOpen}
+                onToggle={() => setBreakdownOpen(v => !v)}
+                onEditOrder={onClose}
+              />
 
               {/* Apply coupon (placeholder) */}
               <div className="text-center">
@@ -462,6 +469,124 @@ function StripePaymentForm({
         </p>
       </div>
     </form>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//  PayNowBreakdown — ligne "Payer maintenant" cliquable, dévoile le
+//  détail TTC / TVA façon mee6 "Chargeable now".
+//
+//  Décompose un prix TTC en HT + TVA (taux par défaut 20 % France).
+//  Pour l'instant un seul item (le plan) ; quand on aura les add-ons
+//  payants (Custom Bot tarifé, etc.), on poussera juste de nouveaux
+//  items dans le array du décompte.
+// ──────────────────────────────────────────────────────────────────────
+
+const VAT_RATE = 0.20;
+
+function parseAmountEUR(s: string): number {
+  // "7,99 €" / "34.99 €" / "1 234,56 €" → 7.99 / 34.99 / 1234.56
+  const m = s.replace(/\s/g, "").replace(/€/g, "").replace(",", ".");
+  const n = parseFloat(m);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatEUR(n: number): string {
+  return `${n.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+}
+
+function PayNowBreakdown({
+  amountNow, plan, open, onToggle, onEditOrder,
+}: {
+  amountNow: string;
+  plan: "monthly" | "yearly" | "lifetime";
+  open: boolean;
+  onToggle: () => void;
+  onEditOrder: () => void;
+}) {
+  const ttc = parseAmountEUR(amountNow);
+  // VAT incluse dans le TTC : VAT = TTC * rate / (1 + rate)
+  const vatIncluded = (ttc * VAT_RATE) / (1 + VAT_RATE);
+  const lineLabel =
+    plan === "lifetime" ? "Shard Premium — Lifetime"
+    : plan === "yearly" ? "Shard Premium — 1 an"
+    : "Shard Premium — 1 mois";
+
+  return (
+    <div className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-zinc-50 transition-colors"
+      >
+        <p className="text-sm font-bold text-zinc-900">Payer maintenant</p>
+        <div className="inline-flex items-center gap-2">
+          <span className="text-base font-extrabold text-zinc-900 tabular-nums">{amountNow}</span>
+          <ChevronDown
+            className={`w-4 h-4 text-zinc-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            strokeWidth={2.2}
+          />
+        </div>
+      </button>
+
+      {open && (
+        <div className="border-t border-zinc-200 bg-zinc-50/60 px-4 py-3 space-y-2.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+            Détail de ta commande
+          </p>
+
+          {/* Lignes d'items — placeholder pour quand on aura des add-ons */}
+          <div className="space-y-1.5">
+            <BreakdownLine label={lineLabel} amount={formatEUR(ttc)} />
+            {/* Ex futur :
+                <BreakdownLine label="Custom Bot" amount="0,00 €" />
+                <BreakdownLine label="Crédits appliqués" amount={`-${formatEUR(credits)}`} negative />
+            */}
+          </div>
+
+          {/* Total */}
+          <div className="border-t border-zinc-200 pt-2.5 flex items-center justify-between">
+            <span className="text-[13px] font-bold text-zinc-900">Total</span>
+            <span className="text-[14px] font-extrabold text-zinc-900 tabular-nums">
+              {formatEUR(ttc)}
+            </span>
+          </div>
+
+          {/* VAT */}
+          <p className="text-[11px] text-zinc-500">
+            TVA 20 % incluse : <span className="font-semibold text-zinc-700 tabular-nums">{formatEUR(vatIncluded)}</span>
+          </p>
+
+          {/* Edit order — referme la modale pour aller changer plan/serveur */}
+          <button
+            type="button"
+            onClick={onEditOrder}
+            className="text-[12px] font-bold text-zinc-700 hover:text-zinc-900 hover:underline underline-offset-2 inline-flex items-center gap-0.5"
+          >
+            Modifier la commande
+            <span aria-hidden>→</span>
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BreakdownLine({
+  label, amount, negative,
+}: {
+  label: string;
+  amount: string;
+  negative?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 text-[12.5px]">
+      <span className="text-zinc-700 leading-snug">{label}</span>
+      <span className={`tabular-nums font-semibold flex-shrink-0 ${negative ? "text-emerald-600" : "text-zinc-900"}`}>
+        {amount}
+      </span>
+    </div>
   );
 }
 
