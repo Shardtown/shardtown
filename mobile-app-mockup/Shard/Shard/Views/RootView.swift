@@ -17,6 +17,11 @@ struct RootView: View {
                 .tabItem {
                     Label("À propos", systemImage: "info.circle")
                 }
+
+            AccountView()
+                .tabItem {
+                    Label("Mon compte", systemImage: "person.crop.circle")
+                }
         }
         .tint(.indigo)
     }
@@ -24,4 +29,5 @@ struct RootView: View {
 
 #Preview {
     RootView()
+        .environmentObject(AuthSession())
 }
