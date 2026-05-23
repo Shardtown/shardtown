@@ -1,4 +1,4 @@
-name: ShardLink
+name: Shard
 options:
   bundleIdPrefix: fr.shardtown
   deploymentTarget:
@@ -13,18 +13,18 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"  # iPhone + iPad
     GENERATE_INFOPLIST_FILE: NO    # ← on utilise NOTRE Info.plist, pas un généré
 targets:
-  ShardLink:
+  Shard:
     type: application
     platform: iOS
     sources:
-      - path: ShardLink
+      - path: Shard
         excludes:
           - "Resources/Info.plist"
-          - "Resources/ShardLink.entitlements"
+          - "Resources/Shard.entitlements"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: fr.shardtown.shardlink
-        INFOPLIST_FILE: ShardLink/Resources/Info.plist
-        CODE_SIGN_ENTITLEMENTS: ShardLink/Resources/ShardLink.entitlements
+        PRODUCT_BUNDLE_IDENTIFIER: fr.shardtown.shard
+        INFOPLIST_FILE: Shard/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Shard/Resources/Shard.entitlements
         ENABLE_PREVIEWS: YES
         SWIFT_EMIT_LOC_STRINGS: YES

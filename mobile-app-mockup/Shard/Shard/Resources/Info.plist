@@ -13,7 +13,7 @@
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundleDisplayName</key>
-	<string>ShardLink</string>
+	<string>Shard</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -32,15 +32,6 @@
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-
-	<!-- iOS 14+ : permission Réseau local obligatoire pour discover/répondre sur le LAN. -->
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>ShardLink a besoin du réseau local pour faire apparaître ton serveur Minecraft Bedrock comme une partie LAN sur ta console.</string>
-	<key>NSBonjourServices</key>
-	<array>
-		<string>_minecraft._udp</string>
-		<string>_shardlink._udp</string>
 	</array>
 </dict>
 </plist>
