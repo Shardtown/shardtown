@@ -2952,6 +2952,8 @@ app.get('/api/account/oauth/:provider/callback', async (req, res) => {
     // redirect). Stateless — works across PM2 cluster workers and
     // process restarts. One OAuth App per provider covers both flows.
     const mobileEntry = verifyMobileToken('state', incomingState);
+    console.log('[oauth-cb]', provider, 'state-len:', incomingState.length,
+        'mobile:', !!mobileEntry, mobileEntry ? `mp:${mobileEntry.provider}` : '');
     if (mobileEntry && mobileEntry.provider === provider) {
         return handleMobileCallback(req, res, provider, cfg, mobileEntry);
     }
@@ -3159,6 +3161,7 @@ app.get('/api/mobile/auth/start/:provider', mobileAuthLimiter, (req, res) => {
         provider: req.params.provider,
         codeChallenge: challenge,
     });
+    console.log('[mobile-auth] start', req.params.provider, 'state-len:', state.length);
 
     const params = new URLSearchParams({
         client_id: clientId,
@@ -3264,6 +3267,7 @@ async function handleMobileCallback(req, res, provider, cfg, stateEntry) {
         accountId: account.id,
         codeChallenge: stateEntry.codeChallenge,
     });
+    console.log('[mobile-auth] callback OK', provider, 'account:', account.id, 'deep-link →');
     return redirectToApp(res, { code: authCode, provider });
 }
 
