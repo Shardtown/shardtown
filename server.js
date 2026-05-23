@@ -1295,6 +1295,11 @@ app.use((req, res, next) => {
     // Endpoints internes consommés par le bot Discord (server-to-server) :
     // auth dédiée via header X-Bot-Key, donc pas de session ni de CSRF.
     if (req.path.startsWith('/api/bot/')) return next();
+    // Bridge OAuth mobile : l'app iOS appelle /api/mobile/auth/exchange
+    // depuis ASWebAuthenticationSession sans cookie ni token de session,
+    // donc pas de CSRF possible. Le code échangé est à usage unique +
+    // protégé par PKCE, ce qui couvre l'attaque que CSRF empêche normalement.
+    if (req.path === '/api/mobile/auth/exchange') return next();
     return verifyCsrf(req, res, next);
 });
 
@@ -2868,6 +2873,32 @@ const OAUTH_CONFIGS = {
             };
         },
     },
+    // Discord OAuth is *also* served by passport at /auth/discord for the
+    // web sign-in flow. This entry is the path the mobile bridge uses
+    // (see /api/mobile/auth/start) and reuses the shared
+    // /api/account/oauth/:provider/callback so a single Discord OAuth
+    // App redirect URI covers both.
+    discord: {
+        authUrl: 'https://discord.com/oauth2/authorize',
+        tokenUrl: 'https://discord.com/api/oauth2/token',
+        scope: 'identify email',
+        clientIdEnv: 'CLIENT_ID',
+        clientSecretEnv: 'CLIENT_SECRET',
+        idColumn: 'discord_id',
+        labelColumn: 'discord_username',
+        async fetchProfile(accessToken) {
+            const r = await axios.get('https://discord.com/api/v10/users/@me', {
+                headers: { Authorization: `Bearer ${accessToken}` },
+                timeout: 8000,
+            });
+            return {
+                providerId: String(r.data.id),
+                email: r.data.verified ? r.data.email : null,
+                username: r.data.global_name || r.data.username || null,
+                avatar: r.data.avatar || null,
+            };
+        },
+    },
 };
 
 function oauthRedirect(provider) {
@@ -2912,10 +2943,22 @@ app.get('/api/account/oauth/:provider/callback', async (req, res) => {
     const clientSecret = process.env[cfg.clientSecretEnv];
     if (!clientId || !clientSecret) return res.redirect('/account/login?oauth=error&reason=config');
 
+    const incomingState = String(req.query.state || '');
+
+    // Mobile flow detection: /api/mobile/auth/start signs a state token
+    // containing { provider, codeChallenge }. If the incoming state is a
+    // valid mobile token, we run the mobile finisher (deep link back to
+    // the app) instead of the web flow (cookie session + /account
+    // redirect). Stateless — works across PM2 cluster workers and
+    // process restarts. One OAuth App per provider covers both flows.
+    const mobileEntry = verifyMobileToken('state', incomingState);
+    if (mobileEntry && mobileEntry.provider === provider) {
+        return handleMobileCallback(req, res, provider, cfg, mobileEntry);
+    }
+
     // Verify state
     const expected = req.session.oauthState;
     req.session.oauthState = null;
-    const incomingState = String(req.query.state || '');
     if (!expected || expected.provider !== provider || !expected.state
         || !timingSafeEqual(incomingState, expected.state)) {
         return res.redirect('/account/login?oauth=error&reason=state');
@@ -3023,6 +3066,240 @@ app.post('/api/account/oauth/:provider/unlink', requireAccount, async (req, res)
         res.json({ success: true });
     } catch (err) {
         console.error('oauth unlink:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ─── Mobile OAuth bridge (iOS app) ─────────────────────────────────────
+// Native iOS app authenticates via ASWebAuthenticationSession: the app
+// opens our /api/mobile/auth/start/:provider in a system-isolated web
+// session (no shared cookies), the provider OAuth runs, the web callback
+// (/api/account/oauth/:provider/callback) detects the mobile state and
+// fires a `shardapp://auth/callback?code=…` deep link, the app exchanges
+// the code + its PKCE verifier for a long-lived Bearer token, then
+// stores it in the iOS Keychain. The Bearer token reuses the existing
+// `account_personal_tokens` table so every API endpoint that already
+// works with personal tokens just works.
+//
+// PKCE protects against an attacker intercepting the deep link: without
+// the verifier (only the app knows it), the auth code is useless.
+//
+// Crucial design choice: the redirect_uri we send to the OAuth provider
+// is the **same** as the web flow's (/api/account/oauth/:provider/
+// callback). That means one OAuth App per provider serves both web and
+// mobile — no extra callback URL to register, and GitHub's single-URL
+// limitation is a non-issue.
+const MOBILE_DEEP_LINK_SCHEME = 'shardapp';
+const MOBILE_AUTH_TTL_MS = 5 * 60 * 1000;
+
+// Stateless signed tokens — survive process restarts and work across PM2
+// cluster workers without a shared store. Format:
+//   base64url(JSON(payload)) + "." + base64url(HMAC-SHA256(data, key))
+// `kind` discriminates "state" (start → callback) from "code"
+// (callback → exchange) so a token can't be cross-used between the two
+// stages. `exp` enforces the TTL.
+const mobileTokenKey = crypto.createHmac('sha256', process.env.SESSION_SECRET)
+    .update('mobile-auth/v1')
+    .digest();
+
+function signMobileToken(kind, payload) {
+    const body = { ...payload, kind, exp: Date.now() + MOBILE_AUTH_TTL_MS };
+    const data = Buffer.from(JSON.stringify(body)).toString('base64url');
+    const mac = crypto.createHmac('sha256', mobileTokenKey).update(data).digest('base64url');
+    return `${data}.${mac}`;
+}
+
+function verifyMobileToken(kind, token) {
+    if (!token || typeof token !== 'string') return null;
+    const dot = token.indexOf('.');
+    if (dot < 1) return null;
+    const data = token.slice(0, dot);
+    const mac = token.slice(dot + 1);
+    const expected = crypto.createHmac('sha256', mobileTokenKey).update(data).digest('base64url');
+    if (mac.length !== expected.length) return null;
+    if (!crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return null;
+    let payload;
+    try {
+        payload = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'));
+    } catch { return null; }
+    if (payload.kind !== kind) return null;
+    if (!payload.exp || Date.now() > payload.exp) return null;
+    return payload;
+}
+
+function redirectToApp(res, params) {
+    // shardapp:// is registered exclusively by the iOS app; iOS guarantees
+    // only the matching ASWebAuthenticationSession callback can receive it.
+    const qs = new URLSearchParams(params).toString();
+    return res.redirect(`${MOBILE_DEEP_LINK_SCHEME}://auth/callback?${qs}`);
+}
+
+const mobileAuthLimiter = rateLimit({ windowMs: 60_000, max: 20, standardHeaders: true, legacyHeaders: false });
+
+// Step 1 — the iOS app opens this URL in ASWebAuthenticationSession.
+// We stash the PKCE challenge against a random `state` token, then
+// redirect to the OAuth provider using the SHARED web callback URL.
+// When the provider bounces back to that callback, the shared handler
+// notices the mobile state and routes into handleMobileCallback below.
+app.get('/api/mobile/auth/start/:provider', mobileAuthLimiter, (req, res) => {
+    const cfg = OAUTH_CONFIGS[req.params.provider];
+    if (!cfg) return res.status(404).type('text/plain').send('Provider inconnu');
+
+    // PKCE S256: 43-128 chars base64url
+    const challenge = String(req.query.code_challenge || '');
+    if (!/^[A-Za-z0-9_-]{43,128}$/.test(challenge)) {
+        return res.status(400).type('text/plain').send('code_challenge invalide');
+    }
+
+    const clientId = process.env[cfg.clientIdEnv];
+    if (!clientId) return res.status(503).type('text/plain').send(`${req.params.provider} OAuth non configuré`);
+
+    // Stateless signed state — survives cluster workers + restarts.
+    const state = signMobileToken('state', {
+        provider: req.params.provider,
+        codeChallenge: challenge,
+    });
+
+    const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: oauthRedirect(req.params.provider),
+        response_type: 'code',
+        scope: cfg.scope,
+        state,
+        ...(req.params.provider === 'google' ? { prompt: 'select_account', access_type: 'online' } : {}),
+    });
+    res.redirect(`${cfg.authUrl}?${params}`);
+});
+
+// Step 2 — called *from inside* /api/account/oauth/:provider/callback
+// when the incoming state matches a mobile entry. Finishes the OAuth
+// exchange, runs the same find/create logic as the web flow, then
+// issues a single-use auth code and bounces to the deep link. The
+// final Bearer token never appears in a URL the OS or system log
+// might capture — only the auth code does.
+async function handleMobileCallback(req, res, provider, cfg, stateEntry) {
+    const code = String(req.query.code || '');
+    if (!code) return redirectToApp(res, { error: 'code' });
+
+    let profile;
+    try {
+        const tokenRes = await axios.post(
+            cfg.tokenUrl,
+            new URLSearchParams({
+                client_id: process.env[cfg.clientIdEnv],
+                client_secret: process.env[cfg.clientSecretEnv],
+                grant_type: 'authorization_code',
+                code,
+                redirect_uri: oauthRedirect(provider),
+            }),
+            {
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+                timeout: 8000,
+            },
+        );
+        profile = await cfg.fetchProfile(tokenRes.data.access_token);
+    } catch (err) {
+        console.error(`[mobile-auth:${provider}]`, err.response?.data || err.message);
+        return redirectToApp(res, { error: 'exchange' });
+    }
+
+    if (!profile.providerId) return redirectToApp(res, { error: 'profile' });
+
+    let account;
+    try {
+        const [byProvider] = await db.execute(
+            `SELECT * FROM accounts WHERE ${cfg.idColumn} = ? LIMIT 1`,
+            [profile.providerId],
+        );
+        account = byProvider[0];
+
+        if (!account && profile.email) {
+            const [byEmail] = await db.execute(
+                'SELECT * FROM accounts WHERE email = ? LIMIT 1',
+                [profile.email.toLowerCase()],
+            );
+            if (byEmail.length) {
+                account = byEmail[0];
+                await db.execute(
+                    `UPDATE accounts SET ${cfg.idColumn} = ?, ${cfg.labelColumn} = ? WHERE id = ?`,
+                    [profile.providerId, profile.username || profile.email, account.id],
+                );
+            }
+        }
+
+        if (!account) {
+            if (!profile.email) return redirectToApp(res, { error: 'no_email' });
+            const pseudo = await uniquePseudo(profile.username || profile.email.split('@')[0]);
+            const salt = crypto.randomBytes(16).toString('hex');
+            const randomPwd = crypto.randomBytes(32).toString('hex');
+            const hash = hashPassword(randomPwd, salt);
+            const [insert] = await db.execute(
+                `INSERT INTO accounts
+                  (email, email_verified, pseudo, password_hash, password_salt, ${cfg.idColumn}, ${cfg.labelColumn})
+                 VALUES (?, 1, ?, ?, ?, ?, ?)`,
+                [profile.email.toLowerCase(), pseudo, hash, salt, profile.providerId, profile.username || profile.email],
+            );
+            const [rows] = await db.execute('SELECT * FROM accounts WHERE id = ?', [insert.insertId]);
+            account = rows[0];
+        }
+
+        // Discord avatar refresh (only on the Discord path; the column
+        // doesn't exist for Google/GitHub).
+        if (provider === 'discord' && profile.avatar) {
+            await db.execute(
+                'UPDATE accounts SET discord_avatar = ? WHERE id = ?',
+                [profile.avatar, account.id],
+            ).catch(() => {});
+        }
+
+        await db.execute('UPDATE accounts SET last_login_at = NOW() WHERE id = ?', [account.id]);
+    } catch (err) {
+        console.error(`[mobile-auth:${provider}] db`, err.message);
+        return redirectToApp(res, { error: 'db' });
+    }
+
+    // Stateless signed auth code — the iOS app will trade this for a
+    // Bearer token within the TTL via /api/mobile/auth/exchange.
+    const authCode = signMobileToken('code', {
+        accountId: account.id,
+        codeChallenge: stateEntry.codeChallenge,
+    });
+    return redirectToApp(res, { code: authCode, provider });
+}
+
+// Step 3 — the iOS app POSTs the auth code + the PKCE verifier; we
+// confirm SHA256(verifier) === stored challenge, then mint a Bearer
+// token from `account_personal_tokens`. Same shape as desktop tokens,
+// so every existing endpoint that takes Bearer just works.
+app.post('/api/mobile/auth/exchange', express.json({ limit: '4kb' }), mobileAuthLimiter, async (req, res) => {
+    const code = String(req.body?.code || '');
+    const verifier = String(req.body?.code_verifier || '');
+    if (!code || !verifier) return res.status(400).json({ error: 'code et code_verifier requis' });
+    if (!/^[A-Za-z0-9_-]{43,128}$/.test(verifier)) {
+        return res.status(400).json({ error: 'code_verifier invalide' });
+    }
+
+    const entry = verifyMobileToken('code', code);
+    if (!entry) return res.status(400).json({ error: 'code expiré ou invalide' });
+
+    const expected = crypto.createHash('sha256').update(verifier).digest('base64')
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    if (!timingSafeEqual(expected, entry.codeChallenge)) {
+        return res.status(400).json({ error: 'PKCE mismatch' });
+    }
+
+    try {
+        const token = TOKEN_PREFIX + crypto.randomBytes(TOKEN_BYTES).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        await db.execute(
+            'INSERT INTO account_personal_tokens (account_id, name, token_hash) VALUES (?, ?, ?)',
+            [entry.accountId, 'iOS Shard app', tokenHash],
+        );
+        const [rows] = await db.execute('SELECT * FROM accounts WHERE id = ? LIMIT 1', [entry.accountId]);
+        if (!rows[0]) return res.status(500).json({ error: 'Compte introuvable' });
+        res.json({ token, account: publicAccount(rows[0]) });
+    } catch (err) {
+        console.error('[mobile-auth] exchange', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
