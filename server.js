@@ -2873,6 +2873,32 @@ const OAUTH_CONFIGS = {
             };
         },
     },
+    // Discord OAuth is *also* served by passport at /auth/discord for the
+    // web sign-in flow. This entry is the path the mobile bridge uses
+    // (see /api/mobile/auth/start) and reuses the shared
+    // /api/account/oauth/:provider/callback so a single Discord OAuth
+    // App redirect URI covers both.
+    discord: {
+        authUrl: 'https://discord.com/oauth2/authorize',
+        tokenUrl: 'https://discord.com/api/oauth2/token',
+        scope: 'identify email',
+        clientIdEnv: 'CLIENT_ID',
+        clientSecretEnv: 'CLIENT_SECRET',
+        idColumn: 'discord_id',
+        labelColumn: 'discord_username',
+        async fetchProfile(accessToken) {
+            const r = await axios.get('https://discord.com/api/v10/users/@me', {
+                headers: { Authorization: `Bearer ${accessToken}` },
+                timeout: 8000,
+            });
+            return {
+                providerId: String(r.data.id),
+                email: r.data.verified ? r.data.email : null,
+                username: r.data.global_name || r.data.username || null,
+                avatar: r.data.avatar || null,
+            };
+        },
+    },
 };
 
 function oauthRedirect(provider) {
@@ -2917,10 +2943,23 @@ app.get('/api/account/oauth/:provider/callback', async (req, res) => {
     const clientSecret = process.env[cfg.clientSecretEnv];
     if (!clientId || !clientSecret) return res.redirect('/account/login?oauth=error&reason=config');
 
+    const incomingState = String(req.query.state || '');
+
+    // Mobile flow detection: the iOS app calls /api/mobile/auth/start which
+    // stores its PKCE challenge in `mobileStateStore` keyed by the same
+    // `state` value we passed to the OAuth provider. If we find a match
+    // here, we run the mobile finisher (deep link back to the app) instead
+    // of the web flow (cookie session + /account redirect). This lets one
+    // OAuth App at GitHub/Google/Discord serve both worlds — no second
+    // callback URL to register.
+    const mobileEntry = consumeMobileEntry(mobileStateStore, incomingState);
+    if (mobileEntry && mobileEntry.provider === provider) {
+        return handleMobileCallback(req, res, provider, cfg, mobileEntry);
+    }
+
     // Verify state
     const expected = req.session.oauthState;
     req.session.oauthState = null;
-    const incomingState = String(req.query.state || '');
     if (!expected || expected.provider !== provider || !expected.state
         || !timingSafeEqual(incomingState, expected.state)) {
         return res.redirect('/account/login?oauth=error&reason=state');
@@ -3035,7 +3074,8 @@ app.post('/api/account/oauth/:provider/unlink', requireAccount, async (req, res)
 // ─── Mobile OAuth bridge (iOS app) ─────────────────────────────────────
 // Native iOS app authenticates via ASWebAuthenticationSession: the app
 // opens our /api/mobile/auth/start/:provider in a system-isolated web
-// session (no shared cookies), the provider OAuth runs, our callback
+// session (no shared cookies), the provider OAuth runs, the web callback
+// (/api/account/oauth/:provider/callback) detects the mobile state and
 // fires a `shardapp://auth/callback?code=…` deep link, the app exchanges
 // the code + its PKCE verifier for a long-lived Bearer token, then
 // stores it in the iOS Keychain. The Bearer token reuses the existing
@@ -3044,6 +3084,12 @@ app.post('/api/account/oauth/:provider/unlink', requireAccount, async (req, res)
 //
 // PKCE protects against an attacker intercepting the deep link: without
 // the verifier (only the app knows it), the auth code is useless.
+//
+// Crucial design choice: the redirect_uri we send to the OAuth provider
+// is the **same** as the web flow's (/api/account/oauth/:provider/
+// callback). That means one OAuth App per provider serves both web and
+// mobile — no extra callback URL to register, and GitHub's single-URL
+// limitation is a non-issue.
 const MOBILE_DEEP_LINK_SCHEME = 'shardapp';
 const MOBILE_AUTH_TTL_MS = 5 * 60 * 1000;
 const mobileStateStore = new Map();  // state → { provider, codeChallenge, expiresAt }
@@ -3065,40 +3111,6 @@ function consumeMobileEntry(map, key) {
     return entry;
 }
 
-// Same providers as the web flow + Discord. Discord isn't in
-// OAUTH_CONFIGS because the web Discord flow uses passport — but the
-// mobile flow does the OAuth call itself, so we just need URLs + scopes.
-const MOBILE_AUTH_PROVIDERS = {
-    discord: {
-        authUrl: 'https://discord.com/oauth2/authorize',
-        tokenUrl: 'https://discord.com/api/oauth2/token',
-        scope: 'identify email',
-        clientIdEnv: 'CLIENT_ID',
-        clientSecretEnv: 'CLIENT_SECRET',
-        idColumn: 'discord_id',
-        labelColumn: 'discord_username',
-        async fetchProfile(accessToken) {
-            const r = await axios.get('https://discord.com/api/v10/users/@me', {
-                headers: { Authorization: `Bearer ${accessToken}` },
-                timeout: 8000,
-            });
-            return {
-                providerId: String(r.data.id),
-                email: r.data.verified ? r.data.email : null,
-                username: r.data.global_name || r.data.username || null,
-                avatar: r.data.avatar || null,
-            };
-        },
-    },
-    google:  OAUTH_CONFIGS.google,
-    github:  OAUTH_CONFIGS.github,
-};
-
-function mobileCallbackUrl(provider) {
-    const base = process.env.APP_URL || 'http://localhost:3000';
-    return `${base}/api/mobile/auth/callback/${provider}`;
-}
-
 function redirectToApp(res, params) {
     // shardapp:// is registered exclusively by the iOS app; iOS guarantees
     // only the matching ASWebAuthenticationSession callback can receive it.
@@ -3110,9 +3122,11 @@ const mobileAuthLimiter = rateLimit({ windowMs: 60_000, max: 20, standardHeaders
 
 // Step 1 — the iOS app opens this URL in ASWebAuthenticationSession.
 // We stash the PKCE challenge against a random `state` token, then
-// redirect to the OAuth provider with our normal web callback URL.
+// redirect to the OAuth provider using the SHARED web callback URL.
+// When the provider bounces back to that callback, the shared handler
+// notices the mobile state and routes into handleMobileCallback below.
 app.get('/api/mobile/auth/start/:provider', mobileAuthLimiter, (req, res) => {
-    const cfg = MOBILE_AUTH_PROVIDERS[req.params.provider];
+    const cfg = OAUTH_CONFIGS[req.params.provider];
     if (!cfg) return res.status(404).type('text/plain').send('Provider inconnu');
 
     // PKCE S256: 43-128 chars base64url
@@ -3129,7 +3143,7 @@ app.get('/api/mobile/auth/start/:provider', mobileAuthLimiter, (req, res) => {
 
     const params = new URLSearchParams({
         client_id: clientId,
-        redirect_uri: mobileCallbackUrl(req.params.provider),
+        redirect_uri: oauthRedirect(req.params.provider),
         response_type: 'code',
         scope: cfg.scope,
         state,
@@ -3138,20 +3152,13 @@ app.get('/api/mobile/auth/start/:provider', mobileAuthLimiter, (req, res) => {
     res.redirect(`${cfg.authUrl}?${params}`);
 });
 
-// Step 2 — provider returns here. We finish the OAuth exchange, find /
-// create the local account using the SAME logic as the web flow, then
-// issue a short-lived `auth_code` and bounce to the deep link. The auth
-// code is exchanged for a Bearer token in step 3, so the token itself
-// never appears in a URL the OS or system log might capture.
-app.get('/api/mobile/auth/callback/:provider', async (req, res) => {
-    const provider = req.params.provider;
-    const cfg = MOBILE_AUTH_PROVIDERS[provider];
-    if (!cfg) return redirectToApp(res, { error: 'provider' });
-
-    const stateEntry = consumeMobileEntry(mobileStateStore, String(req.query.state || ''));
-    if (!stateEntry || stateEntry.provider !== provider) {
-        return redirectToApp(res, { error: 'state' });
-    }
+// Step 2 — called *from inside* /api/account/oauth/:provider/callback
+// when the incoming state matches a mobile entry. Finishes the OAuth
+// exchange, runs the same find/create logic as the web flow, then
+// issues a single-use auth code and bounces to the deep link. The
+// final Bearer token never appears in a URL the OS or system log
+// might capture — only the auth code does.
+async function handleMobileCallback(req, res, provider, cfg, stateEntry) {
     const code = String(req.query.code || '');
     if (!code) return redirectToApp(res, { error: 'code' });
 
@@ -3164,7 +3171,7 @@ app.get('/api/mobile/auth/callback/:provider', async (req, res) => {
                 client_secret: process.env[cfg.clientSecretEnv],
                 grant_type: 'authorization_code',
                 code,
-                redirect_uri: mobileCallbackUrl(provider),
+                redirect_uri: oauthRedirect(provider),
             }),
             {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
@@ -3238,7 +3245,7 @@ app.get('/api/mobile/auth/callback/:provider', async (req, res) => {
         codeChallenge: stateEntry.codeChallenge,
     });
     return redirectToApp(res, { code: authCode, provider });
-});
+}
 
 // Step 3 — the iOS app POSTs the auth code + the PKCE verifier; we
 // confirm SHA256(verifier) === stored challenge, then mint a Bearer

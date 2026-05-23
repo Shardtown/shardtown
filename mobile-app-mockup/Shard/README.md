@@ -73,11 +73,10 @@ Dans Xcode :
 
 ## Configuration côté provider OAuth
 
-Le serveur expose un **seul callback** par provider : `https://shardtwn.fr/api/mobile/auth/callback/{discord|google|github}`. Cette URL doit être ajoutée comme **callback / redirect URI autorisé** chez chaque provider :
+Bonne nouvelle : le flow mobile **réutilise le callback web existant**, `https://shardtwn.fr/api/account/oauth/{discord|google|github}/callback`. Le serveur détecte en interne (via le state token) s'il doit faire le flow web (cookie session → `/account`) ou le flow mobile (deep link → `shardapp://`).
 
-- **Discord** ([Developer Portal](https://discord.com/developers/applications)) → OAuth2 → Redirects → ajouter l'URL.
-- **Google** ([Cloud Console](https://console.cloud.google.com/apis/credentials)) → OAuth 2.0 Client → Authorized redirect URIs → ajouter l'URL.
-- **GitHub** ([Developer Settings](https://github.com/settings/developers)) → OAuth Apps n'autorisent qu'**une seule** callback URL — crée une **2e OAuth App dédiée mobile** ou bascule l'unique existante (au prix de casser le flow web).
+- **Google** et **GitHub** : ✅ aucune config OAuth à changer, l'URL est déjà enregistrée pour le web.
+- **Discord** : ajouter `https://shardtwn.fr/api/account/oauth/discord/callback` aux Redirects de l'OAuth App ([Developer Portal](https://discord.com/developers/applications) → OAuth2 → Redirects). L'URL existante `/auth/discord/callback` reste pour le flow passport web.
 
 Variables d'environnement requises côté serveur (déjà utilisées pour le web) :
 ```
