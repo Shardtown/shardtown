@@ -2911,6 +2911,8 @@ app.get('/api/account/oauth/:provider', (req, res) => {
     const clientId = process.env[cfg.clientIdEnv];
     if (!clientId) return res.status(503).send(`${req.params.provider} OAuth non configuré`);
 
+    console.log('[web-oauth] start', req.params.provider, 'ua:', String(req.headers['user-agent'] || '').slice(0, 80));
+
     const state = crypto.randomBytes(24).toString('hex');
     req.session.oauthState = { provider: req.params.provider, state };
     const params = new URLSearchParams({
