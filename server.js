@@ -2945,14 +2945,13 @@ app.get('/api/account/oauth/:provider/callback', async (req, res) => {
 
     const incomingState = String(req.query.state || '');
 
-    // Mobile flow detection: the iOS app calls /api/mobile/auth/start which
-    // stores its PKCE challenge in `mobileStateStore` keyed by the same
-    // `state` value we passed to the OAuth provider. If we find a match
-    // here, we run the mobile finisher (deep link back to the app) instead
-    // of the web flow (cookie session + /account redirect). This lets one
-    // OAuth App at GitHub/Google/Discord serve both worlds — no second
-    // callback URL to register.
-    const mobileEntry = consumeMobileEntry(mobileStateStore, incomingState);
+    // Mobile flow detection: /api/mobile/auth/start signs a state token
+    // containing { provider, codeChallenge }. If the incoming state is a
+    // valid mobile token, we run the mobile finisher (deep link back to
+    // the app) instead of the web flow (cookie session + /account
+    // redirect). Stateless — works across PM2 cluster workers and
+    // process restarts. One OAuth App per provider covers both flows.
+    const mobileEntry = verifyMobileToken('state', incomingState);
     if (mobileEntry && mobileEntry.provider === provider) {
         return handleMobileCallback(req, res, provider, cfg, mobileEntry);
     }
@@ -3092,23 +3091,40 @@ app.post('/api/account/oauth/:provider/unlink', requireAccount, async (req, res)
 // limitation is a non-issue.
 const MOBILE_DEEP_LINK_SCHEME = 'shardapp';
 const MOBILE_AUTH_TTL_MS = 5 * 60 * 1000;
-const mobileStateStore = new Map();  // state → { provider, codeChallenge, expiresAt }
-const mobileAuthCodes  = new Map();  // code  → { accountId, codeChallenge, expiresAt }
 
-function setMobileEntry(map, key, payload) {
-    map.set(key, { ...payload, expiresAt: Date.now() + MOBILE_AUTH_TTL_MS });
-    if (map.size > 1000) {
-        const now = Date.now();
-        for (const [k, v] of map) if (v.expiresAt < now) map.delete(k);
-    }
+// Stateless signed tokens — survive process restarts and work across PM2
+// cluster workers without a shared store. Format:
+//   base64url(JSON(payload)) + "." + base64url(HMAC-SHA256(data, key))
+// `kind` discriminates "state" (start → callback) from "code"
+// (callback → exchange) so a token can't be cross-used between the two
+// stages. `exp` enforces the TTL.
+const mobileTokenKey = crypto.createHmac('sha256', process.env.SESSION_SECRET)
+    .update('mobile-auth/v1')
+    .digest();
+
+function signMobileToken(kind, payload) {
+    const body = { ...payload, kind, exp: Date.now() + MOBILE_AUTH_TTL_MS };
+    const data = Buffer.from(JSON.stringify(body)).toString('base64url');
+    const mac = crypto.createHmac('sha256', mobileTokenKey).update(data).digest('base64url');
+    return `${data}.${mac}`;
 }
-function consumeMobileEntry(map, key) {
-    if (!key || typeof key !== 'string') return null;
-    const entry = map.get(key);
-    if (!entry) return null;
-    map.delete(key);
-    if (entry.expiresAt < Date.now()) return null;
-    return entry;
+
+function verifyMobileToken(kind, token) {
+    if (!token || typeof token !== 'string') return null;
+    const dot = token.indexOf('.');
+    if (dot < 1) return null;
+    const data = token.slice(0, dot);
+    const mac = token.slice(dot + 1);
+    const expected = crypto.createHmac('sha256', mobileTokenKey).update(data).digest('base64url');
+    if (mac.length !== expected.length) return null;
+    if (!crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return null;
+    let payload;
+    try {
+        payload = JSON.parse(Buffer.from(data, 'base64url').toString('utf8'));
+    } catch { return null; }
+    if (payload.kind !== kind) return null;
+    if (!payload.exp || Date.now() > payload.exp) return null;
+    return payload;
 }
 
 function redirectToApp(res, params) {
@@ -3138,8 +3154,11 @@ app.get('/api/mobile/auth/start/:provider', mobileAuthLimiter, (req, res) => {
     const clientId = process.env[cfg.clientIdEnv];
     if (!clientId) return res.status(503).type('text/plain').send(`${req.params.provider} OAuth non configuré`);
 
-    const state = crypto.randomBytes(24).toString('hex');
-    setMobileEntry(mobileStateStore, state, { provider: req.params.provider, codeChallenge: challenge });
+    // Stateless signed state — survives cluster workers + restarts.
+    const state = signMobileToken('state', {
+        provider: req.params.provider,
+        codeChallenge: challenge,
+    });
 
     const params = new URLSearchParams({
         client_id: clientId,
@@ -3239,8 +3258,9 @@ async function handleMobileCallback(req, res, provider, cfg, stateEntry) {
         return redirectToApp(res, { error: 'db' });
     }
 
-    const authCode = crypto.randomBytes(32).toString('hex');
-    setMobileEntry(mobileAuthCodes, authCode, {
+    // Stateless signed auth code — the iOS app will trade this for a
+    // Bearer token within the TTL via /api/mobile/auth/exchange.
+    const authCode = signMobileToken('code', {
         accountId: account.id,
         codeChallenge: stateEntry.codeChallenge,
     });
@@ -3259,7 +3279,7 @@ app.post('/api/mobile/auth/exchange', express.json({ limit: '4kb' }), mobileAuth
         return res.status(400).json({ error: 'code_verifier invalide' });
     }
 
-    const entry = consumeMobileEntry(mobileAuthCodes, code);
+    const entry = verifyMobileToken('code', code);
     if (!entry) return res.status(400).json({ error: 'code expiré ou invalide' });
 
     const expected = crypto.createHash('sha256').update(verifier).digest('base64')
