@@ -104,6 +104,7 @@ function AppMain() {
                   <Route path="/wiki" element={<Navigate to="/outils" replace />} />
                   <Route path="/terms" element={<Navigate to="/outils" replace />} />
                   <Route path="/privacy" element={<Navigate to="/outils" replace />} />
+                  <Route path="/produits" element={<Navigate to="/outils" replace />} />
                   <Route path="/status" element={<Navigate to="/statut" replace />} />
                   <Route path="/statut" element={<DesktopStatus />} />
                   <Route path="/premium" element={<DesktopPremium />} />

@@ -351,18 +351,27 @@ function PricingSection() {
         <PricingRow
           label="À vie"
           tag="Paiement unique"
-          price="49,97 €"
+          price="34,99 €"
           recommended
-          note="Aucun renouvellement, mises à jour incluses à vie."
+          note="34,99 € payé une seule fois. Aucun renouvellement, mises à jour incluses à vie."
           planId="lifetime"
+        />
+        <div className="border-t" style={{ borderColor: "var(--ds-border)" }} />
+        <PricingRow
+          label="Annuel"
+          tag="Économise 79 %"
+          price="1,66 €"
+          priceSuffix="/ mois"
+          note="19,99 € pour la 1ʳᵉ année, 39,99 € ensuite. Facturé annuellement."
+          planId="yearly"
         />
         <div className="border-t" style={{ borderColor: "var(--ds-border)" }} />
         <PricingRow
           label="Mensuel"
           tag="Sans engagement"
-          price="4,97 €"
+          price="3,99 €"
           priceSuffix="/ mois"
-          note="Annulable en 1 clic depuis ton compte."
+          note="3,99 € pour le premier mois, 7,99 € ensuite. Annulable en 1 clic depuis ton compte."
           planId="monthly"
         />
       </div>

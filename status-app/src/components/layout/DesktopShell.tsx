@@ -444,7 +444,7 @@ function SearchBox({
     const locations: SearchHit[] = [
       { label: "Tableau de bord",     hint: "Vue d'ensemble",                       path: "/outils" },
       { label: "Shard · Assistante",  hint: "Assistante IA",                        path: "/assistant" },
-      { label: "Shard · Discord",     hint: "Sécurité, modération & communauté",    path: "/shard/server" },
+      { label: "Mes serveurs Discord", hint: "Sécurité, modération & communauté",   path: "/shard/server" },
       { label: "Discord RPC",         hint: "Rich Presence",                        path: "/rpc" },
       { label: "Réglages",            hint: "Apparence, sons, Touch ID, thème",     path: "/preferences" },
       { label: "Statut des services", hint: "Surveillance temps réel",              path: "/statut" },
