@@ -3094,6 +3094,13 @@ app.post('/api/account/oauth/:provider/unlink', requireAccount, async (req, res)
 // mobile — no extra callback URL to register, and GitHub's single-URL
 // limitation is a non-issue.
 const MOBILE_DEEP_LINK_SCHEME = 'shardapp';
+const DESKTOP_DEEP_LINK_SCHEME = 'shardtwn';
+// Allowlist for `?scheme=` on /api/mobile/auth/start. Same OAuth flow,
+// different deep link target depending on which Shard client kicked it
+// off (iOS = shardapp://, Tauri desktop = shardtwn://). Both schemes are
+// registered as system-level URL handlers by their respective bundles,
+// so the OS guarantees only the right app receives the callback.
+const ALLOWED_DEEP_LINK_SCHEMES = new Set([MOBILE_DEEP_LINK_SCHEME, DESKTOP_DEEP_LINK_SCHEME]);
 const MOBILE_AUTH_TTL_MS = 5 * 60 * 1000;
 
 // Stateless signed tokens — survive process restarts and work across PM2
@@ -3131,11 +3138,13 @@ function verifyMobileToken(kind, token) {
     return payload;
 }
 
-function redirectToApp(res, params) {
-    // shardapp:// is registered exclusively by the iOS app; iOS guarantees
-    // only the matching ASWebAuthenticationSession callback can receive it.
+function redirectToApp(res, params, scheme = MOBILE_DEEP_LINK_SCHEME) {
+    // The URL scheme is registered exclusively by the matching native app
+    // bundle (shardapp = iOS, shardtwn = Tauri desktop); the OS guarantees
+    // only that app can receive the callback URL.
+    const effective = ALLOWED_DEEP_LINK_SCHEMES.has(scheme) ? scheme : MOBILE_DEEP_LINK_SCHEME;
     const qs = new URLSearchParams(params).toString();
-    return res.redirect(`${MOBILE_DEEP_LINK_SCHEME}://auth/callback?${qs}`);
+    return res.redirect(`${effective}://auth/callback?${qs}`);
 }
 
 const mobileAuthLimiter = rateLimit({ windowMs: 60_000, max: 20, standardHeaders: true, legacyHeaders: false });
@@ -3155,6 +3164,11 @@ app.get('/api/mobile/auth/start/:provider', mobileAuthLimiter, (req, res) => {
         return res.status(400).type('text/plain').send('code_challenge invalide');
     }
 
+    // Optional `?scheme=` picks the deep-link target (iOS vs Tauri desktop).
+    // Default keeps backwards-compat with the iOS app that doesn't send one.
+    const rawScheme = String(req.query.scheme || MOBILE_DEEP_LINK_SCHEME);
+    const scheme = ALLOWED_DEEP_LINK_SCHEMES.has(rawScheme) ? rawScheme : MOBILE_DEEP_LINK_SCHEME;
+
     const clientId = process.env[cfg.clientIdEnv];
     if (!clientId) return res.status(503).type('text/plain').send(`${req.params.provider} OAuth non configuré`);
 
@@ -3162,8 +3176,9 @@ app.get('/api/mobile/auth/start/:provider', mobileAuthLimiter, (req, res) => {
     const state = signMobileToken('state', {
         provider: req.params.provider,
         codeChallenge: challenge,
+        scheme,
     });
-    console.log('[mobile-auth] start', req.params.provider, 'state-len:', state.length);
+    console.log('[mobile-auth] start', req.params.provider, 'scheme:', scheme, 'state-len:', state.length);
 
     const params = new URLSearchParams({
         client_id: clientId,
@@ -3183,8 +3198,9 @@ app.get('/api/mobile/auth/start/:provider', mobileAuthLimiter, (req, res) => {
 // final Bearer token never appears in a URL the OS or system log
 // might capture — only the auth code does.
 async function handleMobileCallback(req, res, provider, cfg, stateEntry) {
+    const scheme = stateEntry.scheme || MOBILE_DEEP_LINK_SCHEME;
     const code = String(req.query.code || '');
-    if (!code) return redirectToApp(res, { error: 'code' });
+    if (!code) return redirectToApp(res, { error: 'code' }, scheme);
 
     let profile;
     try {
@@ -3205,10 +3221,10 @@ async function handleMobileCallback(req, res, provider, cfg, stateEntry) {
         profile = await cfg.fetchProfile(tokenRes.data.access_token);
     } catch (err) {
         console.error(`[mobile-auth:${provider}]`, err.response?.data || err.message);
-        return redirectToApp(res, { error: 'exchange' });
+        return redirectToApp(res, { error: 'exchange' }, scheme);
     }
 
-    if (!profile.providerId) return redirectToApp(res, { error: 'profile' });
+    if (!profile.providerId) return redirectToApp(res, { error: 'profile' }, scheme);
 
     let account;
     try {
@@ -3233,7 +3249,7 @@ async function handleMobileCallback(req, res, provider, cfg, stateEntry) {
         }
 
         if (!account) {
-            if (!profile.email) return redirectToApp(res, { error: 'no_email' });
+            if (!profile.email) return redirectToApp(res, { error: 'no_email' }, scheme);
             const pseudo = await uniquePseudo(profile.username || profile.email.split('@')[0]);
             const salt = crypto.randomBytes(16).toString('hex');
             const randomPwd = crypto.randomBytes(32).toString('hex');
@@ -3260,17 +3276,18 @@ async function handleMobileCallback(req, res, provider, cfg, stateEntry) {
         await db.execute('UPDATE accounts SET last_login_at = NOW() WHERE id = ?', [account.id]);
     } catch (err) {
         console.error(`[mobile-auth:${provider}] db`, err.message);
-        return redirectToApp(res, { error: 'db' });
+        return redirectToApp(res, { error: 'db' }, scheme);
     }
 
-    // Stateless signed auth code — the iOS app will trade this for a
+    // Stateless signed auth code — the native app will trade this for a
     // Bearer token within the TTL via /api/mobile/auth/exchange.
     const authCode = signMobileToken('code', {
         accountId: account.id,
         codeChallenge: stateEntry.codeChallenge,
+        scheme,
     });
-    console.log('[mobile-auth] callback OK', provider, 'account:', account.id, 'deep-link →');
-    return redirectToApp(res, { code: authCode, provider });
+    console.log('[mobile-auth] callback OK', provider, 'scheme:', scheme, 'account:', account.id, 'deep-link →');
+    return redirectToApp(res, { code: authCode, provider }, scheme);
 }
 
 // Step 3 — the iOS app POSTs the auth code + the PKCE verifier; we
@@ -3297,9 +3314,10 @@ app.post('/api/mobile/auth/exchange', express.json({ limit: '4kb' }), mobileAuth
     try {
         const token = TOKEN_PREFIX + crypto.randomBytes(TOKEN_BYTES).toString('hex');
         const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const tokenLabel = entry.scheme === DESKTOP_DEEP_LINK_SCHEME ? 'Desktop Shard app' : 'iOS Shard app';
         await db.execute(
             'INSERT INTO account_personal_tokens (account_id, name, token_hash) VALUES (?, ?, ?)',
-            [entry.accountId, 'iOS Shard app', tokenHash],
+            [entry.accountId, tokenLabel, tokenHash],
         );
         const [rows] = await db.execute('SELECT * FROM accounts WHERE id = ? LIMIT 1', [entry.accountId]);
         if (!rows[0]) return res.status(500).json({ error: 'Compte introuvable' });
