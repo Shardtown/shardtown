@@ -104,6 +104,7 @@ function AppMain() {
                   <Route path="/wiki" element={<Navigate to="/outils" replace />} />
                   <Route path="/terms" element={<Navigate to="/outils" replace />} />
                   <Route path="/privacy" element={<Navigate to="/outils" replace />} />
+                  <Route path="/produits" element={<Navigate to="/outils" replace />} />
                   <Route path="/status" element={<Navigate to="/statut" replace />} />
                   <Route path="/statut" element={<DesktopStatus />} />
                   <Route path="/premium" element={<DesktopPremium />} />
@@ -129,9 +130,9 @@ function AppMain() {
               <Route path="/dashboard" element={<Navigate to="/outils" replace />} />
               <Route path="/shard/server" element={IS_DESKTOP ? <DesktopBotServer /> : <ShardServer />} />
               <Route path="/shard/guild/:guildId" element={<ShardGuild />} />
-              <Route path="/admin/login" element={<AdminLogin />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/admin/guild/:guildId" element={<AdminGuildDetail />} />
+              {!IS_DESKTOP && <Route path="/admin/login" element={<AdminLogin />} />}
+              {!IS_DESKTOP && <Route path="/admin" element={<Admin />} />}
+              {!IS_DESKTOP && <Route path="/admin/guild/:guildId" element={<AdminGuildDetail />} />}
               <Route path="/account/signup" element={<Navigate to="/account/login?mode=register" replace />} />
               <Route path="/account/login" element={<AccountLogin />} />
               <Route path="/account/verify" element={<VerifyEmail />} />

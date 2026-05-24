@@ -934,6 +934,30 @@
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
+.dl-oauth-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.dl-oauth-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 120ms ease;
+}
+.dl-oauth-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.dl-oauth-btn:active:not(:disabled) { transform: scale(0.98); }
+.dl-oauth-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .dl-link, .dl-demo {
   background: transparent;
   border: 0;

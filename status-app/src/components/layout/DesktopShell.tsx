@@ -84,7 +84,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
     { to: "/shard/server", icon: <BotAvatar src="/image/shard.png" size={22} alt="Shard" />,      label: "Mes serveurs Discord" },
     { to: "/assistant",    icon: <MessageCircle size={18} strokeWidth={1.8} />,                   label: "Shard · Assistante" },
     { to: "/statut",       icon: <Activity size={18} strokeWidth={1.8} />,                        label: "Statut des services" },
-    { to: "/premium",      icon: <Crown size={18} strokeWidth={1.8} />,                           label: isPremium ? "Mon abonnement Premium" : "Passer en Premium" },
+    { to: "/premium",      icon: <Crown size={18} strokeWidth={1.8} />,                           label: "Premium" },
     { to: "/rpc",          icon: <Sparkles size={18} strokeWidth={1.8} />,                        label: "Discord RPC" },
   ];
 
@@ -444,7 +444,7 @@ function SearchBox({
     const locations: SearchHit[] = [
       { label: "Tableau de bord",     hint: "Vue d'ensemble",                       path: "/outils" },
       { label: "Shard · Assistante",  hint: "Assistante IA",                        path: "/assistant" },
-      { label: "Shard · Discord",     hint: "Sécurité, modération & communauté",    path: "/shard/server" },
+      { label: "Mes serveurs Discord", hint: "Sécurité, modération & communauté",   path: "/shard/server" },
       { label: "Discord RPC",         hint: "Rich Presence",                        path: "/rpc" },
       { label: "Réglages",            hint: "Apparence, sons, Touch ID, thème",     path: "/preferences" },
       { label: "Statut des services", hint: "Surveillance temps réel",              path: "/statut" },
@@ -490,9 +490,10 @@ function SearchBox({
   return (
     <div className="relative w-[min(720px,68vw)]">
       <div
-        className="flex items-center gap-3 h-[48px] px-5 rounded-full border cursor-text transition-all duration-300 backdrop-blur-xl bg-white/[0.06] border-white/15 hover:bg-white/[0.08] shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)]"
+        className="flex items-center gap-3 h-[48px] px-5 rounded-full border cursor-text transition-all duration-300 backdrop-blur-xl shadow-[0_8px_32px_-12px_rgba(0,0,0,0.6)]"
         style={{
-          borderColor: open ? "rgba(255,255,255,0.22)" : undefined,
+          background: "var(--ds-panel-2)",
+          borderColor: open ? "var(--ds-border-strong)" : "var(--ds-border)",
         }}
         onClick={() => {
           setOpen(true);

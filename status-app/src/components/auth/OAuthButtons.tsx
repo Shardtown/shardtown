@@ -100,9 +100,14 @@ export function OAuthIcons({ label = "Ou continuer avec", onPasskey, passkeyDisa
 export function OrDivider({ label = "ou" }: { label?: string }) {
   return (
     <div className="relative my-5">
-      <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/[0.08]" /></div>
+      <div className="absolute inset-0 flex items-center">
+        <div className="w-full border-t" style={{ borderColor: "var(--ds-border)" }} />
+      </div>
       <div className="relative flex justify-center">
-        <span className="bg-[#0a0a0a] px-3 text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">
+        <span
+          className="px-3 text-[10px] font-bold tracking-[0.22em] uppercase"
+          style={{ background: "var(--ds-bg)", color: "var(--ds-text-faint)" }}
+        >
           {label}
         </span>
       </div>

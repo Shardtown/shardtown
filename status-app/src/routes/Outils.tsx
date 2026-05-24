@@ -151,12 +151,12 @@ export function Outils() {
             Connecte-toi à ton <span className="text-white">compte Shardtown</span>{" "}
             pour accéder à tes outils et configurer tes serveurs.
           </motion.p>
-          <a
-            href="/account/login"
+          <Link
+            to="/account/login"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white text-black text-sm font-bold hover:opacity-90 transition-opacity"
           >
             Se connecter <ArrowRight className="w-4 h-4" />
-          </a>
+          </Link>
         </section>
       </AppLayout>
     );
