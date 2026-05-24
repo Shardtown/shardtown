@@ -575,9 +575,11 @@ function Message({ m }: { m: ChatMessage }) {
       )}
     >
       {!isUser && (
-        <div className="w-8 h-8 rounded-2xl bg-white/[0.04] border border-white/[0.1] shrink-0 flex items-center justify-center text-[10px] font-bold tracking-wider text-white/65">
-          S
-        </div>
+        <img
+          src="/image/shard.png"
+          alt="Shard"
+          className="w-8 h-8 rounded-2xl border border-white/[0.1] object-cover shrink-0"
+        />
       )}
       <div
         className={cn(
@@ -669,9 +671,11 @@ function MarkdownReply({ content }: { content: string }) {
 function ThinkingBubble() {
   return (
     <div className="flex items-start gap-3 justify-start">
-      <div className="w-8 h-8 rounded-2xl bg-white/[0.04] border border-white/[0.1] shrink-0 flex items-center justify-center text-[10px] font-bold tracking-wider text-white/65">
-        S
-      </div>
+      <img
+        src="/image/shard.png"
+        alt="Shard"
+        className="w-8 h-8 rounded-2xl border border-white/[0.1] object-cover shrink-0"
+      />
       <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-white/[0.04] border border-white/[0.08] inline-flex items-center gap-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-white/50 animate-[bounce_1s_infinite] [animation-delay:-0.3s]" />
         <span className="w-1.5 h-1.5 rounded-full bg-white/50 animate-[bounce_1s_infinite] [animation-delay:-0.15s]" />
