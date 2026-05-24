@@ -42,7 +42,7 @@ export function Terms() {
           <a href="https://shardtwn.fr" className="underline mx-1">shardtwn.fr</a>
           et tout sous-domaine, les applications mobiles et desktop éditées
           par Shardtown, le bot Discord Shard, le tableau de bord,
-          l'assistante IA Samia, les services en ligne
+          l'assistante IA Shard, les services en ligne
           et abonnements numériques, ainsi que toute prestation de
           conception, de développement, d'intégration, de configuration ou
           de maintenance fournie par l'Éditeur (ensemble : les
@@ -210,7 +210,7 @@ export function Terms() {
       <LegalSection id="ip" title="11. Propriété intellectuelle">
         <p>
           L'ensemble des éléments composant les Services (codes sources, marques
-          « Shardtown », « Shard », « Samia », logos, designs,
+          « Shardtown », « Shard », logos, designs,
           textes, illustrations, base de connaissance) est la propriété
           exclusive de l'Éditeur ou de ses concédants, et protégé par le Code
           de la propriété intellectuelle.
@@ -356,7 +356,7 @@ export function Terms() {
         <ul className="list-disc pl-5 space-y-2">
           <li>Email : <strong>contact@shardtwn.fr</strong></li>
           <li>Discord : serveur de support officiel (lien sur shardtwn.fr).</li>
-          <li>Assistante IA : <Link to="/assistant" className="underline">Samia</Link> pour les questions générales.</li>
+          <li>Assistante IA : <Link to="/assistant" className="underline">Shard</Link> pour les questions générales.</li>
         </ul>
       </LegalSection>
     </LegalPage>

@@ -234,7 +234,7 @@ export function Outils() {
             href="/assistant"
             icon={<Sparkles className="w-4 h-4" strokeWidth={2} />}
             tagline="Assistante IA"
-            label="Samia"
+            label="Shard"
             description="Pose tes questions sur le bot, le dashboard, le Premium ou nos services."
           />
           <SecondaryCard

@@ -37,7 +37,7 @@ import { SamiaChat } from "@/routes/Assistant";
 const TABS = [
   // ─── Section haute (épinglée, pas d'en-tête de groupe) ──────────────
   { key: "overview",    label: "Tableau de bord",   icon: LayoutGrid,    group: "Pinned", side: "any",      pinned: true },
-  { key: "samia",       label: "Samia",             icon: Wand2,         group: "Pinned", side: "any",      pinned: true, badge: "Bêta" },
+  { key: "samia",       label: "Assistante Shard",  icon: Wand2,         group: "Pinned", side: "any",      pinned: true, badge: "Bêta" },
   { key: "custombot",   label: "Bot personnalisé",  icon: Smile,         group: "Pinned", side: "any",      pinned: true },
   { key: "general",     label: "Paramètres",        icon: Settings,      group: "Pinned", side: "security", pinned: true },
   { key: "premium",     label: "Premium",           icon: Crown,         group: "Pinned", side: "any",      pinned: true },
@@ -720,7 +720,7 @@ export function ShardGuild() {
                   de DA "transparente". */}
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] backdrop-blur-sm p-2 space-y-3">
                 {/* Section haute — items épinglés (style mee6, sans
-                    en-tête de groupe). Premium et Samia restent dans
+                    en-tête de groupe). Premium et l'assistante restent dans
                     l'ensemble unifié. */}
                 <div className="flex md:flex-col gap-0.5">
                   {TABS.filter(t => "pinned" in t && t.pinned).map(t => (

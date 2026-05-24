@@ -82,7 +82,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
   const navItems: NavSpec[] = [
     { to: "/outils",       icon: <LayoutGrid size={18} strokeWidth={1.8} />,                      label: "Tableau de bord" },
     { to: "/shard/server", icon: <BotAvatar src="/image/shard.png" size={22} alt="Shard" />,      label: "Mes serveurs Discord" },
-    { to: "/assistant",    icon: <MessageCircle size={18} strokeWidth={1.8} />,                   label: "Samia" },
+    { to: "/assistant",    icon: <MessageCircle size={18} strokeWidth={1.8} />,                   label: "Shard · Assistante" },
     { to: "/statut",       icon: <Activity size={18} strokeWidth={1.8} />,                        label: "Statut des services" },
     { to: "/premium",      icon: <Crown size={18} strokeWidth={1.8} />,                           label: isPremium ? "Mon abonnement Premium" : "Passer en Premium" },
     { to: "/rpc",          icon: <Sparkles size={18} strokeWidth={1.8} />,                        label: "Discord RPC" },
@@ -443,7 +443,7 @@ function SearchBox({
 
     const locations: SearchHit[] = [
       { label: "Tableau de bord",     hint: "Vue d'ensemble",                       path: "/outils" },
-      { label: "Samia",               hint: "Assistante IA",                        path: "/assistant" },
+      { label: "Shard · Assistante",  hint: "Assistante IA",                        path: "/assistant" },
       { label: "Shard · Discord",     hint: "Sécurité, modération & communauté",    path: "/shard/server" },
       { label: "Discord RPC",         hint: "Rich Presence",                        path: "/rpc" },
       { label: "Réglages",            hint: "Apparence, sons, Touch ID, thème",     path: "/preferences" },
