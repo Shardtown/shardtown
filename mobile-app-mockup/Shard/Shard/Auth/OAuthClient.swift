@@ -47,6 +47,7 @@ final class OAuthClient: NSObject, ASWebAuthenticationPresentationContextProvidi
             URLQueryItem(name: "code_challenge", value: pkce.challenge),
         ]
         let startURL = components.url!
+        print("[Shard.oauth] startFlow provider=\(provider.rawValue) url=\(startURL.absoluteString)")
 
         let callbackURL: URL = try await withCheckedThrowingContinuation { continuation in
             let session = ASWebAuthenticationSession(
@@ -70,9 +71,11 @@ final class OAuthClient: NSObject, ASWebAuthenticationPresentationContextProvidi
             session.presentationContextProvider = self
             session.prefersEphemeralWebBrowserSession = true
             self.session = session
-            session.start()
+            let started = session.start()
+            print("[Shard.oauth] session.start() returned \(started)")
         }
 
+        print("[Shard.oauth] callback url=\(callbackURL.absoluteString)")
         let comps = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)
         if let err = comps?.queryItems?.first(where: { $0.name == "error" })?.value {
             throw AuthError.providerError(err)
