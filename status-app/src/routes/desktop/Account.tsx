@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   LogOut, ShieldCheck, ShieldAlert, RefreshCw, Fingerprint,
   Plus, Trash2, Loader2, X, KeyRound, Copy, Check, User as UserIcon,
+  LayoutGrid,
 } from "lucide-react";
 import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@/api/passkey";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -450,6 +451,16 @@ export function DesktopAccount() {
             </CardList>
           )}
         </Section>
+
+        <div className="flex items-center justify-center pt-2">
+          <Link
+            to="/outils"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-[13px] font-bold transition-opacity hover:opacity-90"
+            style={{ background: "var(--ds-accent)", color: "var(--ds-accent-on)" }}
+          >
+            <LayoutGrid size={14} strokeWidth={2} /> Aller à mes outils
+          </Link>
+        </div>
       </div>
 
       {/* ─── MODALS ───────────────────────────────────────── */}
