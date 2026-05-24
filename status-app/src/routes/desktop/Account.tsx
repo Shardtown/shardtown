@@ -50,6 +50,11 @@ export function DesktopAccount() {
   const [revealedToken, setRevealedToken] = useState<{ name: string; token: string } | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [tokenToDelete, setTokenToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [unlinkConfirm, setUnlinkConfirm] = useState<{
+    label: string;
+    detail: string;
+    onConfirm: () => Promise<void>;
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -161,15 +166,25 @@ export function DesktopAccount() {
     nav("/outils", { replace: true });
   }
 
-  async function unlink() {
-    if (!confirm("Délier ta connexion Discord ?")) return;
-    try { await apiPost("/api/account/discord/unlink"); setBanner({ kind: "ok", text: "Connexion Discord déliée." }); refresh(); }
-    catch { setBanner({ kind: "error", text: "Échec du déliage." }); }
+  function unlink() {
+    setUnlinkConfirm({
+      label: "Discord",
+      detail: "Tu pourras te reconnecter à tout moment via la section Connexions.",
+      onConfirm: async () => {
+        try { await apiPost("/api/account/discord/unlink"); setBanner({ kind: "ok", text: "Connexion Discord déliée." }); refresh(); }
+        catch { setBanner({ kind: "error", text: "Échec du déliage." }); }
+      },
+    });
   }
-  async function unlinkShard() {
-    if (!confirm("Délier ta connexion secondaire ?")) return;
-    try { await apiPost("/api/account/shard/unlink"); setBanner({ kind: "ok", text: "Connexion secondaire déliée." }); refresh(); }
-    catch { setBanner({ kind: "error", text: "Échec du déliage." }); }
+  function unlinkShard() {
+    setUnlinkConfirm({
+      label: "la connexion secondaire",
+      detail: "Le compte Discord secondaire ne sera plus rattaché.",
+      onConfirm: async () => {
+        try { await apiPost("/api/account/shard/unlink"); setBanner({ kind: "ok", text: "Connexion secondaire déliée." }); refresh(); }
+        catch { setBanner({ kind: "error", text: "Échec du déliage." }); }
+      },
+    });
   }
   async function refreshGuilds() {
     setRefreshing(true);
@@ -345,10 +360,15 @@ export function DesktopAccount() {
               linkedId={account.oauth_google_id}
               linkedName={account.oauth_google_email}
               hrefLink="/api/account/oauth/google"
-              onUnlink={async () => {
-                if (!confirm("Délier Google ?")) return;
-                await apiPost("/api/account/oauth/google/unlink").catch(() => {});
-                refresh();
+              onUnlink={() => {
+                setUnlinkConfirm({
+                  label: "Google",
+                  detail: "Tu ne pourras plus te connecter via Google tant que tu ne le relieras pas.",
+                  onConfirm: async () => {
+                    await apiPost("/api/account/oauth/google/unlink").catch(() => {});
+                    refresh();
+                  },
+                });
               }}
             />
             <ConnectionRow
@@ -358,10 +378,15 @@ export function DesktopAccount() {
               linkedId={account.oauth_github_id}
               linkedName={account.oauth_github_username}
               hrefLink="/api/account/oauth/github"
-              onUnlink={async () => {
-                if (!confirm("Délier GitHub ?")) return;
-                await apiPost("/api/account/oauth/github/unlink").catch(() => {});
-                refresh();
+              onUnlink={() => {
+                setUnlinkConfirm({
+                  label: "GitHub",
+                  detail: "Tu ne pourras plus te connecter via GitHub tant que tu ne le relieras pas.",
+                  onConfirm: async () => {
+                    await apiPost("/api/account/oauth/github/unlink").catch(() => {});
+                    refresh();
+                  },
+                });
               }}
             />
           </CardList>
@@ -558,6 +583,23 @@ export function DesktopAccount() {
         <ModalActions
           cancelLabel="Annuler" onCancel={() => setTokenToDelete(null)}
           confirmLabel="Révoquer" onConfirm={confirmDeleteToken} danger
+        />
+      </Modal>
+
+      <Modal open={!!unlinkConfirm} onClose={() => setUnlinkConfirm(null)}>
+        <ModalHeader icon={<X size={18} strokeWidth={1.8} />} kicker="Confirmation" title={`Délier ${unlinkConfirm?.label} ?`} danger />
+        <p className="text-[13px] mb-4" style={{ color: "var(--ds-text-mut)" }}>
+          {unlinkConfirm?.detail}
+        </p>
+        <ModalActions
+          cancelLabel="Annuler" onCancel={() => setUnlinkConfirm(null)}
+          confirmLabel="Délier"
+          onConfirm={async () => {
+            const fn = unlinkConfirm?.onConfirm;
+            setUnlinkConfirm(null);
+            if (fn) await fn();
+          }}
+          danger
         />
       </Modal>
     </AppLayout>

@@ -45,6 +45,11 @@ export function Account() {
   const [revealedToken, setRevealedToken] = useState<{ name: string; token: string } | null>(null);
   const [tokenCopied, setTokenCopied] = useState(false);
   const [tokenToDelete, setTokenToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [unlinkConfirm, setUnlinkConfirm] = useState<{
+    label: string;
+    detail: string;
+    onConfirm: () => Promise<void>;
+  } | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -193,26 +198,36 @@ export function Account() {
     nav("/", { replace: true });
   }
 
-  async function unlink() {
-    if (!confirm("Délier ta connexion Discord ?")) return;
-    try {
-      await apiPost("/api/account/discord/unlink");
-      setBanner({ kind: "ok", text: "Connexion Discord déliée." });
-      refresh();
-    } catch {
-      setBanner({ kind: "error", text: "Échec du déliage." });
-    }
+  function unlink() {
+    setUnlinkConfirm({
+      label: "Discord",
+      detail: "Tu pourras te reconnecter à tout moment via la section Connexions.",
+      onConfirm: async () => {
+        try {
+          await apiPost("/api/account/discord/unlink");
+          setBanner({ kind: "ok", text: "Connexion Discord déliée." });
+          refresh();
+        } catch {
+          setBanner({ kind: "error", text: "Échec du déliage." });
+        }
+      },
+    });
   }
 
-  async function unlinkShard() {
-    if (!confirm("Délier ta connexion secondaire ?")) return;
-    try {
-      await apiPost("/api/account/shard/unlink");
-      setBanner({ kind: "ok", text: "Connexion secondaire déliée." });
-      refresh();
-    } catch {
-      setBanner({ kind: "error", text: "Échec du déliage." });
-    }
+  function unlinkShard() {
+    setUnlinkConfirm({
+      label: "la connexion secondaire",
+      detail: "Le compte Discord secondaire ne sera plus rattaché.",
+      onConfirm: async () => {
+        try {
+          await apiPost("/api/account/shard/unlink");
+          setBanner({ kind: "ok", text: "Connexion secondaire déliée." });
+          refresh();
+        } catch {
+          setBanner({ kind: "error", text: "Échec du déliage." });
+        }
+      },
+    });
   }
 
   async function refreshGuilds() {
@@ -410,10 +425,15 @@ export function Account() {
               linkedId={account.oauth_google_id}
               linkedName={account.oauth_google_email}
               hrefLink="/api/account/oauth/google"
-              onUnlink={async () => {
-                if (!confirm("Délier Google ?")) return;
-                await apiPost("/api/account/oauth/google/unlink").catch(() => {});
-                refresh();
+              onUnlink={() => {
+                setUnlinkConfirm({
+                  label: "Google",
+                  detail: "Tu ne pourras plus te connecter via Google tant que tu ne le relieras pas.",
+                  onConfirm: async () => {
+                    await apiPost("/api/account/oauth/google/unlink").catch(() => {});
+                    refresh();
+                  },
+                });
               }}
             />
 
@@ -425,10 +445,15 @@ export function Account() {
               linkedId={account.oauth_github_id}
               linkedName={account.oauth_github_username}
               hrefLink="/api/account/oauth/github"
-              onUnlink={async () => {
-                if (!confirm("Délier GitHub ?")) return;
-                await apiPost("/api/account/oauth/github/unlink").catch(() => {});
-                refresh();
+              onUnlink={() => {
+                setUnlinkConfirm({
+                  label: "GitHub",
+                  detail: "Tu ne pourras plus te connecter via GitHub tant que tu ne le relieras pas.",
+                  onConfirm: async () => {
+                    await apiPost("/api/account/oauth/github/unlink").catch(() => {});
+                    refresh();
+                  },
+                });
               }}
             />
           </div>
@@ -841,6 +866,61 @@ export function Account() {
                 className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90"
               >
                 Révoquer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {unlinkConfirm && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          onClick={() => setUnlinkConfirm(null)}
+          onKeyDown={e => e.key === "Escape" && setUnlinkConfirm(null)}
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+          <div
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setUnlinkConfirm(null)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+              aria-label="Fermer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-red-500/10 text-red-300 border border-red-500/20 mb-5">
+              <X className="w-5 h-5" />
+            </div>
+            <p className="text-[10px] font-bold tracking-[0.28em] text-red-300/80 uppercase mb-2">
+              Confirmation
+            </p>
+            <h3 className="text-xl font-extrabold tracking-tight mb-2">
+              Délier {unlinkConfirm.label} ?
+            </h3>
+            <p className="text-white/55 text-sm leading-relaxed mb-6">
+              {unlinkConfirm.detail}
+            </p>
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setUnlinkConfirm(null)}
+                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const fn = unlinkConfirm.onConfirm;
+                  setUnlinkConfirm(null);
+                  await fn();
+                }}
+                className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90"
+              >
+                Délier
               </button>
             </div>
           </div>
