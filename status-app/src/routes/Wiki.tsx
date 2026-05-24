@@ -719,7 +719,7 @@ export function Wiki() {
           >
             <Sparkles className="w-3.5 h-3.5 text-white/60" />
             <span className="text-[13px] font-medium">
-              Pas envie de chercher ? Demande à Samia, l'assistante IA
+              Pas envie de chercher ? Demande à Shard, l'assistante IA
             </span>
             <ArrowRight className="w-3.5 h-3.5 text-white/40 group-hover:text-white group-hover:translate-x-0.5 transition-all" />
           </Link>

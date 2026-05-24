@@ -278,7 +278,7 @@ export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
               transition={{ duration: 0.6, delay: 0.15, ease: heroEase }}
               className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl mb-5"
             >
-              Samia est hors-ligne
+              Shard est hors-ligne
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: reduce ? 0 : 16 }}
@@ -337,7 +337,7 @@ export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
               animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
               transition={{ duration: 0.95, delay: 0.15, ease: heroEase }}
             >
-              SAMIA
+              SHARD
             </motion.h1>
             <motion.p
               className="text-lg md:text-xl text-white/60 max-w-xl mx-auto leading-relaxed mb-14"
@@ -353,7 +353,7 @@ export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
           // Conversation header — discreet
           <div className="max-w-3xl mx-auto mb-6 flex items-center gap-3">
             <p className="text-[11px] font-bold tracking-widest text-white/35 uppercase">
-              Conversation avec Samia
+              Conversation avec Shard
             </p>
             <span className="flex-1 h-px bg-white/[0.06]" />
             <button
@@ -405,7 +405,7 @@ export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
                   send(draft);
                 }
               }}
-              placeholder="Pose ta question à Samia…"
+              placeholder="Pose ta question à Shard…"
               maxLength={2000}
               disabled={sending}
               rows={1}
@@ -537,7 +537,7 @@ function ConfirmResetCard({
               Effacer la conversation&nbsp;?
             </h3>
             <p className="text-[14px] text-white/55 leading-relaxed mb-7">
-              Tous tes échanges avec Samia seront supprimés. Cette action est
+              Tous tes échanges avec Shard seront supprimés. Cette action est
               irréversible.
             </p>
 

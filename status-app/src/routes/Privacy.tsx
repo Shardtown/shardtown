@@ -11,7 +11,7 @@ const TOC = [
   { id: "securite", label: "7. Sécurité" },
   { id: "cookies", label: "8. Cookies & stockage local" },
   { id: "mineurs", label: "9. Mineurs" },
-  { id: "ia", label: "10. Assistante IA Samia" },
+  { id: "ia", label: "10. Assistante IA Shard" },
   { id: "droits", label: "11. Vos droits (RGPD)" },
   { id: "violation", label: "12. Violation de données" },
   { id: "evolution", label: "13. Évolution de la politique" },
@@ -83,7 +83,7 @@ export function Privacy() {
             journaux d'erreurs et de requêtes.
           </li>
           <li>
-            <strong>Conversations avec Samia</strong> (notre assistante IA) :
+            <strong>Conversations avec Shard</strong> (notre assistante IA) :
             les messages échangés sont conservés <strong>uniquement en
             mémoire process</strong> pendant une heure d'inactivité, puis
             effacés automatiquement. Aucun stockage en base de données.
@@ -111,7 +111,7 @@ export function Privacy() {
           <li>
             <strong>Consentement</strong> (art. 6.1.a) : connexion via
             Discord OAuth2, opt-in à des fonctionnalités optionnelles,
-            sauvegarde de l'historique de conversation avec Samia.
+            sauvegarde de l'historique de conversation avec Shard.
           </li>
           <li>
             <strong>Obligation légale</strong> (art. 6.1.c) : conservation
@@ -143,7 +143,7 @@ export function Privacy() {
             <strong>Hébergeur</strong> — serveur dédié situé en
             <strong> Allemagne (Union Européenne)</strong>. Stockage de la
             base de données, exécution du backend Node.js, hébergement du
-            modèle d'IA Samia (auto-hébergé via Ollama, aucune requête
+            modèle d'IA Shard (auto-hébergé via Ollama, aucune requête
             sortante vers une IA tierce).
           </li>
           <li>
@@ -178,7 +178,7 @@ export function Privacy() {
           <li><strong>Compte (Discord OAuth ou compte Shardtown)</strong> : tant que vous l'utilisez. Suppression automatique après 30 jours d'inactivité prolongée ou sur demande.</li>
           <li><strong>Configuration & modération d'un serveur</strong> : tant que le bot est présent sur le serveur. 30 jours après son retrait, puis suppression automatique.</li>
           <li><strong>Logs techniques & adresses IP</strong> : 30 jours maximum.</li>
-          <li><strong>Conversations avec Samia</strong> : 1 heure en mémoire process puis effacement automatique. Aucune persistance.</li>
+          <li><strong>Conversations avec Shard</strong> : 1 heure en mémoire process puis effacement automatique. Aucune persistance.</li>
           <li><strong>Données de paiement (factures, IDs Stripe)</strong> : 10 ans, conformément aux obligations comptables et fiscales (art. L.123-22 Code de commerce).</li>
           <li><strong>Tokens d'authentification, cookies de session</strong> : 24 heures.</li>
           <li><strong>Codes de vérification email</strong> : 15 minutes.</li>
@@ -238,9 +238,9 @@ export function Privacy() {
         </p>
       </LegalSection>
 
-      <LegalSection id="ia" title="10. Assistante IA Samia">
+      <LegalSection id="ia" title="10. Assistante IA Shard">
         <p>
-          Samia est notre assistante conversationnelle accessible depuis
+          Shard est notre assistante conversationnelle accessible depuis
           <Link to="/assistant" className="underline mx-1">/assistant</Link>.
           Elle fonctionne sur un <strong>modèle d'IA auto-hébergé</strong>
           (Ollama) sur notre serveur en Allemagne. Aucune requête n'est
