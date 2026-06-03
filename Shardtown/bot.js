@@ -118,7 +118,7 @@ async function registerCommands() {
 
 client.once('clientReady', () => {
     console.log(`[Shardtown] Connecté en tant que ${client.user.tag} (shard ${client.shard?.ids?.[0] ?? '?'}).`);
-    client.user.setActivity('shardtown.fr', { type: 3 }); // 3 = Watching
+    client.user.setActivity('shardtwn.fr', { type: 3 }); // 3 = Watching
     registerCommands();
 });
 
