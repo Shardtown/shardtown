@@ -999,6 +999,26 @@ app.use(session({
     }
 }));
 
+// ─── Maintenance mode ──────────────────────────────────────────────────────
+// Set MAINTENANCE_MODE=true in .env to block access to the whole site.
+// Exempted: Stripe webhooks, static assets needed by the maintenance page,
+// auto-updater payloads, and the download redirect.
+if (process.env.MAINTENANCE_MODE === 'true') {
+    const MAINTENANCE_HTML = path.join(__dirname, 'views', 'maintenance.html');
+    app.use((req, res, next) => {
+        const p = req.path;
+        if (
+            p.startsWith('/webhook/') ||
+            p.startsWith('/image/') ||
+            p.startsWith('/updates/') ||
+            p === '/download/mac' ||
+            p === '/favicon.ico'
+        ) return next();
+        res.status(503).sendFile(MAINTENANCE_HTML);
+    });
+}
+// ──────────────────────────────────────────────────────────────────────────
+
 app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
     const sig = req.headers['stripe-signature'];
     let event;
@@ -1109,6 +1129,25 @@ app.use((req, res, next) => {
     next();
 });
 app.use('/image', express.static(path.join(__dirname, 'image')));
+
+// apple-app-site-association — utilisé par l'app iOS Shardtown (ShardLink)
+// pour autoriser les passkeys (webcredentials) sur le domaine et capter le
+// callback OAuth via universal link (applinks). Apple exige :
+//   - HTTPS sans redirect
+//   - Content-Type: application/json (PAS application/json; charset=utf-8)
+//   - Pas d'extension dans l'URL
+const AASA_PATH = path.join(__dirname, 'status-app', 'public', '.well-known', 'apple-app-site-association');
+app.get('/.well-known/apple-app-site-association', (req, res) => {
+    try {
+        const body = fs.readFileSync(AASA_PATH);
+        res.set('Content-Type', 'application/json');
+        res.set('Cache-Control', 'public, max-age=3600');
+        res.send(body);
+    } catch {
+        res.status(404).send('Not found');
+    }
+});
+
 app.use(passport.initialize());
 app.use(passport.session());
 
