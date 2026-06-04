@@ -119,7 +119,7 @@ export function Index() {
             une équipe.
           </h2>
           <p className="text-lg text-white/50 leading-relaxed">
-            Du site vitrine à la communauté Discord de plusieurs milliers de membres —
+            Du site vitrine à la communauté Discord de plusieurs milliers de membres,
             on couvre toute la chaîne.
           </p>
         </Reveal>
