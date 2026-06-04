@@ -8045,7 +8045,8 @@ app.get('/api/stats', statsRateLimiter, async (req, res) => {
             };
         }));
 
-        const [history] = await db.execute('SELECT * FROM bot_stats WHERE timestamp > DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY timestamp ASC');
+        // shard_count > 0 : exclut les artefacts de migration (anciens rows avec DEFAULT 0)
+        const [history] = await db.execute('SELECT * FROM bot_stats WHERE timestamp > DATE_SUB(NOW(), INTERVAL 7 DAY) AND shard_count > 0 ORDER BY timestamp ASC');
 
         // Ping Discord API independently (indépendant du bot)
         let discordApiPing = null;
