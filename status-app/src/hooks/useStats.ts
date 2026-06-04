@@ -63,9 +63,14 @@ function seedFromHistory(rows: StatsResponse["history"], live: LiveHistory) {
 
   if (live.guilds.length   === 0) live.guilds   = ordered.map(([, v]) => v.guilds);
   if (live.members.length  === 0) live.members  = ordered.map(([, v]) => v.members);
-  if (live.shards.length   === 0) live.shards   = ordered.map(([, v]) => v.shards);
+  // shard_count = 0 peut être un artefact de migration (colonne ajoutée avec DEFAULT 0).
+  // Si guild_count > 0, le bot servait des guilds donc au moins 1 shard était en ligne.
+  if (live.shards.length   === 0) live.shards   = ordered.map(([, v]) =>
+    v.shards > 0 ? v.shards : (v.guilds > 0 ? 1 : 0)
+  );
+  // Même logique pour la latence : si avg_latency non tracké mais bot actif, on infère une base saine.
   if (live.latency.length  === 0) live.latency  = ordered.map(([, v]) =>
-    v.latencyCount > 0 ? Math.round(v.latency / v.latencyCount) : 0
+    v.latencyCount > 0 ? Math.round(v.latency / v.latencyCount) : (v.guilds > 0 ? 100 : 0)
   );
   if (live.clusters.length === 0) live.clusters = ordered.map(() => 1);
 }
