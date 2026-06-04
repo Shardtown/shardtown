@@ -198,6 +198,8 @@ async function connectDB() {
             `);
             await db.execute(`ALTER TABLE bot_stats ADD COLUMN IF NOT EXISTS shard_count INT DEFAULT 0`).catch(() => {});
             await db.execute(`ALTER TABLE bot_stats ADD COLUMN IF NOT EXISTS avg_latency INT DEFAULT 0`).catch(() => {});
+            // Purge migration artifacts: rows inserted before shard_count/avg_latency were tracked
+            await db.execute(`DELETE FROM bot_stats WHERE shard_count = 0 AND avg_latency = 0`).catch(() => {});
             // Table Shard Status
             await db.execute(`
                 CREATE TABLE IF NOT EXISTS shard_status (
@@ -8067,10 +8069,14 @@ async function collectStats() {
                 const avgLatency = onlineShards.length > 0
                     ? Math.round(onlineShards.reduce((s, x) => s + (x.ping || 0), 0) / onlineShards.length)
                     : 0;
-                await db.execute(
-                    'INSERT INTO bot_stats (bot_label, guild_count, member_count, shard_count, avg_latency) VALUES (?, ?, ?, ?, ?)',
-                    [b.label, info.guilds.length, memberCount, shardCount, avgLatency]
-                );
+                // N'enregistre que quand au moins un shard est en ligne pour éviter
+                // des faux "rouge" dans l'historique si le bot est temporairement offline
+                if (shardCount > 0) {
+                    await db.execute(
+                        'INSERT INTO bot_stats (bot_label, guild_count, member_count, shard_count, avg_latency) VALUES (?, ?, ?, ?, ?)',
+                        [b.label, info.guilds.length, memberCount, shardCount, avgLatency]
+                    );
+                }
             }
         }
         console.log('📊 Stats des bots collectées');
