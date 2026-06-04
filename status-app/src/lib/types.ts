@@ -21,6 +21,8 @@ export interface HistoryRow {
   timestamp: string;
   guild_count: number;
   member_count: number;
+  shard_count?: number;
+  avg_latency?: number;
 }
 
 export interface StatsResponse {

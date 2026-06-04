@@ -191,9 +191,13 @@ async function connectDB() {
                     bot_label VARCHAR(50),
                     guild_count INT,
                     member_count INT,
+                    shard_count INT DEFAULT 0,
+                    avg_latency INT DEFAULT 0,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             `);
+            await db.execute(`ALTER TABLE bot_stats ADD COLUMN IF NOT EXISTS shard_count INT DEFAULT 0`).catch(() => {});
+            await db.execute(`ALTER TABLE bot_stats ADD COLUMN IF NOT EXISTS avg_latency INT DEFAULT 0`).catch(() => {});
             // Table Shard Status
             await db.execute(`
                 CREATE TABLE IF NOT EXISTS shard_status (
@@ -7444,7 +7448,6 @@ function checkAdmin(req, res, next) {
 }
 
 const BOTS = [
-    { token: process.env.DISCORD_TOKEN, label: 'ShardGuard' },
     { token: process.env.SHARD_TOKEN, label: 'Shard' }
 ];
 
@@ -8055,9 +8058,18 @@ async function collectStats() {
             const info = await fetchBotInfo(b.token);
             if (info) {
                 const memberCount = info.guilds.reduce((s, g) => s + (g.approximate_member_count || 0), 0);
+                const [shards] = await db.execute(
+                    `SELECT status, ping FROM shard_status WHERE bot_label = ? AND last_update > DATE_SUB(NOW(), INTERVAL 2 MINUTE)`,
+                    [b.label]
+                );
+                const onlineShards = shards.filter(s => s.status === 'Online');
+                const shardCount = onlineShards.length;
+                const avgLatency = onlineShards.length > 0
+                    ? Math.round(onlineShards.reduce((s, x) => s + (x.ping || 0), 0) / onlineShards.length)
+                    : 0;
                 await db.execute(
-                    'INSERT INTO bot_stats (bot_label, guild_count, member_count) VALUES (?, ?, ?)',
-                    [b.label, info.guilds.length, memberCount]
+                    'INSERT INTO bot_stats (bot_label, guild_count, member_count, shard_count, avg_latency) VALUES (?, ?, ?, ?, ?)',
+                    [b.label, info.guilds.length, memberCount, shardCount, avgLatency]
                 );
             }
         }

@@ -29,9 +29,7 @@ export function Account() {
   const [account, setAccount] = useState<AccountT | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [shardRefreshing, setShardRefreshing] = useState(false);
   const [guildsCount, setGuildsCount] = useState<number | null>(null);
-  const [shardGuildsCount, setShardGuildsCount] = useState<number | null>(null);
   const [banner, setBanner] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [passkeys, setPasskeys] = useState<PasskeyRow[] | null>(null);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
@@ -169,20 +167,17 @@ export function Account() {
   // Surface ?linked=ok / ?linked=error from the OAuth callback
   useEffect(() => {
     const linked = params.get("linked");
-    const shardLinked = params.get("shardLinked");
-    if (!linked && !shardLinked) return;
-    const which = shardLinked ? "Connexion secondaire" : "Discord";
-    const okState = (linked || shardLinked) === "ok";
-    if (okState) setBanner({ kind: "ok", text: `${which} lié avec succès.` });
+    if (!linked) return;
+    const okState = linked === "ok";
+    if (okState) setBanner({ kind: "ok", text: "Discord lié avec succès." });
     else {
       const reason = params.get("reason");
       const msg = reason === "already_linked"
-        ? `Ce compte ${which} est déjà associé à un autre compte Shardtown.`
-        : `La liaison ${which} a échoué. Réessaie.`;
+        ? "Ce compte Discord est déjà associé à un autre compte Shardtown."
+        : "La liaison Discord a échoué. Réessaie.";
       setBanner({ kind: "error", text: msg });
     }
-    // Clean the URL
-    params.delete("linked"); params.delete("shardLinked"); params.delete("reason");
+    params.delete("linked"); params.delete("reason");
     setParams(params, { replace: true });
   }, [params, setParams]);
 
@@ -214,22 +209,6 @@ export function Account() {
     });
   }
 
-  function unlinkShard() {
-    setUnlinkConfirm({
-      label: "la connexion secondaire",
-      detail: "Le compte Discord secondaire ne sera plus rattaché.",
-      onConfirm: async () => {
-        try {
-          await apiPost("/api/account/shard/unlink");
-          setBanner({ kind: "ok", text: "Connexion secondaire déliée." });
-          refresh();
-        } catch {
-          setBanner({ kind: "error", text: "Échec du déliage." });
-        }
-      },
-    });
-  }
-
   async function refreshGuilds() {
     setRefreshing(true);
     try {
@@ -239,22 +218,6 @@ export function Account() {
     } catch {
       setBanner({ kind: "error", text: "Échec du refresh." });
     } finally { setRefreshing(false); }
-  }
-
-  async function refreshShardGuilds() {
-    setShardRefreshing(true);
-    try {
-      const r = await apiPost<{ guilds_count: number }>("/api/account/shard/refresh-guilds");
-      setShardGuildsCount(r.guilds_count);
-      setBanner({ kind: "ok", text: `${r.guilds_count} serveurs synchronisés (connexion secondaire).` });
-    } catch (err: unknown) {
-      const reason = isApiError(err) && (err.data as { reason?: string } | undefined)?.reason;
-      if (reason === "scope") {
-        setBanner({ kind: "error", text: "Re-liaison secondaire requise pour la liste des serveurs." });
-      } else {
-        setBanner({ kind: "error", text: "Échec du refresh." });
-      }
-    } finally { setShardRefreshing(false); }
   }
 
   if (loading || !account) {
@@ -382,35 +345,6 @@ export function Account() {
                     <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
                     {guildsCount !== null && (
                       <span className="font-mono-num">{guildsCount}</span>
-                    )}
-                  </button>
-                ) : null
-              }
-            />
-
-            {/* Discord, secondary OAuth (custom shard flow, kept for legacy users) */}
-            <ConnectionRow
-              kind="discord"
-              title="Connexion secondaire"
-              caption="Discord alternatif, utile si tu administres Shard depuis deux comptes (optionnel)"
-              linkedId={account.shard_id}
-              linkedName={account.shard_username}
-              linkedAvatar={account.shard_avatar}
-              hrefLink="/api/account/shard/link"
-              onUnlink={unlinkShard}
-              extraAction={
-                account.shard_id ? (
-                  <button
-                    type="button"
-                    onClick={refreshShardGuilds}
-                    disabled={shardRefreshing}
-                    aria-label="Actualiser mes serveurs"
-                    title="Actualiser mes serveurs"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/55 hover:text-white hover:bg-white/[0.07] text-[11px] font-bold transition-colors disabled:opacity-40"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${shardRefreshing ? "animate-spin" : ""}`} />
-                    {shardGuildsCount !== null && (
-                      <span className="font-mono-num">{shardGuildsCount}</span>
                     )}
                   </button>
                 ) : null
