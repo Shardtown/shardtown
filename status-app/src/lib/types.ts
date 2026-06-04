@@ -28,4 +28,5 @@ export interface HistoryRow {
 export interface StatsResponse {
   current: Bot[];
   history: HistoryRow[];
+  discordApiPing: number | null;
 }

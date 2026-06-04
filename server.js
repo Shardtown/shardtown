@@ -8047,7 +8047,15 @@ app.get('/api/stats', statsRateLimiter, async (req, res) => {
 
         const [history] = await db.execute('SELECT * FROM bot_stats WHERE timestamp > DATE_SUB(NOW(), INTERVAL 7 DAY) ORDER BY timestamp ASC');
 
-        res.json({ current: botsInfo, history });
+        // Ping Discord API independently (indépendant du bot)
+        let discordApiPing = null;
+        try {
+            const t0 = Date.now();
+            const r = await fetch('https://discord.com/api/v10/gateway', { signal: AbortSignal.timeout(5000) });
+            if (r.ok) discordApiPing = Date.now() - t0;
+        } catch { /* Discord API injoignable */ }
+
+        res.json({ current: botsInfo, history, discordApiPing });
     } catch (err) {
         console.error('Erreur /api/stats:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });

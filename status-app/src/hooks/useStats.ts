@@ -9,7 +9,7 @@ export interface LiveHistory {
   shards: number[];
   guilds: number[];
   members: number[];
-  latency: number[];
+  latency: number[]; // ping Discord API (indépendant du bot)
 }
 
 export interface StatsSnapshot {
@@ -22,6 +22,7 @@ export interface StatsSnapshot {
   offlineShards: number;
   offlineBots: number;
   avgPing: number;
+  discordApiPing: number | null;
   allOnline: boolean;
   lastFetch: number | null;
   pingHistory: Map<string, number[]>;
@@ -38,22 +39,22 @@ function pushSeries(arr: number[], v: number) {
   if (arr.length > SPARK_MAX) arr.shift();
 }
 
-/** Seed all series from the server's hourly history (last 24 h). */
+/** Seed bot series from the server's hourly history (last 24 h).
+ *  La latence Discord API est désormais trackée indépendamment : on ne la seed pas depuis bot_stats. */
 function seedFromHistory(rows: StatsResponse["history"], live: LiveHistory) {
   if (!rows || rows.length === 0) return;
 
   // Group by hour slot across all bot_labels
   const buckets = new Map<number, {
-    guilds: number; members: number; shards: number; latency: number; latencyCount: number;
+    guilds: number; members: number; shards: number;
   }>();
 
   for (const row of rows) {
     const slot = Math.floor(new Date(row.timestamp).getTime() / (60 * 60 * 1000));
-    const b = buckets.get(slot) || { guilds: 0, members: 0, shards: 0, latency: 0, latencyCount: 0 };
+    const b = buckets.get(slot) || { guilds: 0, members: 0, shards: 0 };
     b.guilds  += row.guild_count  || 0;
     b.members += row.member_count || 0;
     b.shards  += row.shard_count  || 0;
-    if (row.avg_latency) { b.latency += row.avg_latency; b.latencyCount++; }
     buckets.set(slot, b);
   }
 
@@ -63,16 +64,9 @@ function seedFromHistory(rows: StatsResponse["history"], live: LiveHistory) {
 
   if (live.guilds.length   === 0) live.guilds   = ordered.map(([, v]) => v.guilds);
   if (live.members.length  === 0) live.members  = ordered.map(([, v]) => v.members);
-  // shard_count = 0 peut être un artefact de migration (colonne ajoutée avec DEFAULT 0).
-  // Si guild_count > 0, le bot servait des guilds donc au moins 1 shard était en ligne.
-  if (live.shards.length   === 0) live.shards   = ordered.map(([, v]) =>
-    v.shards > 0 ? v.shards : (v.guilds > 0 ? 1 : 0)
-  );
-  // Même logique pour la latence : si avg_latency non tracké mais bot actif, on infère une base saine.
-  if (live.latency.length  === 0) live.latency  = ordered.map(([, v]) =>
-    v.latencyCount > 0 ? Math.round(v.latency / v.latencyCount) : (v.guilds > 0 ? 100 : 0)
-  );
+  if (live.shards.length   === 0) live.shards   = ordered.map(([, v]) => v.shards);
   if (live.clusters.length === 0) live.clusters = ordered.map(() => 1);
+  // live.latency : pas seedée depuis bot_stats, elle se construit au fil des ticks live
 }
 
 export function useStats(intervalMs = 30_000): StatsSnapshot {
@@ -88,6 +82,7 @@ export function useStats(intervalMs = 30_000): StatsSnapshot {
     offlineShards: 0,
     offlineBots: 0,
     avgPing: 0,
+    discordApiPing: null,
     allOnline: true,
     lastFetch: null,
     pingHistory: new Map(),
@@ -120,11 +115,14 @@ export function useStats(intervalMs = 30_000): StatsSnapshot {
           ? Math.round(onlineShardsArr.reduce((s, x) => s + (x.ping || 0), 0) / onlineShards)
           : 0;
 
+        const discordApiPing: number | null = data.discordApiPing ?? null;
+
         pushSeries(live.clusters, onlineBots);
         pushSeries(live.shards,   onlineShards);
         pushSeries(live.guilds,   totalGuilds);
         pushSeries(live.members,  totalMembers);
-        pushSeries(live.latency,  avgPing);
+        // Série latency = ping Discord API direct (pas le ping des shards du bot)
+        if (discordApiPing !== null) pushSeries(live.latency, discordApiPing);
 
         const ph = pingHistoryRef.current;
         for (const s of allShards) {
@@ -145,6 +143,7 @@ export function useStats(intervalMs = 30_000): StatsSnapshot {
           offlineShards,
           offlineBots,
           avgPing,
+          discordApiPing,
           allOnline: offlineShards === 0 && offlineBots === 0,
           lastFetch: Date.now(),
           pingHistory: new Map(ph),

@@ -123,7 +123,7 @@ export function Status() {
                     history={stats.liveHistory.shards}
                   />
                 ))}
-                <ApiRow latencyHistory={stats.liveHistory.latency} avgPing={stats.avgPing} />
+                <ApiRow latencyHistory={stats.liveHistory.latency} discordApiPing={stats.discordApiPing} />
               </>
             )}
           </div>
@@ -246,24 +246,21 @@ function ClusterRow({ bot, history }: { bot: Bot; history: number[] }) {
   );
 }
 
-function ApiRow({ latencyHistory, avgPing }: { latencyHistory: number[]; avgPing: number }) {
+function ApiRow({ latencyHistory, discordApiPing }: { latencyHistory: number[]; discordApiPing: number | null }) {
   const states: Health[] = pad(latencyHistory).map(v => {
     if (Number.isNaN(v) || v === 0) return "unknown";
     if (v < 250) return "ok";
     if (v < 500) return "degraded";
     return "down";
   });
-  // Reflect current latency in the most recent bar.
-  states[states.length - 1] =
-    avgPing === 0 ? "unknown" :
-    avgPing < 250 ? "ok" :
-    avgPing < 500 ? "degraded" : "down";
+  // Barre la plus récente = état actuel du ping Discord API direct
+  const current: Health =
+    discordApiPing === null ? "unknown" :
+    discordApiPing < 250 ? "ok" :
+    discordApiPing < 500 ? "degraded" : "down";
+  states[states.length - 1] = current;
 
   const uptime = uptimePercent(states);
-  const current: Health =
-    avgPing === 0 ? "unknown" :
-    avgPing < 250 ? "ok" :
-    avgPing < 500 ? "degraded" : "down";
 
   return (
     <ServiceRow
@@ -275,7 +272,7 @@ function ApiRow({ latencyHistory, avgPing }: { latencyHistory: number[]; avgPing
         </div>
       }
       title="API Discord"
-      subtitle={avgPing > 0 ? `${avgPing} ms en moyenne` : "Aucune mesure"}
+      subtitle={discordApiPing !== null ? `${discordApiPing} ms en moyenne` : "Vérification..."}
       states={states}
       uptime={uptime}
       status={current === "unknown" ? "ok" : current}
