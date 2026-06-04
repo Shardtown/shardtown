@@ -19,7 +19,7 @@ interface PremiumResponse {
 }
 
 /**
- * Desktop /premium page — restrained, native-feel billing page.
+ * Desktop /premium page, restrained, native-feel billing page.
  *
  * Two modes:
  *   - Premium active → status header + servers list + features checklist + manage panel
@@ -454,7 +454,7 @@ function ManageSection() {
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-bold mb-1">Une question sur ta facturation ?</p>
           <p className="text-[11.5px]" style={{ color: "var(--ds-text-mut)" }}>
-            Changement de plan, mise à jour du moyen de paiement, transfert vers un autre serveur — réponse sous 24 h.
+            Changement de plan, mise à jour du moyen de paiement, transfert vers un autre serveur, réponse sous 24 h.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

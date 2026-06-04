@@ -51,11 +51,11 @@ function formatLockoutMessage(lockedUntil?: string): string | null {
   const remainingMs = until.getTime() - Date.now();
   if (remainingMs <= 0) return null;
   const totalSec = Math.ceil(remainingMs / 1000);
-  if (totalSec < 60) return `Compte temporairement bloqué — réessaie dans ${totalSec} s.`;
+  if (totalSec < 60) return `Compte temporairement bloqué, réessaie dans ${totalSec} s.`;
   const min = Math.ceil(totalSec / 60);
-  if (min < 60) return `Compte temporairement bloqué — réessaie dans ${min} min.`;
+  if (min < 60) return `Compte temporairement bloqué, réessaie dans ${min} min.`;
   const h = Math.ceil(min / 60);
-  return `Compte temporairement bloqué — réessaie dans ${h} h.`;
+  return `Compte temporairement bloqué, réessaie dans ${h} h.`;
 }
 
 export function AccountLogin() {
@@ -134,7 +134,7 @@ export function AccountLogin() {
     if (!oauthError) return;
     const messages: Record<string, string> = {
       config: "OAuth non configuré côté serveur (CLIENT_ID/SECRET manquants).",
-      state: "Session expirée pendant l'authentification — réessaie.",
+      state: "Session expirée pendant l'authentification, réessaie.",
       code: "Code OAuth manquant.",
       exchange: "Échec de l'échange de jeton avec le provider.",
       profile: "Profil OAuth incomplet.",

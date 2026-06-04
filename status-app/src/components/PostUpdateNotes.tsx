@@ -21,7 +21,7 @@ interface Manifest {
  * Notes intentionally come from latest.json (= what the public site
  * advertises) so we don't have to bundle a changelog inside the app.
  * If the manifest fetch fails we still acknowledge the version bump
- * silently — no annoying error popup.
+ * silently, no annoying error popup.
  */
 export function PostUpdateNotes() {
   const [info, setInfo] = useState<{ version: string; notes: string } | null>(null);
@@ -41,7 +41,7 @@ export function PostUpdateNotes() {
       }
       if (!current || cancelled) return;
 
-      // First install — establish the baseline and bail.
+      // First install, establish the baseline and bail.
       const seen = readSeen();
       if (!seen) {
         writeSeen(current);
@@ -74,11 +74,11 @@ export function PostUpdateNotes() {
         });
         if (cancelled || delivered) return;
 
-        // User refused permissions or muted the "updates" category — fall
+        // User refused permissions or muted the "updates" category, fall
         // back to the in-app modal that shows the full notes.
         setInfo({ version: current, notes });
       } catch {
-        // Network unavailable / manifest missing — silent acknowledge.
+        // Network unavailable / manifest missing, silent acknowledge.
       }
     })();
 

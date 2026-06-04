@@ -305,10 +305,10 @@ export function DesktopRpc() {
           </div>
         </Section>
 
-        <Section title="Boutons" hint="Jusqu'à 2 boutons. Pour chaque ligne, libellé ET URL doivent être remplis — sinon la ligne est ignorée.">
+        <Section title="Boutons" hint="Jusqu'à 2 boutons. Pour chaque ligne, libellé ET URL doivent être remplis, sinon la ligne est ignorée.">
           <div className="flex flex-col gap-3">
             <div className="grid md:grid-cols-[1fr_2fr] gap-2.5 items-end">
-              <Field label="Bouton 1 — Libellé">
+              <Field label="Bouton 1, Libellé">
                 <input type="text" value={settings.button_label} onChange={e => update("button_label", e.target.value)} maxLength={32} className={inputCls} />
               </Field>
               <Field label="URL">
@@ -316,7 +316,7 @@ export function DesktopRpc() {
               </Field>
             </div>
             <div className="grid md:grid-cols-[1fr_2fr] gap-2.5 items-end">
-              <Field label="Bouton 2 — Libellé">
+              <Field label="Bouton 2, Libellé">
                 <input type="text" value={settings.button2_label} onChange={e => update("button2_label", e.target.value)} maxLength={32} placeholder="Optionnel" className={inputCls} />
               </Field>
               <Field label="URL">

@@ -1,7 +1,7 @@
 /**
  * Native OS notifications bridge for the Tauri desktop app.
  *
- * Exposes a `notify()` that — in desktop mode — pops a macOS Notification
+ * Exposes a `notify()` that, in desktop mode, pops a macOS Notification
  * Center entry via tauri-plugin-notification. In web mode it's a no-op so
  * call sites don't need to branch on IS_DESKTOP themselves.
  *
@@ -15,7 +15,7 @@ import { IS_DESKTOP } from "./desktop";
 export type NotifCategory = "updates" | "bot-state" | "long-actions" | "server-activity" | "greeting";
 
 export interface NotifPrefs {
-    /** Master switch — when false nothing is ever sent. */
+    /** Master switch, when false nothing is ever sent. */
     enabled: boolean;
     /** Per-category mute. Missing keys default to enabled. */
     perCategory: Record<NotifCategory, boolean>;
@@ -86,7 +86,7 @@ export interface NotifyArgs {
 
 /**
  * Post a native notification, respecting user preferences. Safe to call
- * in web mode — silently does nothing.
+ * in web mode, silently does nothing.
  *
  * Returns `true` if the notification was actually handed to the OS, `false`
  * if it was suppressed (web mode, prefs disabled, permission denied,

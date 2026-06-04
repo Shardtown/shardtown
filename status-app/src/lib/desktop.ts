@@ -3,7 +3,7 @@
  *
  * The same `status-app` SPA serves both the web at shardtwn.fr (cookie auth)
  * and the macOS Tauri app (Bearer auth). This module is the only place that
- * touches Tauri APIs — everywhere else we treat it as a thin "is desktop?"
+ * touches Tauri APIs, everywhere else we treat it as a thin "is desktop?"
  * boolean and let the API client switch transports.
  *
  * Tauri 2 exposes `__TAURI_INTERNALS__` on the window object as soon as the
@@ -20,7 +20,7 @@ declare global {
 export const IS_DESKTOP = typeof window !== "undefined" && !!window.__TAURI_INTERNALS__;
 
 /**
- * Production API origin — desktop targets it directly since the SPA loads
+ * Production API origin, desktop targets it directly since the SPA loads
  * from `tauri://localhost` (different origin from the API). Web stays on
  * relative paths so dev/preview/prod all just work.
  */
@@ -69,7 +69,7 @@ export async function onboardingDone(): Promise<boolean> {
 }
 
 export async function setOnboardingDone(done: boolean): Promise<void> {
-  // Always write the localStorage too — keeps the legacy gate working in
+  // Always write the localStorage too, keeps the legacy gate working in
   // web mode and during the IPC bootstrap.
   try {
     if (done) localStorage.setItem("shardtown.onboarding.v2", "done");
@@ -87,7 +87,7 @@ export async function setOnboardingDone(done: boolean): Promise<void> {
 /**
  * Prompts the user with the macOS Touch ID system dialog. Returns true if
  * the user authenticated successfully, false if they cancelled or biometry
- * isn't available. In web mode the prompt is bypassed (returns true) — the
+ * isn't available. In web mode the prompt is bypassed (returns true), the
  * caller stays in charge of any web-side confirm() they need.
  */
 export async function biometricConfirm(reason: string): Promise<boolean> {
@@ -96,7 +96,7 @@ export async function biometricConfirm(reason: string): Promise<boolean> {
     const { invoke } = await import("@tauri-apps/api/core");
     return await invoke<boolean>("biometric_confirm", { reason });
   } catch {
-    // No biometry hardware / not enrolled — fail open so the user can still
+    // No biometry hardware / not enrolled, fail open so the user can still
     // operate the app on a Mac without Touch ID.
     return true;
   }
@@ -105,7 +105,7 @@ export async function biometricConfirm(reason: string): Promise<boolean> {
 /* ─── External link opener ────────────────────────────────────────────── */
 
 /**
- * Opens a URL — either through Tauri's shell plugin (so it goes to Safari
+ * Opens a URL, either through Tauri's shell plugin (so it goes to Safari
  * instead of the embedded webview) or via window.open in web mode.
  */
 export async function openExternal(url: string): Promise<void> {
@@ -143,7 +143,7 @@ export type UpdateProgress =
  *
  * The endpoint, public key and signature verification are all configured in
  * `tauri.conf.json` → `plugins.updater`. The Tauri updater plugin handles
- * the actual signature check — we just surface the result.
+ * the actual signature check, we just surface the result.
  *
  * In web mode (or if the plugin isn't loaded) this resolves to `null`.
  */
@@ -159,7 +159,7 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
       notes: u.body,
     };
   } catch (e) {
-    // Network down, bad manifest, signature mismatch — all considered "no
+    // Network down, bad manifest, signature mismatch, all considered "no
     // update" from the user's perspective. The caller can re-check later.
     console.warn("[updater] check failed:", e);
     return null;
@@ -169,7 +169,7 @@ export async function checkForUpdate(): Promise<UpdateInfo | null> {
 /**
  * Runs the full download-verify-install-relaunch flow. Reports progress via
  * the `onProgress` callback. Throws if anything fails (signature mismatch,
- * network drop mid-download, …) — the caller should show an error toast.
+ * network drop mid-download, …), the caller should show an error toast.
  */
 export async function downloadAndInstallUpdate(
   onProgress?: (p: UpdateProgress) => void,
@@ -229,7 +229,7 @@ export async function isAutostartEnabled(): Promise<boolean> {
 /**
  * Enable / disable launching at user login. Writes a LaunchAgent plist
  * under ~/Library/LaunchAgents on macOS; no-op in web mode. Errors are
- * swallowed — the caller should re-read `isAutostartEnabled()` after the
+ * swallowed, the caller should re-read `isAutostartEnabled()` after the
  * call to confirm the new state.
  */
 export async function setAutostart(enabled: boolean): Promise<void> {

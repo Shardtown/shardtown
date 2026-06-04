@@ -33,7 +33,7 @@ const SERVICES = [
     icon: Bot,
     label: "Bots Discord",
     description:
-      "Bots custom à votre image — automatisations, webhooks, slash commands, intégrations tierces. Stack éprouvée en prod.",
+      "Bots custom à votre image, automatisations, webhooks, slash commands, intégrations tierces. Stack éprouvée en prod.",
     href: "#contact",
   },
   {
@@ -51,7 +51,7 @@ export function Index() {
 
   return (
     <AppLayout>
-      {/* Hero — initial swipe-in on mount */}
+      {/* Hero, initial swipe-in on mount */}
       <section className="container-wide text-center py-32 md:py-40 overflow-hidden">
         <motion.p
           className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
@@ -107,7 +107,7 @@ export function Index() {
         </motion.div>
       </section>
 
-      {/* Services / Métiers — slides in from the LEFT */}
+      {/* Services / Métiers, slides in from the LEFT */}
       <section id="services" className="container-wide pt-48 pb-48 scroll-mt-32 overflow-x-clip">
         <Reveal direction="left" distance={80} className="max-w-3xl mb-20">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
@@ -163,7 +163,7 @@ export function Index() {
       {/* Espace tampon entre la grille des métiers et la section Télécharger */}
       <div className="h-32 md:h-48" aria-hidden />
 
-      {/* Download — app desktop */}
+      {/* Download, app desktop */}
       <section id="download" className="container-wide pt-32 pb-32 scroll-mt-32 overflow-x-clip">
         <Reveal direction="right" distance={80} className="max-w-3xl ml-auto mb-16 text-right">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
@@ -181,7 +181,7 @@ export function Index() {
         </Reveal>
 
         <RevealStagger className="grid md:grid-cols-2 gap-6 md:gap-8" staggerChildren={0.1} delayChildren={0.15}>
-          {/* macOS — disponible */}
+          {/* macOS, disponible */}
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
               <div className="relative flex flex-col h-full min-h-[240px]">
@@ -202,7 +202,7 @@ export function Index() {
             </HolographicCard>
           </RevealItem>
 
-          {/* Windows — prochainement */}
+          {/* Windows, prochainement */}
           <RevealItem direction="up" distance={50} className="relative hover:z-10">
             <HolographicCard className="h-full">
               <div className="relative flex flex-col h-full min-h-[240px]">
@@ -228,7 +228,7 @@ export function Index() {
       {/* Espace tampon entre la section Télécharger et le CTA Parlons-en */}
       <div className="h-32 md:h-48" aria-hidden />
 
-      {/* Contact CTA — rises up */}
+      {/* Contact CTA, rises up */}
       <section id="contact" className="container-wide pt-48 pb-16 scroll-mt-32 overflow-x-clip">
         <Reveal direction="up" distance={70} duration={0.85} className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-12 md:p-20 text-center">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">Parlons-en</p>

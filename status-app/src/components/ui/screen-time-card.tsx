@@ -69,7 +69,7 @@ export const ScreenTimeCard = ({
       )}
     >
       <div className="flex gap-6 md:gap-10">
-        {/* Left — graph */}
+        {/* Left, graph */}
         <div className="flex-1 min-w-0">
           <div className="mb-4">
             <div className="text-3xl md:text-[34px] font-extrabold font-mono-num text-white leading-none">{total}</div>
@@ -121,7 +121,7 @@ export const ScreenTimeCard = ({
         {/* Divider */}
         <div className="w-px bg-white/[0.06] self-stretch" />
 
-        {/* Right — stats */}
+        {/* Right, stats */}
         <div className="flex flex-col gap-3 justify-center min-w-[120px]">
           {stats.map((s, i) => (
             <motion.div

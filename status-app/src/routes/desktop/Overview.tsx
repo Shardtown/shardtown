@@ -96,7 +96,7 @@ export function DesktopOverview() {
         style={{ borderColor: "var(--ds-border)" }}
         data-tour="hero"
       >
-        {/* Background pattern — radial dots evoking the NordVPN map */}
+        {/* Background pattern, radial dots evoking the NordVPN map */}
         <div className="absolute inset-0 hero-bg" />
 
         <div className="relative px-8 py-10">
@@ -158,7 +158,7 @@ export function DesktopOverview() {
         </div>
 
         <style>{`
-          /* Unified hero surface — matches the standard card background of
+          /* Unified hero surface, matches the standard card background of
              /premium, /account, /statut & /rpc. No more gradient that
              reads as a different visual language from the rest of the app. */
           .hero-card {

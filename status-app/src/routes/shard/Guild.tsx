@@ -107,7 +107,7 @@ export function ShardGuild() {
   );
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set(allGroupNames));
 
-  // Switcher de serveur — dropdown au-dessus du hero. Liste fetchée à la
+  // Switcher de serveur, dropdown au-dessus du hero. Liste fetchée à la
   // demande (première ouverture) pour ne pas charger l'API si l'utilisateur
   // ne clique jamais. Merge security + community comme dans /shard/server.
   type SwitcherGuild = { id: string; name: string; icon: string | null };
@@ -147,7 +147,7 @@ export function ShardGuild() {
       if (r.status === "fulfilled") r.value.guilds.forEach(g => map.set(g.id, g));
     });
     const botIds = new Set<string>(com.status === "fulfilled" ? com.value.botGuildIds : []);
-    // Seuls les serveurs où Shard est présent — c'est ce qu'on peut switcher.
+    // Seuls les serveurs où Shard est présent, c'est ce qu'on peut switcher.
     const list = Array.from(map.values())
       .filter(g => botIds.has(g.id))
       .sort((a, b) => a.name.localeCompare(b.name, "fr"));
@@ -163,7 +163,7 @@ export function ShardGuild() {
     });
   }
 
-  // Indicateur coulissant pour la sidebar — même DA que la pill du header.
+  // Indicateur coulissant pour la sidebar, même DA que la pill du header.
   // Position en pixels relative au <nav> ; se déplace via transition CSS
   // à chaque hover, et retombe sur le tab actif à mouseleave.
   const navRef = useRef<HTMLElement>(null);
@@ -482,12 +482,12 @@ export function ShardGuild() {
       return <CustomBotTab guildId={gid} />;
     }
 
-    // Samia — chat IA inline, sans wrapping AppLayout (le dashboard gère déjà).
+    // Samia, chat IA inline, sans wrapping AppLayout (le dashboard gère déjà).
     if (currentTab.key === "samia") {
       return <SamiaChat embedded />;
     }
 
-    // Premium — panneau de gestion inline (pas un redirect vers /premium).
+    // Premium, panneau de gestion inline (pas un redirect vers /premium).
     if (currentTab.key === "premium") {
       const isPremium =
         community?.settings?.isPremium === 1 ||
@@ -549,7 +549,7 @@ export function ShardGuild() {
         case "youtube":   return <StreamAlertsTab {...tp} platformFilter="youtube" />;
       }
     }
-    // Données pas encore chargées pour ce côté — skeleton générique.
+    // Données pas encore chargées pour ce côté, skeleton générique.
     return (
       <div className="space-y-4">
         <div className="h-8 w-48 bg-white/[0.04] rounded animate-pulse" />
@@ -699,7 +699,7 @@ export function ShardGuild() {
               className="space-y-7 relative"
               onMouseLeave={() => moveIndicatorTo(tab)}
             >
-              {/* Indicateur coulissant — même mécanisme que la pill du
+              {/* Indicateur coulissant, même mécanisme que la pill du
                   Header. Positionné en absolute, suit la souris via
                   transition CSS, retombe sur le tab actif au mouseleave. */}
               <span
@@ -719,7 +719,7 @@ export function ShardGuild() {
                   Transparent + simple bordure, conformément à la demande
                   de DA "transparente". */}
               <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] backdrop-blur-sm p-2 space-y-3">
-                {/* Section haute — items épinglés (style mee6, sans
+                {/* Section haute, items épinglés (style mee6, sans
                     en-tête de groupe). Premium et l'assistante restent dans
                     l'ensemble unifié. */}
                 <div className="flex md:flex-col gap-0.5">
@@ -814,7 +814,7 @@ function SidebarTab({
   onClick: () => void;
   refCallback?: (el: HTMLButtonElement | null) => void;
   onHover?: () => void;
-  /** Statut activé/désactivé du module — non-affiché pour les items "info". */
+  /** Statut activé/désactivé du module, non-affiché pour les items "info". */
   status?: ModuleStatus;
 }) {
   const Icon = t.icon;
@@ -866,7 +866,7 @@ function SidebarTab({
   );
 }
 
-// Onglets épinglés sans implémentation encore — panneau standard "Bientôt".
+// Onglets épinglés sans implémentation encore, panneau standard "Bientôt".
 function ComingSoonPanel({ label }: { label: string }) {
   return (
     <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-10 md:p-16 text-center">
@@ -889,7 +889,7 @@ function ComingSoonPanel({ label }: { label: string }) {
 }
 
 // ──────────────────────────────────────────────────────────────────────
-//  OVERVIEW (vue d'ensemble — landing par défaut)
+//  OVERVIEW (vue d'ensemble, landing par défaut)
 // ──────────────────────────────────────────────────────────────────────
 
 type Reduce = boolean | null;
@@ -922,7 +922,7 @@ function OverviewPanel({
   // sections, sinon on n'affiche que la section sélectionnée.
   const [activeGroup, setActiveGroup] = useState<string>("all");
 
-  // Modal d'activation — null si fermé, sinon le tab cliqué.
+  // Modal d'activation, null si fermé, sinon le tab cliqué.
   const [activatingKey, setActivatingKey] = useState<TabKey | null>(null);
   const activating = activatingKey ? TABS.find(t => t.key === activatingKey) : null;
   const activatingStatus = activating
@@ -953,7 +953,7 @@ function OverviewPanel({
           Modules
         </h2>
 
-        {/* Tabs catégories — scroll horizontal sur mobile */}
+        {/* Tabs catégories, scroll horizontal sur mobile */}
         <div className="border-b border-white/[0.06] mb-7">
           <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mb-px">
             <CategoryTab
@@ -972,7 +972,7 @@ function OverviewPanel({
           </div>
         </div>
 
-        {/* Sections de modules — toutes si "all", sinon juste la sélectionnée */}
+        {/* Sections de modules, toutes si "all", sinon juste la sélectionnée */}
         <div className="space-y-9">
           {moduleGroups
             .filter(g => activeGroup === "all" || activeGroup === g)
@@ -996,7 +996,7 @@ function OverviewPanel({
         </div>
       </div>
 
-      {/* Modal d'activation — s'ouvre au clic d'une module card */}
+      {/* Modal d'activation, s'ouvre au clic d'une module card */}
       {activating && (
         <ActivateModuleModal
           icon={activating.icon}
@@ -1060,7 +1060,7 @@ type ModuleStatus = "active" | "inactive" | "info";
 //  Pour chaque module qui a un vrai flag binaire en base, on stocke
 //  l'info side ("security" → table settings / "community" → shard_settings)
 //  + nom du champ + valeur "vraie". Les modules sans flag (welcome,
-//  autorole, captcha, etc.) n'apparaissent pas ici — ils deviennent
+//  autorole, captcha, etc.) n'apparaissent pas ici, ils deviennent
 //  "actifs" dès qu'ils ont une configuration valide (channel/role posé).
 // ──────────────────────────────────────────────────────────────────────
 
@@ -1100,7 +1100,7 @@ function getModuleStatus(
     case "tickets":   return truthy(com?.ticketEnabled) ? "active" : "inactive";
     case "tempvoice": return com?.tempVoiceTrigger ? "active" : "inactive";
     case "premium":   return (com?.isPremium === 1 || com?.isPremium === "1" || sec?.isPremium === 1 || sec?.isPremium === "1") ? "active" : "inactive";
-    // Modules sans flag on/off direct dans les settings — l'utilisateur
+    // Modules sans flag on/off direct dans les settings, l'utilisateur
     // doit pouvoir voir un statut quand même : on les considère "Désactivé"
     // par défaut. Le compteur réel (warns / streamers / etc.) demanderait
     // un fetch dédié qu'on n'a pas dans le blob settings.
@@ -1114,7 +1114,7 @@ function getModuleStatus(
 }
 
 // Descriptions courtes (1-2 phrases) affichées sous le nom du module
-// dans le hub. Style mee6 — chaque card a une mini-description pour
+// dans le hub. Style mee6, chaque card a une mini-description pour
 // que l'admin n'ait pas à cliquer pour savoir ce que le module fait.
 const MODULE_DESCRIPTIONS: Partial<Record<TabKey, string>> = {
   welcome:   "Envoie automatiquement des messages et attribue des rôles à tes nouveaux membres.",
@@ -1126,7 +1126,7 @@ const MODULE_DESCRIPTIONS: Partial<Record<TabKey, string>> = {
   warns:     "Système d'avertissements progressifs avec mute/kick/ban automatiques selon le seuil.",
   modroles:  "Définis qui peut utiliser les commandes de modération et les exemptions.",
   banned:    "Filtre les messages contenant des mots interdits avec wildcards et action paramétrable.",
-  automod:   "Anti-spam, anti-pub, anti-caps, anti-raid — modération automatique en temps réel.",
+  automod:   "Anti-spam, anti-pub, anti-caps, anti-raid, modération automatique en temps réel.",
   panic:     "Bouton d'urgence qui verrouille tout le serveur en un clic en cas d'attaque.",
   stats:     "Statistiques détaillées : joins/leaves, captchas réussis, sanctions par période.",
   logs:      "Log complet de tout ce qui se passe sur ton serveur, par salon dédié.",
@@ -1135,7 +1135,7 @@ const MODULE_DESCRIPTIONS: Partial<Record<TabKey, string>> = {
   twitch:    "Notifie ton serveur quand un streamer Twitch favori passe en live.",
   youtube:   "Annonce les nouvelles vidéos / lives YouTube de tes créateurs favoris.",
   levels:    "Système de XP, niveaux et rôles automatiques pour récompenser tes membres actifs.",
-  economy:   "Monnaie virtuelle, daily, shop de rôles, transferts — tu pilotes l'économie.",
+  economy:   "Monnaie virtuelle, daily, shop de rôles, transferts, tu pilotes l'économie.",
   giveaways: "Lance des giveaways avec timer, multi-gagnants, conditions de participation.",
   polls:     "Crée des sondages à choix multiples avec timer optionnel et vote anonyme.",
   tempvoice: "Salons vocaux temporaires créés automatiquement quand un user rejoint un hub.",
@@ -1143,12 +1143,12 @@ const MODULE_DESCRIPTIONS: Partial<Record<TabKey, string>> = {
   reactions: "Ajoute des réactions automatiques aux messages contenant certains mots-clés.",
   // Pinned items (rarement affichés en card module)
   overview:    "Vue d'ensemble de la configuration et de l'état de ton serveur.",
-  samia:       "Assistante IA Shardtown — pose une question, obtiens une réponse instantanée.",
+  samia:       "Assistante IA Shardtown, pose une question, obtiens une réponse instantanée.",
   custombot:   "Renomme et personnalise le bot avec ton propre token Discord (Premium).",
   general:     "Paramètres globaux du serveur : gérants, langue, fuseau horaire, embed.",
   premium:     "Gère ton abonnement Premium, change de plan, transfère ou annule.",
   emojis:      "Importe et gère tous tes emojis serveur depuis le dashboard.",
-  affiliation: "Programme d'affiliation Shardtown — gagne en faisant connaître le bot.",
+  affiliation: "Programme d'affiliation Shardtown, gagne en faisant connaître le bot.",
 };
 
 function ModuleCard({
@@ -1183,7 +1183,7 @@ function ModuleCard({
         </p>
       )}
 
-      {/* Pill statut mee6-style — bleue si actif, grise si non */}
+      {/* Pill statut mee6-style, bleue si actif, grise si non */}
       <div className={`mt-auto inline-flex items-center gap-1.5 self-start px-3 py-1.5 rounded-lg text-[11.5px] font-bold ${
         isActive
           ? "bg-blue-500/15 text-blue-300 border border-blue-400/25"
@@ -1206,7 +1206,7 @@ function ModuleCard({
 }
 
 // ──────────────────────────────────────────────────────────────────────
-//  ActivateModuleModal — popup mee6-style ouverte au clic sur une card
+//  ActivateModuleModal, popup mee6-style ouverte au clic sur une card
 //
 //  3 cas selon le statut du module :
 //   - inactif + a un flag d'enable → bouton "Activer ce module" qui
@@ -1333,7 +1333,7 @@ function ActivateModuleModal({
               </button>
             </>
           ) : (
-            // Pas de flag binaire — il faut configurer (channel/role) pour
+            // Pas de flag binaire, il faut configurer (channel/role) pour
             // que le module devienne actif. On simplifie l'UX : un seul
             // gros bouton "Configurer".
             <button
@@ -1359,7 +1359,7 @@ function ActivateModuleModal({
 }
 
 // ──────────────────────────────────────────────────────────────────────
-//  HeroCarousel — carousel auto-rotate au-dessus de la grille modules
+//  HeroCarousel, carousel auto-rotate au-dessus de la grille modules
 //
 //  - Slide Premium (gradient violet) si l'utilisateur n'est pas Premium
 //  - 4 slides de modules phares avec mockup mee6-style à droite :
@@ -1383,7 +1383,7 @@ interface CarouselSlide {
   gradient: string;
   /** Couleur principale du bouton (text-X-700) + accent. */
   accent: string;
-  /** Mockup visuel rendu à droite — un composant React qui dessine le preview. */
+  /** Mockup visuel rendu à droite, un composant React qui dessine le preview. */
   visual: React.ReactNode;
 }
 
@@ -1394,7 +1394,7 @@ function HeroCarousel({
   onJumpTo: (key: TabKey) => void;
 }) {
   const slides: CarouselSlide[] = [
-    // Slide Premium — uniquement si pas premium
+    // Slide Premium, uniquement si pas premium
     ...(!isPremium ? [{
       jumpTo: "premium" as TabKey,
       kicker: "Shard Premium",
@@ -1439,7 +1439,7 @@ function HeroCarousel({
       jumpTo: "custombot" as TabKey,
       kicker: "Bot personnalisé",
       title: <>Donne ton identité<br />au bot.</>,
-      subtitle: "Renomme, change l'avatar, customise les couleurs — c'est ton bot.",
+      subtitle: "Renomme, change l'avatar, customise les couleurs, c'est ton bot.",
       cta: "PERSONNALISER",
       gradient: "from-emerald-600 via-teal-600 to-cyan-700",
       accent: "text-emerald-700",
@@ -1460,7 +1460,7 @@ function HeroCarousel({
   }, [hovered, slides.length]);
 
   // Si l'utilisateur passe Premium en cours de session, le slide Premium
-  // disparaît et l'index peut sortir des bornes — clamp.
+  // disparaît et l'index peut sortir des bornes, clamp.
   useEffect(() => {
     if (index >= slides.length) setIndex(0);
   }, [index, slides.length]);
@@ -1483,7 +1483,7 @@ function HeroCarousel({
         <div className="absolute -top-12 -right-8 w-56 h-56 rounded-full bg-white/10 blur-3xl pointer-events-none" />
 
         <div className="relative grid md:grid-cols-[1.1fr_1fr] gap-6 items-center px-7 py-9 md:px-10 md:py-12 min-h-[280px]">
-          {/* TEXT — left */}
+          {/* TEXT, left */}
           <div>
             <p className="text-[11px] font-extrabold tracking-[0.22em] uppercase text-white/85 mb-3">
               {slide.kicker}
@@ -1500,7 +1500,7 @@ function HeroCarousel({
             </span>
           </div>
 
-          {/* VISUAL — right (mockup) */}
+          {/* VISUAL, right (mockup) */}
           <div className="hidden md:block relative">
             {slide.visual}
           </div>
@@ -1528,7 +1528,7 @@ function HeroCarousel({
 }
 
 // ──────────────────────────────────────────────────────────────────────
-//  Mockups des slides — petits cards Discord-style à droite du hero
+//  Mockups des slides, petits cards Discord-style à droite du hero
 // ──────────────────────────────────────────────────────────────────────
 
 function PremiumVisual() {

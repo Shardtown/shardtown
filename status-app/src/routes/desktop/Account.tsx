@@ -21,7 +21,7 @@ interface TokenRow {
 }
 
 /**
- * Desktop /account — native-feel billing/account page.
+ * Desktop /account, native-feel billing/account page.
  *
  * Visual language matches /premium (Linear / Notion / 1Password vibe) :
  * a centered max-w-920 column, sections separated by hairline borders,
@@ -91,7 +91,7 @@ export function DesktopAccount() {
     const ok = (linked || shardLinked) === "ok";
     if (ok) {
       setBanner({ kind: "ok", text: `${which} lié avec succès.` });
-      // Account data changed server-side — pull the fresh row so the
+      // Account data changed server-side, pull the fresh row so the
       // ConnectionRow flips to "Lié" without a manual reload.
       void refresh();
     } else {
@@ -304,7 +304,7 @@ export function DesktopAccount() {
             style={{ background: "rgba(251, 191, 36, 0.10)", border: "1px solid rgba(251, 191, 36, 0.32)", color: "rgb(252, 211, 77)" }}
           >
             <ShieldAlert size={12} className="mt-0.5 shrink-0" />
-            <span>Email non vérifié — vérifie le lien envoyé à <b>{account.email}</b>.</span>
+            <span>Email non vérifié, vérifie le lien envoyé à <b>{account.email}</b>.</span>
           </div>
         )}
 
@@ -318,7 +318,7 @@ export function DesktopAccount() {
             <ConnectionRow
               kind="discord"
               title="Discord"
-              caption="Compte principal — nécessaire pour configurer Shard et les dashboards"
+              caption="Compte principal, nécessaire pour configurer Shard et les dashboards"
               linkedId={account.discord_id}
               linkedName={account.discord_username}
               linkedAvatar={account.discord_avatar}
@@ -337,7 +337,7 @@ export function DesktopAccount() {
             <ConnectionRow
               kind="discord"
               title="Connexion secondaire"
-              caption="Discord alternatif — utile si tu administres Shard depuis deux comptes (optionnel)"
+              caption="Discord alternatif, utile si tu administres Shard depuis deux comptes (optionnel)"
               linkedId={account.shard_id}
               linkedName={account.shard_username}
               linkedAvatar={account.shard_avatar}
@@ -544,7 +544,7 @@ export function DesktopAccount() {
           tone="emerald"
         />
         <p className="text-[13px] mb-4" style={{ color: "var(--ds-text-mut)" }}>
-          Copie ce token <b style={{ color: "var(--ds-text)" }}>maintenant</b>. Il ne sera plus jamais affiché — seul son hash est gardé en base.
+          Copie ce token <b style={{ color: "var(--ds-text)" }}>maintenant</b>. Il ne sera plus jamais affiché, seul son hash est gardé en base.
         </p>
         <div
           className="flex items-center gap-2 px-3 py-2.5 rounded-[10px] mb-5"
@@ -672,7 +672,7 @@ function ConnectionRow({
   linkedName: string | null;
   linkedAvatar?: string | null;
   hrefLink: string;
-  /** When provided, the Lier button calls this instead of navigating to hrefLink — used in Tauri to route OAuth through the system browser. */
+  /** When provided, the Lier button calls this instead of navigating to hrefLink, used in Tauri to route OAuth through the system browser. */
   onLink?: () => void;
   onUnlink: () => void;
   extraAction?: ReactNode;

@@ -56,7 +56,7 @@ export function PremiumTab({ guildId, guildName, isPremium }: Props) {
   }
 
   // ─── Premium actif : panneau de gestion ─────────────────────────────
-  // NB : les champs Stripe sont mockés pour l'instant — un futur endpoint
+  // NB : les champs Stripe sont mockés pour l'instant, un futur endpoint
   // /api/premium/subscription/:guildId renverra plan/amount/next/card.
   const mock = {
     plan: "Mensuel",
@@ -81,7 +81,7 @@ export function PremiumTab({ guildId, guildName, isPremium }: Props) {
         </p>
       </header>
 
-      {/* Détails de l'abonnement — 2 colonnes */}
+      {/* Détails de l'abonnement, 2 colonnes */}
       <SectionCard title="Abonnement" description="Plan en cours, prochain paiement, mode de paiement.">
         <div className="grid md:grid-cols-2 gap-4">
           <Field label="Plan">
@@ -130,7 +130,7 @@ export function PremiumTab({ guildId, guildName, isPremium }: Props) {
 
         <p className="text-[10.5px] text-amber-200/70 italic mt-4">
           Les champs Stripe (montant exact, date, carte, payeur) sont des
-          placeholders — branchés bientôt sur le portail Stripe.
+          placeholders, branchés bientôt sur le portail Stripe.
         </p>
       </SectionCard>
 

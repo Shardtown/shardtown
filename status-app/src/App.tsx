@@ -41,17 +41,17 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { GooeyFilter } from "@/components/ui/toggle";
 
 // Marketing / informational routes that don't make sense inside the
-// desktop app — they redirect to the tools hub when running in Tauri.
+// desktop app, they redirect to the tools hub when running in Tauri.
 const HOME_ROUTE = IS_DESKTOP ? "/outils" : "/";
 
 // Tauri opens a secondary window with ?panel=tray for the menu-bar
 // popover. That window mounts the same SPA but should render only the
-// compact TrayPanel — no router, no shell, no main dashboard.
+// compact TrayPanel, no router, no shell, no main dashboard.
 const IS_TRAY_PANEL = typeof window !== "undefined"
   && new URLSearchParams(window.location.search).get("panel") === "tray";
 
 export function App() {
-  // Hooks must run unconditionally — split the tray-panel branch into a
+  // Hooks must run unconditionally, split the tray-panel branch into a
   // separate component so its hook list never coexists with App's.
   if (IS_TRAY_PANEL) return <TrayPanel />;
   return <AppMain />;
@@ -94,7 +94,7 @@ function AppMain() {
         <GooeyFilter />
         <BrowserRouter>
           <ErrorBoundary>
-            {/* Tauri drag handle — invisible strip on top of the window */}
+            {/* Tauri drag handle, invisible strip on top of the window */}
             {IS_DESKTOP && <div className="fixed inset-x-0 top-0 h-7 z-50 pointer-events-none" data-tauri-drag-region />}
             <Routes>
               {IS_DESKTOP ? (
@@ -126,7 +126,7 @@ function AppMain() {
               <Route path="/outils" element={IS_DESKTOP ? <DesktopOverview /> : <Outils />} />
               {IS_DESKTOP && <Route path="/rpc" element={<DesktopRpc />} />}
               {IS_DESKTOP && <Route path="/preferences" element={<DesktopPreferences />} />}
-              {/* Ancien chemin — redirige vers /outils pour ne rien casser */}
+              {/* Ancien chemin, redirige vers /outils pour ne rien casser */}
               <Route path="/dashboard" element={<Navigate to="/outils" replace />} />
               <Route path="/shard/server" element={IS_DESKTOP ? <DesktopBotServer /> : <ShardServer />} />
               <Route path="/shard/guild/:guildId" element={<ShardGuild />} />
@@ -141,7 +141,7 @@ function AppMain() {
             </Routes>
             {/* Persistent overlays that must survive route changes. AppLayout
                 (and therefore DesktopShell) is *inside* each route, so they
-                remount on every navigation — the tour modal, post-update
+                remount on every navigation, the tour modal, post-update
                 notes etc. would lose their state. Mount them once here, at
                 the Routes sibling level, so they stay alive throughout. */}
             {IS_DESKTOP && <PersistentOverlays />}

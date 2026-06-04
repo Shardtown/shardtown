@@ -68,12 +68,12 @@ export function VerifyAllNotifier() {
         );
         if (cancelled) return;
         if (!status.exists) {
-          // Server forgot — treat as completed with what we have.
+          // Server forgot, treat as completed with what we have.
           clearJob();
           return;
         }
         if (status.running) {
-          // Still working — re-poll later.
+          // Still working, re-poll later.
           timerRef.current = window.setTimeout(tick, POLL_INTERVAL_MS);
           return;
         }
@@ -107,7 +107,7 @@ export function VerifyAllNotifier() {
           window.dispatchEvent(new Event("shardtown:guild-refresh"));
         }
       } catch {
-        // Network blip — retry next interval.
+        // Network blip, retry next interval.
         timerRef.current = window.setTimeout(tick, POLL_INTERVAL_MS);
       }
     }

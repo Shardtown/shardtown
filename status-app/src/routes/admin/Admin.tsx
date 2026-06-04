@@ -321,7 +321,7 @@ export function Admin() {
 
   return (
     <AppLayout>
-      {/* Aurora bleed (admin tone — red) */}
+      {/* Aurora bleed (admin tone, red) */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] -z-10 opacity-50">
         <div className="absolute -top-32 left-[20%] w-[600px] h-[600px] rounded-full blur-3xl bg-red-500/10" />
         <div className="absolute -top-24 right-[16%] w-[500px] h-[500px] rounded-full blur-3xl bg-blue-500/10" />
@@ -352,7 +352,7 @@ export function Admin() {
               try {
                 await apiPost("/admin/logout");
               } catch {
-                /* swallow — we redirect regardless */
+                /* swallow, we redirect regardless */
               } finally {
                 nav("/admin/login", { replace: true });
               }

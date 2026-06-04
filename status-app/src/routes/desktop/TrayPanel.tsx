@@ -7,7 +7,7 @@ import { apiGet, setBearerToken } from "@/api/client";
 import { tokenGet, openExternal } from "@/lib/desktop";
 
 /**
- * Tray-icon popover — 360×520 window anchored under the menu-bar icon.
+ * Tray-icon popover, 360×520 window anchored under the menu-bar icon.
  * NordVPN-style: top bar with branding + actions, hero status card with
  * primary CTA, recent servers grid, bots-by-status section, footer.
  */
@@ -71,7 +71,7 @@ export function TrayPanel() {
   const sgTotal = data?.mod.length ?? 0;
   const sActive = data?.shard.filter(g => g.bot_present).length ?? 0;
   const sTotal = data?.shard.length ?? 0;
-  // Unified bot — count distinct guilds across both OAuth flows so the
+  // Unified bot, count distinct guilds across both OAuth flows so the
   // "active on N servers" tally doesn't double-count.
   const uniqueGuildIds = new Set<string>();
   const uniqueActiveIds = new Set<string>();
@@ -105,7 +105,7 @@ export function TrayPanel() {
     <div className="tray-panel">
       <div className="tray-drag" data-tauri-drag-region />
 
-      {/* Top bar — brand + small action icons */}
+      {/* Top bar, brand + small action icons */}
       <header className="tray-top">
         <button type="button" className="tray-brand" onClick={() => openMain("/outils")}>
           <img src="/image/favicon.png" alt="" />

@@ -1,7 +1,7 @@
 /**
  * Theme switcher pour l'app desktop. Trois thèmes :
  * - "aurora" (défaut) : gradient animé multicolore en arrière-plan du shell.
- * - "noir" : noir pur, sans gradient — surface plate type "OLED".
+ * - "noir" : noir pur, sans gradient, surface plate type "OLED".
  * - "light" : palette claire (data-theme="light").
  *
  * Le thème courant écrit un `data-theme` sur <html> (sauf aurora qui est la

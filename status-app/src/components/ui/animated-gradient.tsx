@@ -252,7 +252,7 @@ export default function AnimatedGradient({
     const program = gl.createProgram();
     if (!vertexShader || !fragmentShader || !program) {
       // Context can be created but shader/program allocation can still fail
-      // (lost context, exhausted resources). Bail quietly — the canvas just
+      // (lost context, exhausted resources). Bail quietly, the canvas just
       // stays transparent rather than crashing the whole React tree.
       canvas.removeEventListener("webglcontextlost", handleContextLost);
       gl.getExtension("WEBGL_lose_context")?.loseContext();

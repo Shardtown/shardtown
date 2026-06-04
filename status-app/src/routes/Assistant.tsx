@@ -59,7 +59,7 @@ function useAutoResize(min: number, max: number) {
   return { ref, adjust };
 }
 
-/** Wrapper "page standalone" — accessible directement via /assistant. */
+/** Wrapper "page standalone", accessible directement via /assistant. */
 export function Assistant() {
   return (
     <AppLayout>
@@ -68,7 +68,7 @@ export function Assistant() {
   );
 }
 
-/** Chat UI réutilisable — pas d'AppLayout, pour pouvoir être intégré
+/** Chat UI réutilisable, pas d'AppLayout, pour pouvoir être intégré
  *  inline dans le dashboard guild (tab "Samia"). */
 export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -76,7 +76,7 @@ export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
-  // Maintenance state — fetched from /api/chatbot/history; when the
+  // Maintenance state, fetched from /api/chatbot/history; when the
   // backend returns 503 with `maintenance: true`, we render a full-page
   // "en maintenance" screen instead of the chat. Hooks must run before
   // any conditional return so we don't break Rules of Hooks.
@@ -255,7 +255,7 @@ export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
     sending && lastMsg?.role === "assistant" && lastMsg.content === "";
   const hasConversation = messages.length > 0;
 
-  // Maintenance — full-page block, no chat, no input, no suggestions.
+  // Maintenance, full-page block, no chat, no input, no suggestions.
   // Rendered as soon as /history reports 503 + maintenance:true.
   if (maintenance) {
     return (
@@ -316,7 +316,7 @@ export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
         style={embedded ? { minHeight: "calc(100dvh - 16rem)" } : { minHeight: "calc(100vh - 18rem)" }}
       >
         {!hasConversation ? (
-          // Empty state — hero in the same uppercase Inter-Black style as the home
+          // Empty state, hero in the same uppercase Inter-Black style as the home
           <div className="text-center max-w-3xl mx-auto flex-1 flex flex-col justify-center">
             <motion.p
               className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
@@ -350,7 +350,7 @@ export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
             </motion.p>
           </div>
         ) : (
-          // Conversation header — discreet
+          // Conversation header, discreet
           <div className="max-w-3xl mx-auto mb-6 flex items-center gap-3">
             <p className="text-[11px] font-bold tracking-widest text-white/35 uppercase">
               Conversation avec Shard
@@ -369,7 +369,7 @@ export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
           </div>
         )}
 
-        {/* Messages — flex-1 pour absorber l'espace dispo, scroll interne */}
+        {/* Messages, flex-1 pour absorber l'espace dispo, scroll interne */}
         {hasConversation && (
           <div
             ref={scrollRef}
@@ -384,7 +384,7 @@ export function SamiaChat({ embedded = false }: { embedded?: boolean } = {}) {
           </div>
         )}
 
-        {/* Input — same glass aesthetic as the rest of the site */}
+        {/* Input, same glass aesthetic as the rest of the site */}
         <div ref={inputWrapperRef} className="w-full max-w-3xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: reduce ? 0 : 30 }}

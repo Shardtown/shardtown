@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* Linear/Vercel inspired palette — neutres zinc, accents discrets,
+    /* Linear/Vercel inspired palette, neutres zinc, accents discrets,
        contraste haut sans cris. Pas de pure black (#000) qui se voit
        sale sur OLED ; on choisit #0a0a0a (zinc-950 ajusté). */
     --background: 0 0% 4%;
@@ -30,7 +30,7 @@
     --ring: 240 5% 65%;
     --radius: 0.5rem;
 
-    /* Desktop-shell variables — désormais alignées sur la même palette
+    /* Desktop-shell variables, désormais alignées sur la même palette
        neutre que le reste du site (zinc-950 → zinc-50 via opacités). */
     --ds-bg: #0a0a0a;
     --ds-bg-1: #111111;
@@ -88,7 +88,7 @@
     --ds-border-strong: rgba(0, 0, 0, 0.16);
     --ds-panel: rgba(0, 0, 0, 0.025);
     --ds-panel-2: rgba(0, 0, 0, 0.05);
-    /* L'accent bleu reste identique entre dark/light — c'est la couleur
+    /* L'accent bleu reste identique entre dark/light, c'est la couleur
        de marque, pas dépendante du thème. */
     --ds-accent-bg: #2563eb;
     --ds-accent-fg: #ffffff;
@@ -125,7 +125,7 @@
   .container-wide { max-width: 1400px; margin: 0 auto; padding: 0 24px; }
   .container-dashboard { max-width: 1400px; margin: 0 auto; padding: 0 28px; }
 
-  /* Bleu gradient de marque — utilisable sur CTA / surfaces accentuées.
+  /* Bleu gradient de marque, utilisable sur CTA / surfaces accentuées.
      `.bg-accent-gradient` pour la surface pleine, `.bg-accent-gradient-soft`
      pour les hover backgrounds / glow translucides. `.text-accent-gradient`
      pour les titres "shiny". */
@@ -142,7 +142,7 @@
     box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35), 0 10px 40px -10px rgba(59, 130, 246, 0.45);
   }
 
-  /* Liquid glass — backdrop-blurred translucent surface used on desktop
+  /* Liquid glass, backdrop-blurred translucent surface used on desktop
      overlays (popovers, modals, toasts). Layered: blur + saturate for the
      "vibrant" Apple-style frosted feel, semi-transparent fill on top,
      subtle inner highlight that catches the aurora behind. */
@@ -302,7 +302,7 @@
   transform: none;
 }
 
-/* Tinted variants — kept on the same chrome, change only fill + accent */
+/* Tinted variants, kept on the same chrome, change only fill + accent */
 .btn-liquid--primary {
   background: linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(245,245,245,0.85) 100%);
   color: #0a0a0a;
@@ -371,7 +371,7 @@
 }
 
 /* ────────────────────────────────────────────────────────────────────────
-   Holographic card — cursor-tracked white highlight + soft glow.
+   Holographic card, cursor-tracked white highlight + soft glow.
    Used for the bot tiles on the homepage. The component sets --x / --y
    on mousemove; CSS reads them to position the radial highlight and halo.
    ──────────────────────────────────────────────────────────────────────── */
@@ -458,7 +458,7 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   Tauri shell — boot screen, token login screen, aurora background.
+   Tauri shell, boot screen, token login screen, aurora background.
 
    These used to live as inline <style>{`...`}</style> tags rendered
    by the React components themselves. With React 19 those style tags
@@ -476,7 +476,7 @@
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
-  /* Default tone — overridden inline by AuroraBackground for tone="amber" */
+  /* Default tone, overridden inline by AuroraBackground for tone="amber" */
   --aurora-a: 91, 109, 255;
   --aurora-b: 139, 92, 246;
   --aurora-c: 59, 130, 246;

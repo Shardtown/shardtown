@@ -6,7 +6,7 @@ const SPARK_MAX = 24;
 
 // Persiste l'historique en localStorage pour qu'on retrouve les barres
 // quand on revient sur la page de statut. Sans ça, chaque visite repart
-// avec 0 point — il faut rester 12 min sur la page pour remplir la jauge.
+// avec 0 point, il faut rester 12 min sur la page pour remplir la jauge.
 const STORAGE_KEY = "shardtown:stats:history:v1";
 // Au-delà de 30 min, on considère que les barres sont trop périmées
 // et on repart de zéro pour ne pas montrer un faux "tout va bien".
@@ -95,11 +95,11 @@ function seedFromHistory(rows: StatsResponse["history"], live: LiveHistory) {
 }
 
 export function useStats(intervalMs = 30_000): StatsSnapshot {
-  // Init paresseuse via vars locales — éviter de lire `ref.current` dans le
+  // Init paresseuse via vars locales, éviter de lire `ref.current` dans le
   // corps du render (interdit par le compilateur React 19). Les Map/objets
   // sont par référence, donc le snapshot et les refs pointent vers la même
   // structure mutable, comme avant.
-  // On hydrate depuis localStorage si dispo (TTL 30 min) — sinon empty.
+  // On hydrate depuis localStorage si dispo (TTL 30 min), sinon empty.
   const initialLive: LiveHistory = useMemo(() => {
     const stored = loadStored();
     return stored?.live ?? emptyHistory();

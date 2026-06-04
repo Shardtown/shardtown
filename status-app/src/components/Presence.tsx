@@ -34,7 +34,7 @@ export function PresenceProvider({ children }: { children: ReactNode }) {
 
   // Fast mode (cursors + 1.5 s heartbeat) is on when peers are visible
   // OR a follow session is active. We don't know peer count yet, so we
-  // bias to "on" as soon as we're in a guild scope — better demo, and
+  // bias to "on" as soon as we're in a guild scope, better demo, and
   // it stops automatically when the scope becomes null.
   const fast = scope !== null;
   const { peers } = usePresence({ scope, path: loc.pathname, fast });
@@ -254,7 +254,7 @@ export function FollowBanner() {
   );
 }
 
-/* ─── Field overlay layer — locks + chips combined ────────────────── */
+/* ─── Field overlay layer, locks + chips combined ────────────────── */
 
 /**
  * For each peer with a focused field, renders:

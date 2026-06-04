@@ -14,7 +14,7 @@ import { CheckoutModal } from "@/components/premium/CheckoutModal";
 interface AdminGuild { id: string; name: string }
 interface PremiumData { adminGuilds: AdminGuild[] }
 
-// 3-tier pricing (mee6-style) — intro price → tarif plein, sauf Lifetime.
+// 3-tier pricing (mee6-style), intro price → tarif plein, sauf Lifetime.
 const PRICE = {
   monthly: {
     amount: 3.99,
@@ -98,7 +98,7 @@ const COMPARISON: { title: string; rows: { label: string; free: string; premium:
 const FAQ = [
   {
     q: "Puis-je annuler à tout moment ?",
-    a: "Oui. Le plan mensuel est résiliable en 1 clic depuis le portail Stripe (lien dans l'activation). L'annulation prend effet à la fin de la période en cours — tu gardes le Premium jusque-là.",
+    a: "Oui. Le plan mensuel est résiliable en 1 clic depuis le portail Stripe (lien dans l'activation). L'annulation prend effet à la fin de la période en cours, tu gardes le Premium jusque-là.",
   },
   {
     q: "L'achat à vie expire-t-il un jour ?",
@@ -110,7 +110,7 @@ const FAQ = [
   },
   {
     q: "Et si Stripe me demande des frais de transaction ?",
-    a: "Tous les frais Stripe sont déjà inclus dans le prix affiché — tu ne paies pas un centime de plus.",
+    a: "Tous les frais Stripe sont déjà inclus dans le prix affiché, tu ne paies pas un centime de plus.",
   },
   {
     q: "Avez-vous un essai gratuit ?",
@@ -118,7 +118,7 @@ const FAQ = [
   },
   {
     q: "Mes données sont-elles en sécurité ?",
-    a: "Oui : hébergement en Europe, transmissions TLS, aucun mot de passe stocké en clair, conformité RGPD. Stripe gère les paiements — on ne voit jamais ton numéro de carte.",
+    a: "Oui : hébergement en Europe, transmissions TLS, aucun mot de passe stocké en clair, conformité RGPD. Stripe gère les paiements, on ne voit jamais ton numéro de carte.",
   },
 ];
 
@@ -191,7 +191,7 @@ export function Premium() {
   const [guildId, setGuildId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  // Modal de paiement Shardtown — fenêtre blanche embedded Stripe Elements.
+  // Modal de paiement Shardtown, fenêtre blanche embedded Stripe Elements.
   // Plus de redirect vers checkout.stripe.com : carte saisie ici, intent
   // confirmé direct. Le modal gère son propre cycle de vie.
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -206,7 +206,7 @@ export function Premium() {
 
   const buttonLabel = "Continuer vers le paiement";
 
-  // Détails du plan sélectionné — formatés pour passer au CheckoutModal.
+  // Détails du plan sélectionné, formatés pour passer au CheckoutModal.
   const selectedPlan = {
     label: plan === "lifetime" ? "Lifetime" : plan === "yearly" ? "Annuel" : "Mensuel",
     // Premier prélèvement : pour lifetime, le total. Pour yearly/monthly,
@@ -219,7 +219,7 @@ export function Premium() {
   const selectedGuildName = data?.adminGuilds.find(g => g.id === guildId)?.name ?? "—";
   const accountName = user?.global_name || user?.username || "—";
 
-  // Kept for backwards compat — l'ancien flow Stripe Checkout reste
+  // Kept for backwards compat, l'ancien flow Stripe Checkout reste
   // disponible si jamais le terminal embedded échoue (ex: Stripe.js
   // bloqué par un AdBlock). Non utilisé par le bouton principal.
   async function startLegacyCheckout() {
@@ -244,7 +244,7 @@ export function Premium() {
 
   return (
     <AppLayout>
-      {/* Aurora bleed — amber + violet pour Premium */}
+      {/* Aurora bleed, amber + violet pour Premium */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[760px] -z-10 opacity-65">
         <div className="absolute -top-40 left-[15%] w-[700px] h-[700px] rounded-full blur-3xl bg-amber-500/12" />
         <div className="absolute -top-20 right-[10%] w-[600px] h-[600px] rounded-full blur-3xl bg-violet-500/10" />
@@ -252,7 +252,7 @@ export function Premium() {
       </div>
 
       <section className="container-wide pt-32 md:pt-40 pb-32 overflow-hidden">
-        {/* Hero — same editorial home pattern */}
+        {/* Hero, same editorial home pattern */}
         <header className="text-center max-w-3xl mx-auto mb-16">
           <motion.p
             className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8 inline-flex items-center justify-center gap-2"
@@ -282,7 +282,7 @@ export function Premium() {
             transition={{ duration: 0.85, delay: 0.4, ease: heroEase }}
           >
             Tous les modules. <span className="text-white">Aucune limite.</span>{" "}
-            Trois formules — Lifetime, Annuel ou Mensuel — toutes complètes.
+            Trois formules, Lifetime, Annuel ou Mensuel, toutes complètes.
           </motion.p>
 
           <motion.div
@@ -300,13 +300,13 @@ export function Premium() {
         <div className="h-px w-full bg-white/[0.06] mb-14" />
 
 
-        {/* Pricing cards — module shadcn-style avec 2 plans (Mensuel + À vie).
+        {/* Pricing cards, module shadcn-style avec 2 plans (Mensuel + À vie).
             Toggle Monthly/Yearly désactivé : les prix sont fixes et "à vie"
             n'est pas un cycle annuel mais un paiement unique. */}
         <div id="pricing" className="mb-12 scroll-mt-32">
           <PricingModule
             title="Choisis ton offre"
-            subtitle="Lifetime, annuel ou mensuel — toutes les fonctionnalités Premium incluses dans chaque formule."
+            subtitle="Lifetime, annuel ou mensuel, toutes les fonctionnalités Premium incluses dans chaque formule."
             showToggle={false}
             buttonLabel="Choisir cette offre"
             plans={(() => {
@@ -406,7 +406,7 @@ export function Premium() {
               <div className="h-32 animate-pulse" />
             ) : (
               <div className="space-y-5">
-                {/* Plan toggle — 3 formules */}
+                {/* Plan toggle, 3 formules */}
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-white/40 mb-2.5">
                     Formule
@@ -545,7 +545,7 @@ export function Premium() {
         </p>
       </section>
 
-      {/* Terminal de paiement Shardtown — Stripe Elements embedded. */}
+      {/* Terminal de paiement Shardtown, Stripe Elements embedded. */}
       <CheckoutModal
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}

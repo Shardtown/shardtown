@@ -133,7 +133,7 @@ export function DesktopPreferences() {
             </p>
             <h1 className="text-[34px] font-black tracking-tight leading-[1.05] mb-2">Réglages</h1>
             <p className="text-[14px] font-medium" style={{ color: "var(--ds-text-mut)" }}>
-              Apparence, sons, sécurité, démarrage — règle Shardtown à ton image.
+              Apparence, sons, sécurité, démarrage, règle Shardtown à ton image.
             </p>
           </header>
 
@@ -418,7 +418,7 @@ const THEMES: ThemeSpec[] = [
   {
     id: "noir",
     label: "Noir",
-    description: "Surface plate, profonde — type OLED.",
+    description: "Surface plate, profonde, type OLED.",
     preview: { background: "#000" },
     previewFg: "#fff",
   },
@@ -451,7 +451,7 @@ function ThemePicker() {
           >
             {/* Preview surface */}
             <div className="relative h-[88px] w-full" style={t.preview}>
-              {/* Mini chrome — sidebar + carte — pour évoquer l'app. */}
+              {/* Mini chrome, sidebar + carte, pour évoquer l'app. */}
               <div
                 className="absolute left-2 top-2 bottom-2 w-[14px] rounded-[5px]"
                 style={{

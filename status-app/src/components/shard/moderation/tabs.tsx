@@ -32,7 +32,7 @@ const roleOpts = (roles: DiscordRole[], excludeEveryone = true) => [
    avec la Vérification (Captcha) reléguée en bas pour ne pas perdre
    les réglages qui n'ont pas d'autre maison. */
 
-// Liste de fuseaux horaires courants — pas de Intl.supportedValuesOf pour
+// Liste de fuseaux horaires courants, pas de Intl.supportedValuesOf pour
 // rester ESLint-safe sur les anciens TS targets. Champ non encore persisté
 // côté backend (UI prête, à brancher quand on ajoute la colonne timezone).
 const TIMEZONE_OPTIONS = [
@@ -48,10 +48,10 @@ const TIMEZONE_OPTIONS = [
 ];
 
 interface ParametersExtraProps {
-  /** Settings côté Shard (community) — pour timezone et embedColor. */
+  /** Settings côté Shard (community), pour timezone et embedColor. */
   comSettings?: ShardSettings | null;
   /** Update Shard. Optionnel : si absent, les champs côté community
-   *  restent en lecture seule (rare — toujours présent dans le dashboard). */
+   *  restent en lecture seule (rare, toujours présent dans le dashboard). */
   comUpdate?: (patch: Partial<ShardSettings>) => void;
 }
 
@@ -59,7 +59,7 @@ export function GeneralTab({
   settings, update, channels, roles,
   comSettings, comUpdate,
 }: TabProps & ParametersExtraProps) {
-  // Gérants supplémentaires — on réutilise modRoles (semantiquement proche
+  // Gérants supplémentaires, on réutilise modRoles (semantiquement proche
   // des "Bot Masters" mee6 : rôles qui peuvent piloter le bot, hors admins).
   const masterRoleIds = new Set(parseJsonArray(settings.modRoles));
   function toggleMaster(roleId: string) {
@@ -80,7 +80,7 @@ export function GeneralTab({
 
   return (
     <div className="space-y-5">
-      {/* Header style mee6 — titre + sous-titre éditorial. */}
+      {/* Header style mee6, titre + sous-titre éditorial. */}
       <header className="space-y-2 px-1">
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Paramètres</h1>
         <p className="text-[14.5px] text-white/55 leading-relaxed">
@@ -93,17 +93,17 @@ export function GeneralTab({
         title="Gérants du Bot"
         description="Les gérants du bot peuvent accéder à ton tableau de bord et éditer chaque commande et configuration de module. Ils contournent aussi les vérifications de rôle pour les commandes, peuvent voir tous les tickets du module Tickets, sont automatiquement considérés comme immunisés dans le module Modération et peuvent réinitialiser l'XP de n'importe qui."
       >
-        {/* Rôles Administrateurs — auto-détectés Discord (lecture seule) */}
+        {/* Rôles Administrateurs, auto-détectés Discord (lecture seule) */}
         <Field label="Rôles Administrateurs">
           <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex items-start gap-3">
             <ShieldCheck className="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-300/80" />
             <p className="text-[12.5px] text-white/55 leading-relaxed">
-              Tout rôle disposant de la permission <span className="text-white/85 font-semibold">Administrateur</span> sur Discord est automatiquement considéré comme un gérant du bot. Aucune action requise ici — c'est synchronisé en temps réel.
+              Tout rôle disposant de la permission <span className="text-white/85 font-semibold">Administrateur</span> sur Discord est automatiquement considéré comme un gérant du bot. Aucune action requise ici, c'est synchronisé en temps réel.
             </p>
           </div>
         </Field>
 
-        {/* Rôles supplémentaires de gérants — multi-select */}
+        {/* Rôles supplémentaires de gérants, multi-select */}
         <Field
           label="Rôles supplémentaires de gérants du Bot"
           hint="Rôles qui seront également considérés comme gérants du bot, même s'ils ne disposent pas de la permission Administrateur."
@@ -213,7 +213,7 @@ export function GeneralTab({
         </Field>
       </SectionCard>
 
-      {/* ─── Vérification (Captcha) — conservé pour ne pas perdre
+      {/* ─── Vérification (Captcha), conservé pour ne pas perdre
           les réglages qui n'ont pas d'autre tab dédié. */}
       <SectionCard title="Vérification" description="Comment les nouveaux membres accèdent au serveur. Détails supplémentaires dans l'onglet Captcha.">
         <div className="grid md:grid-cols-2 gap-4">
@@ -294,8 +294,8 @@ export function RulesTab({ settings, update }: TabProps) {
   const en = parseJsonArray(settings.rules_en);
   const premium = isTrue(settings.isPremium);
   const max = premium ? 20 : 3;
-  const frHint = `${fr.length}/${max} règles${premium ? "" : " — passe Premium pour 20"}`;
-  const enHint = `${en.length}/${max} rules${premium ? "" : " — go Premium for 20"}`;
+  const frHint = `${fr.length}/${max} règles${premium ? "" : ", passe Premium pour 20"}`;
+  const enHint = `${en.length}/${max} rules${premium ? "" : ", go Premium for 20"}`;
   return (
     <div className="grid md:grid-cols-2 gap-4">
       <SectionCard title="Règlement (FR)" description={`Affiché dans le message de vérification pour les utilisateurs francophones. ${frHint}.`}>
@@ -364,7 +364,7 @@ function VerifyAllPanel({ hasVerifiedRole }: { hasVerifiedRole: boolean }) {
       if (d.success) {
         // The HTTP request returns immediately; the actual role-granting
         // loop runs server-side in the background. Persist the active job
-        // so the global VerifyAllNotifier polls until it's done — even if
+        // so the global VerifyAllNotifier polls until it's done, even if
         // the user navigates to another page or another guild in the
         // meantime.
         if (guildId) {
@@ -399,7 +399,7 @@ function VerifyAllPanel({ hasVerifiedRole }: { hasVerifiedRole: boolean }) {
             color: "rgb(252, 211, 77)",
           }}
         >
-          ⚠️ Aucun rôle vérifié n'est configuré — choisis-le dans l'onglet « Sécurité » avant de lancer la vérification de masse.
+          ⚠️ Aucun rôle vérifié n'est configuré, choisis-le dans l'onglet « Sécurité » avant de lancer la vérification de masse.
         </p>
       )}
       <button
@@ -546,7 +546,7 @@ function VerifyAllModal({
               </p>
               <h3 className="text-[20px] font-extrabold tracking-tight mb-3">Vérification en arrière-plan.</h3>
               <p className="text-[13px] leading-relaxed mb-6" style={{ color: "var(--ds-text-mut)" }}>
-                L'attribution des rôles se fait par vagues pour respecter les limites Discord — ça peut prendre une à deux minutes. Tu peux fermer cette fenêtre et continuer à utiliser l'app, une notification apparaîtra quand c'est terminé.
+                L'attribution des rôles se fait par vagues pour respecter les limites Discord, ça peut prendre une à deux minutes. Tu peux fermer cette fenêtre et continuer à utiliser l'app, une notification apparaîtra quand c'est terminé.
               </p>
               <button
                 type="button"
@@ -740,7 +740,7 @@ export function BannedWordsTab({ settings, update }: TabProps) {
         description={
           isTrue(settings.isPremium)
             ? `Sensibles à la casse non. Wildcards : \`*\` pour caractères multiples. ${words.length} mots (illimité Premium).`
-            : `Sensibles à la casse non. Wildcards : \`*\` pour caractères multiples. ${words.length}/3 — passe Premium pour des mots illimités.`
+            : `Sensibles à la casse non. Wildcards : \`*\` pour caractères multiples. ${words.length}/3, passe Premium pour des mots illimités.`
         }
       >
         <div className="space-y-2">
@@ -846,7 +846,7 @@ export function AutomodTab({ settings, update }: TabProps) {
  *
  * Lockdown immediate du serveur : ferme tous les salons (deny SendMessages
  * pour @everyone) + supprime toutes les invitations actives. L'opération
- * peut prendre plusieurs secondes selon le nombre de salons/invites — d'où
+ * peut prendre plusieurs secondes selon le nombre de salons/invites, d'où
  * le state machine + le modal de progression.
  */
 type PanicState =
@@ -866,7 +866,7 @@ interface PanicResponse {
 export function PanicTab({ settings }: { settings: ShardModSettings }) {
   const [state, setState] = useState<PanicState>({ kind: "idle" });
   // Mirror the persisted flag so we can flip the button label optimistically
-  // — the /panic endpoint mutates the DB directly, not via the regular
+  //, the /panic endpoint mutates the DB directly, not via the regular
   // config save flow, so we'd otherwise need to refetch the whole settings.
   const [active, setActive] = useState(() => isTrue(settings.panicModeActive));
   // Keep in sync if the parent's settings are refreshed (e.g. user switched
@@ -1090,7 +1090,7 @@ function ConfirmingBody({
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-1 w-1 h-1 rounded-full flex-shrink-0" style={{ background: dotColor }} />
-              <span>Les invitations supprimées ne reviennent <b style={{ color: "var(--ds-text)" }}>pas automatiquement</b> — à recréer si besoin</span>
+              <span>Les invitations supprimées ne reviennent <b style={{ color: "var(--ds-text)" }}>pas automatiquement</b>, à recréer si besoin</span>
             </li>
           </>
         )}

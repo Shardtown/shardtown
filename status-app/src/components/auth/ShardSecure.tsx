@@ -11,18 +11,18 @@ interface Props {
 }
 
 /**
- * ShardSecure — case à cocher anti-bot.
+ * ShardSecure, case à cocher anti-bot.
  * Side-effects: appelle POST /api/account/shardsecure et fournit un token
  * de session que le backend valide à la soumission du formulaire.
  */
 export function ShardSecure({ token, onChange }: Props) {
   const [status, setStatus] = useState<Status>(token ? "verified" : "idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  // Honeypot — un bot remplit souvent tous les champs visibles ; ce champ
+  // Honeypot, un bot remplit souvent tous les champs visibles ; ce champ
   // est invisible mais reste dans le DOM.
   const [honeypot, setHoneypot] = useState("");
   // Délai mini avant d'autoriser la vérif (anti-script qui clique instantanément).
-  // useState avec init paresseuse — la fonction n'est appelée qu'au premier
+  // useState avec init paresseuse, la fonction n'est appelée qu'au premier
   // render, ce qui satisfait les règles "no impure / no ref access during
   // render" du compilateur React 19. Le reset utilise le setter.
   const [mountedAt, setMountedAt] = useState<number>(() => Date.now());

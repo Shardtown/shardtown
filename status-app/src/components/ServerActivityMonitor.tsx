@@ -55,7 +55,7 @@ export function ServerActivityMonitor() {
         if (cancelled) return;
 
         // Server sorts DESC; iterate ASC so notifications surface oldest
-        // first — matches the order the events actually happened in.
+        // first, matches the order the events actually happened in.
         const events = (data.events || []).slice().sort((a, b) => a.timestamp - b.timestamp);
         for (const ev of events) {
           if (ev.timestamp <= cursor.current) continue;
@@ -69,7 +69,7 @@ export function ServerActivityMonitor() {
         }
         writeLastSeen(cursor.current);
       } catch {
-        // Auth lost / network blip — re-try next interval.
+        // Auth lost / network blip, re-try next interval.
       } finally {
         if (!cancelled) {
           timer = window.setTimeout(tick, POLL_INTERVAL_MS);

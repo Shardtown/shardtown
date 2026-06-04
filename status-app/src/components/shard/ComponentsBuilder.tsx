@@ -142,7 +142,7 @@ export function ComponentsBuilder({ guildId, channels }: Props) {
         )}
       </SectionCard>
 
-      <SectionCard title="Aperçu" description="Reflet fidèle du rendu Discord — l'ordre, la couleur et le markdown sont identiques à l'envoi.">
+      <SectionCard title="Aperçu" description="Reflet fidèle du rendu Discord, l'ordre, la couleur et le markdown sont identiques à l'envoi.">
         <Canvas
           blocks={blocks}
           accent={accent}
@@ -386,7 +386,7 @@ function BlockPreview({ block }: { block: Block }) {
     if (valid.length === 0) {
       return (
         <div className="rounded-md border border-dashed border-white/10 px-3 py-4 text-[12px] text-white/30 italic text-center">
-          Galerie vide — cliquez pour ajouter des images
+          Galerie vide, cliquez pour ajouter des images
         </div>
       );
     }

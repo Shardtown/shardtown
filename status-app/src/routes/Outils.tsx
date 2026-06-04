@@ -9,14 +9,14 @@ import { useAccount } from "@/api/account";
 import { startOAuthLink } from "@/lib/oauthLink";
 
 /**
- * Page /outils — catalogue de tout ce que Shardtown propose.
+ * Page /outils, catalogue de tout ce que Shardtown propose.
  *
  * Trois familles :
  * 1. Le bot Discord Shard que les users peuvent inviter et configurer
  *    depuis leur dashboard (sécurité + communauté réunies).
  * 2. Outils web Shardtown utilisables directement sur le site (Shard
  *    en mode assistante IA, page Statut, Wiki).
- * 3. Services à la demande (dev custom, setup serveur, etc.) — CTA vers
+ * 3. Services à la demande (dev custom, setup serveur, etc.), CTA vers
  *    le formulaire de contact de la home.
  */
 
@@ -29,7 +29,7 @@ const SERVICES = [
   {
     label: "Bot Discord custom",
     description:
-      "Au-delà de Shard — fonctionnalités exclusives à ta communauté, intégrations API tierces, dashboards web dédiés.",
+      "Au-delà de Shard, fonctionnalités exclusives à ta communauté, intégrations API tierces, dashboards web dédiés.",
   },
   {
     label: "Configuration de serveur Discord",
@@ -68,7 +68,7 @@ export function Outils() {
     );
   }
 
-  // Logged into a Shardtown account but Discord isn't linked yet — the
+  // Logged into a Shardtown account but Discord isn't linked yet, the
   // dashboard needs the user's guild list, so prompt the OAuth bridge.
   if (!user && account && !account.discord_id) {
     return (
@@ -99,7 +99,7 @@ export function Outils() {
           >
             Pour t'afficher la liste de tes serveurs et te laisser configurer Shard,
             on a besoin que tu autorises Shardtown à voir tes serveurs Discord. Aucun
-            mot de passe — juste l'OAuth officielle de Discord.
+            mot de passe, juste l'OAuth officielle de Discord.
           </motion.p>
           <button
             type="button"
@@ -212,7 +212,7 @@ export function Outils() {
                 </h2>
                 <p className="text-[13.5px] text-white/55 leading-relaxed max-w-2xl">
                   Anti-raid, captcha, modération auto, niveaux, économie,
-                  giveaways, alertes stream — configure tout sans une seule
+                  giveaways, alertes stream, configure tout sans une seule
                   commande Discord.
                 </p>
               </div>
@@ -223,7 +223,7 @@ export function Outils() {
           </Link>
         </motion.div>
 
-        {/* Grille secondaire : Samia / Statut / Premium — 3 cards équipondérées. */}
+        {/* Grille secondaire : Samia / Statut / Premium, 3 cards équipondérées. */}
         <motion.div
           initial={{ opacity: 0, y: reduce ? 0 : 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -271,7 +271,7 @@ export function Outils() {
               </h2>
               <p className="text-[13px] text-white/55 leading-relaxed max-w-2xl">
                 Bot Discord custom, site web, setup de serveur, audit, formation
-                — l'équipe Shardtown prend tes projets sur devis.
+               , l'équipe Shardtown prend tes projets sur devis.
               </p>
             </div>
             <a

@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
 /**
- * Slow, soft aurora-like background — large blurred gradient blobs drifting
+ * Slow, soft aurora-like background, large blurred gradient blobs drifting
  * in a loop. Designed to live behind login / boot / hero screens to bring
  * the desktop app closer to the website's visual language.
  *

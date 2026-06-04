@@ -53,7 +53,7 @@ interface IconsProps {
   passkeyBusy?: boolean;
 }
 
-/** Icon-only variant — affiche juste les logos en ligne */
+/** Icon-only variant, affiche juste les logos en ligne */
 export function OAuthIcons({ label = "Ou continuer avec", onPasskey, passkeyDisabled, passkeyBusy }: IconsProps) {
   return (
     <div className="flex flex-col items-center gap-2">

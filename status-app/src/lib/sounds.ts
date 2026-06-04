@@ -4,7 +4,7 @@
  * Each event type has a user-configurable sound preference (preset name or
  * custom file URL) plus a global enable/volume. Preferences live in
  * localStorage; the desktop has filesystem so we could later persist a
- * custom file path resolved through Tauri's fs plugin — for now the user
+ * custom file path resolved through Tauri's fs plugin, for now the user
  * picks from the bundled presets.
  *
  * Bundled presets are tiny WAVs in /public/sounds. They're rendered through
@@ -125,7 +125,7 @@ export async function playEventSound(event: SoundEvent, override?: string): Prom
   try { await sharedAudio.play(); } catch { /* autoplay may be blocked, ignore */ }
 }
 
-/** Standalone "preview" play — used by the Preferences page test buttons. */
+/** Standalone "preview" play, used by the Preferences page test buttons. */
 export async function playPreset(presetId: string, volume = 0.7): Promise<void> {
   const preset = PRESETS.find(p => p.id === presetId);
   if (!preset || !preset.url) return;

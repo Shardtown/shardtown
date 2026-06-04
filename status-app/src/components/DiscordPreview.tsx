@@ -19,7 +19,7 @@ import { useAuth, avatarUrl } from "@/api/auth";
 interface PreviewProps {
   /** Raw template text. Plain text or Markdown-light. */
   text: string;
-  /** Embed object — when present, renders below the message. */
+  /** Embed object, when present, renders below the message. */
   embed?: {
     title?: string;
     description?: string;
@@ -31,7 +31,7 @@ interface PreviewProps {
   /** Optional context. Defaults are sensible for testing. */
   serverName?: string;
   memberCount?: number;
-  /** Override author display — defaults to the logged-in user. */
+  /** Override author display, defaults to the logged-in user. */
   authorName?: string;
   authorAvatar?: string;
 }

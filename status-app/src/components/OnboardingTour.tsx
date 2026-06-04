@@ -11,7 +11,7 @@ import { ONBOARDING_EVENT_NAME, markOnboardingComplete } from "./OnboardingTour.
  *
  * The component must live inside <BrowserRouter> to use the routing
  * hooks, so we expose <TourHost /> (mounted in DesktopShell) and a
- * `startTour()` event-based trigger usable from anywhere — including
+ * `startTour()` event-based trigger usable from anywhere, including
  * pre-router code paths like DesktopGate.
  */
 
@@ -46,7 +46,7 @@ const STEPS: Step[] = [
     anchor: "bots-stats",
     side: "top",
     title: "Shard en un coup d'œil",
-    body: "Un seul bot Discord, deux modules — Sécurité (anti-raid, captcha, modération) et Communauté (niveaux, économie, giveaways). Le ratio te dit combien de tes serveurs sont déjà configurés.",
+    body: "Un seul bot Discord, deux modules, Sécurité (anti-raid, captcha, modération) et Communauté (niveaux, économie, giveaways). Le ratio te dit combien de tes serveurs sont déjà configurés.",
   },
   {
     route: "/outils",
@@ -78,7 +78,7 @@ const STEPS: Step[] = [
     anchor: "bot-server-grid",
     side: "top",
     title: "Shard · Tes serveurs Discord",
-    body: "Sélectionne un serveur pour configurer Shard dessus. Tu y trouveras les deux modules — Sécurité (anti-raid, captcha, modération) et Communauté (niveaux, économie, tickets, giveaways) — dans la même interface.",
+    body: "Sélectionne un serveur pour configurer Shard dessus. Tu y trouveras les deux modules, Sécurité (anti-raid, captcha, modération) et Communauté (niveaux, économie, tickets, giveaways), dans la même interface.",
   },
   {
     route: "/rpc",
@@ -106,7 +106,7 @@ const STEPS: Step[] = [
     anchor: "prefs-biometric",
     side: "top",
     title: "Touch ID",
-    body: "Les actions destructives — déconnexion, révocation de token, mode panic, suppression de config — exigent Touch ID. Si ton Mac n'en a pas, c'est ton mot de passe système.",
+    body: "Les actions destructives, déconnexion, révocation de token, mode panic, suppression de config, exigent Touch ID. Si ton Mac n'en a pas, c'est ton mot de passe système.",
   },
   {
     route: "/preferences",
@@ -120,14 +120,14 @@ const STEPS: Step[] = [
     anchor: "account-connections",
     side: "top",
     title: "Connexions",
-    body: "Lie ton Discord — c'est ce qui permet à Shardtown de lister tes serveurs et d'y configurer Shard. Google et GitHub permettent la connexion en un clic.",
+    body: "Lie ton Discord, c'est ce qui permet à Shardtown de lister tes serveurs et d'y configurer Shard. Google et GitHub permettent la connexion en un clic.",
   },
   {
     route: "/account",
     anchor: "account-passkeys",
     side: "top",
     title: "Clés de sécurité",
-    body: "Crée une passkey Touch ID ou enregistre une YubiKey pour te connecter sans mot de passe — plus rapide et plus sûr.",
+    body: "Crée une passkey Touch ID ou enregistre une YubiKey pour te connecter sans mot de passe, plus rapide et plus sûr.",
   },
   {
     route: "/premium",
@@ -157,7 +157,7 @@ const STEPS: Step[] = [
  */
 export function TourHost() {
   const [open, setOpen] = useState(false);
-  // Generation counter — bumped each time startTour() fires so the tour
+  // Generation counter, bumped each time startTour() fires so the tour
   // ALWAYS remounts from a clean state, even when the user calls it again
   // while the modal is already up (e.g. clicking "Revoir le tour" twice
   // in a row). Also ensures any previous spotlight class on the DOM is
@@ -214,7 +214,7 @@ function InteractiveTour({ onClose }: { onClose: () => void }) {
   function prev() { setI(s => Math.max(0, s - 1)); }
 
   // Navigate to the step's route. We only navigate when the step
-  // index actually changes — re-running on every `loc.pathname` change
+  // index actually changes, re-running on every `loc.pathname` change
   // would create a navigation loop if the route differs by a trailing
   // segment we don't control.
   useEffect(() => {
@@ -232,7 +232,7 @@ function InteractiveTour({ onClose }: { onClose: () => void }) {
     setRect(null);
     if (!step.anchor) { setWaiting(false); return; }
     // If the step requested a route and we haven't landed there yet,
-    // hold off — useEffect will re-run when the path matches.
+    // hold off, useEffect will re-run when the path matches.
     if (step.route && loc.pathname !== step.route) {
       setWaiting(true);
       return;
@@ -441,7 +441,7 @@ function TourCard({
           boxShadow: "0 30px 80px -10px rgba(0, 0, 0, 0.65)",
         }}
       >
-        {/* Indigo accent strip across the top — gives the card a clear
+        {/* Indigo accent strip across the top, gives the card a clear
             visual anchor and a hint of color that breaks the monochrome
             grey of pure ds-glass. Also acts as a progress bar : its fill
             tracks the current step / total. */}
@@ -513,7 +513,7 @@ function TourCard({
           </div>
         </div>
 
-        {/* Footer — clean separator + airy flex layout */}
+        {/* Footer, clean separator + airy flex layout */}
         <div
           className="px-6 py-3 border-t flex items-center gap-3"
           style={{ borderColor: "var(--ds-border)" }}
@@ -573,7 +573,7 @@ function TourCard({
 
       <style>{`
         /* Card mounts once and stays mounted across steps so it physically
-           glides to the next anchor — left/top transitions handle that.
+           glides to the next anchor, left/top transitions handle that.
            Only the entry animation fires the very first time. */
         .tour-card {
           animation: tour-card-in 320ms cubic-bezier(0.22, 1, 0.36, 1);

@@ -15,11 +15,11 @@ type State =
 
 // Total intro length, including the staggered entrance of the logo,
 // wordmark and dots. The app always waits at least this long before
-// swapping the boot screen out — even when /api/account/me answers
-// instantly — so the splash feels deliberate, like a software intro.
+// swapping the boot screen out, even when /api/account/me answers
+// instantly, so the splash feels deliberate, like a software intro.
 const INTRO_MS = 2800;
 
-// Crossfade duration when leaving the boot screen — needs to match the
+// Crossfade duration when leaving the boot screen, needs to match the
 // leaving CSS animation in BootScreen / entering animation on the next view.
 const TRANSITION_MS = 480;
 
@@ -27,7 +27,7 @@ const TRANSITION_MS = 480;
  * Wraps the SPA when running inside Tauri. Reads the keychain on boot,
  * validates the token by hitting /api/account/me, then either renders the
  * children (logged-in app) or shows the PAT login screen. In web mode it
- * renders children immediately — the regular cookie-auth flow handles
+ * renders children immediately, the regular cookie-auth flow handles
  * everything from there.
  */
 export function DesktopGate({ children }: { children: ReactNode }) {
@@ -71,7 +71,7 @@ export function DesktopGate({ children }: { children: ReactNode }) {
       if (!token) {
         next = { kind: "login" };
       } else if (isDemoToken(token)) {
-        // Demo magic — skip the /api/account/me validation entirely
+        // Demo magic, skip the /api/account/me validation entirely
         // since there's no network involved. Auto-enables demo mode
         // even if localStorage was wiped between launches.
         enableDemoMode();
@@ -80,7 +80,7 @@ export function DesktopGate({ children }: { children: ReactNode }) {
       } else {
         setBearerToken(token);
         // Respect the user's "Sécurité du token" preference. Default is
-        // "never" — we trust the keychain blindly so updates / reinstalls
+        // "never", we trust the keychain blindly so updates / reinstalls
         // don't kick the user back to the login screen. Only re-hit the
         // server when the configured window has lapsed.
         if (shouldRevalidate()) {
@@ -110,7 +110,7 @@ export function DesktopGate({ children }: { children: ReactNode }) {
       // with the leaving class for TRANSITION_MS, then unmount it.
       // Trigger an AuthContext refresh right before the dashboard mounts so
       // the user profile (avatar + name) is in place by the time the hero
-      // renders — otherwise the first paint reads "Salut, ami." with no pdp.
+      // renders, otherwise the first paint reads "Salut, ami." with no pdp.
       if (next.kind === "ready") {
         refreshAuth();
       }
@@ -140,7 +140,7 @@ export function DesktopGate({ children }: { children: ReactNode }) {
           reason={state.reason}
           onSuccess={() => {
             // Re-hit /api/me so the AuthContext picks up the new user behind
-            // the freshly stored bearer token — otherwise the dashboard
+            // the freshly stored bearer token, otherwise the dashboard
             // greets "Salut, ami." with no avatar.
             refreshAuth();
             setState({ kind: "ready" });
@@ -217,7 +217,7 @@ function DesktopLogin({
   const [oauthBusy, setOauthBusy] = useState<OAuthProvider | null>(null);
   const [error, setError] = useState<string | null>(reason ?? null);
 
-  // Listen for `shardtwn://auth/callback?code=…` deep links — the
+  // Listen for `shardtwn://auth/callback?code=…` deep links, the
   // browser-side OAuth flow ends with the provider's callback redirecting
   // the OS to that URL, which brings the Tauri app to the foreground and
   // hands us the auth code. We exchange it for a Bearer token using the
@@ -301,7 +301,7 @@ function DesktopLogin({
     }
     setBusy(true);
     setError(null);
-    // Demo mode bypasses the backend entirely — mock responses are served
+    // Demo mode bypasses the backend entirely, mock responses are served
     // by lib/demo.ts. Lets users try the app fully offline.
     if (isDemoToken(trimmed)) {
       enableDemoMode();
@@ -316,7 +316,7 @@ function DesktopLogin({
     disableDemoMode();
     try {
       setBearerToken(trimmed);
-      // Validate before persisting — never write a bad token to the keychain.
+      // Validate before persisting, never write a bad token to the keychain.
       await apiGet<unknown>("/api/account/me");
       await tokenSet(trimmed);
       onSuccess();
@@ -335,7 +335,7 @@ function DesktopLogin({
     <>
       <div className="fixed inset-x-0 top-0 h-7 z-50" data-tauri-drag-region />
       <div className="dl-stage">
-        {/* Aurora drift — same DNA as the boot splash so the transition
+        {/* Aurora drift, same DNA as the boot splash so the transition
             from boot → login reads as one continuous environment. */}
         <div className="dl-aurora">
           <div className="dl-blob b1"></div>
@@ -346,7 +346,7 @@ function DesktopLogin({
         <div className="dl-vignette"></div>
 
         <div className="dl-content">
-          {/* Brand block — massive wordmark, mirrors the splash */}
+          {/* Brand block, massive wordmark, mirrors the splash */}
           <div className="dl-brand">
             <p className="dl-label">Studio</p>
             <h1 className="dl-wordmark">SHARDTOWN</h1>
@@ -423,7 +423,7 @@ function DesktopLogin({
               type="button"
               onClick={() => setToken(DEMO_TOKEN)}
               className="dl-demo"
-              title="Mode démo offline — pré-remplit la clé de test"
+              title="Mode démo offline, pré-remplit la clé de test"
             >
               Pas encore de compte ? Essaie le mode démo
             </button>

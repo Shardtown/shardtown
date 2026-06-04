@@ -9,12 +9,12 @@ const POLL_INTERVAL_MS = 60_000;
 /**
  * Polls `/api/stats` once a minute and fires a native notification whenever
  * a bot transitions between online and offline. Only the *transition* is
- * surfaced — we never fire on the first tick (no prior state to compare
+ * surfaced, we never fire on the first tick (no prior state to compare
  * against) and we never re-notify for a state that already matches the
  * last observation.
  *
  * Mounted at the App level inside PersistentOverlays so it keeps watching
- * regardless of the current route. Desktop-only — the hook short-circuits
+ * regardless of the current route. Desktop-only, the hook short-circuits
  * on web.
  */
 export function BotStateMonitor() {
@@ -51,14 +51,14 @@ export function BotStateMonitor() {
               void notify({
                 category: "bot-state",
                 title: `${label} hors-ligne`,
-                body: "Le bot ne répond plus — vérifie le statut.",
+                body: "Le bot ne répond plus, vérifie le statut.",
               });
             }
           }
         }
         lastState.current = current;
       } catch {
-        // Network blip / auth lost — keep watching, next tick may succeed.
+        // Network blip / auth lost, keep watching, next tick may succeed.
       } finally {
         if (!cancelled) {
           timer = window.setTimeout(tick, POLL_INTERVAL_MS);

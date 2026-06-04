@@ -1,20 +1,20 @@
 /**
  * Token revalidation preference.
  *
- * The desktop app stores the user's PAT in the macOS Keychain — it survives
+ * The desktop app stores the user's PAT in the macOS Keychain, it survives
  * across app launches and across `.app` reinstalls (so updates don't lose
  * the session). By default we *trust the keychain forever*: no network call
  * at boot to re-validate the token. The user can change that here:
  *
- *   - "never"   (default) — never re-check, trust the keychain blindly.
- *   - "launch"            — re-validate on every cold boot (legacy behavior).
- *   - "30d"               — re-validate at most once every 30 days.
- *   - "90d"               — re-validate at most once every 90 days.
+ *   - "never"   (default), never re-check, trust the keychain blindly.
+ *   - "launch"           , re-validate on every cold boot (legacy behavior).
+ *   - "30d"              , re-validate at most once every 30 days.
+ *   - "90d"              , re-validate at most once every 90 days.
  *
  * When the chosen interval lapses the next boot triggers `/api/account/me`;
  * on success the timer resets, on 401 the user gets sent back to login.
  *
- * Persisted in localStorage — wiped if the user clears it, which simply
+ * Persisted in localStorage, wiped if the user clears it, which simply
  * falls back to the "never" default.
  */
 
@@ -73,7 +73,7 @@ export function shouldRevalidate(now = Date.now()): boolean {
 
 export function describeMode(mode: RevalMode): string {
   switch (mode) {
-    case "never":  return "Jamais — l'app fait confiance au Keychain en permanence";
+    case "never":  return "Jamais, l'app fait confiance au Keychain en permanence";
     case "launch": return "À chaque lancement de l'app";
     case "30d":    return "Tous les 30 jours";
     case "90d":    return "Tous les 90 jours";

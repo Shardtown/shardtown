@@ -9,7 +9,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   /** Réservés pour réintégrer un sous-titre détaillé sous le total
-   *  ("Lifetime — 34,99 € payé une seule fois") si on veut un jour. */
+   *  ("Lifetime, 34,99 € payé une seule fois") si on veut un jour. */
   planLabel?: string;
   amountNote?: string;
   amountNow: string;
@@ -26,7 +26,7 @@ interface AppliedPromo {
 }
 
 // ──────────────────────────────────────────────────────────────────────
-//  Stripe.js via CDN — sans dépendance npm
+//  Stripe.js via CDN, sans dépendance npm
 //
 //  On charge https://js.stripe.com/v3/ une seule fois dans une <script>
 //  tag injectée. Cela donne `window.Stripe` qu'on utilise directement.
@@ -93,7 +93,7 @@ function loadStripeJs(): Promise<void> {
 }
 
 /**
- * Terminal de paiement Shardtown — Stripe Elements embedded sans npm.
+ * Terminal de paiement Shardtown, Stripe Elements embedded sans npm.
  *
  *  1. Charge Stripe.js depuis le CDN si pas déjà fait
  *  2. POST /api/premium/payment-intent → reçoit clientSecret
@@ -115,7 +115,7 @@ export function CheckoutModal({
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   useEffect(() => { if (!open) setBreakdownOpen(false); }, [open]);
 
-  // Code promo — déplié au clic sur "Appliquer un code promo".
+  // Code promo, déplié au clic sur "Appliquer un code promo".
   // Quand un code est validé, le composant remonte l'info à
   // StripePaymentForm via la prop `appliedPromo` pour qu'il l'envoie au
   // backend lors de la création du PaymentIntent.
@@ -194,7 +194,7 @@ export function CheckoutModal({
             </div>
 
             <div className="px-5 pt-4 pb-5 space-y-3 overflow-y-auto flex-1 [scrollbar-width:thin]">
-              {/* Pay now — ligne cliquable qui déplie le détail */}
+              {/* Pay now, ligne cliquable qui déplie le détail */}
               <PayNowBreakdown
                 amountNow={effectiveAmountNow}
                 baseAmountNow={amountNow}
@@ -221,7 +221,7 @@ export function CheckoutModal({
                 <Row label="Serveur" value={guildName} />
               </div>
 
-              {/* Payment Element — key inclut le code promo pour recréer
+              {/* Payment Element, key inclut le code promo pour recréer
                   l'intent quand l'utilisateur applique/retire un code. */}
               <StripePaymentForm
                 key={`${plan}-${guildId ?? ""}-${appliedPromo?.code ?? ""}`}
@@ -240,7 +240,7 @@ export function CheckoutModal({
 }
 
 // ──────────────────────────────────────────────────────────────────────
-//  Formulaire de paiement Stripe — monté à la main, sans React bindings
+//  Formulaire de paiement Stripe, monté à la main, sans React bindings
 // ──────────────────────────────────────────────────────────────────────
 
 function StripePaymentForm({
@@ -300,7 +300,7 @@ function StripePaymentForm({
         const elements = stripe.elements({
           clientSecret: r.clientSecret,
           appearance: {
-            // Theme "night" — Stripe rend des champs sur fond sombre,
+            // Theme "night", Stripe rend des champs sur fond sombre,
             // aligné avec la DA glassy du modal Shardtown.
             theme: "night",
             variables: {
@@ -340,7 +340,7 @@ function StripePaymentForm({
         elementsRef.current = elements;
         paymentElementRef.current = paymentElement;
 
-        // Le mount nécessite que le ref soit déjà attaché — petite tick
+        // Le mount nécessite que le ref soit déjà attaché, petite tick
         // pour laisser React peindre le <div ref={mountRef} />.
         requestAnimationFrame(() => {
           if (cancelled || !mountRef.current) return;
@@ -402,7 +402,7 @@ function StripePaymentForm({
   if (loadError) {
     // Fallback : si Stripe.js n'a pas pu charger (AdBlock, CSP, réseau),
     // on propose le flow legacy /api/create-checkout qui redirige vers
-    // la page Stripe Checkout hostée — aucune dépendance JS chargée
+    // la page Stripe Checkout hostée, aucune dépendance JS chargée
     // depuis js.stripe.com, ça contourne les bloqueurs.
     const isLikelyAdblock = /load error|Stripe\.js indisponible/i.test(loadError);
     async function fallbackLegacy() {
@@ -464,7 +464,7 @@ function StripePaymentForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {/* Mount cible pour Stripe Elements. Stripe injecte une iframe
-          sécurisée à l'intérieur — on ne voit jamais le numéro de carte. */}
+          sécurisée à l'intérieur, on ne voit jamais le numéro de carte. */}
       <div ref={mountRef} className="min-h-[40px]" />
       {loading && (
         <div className="flex items-center justify-center py-3 text-white/45">
@@ -507,7 +507,7 @@ function StripePaymentForm({
         )}
       </button>
 
-      {/* Footer "Secure Checkout" + 3DS — discret juste sous le bouton, style mee6 */}
+      {/* Footer "Secure Checkout" + 3DS, discret juste sous le bouton, style mee6 */}
       <div className="text-center space-y-1 pt-1">
         <p className="text-[11px] text-white/45 inline-flex items-center justify-center gap-1.5">
           <Lock className="w-3 h-3" />
@@ -522,7 +522,7 @@ function StripePaymentForm({
 }
 
 // ──────────────────────────────────────────────────────────────────────
-//  PromoInput — collapse/expand du champ "Appliquer un code promo"
+//  PromoInput, collapse/expand du champ "Appliquer un code promo"
 //  Validate via POST /api/premium/promo/validate, montre le discount
 //  appliqué, permet de retirer le code.
 // ──────────────────────────────────────────────────────────────────────
@@ -568,7 +568,7 @@ function PromoInput({
     }
   };
 
-  // Code appliqué — affiche un badge avec retrait possible.
+  // Code appliqué, affiche un badge avec retrait possible.
   if (applied) {
     const label = applied.discountType === "percent"
       ? `−${applied.discountValue} %`
@@ -594,7 +594,7 @@ function PromoInput({
     );
   }
 
-  // Pas de code — soit le lien centré, soit l'input déplié.
+  // Pas de code, soit le lien centré, soit l'input déplié.
   if (!open) {
     return (
       <div className="text-center">
@@ -639,7 +639,7 @@ function PromoInput({
 }
 
 // ──────────────────────────────────────────────────────────────────────
-//  PayNowBreakdown — ligne "Payer maintenant" cliquable, dévoile le
+//  PayNowBreakdown, ligne "Payer maintenant" cliquable, dévoile le
 //  détail TTC / TVA façon mee6 "Chargeable now".
 //
 //  Décompose un prix TTC en HT + TVA (taux par défaut 20 % France).
@@ -694,9 +694,9 @@ function PayNowBreakdown({
   // VAT incluse dans le TTC effectif : VAT = TTC * rate / (1 + rate)
   const vatIncluded = (effectiveTtc * VAT_RATE) / (1 + VAT_RATE);
   const lineLabel =
-    plan === "lifetime" ? "Shard Premium — Lifetime"
-    : plan === "yearly" ? "Shard Premium — 1 an"
-    : "Shard Premium — 1 mois";
+    plan === "lifetime" ? "Shard Premium, Lifetime"
+    : plan === "yearly" ? "Shard Premium, 1 an"
+    : "Shard Premium, 1 mois";
 
   return (
     <div className="bg-white/[0.03] rounded-xl border border-white/[0.08] overflow-hidden">
@@ -751,7 +751,7 @@ function PayNowBreakdown({
             TVA 20 % incluse : <span className="font-semibold text-white/70 tabular-nums">{formatEUR(vatIncluded)}</span>
           </p>
 
-          {/* Edit order — referme la modale pour aller changer plan/serveur */}
+          {/* Edit order, referme la modale pour aller changer plan/serveur */}
           <button
             type="button"
             onClick={onEditOrder}

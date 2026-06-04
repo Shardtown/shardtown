@@ -23,7 +23,7 @@ export interface PricingPlan {
   icon: React.ReactNode;
   priceMonthly: number;
   priceYearly: number;
-  /** Affichage libre sous "Overview" — "1 serveur Discord", etc. */
+  /** Affichage libre sous "Overview", "1 serveur Discord", etc. */
   users: string;
   features: PlanFeature[];
   recommended?: boolean;
@@ -50,7 +50,7 @@ export interface PricingModuleProps {
   showToggle?: boolean;
   /** Devise affichée devant le prix (€ par défaut, "$" possible). */
   currency?: string;
-  /** Position de la devise — "prefix" (€ 49) ou "suffix" (49 €). */
+  /** Position de la devise, "prefix" (€ 49) ou "suffix" (49 €). */
   currencyPosition?: "prefix" | "suffix";
 }
 
@@ -104,7 +104,7 @@ export function PricingModule({
           </div>
         )}
 
-        {/* Pricing Cards — grid adapté au nombre de plans (jusqu'à 4). */}
+        {/* Pricing Cards, grid adapté au nombre de plans (jusqu'à 4). */}
         <div
           className={cn(
             "grid grid-cols-1 sm:grid-cols-2 gap-6",

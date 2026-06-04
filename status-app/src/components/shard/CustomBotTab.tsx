@@ -39,7 +39,7 @@ interface Props {
   guildId: string;
 }
 
-// Defaults affichés tant que l'utilisateur n'a rien renseigné — on
+// Defaults affichés tant que l'utilisateur n'a rien renseigné, on
 // utilise l'identité du bot Shard officiel comme repère visuel.
 const SHARD_DEFAULTS = {
   name: "Shard",
@@ -175,7 +175,7 @@ export function CustomBotTab({ guildId }: Props) {
         } else {
           setBanner({ kind: "ok", text: "Bot personnalisé enregistré. Identité Discord mise à jour, bot relancé." });
         }
-        // Le restart côté manager est async — on poll le runtime status
+        // Le restart côté manager est async, on poll le runtime status
         // pour voir quand le bot passe vraiment running (ou error).
         startPolling();
       } else {
@@ -297,14 +297,14 @@ export function CustomBotTab({ guildId }: Props) {
   const isStreaming = draftActivityType === 'streaming';
   const dotClass = isStreaming ? 'bg-[#593695]' : currentPresence.dot;
   // Tant que le user n'a rien renseigné, on affiche l'identité du bot
-  // Shard officiel comme repère visuel — il voit immédiatement le résultat
+  // Shard officiel comme repère visuel, il voit immédiatement le résultat
   // qu'il remplacera par sa propre marque.
   const previewName = draftName.trim() || SHARD_DEFAULTS.name;
   const previewAvatar = draftAvatarUrl.trim() || SHARD_DEFAULTS.avatar;
   const previewBanner = draftBannerUrl.trim() || SHARD_DEFAULTS.banner;
   const previewActivityText = draftActivityText.trim() || SHARD_DEFAULTS.activityText;
 
-  // Status runtime — vient du manager (mémoire process) + des colonnes
+  // Status runtime, vient du manager (mémoire process) + des colonnes
   // status/statusMessage en BDD. running > configured > stopped > error.
   const runtime = data?.runtime;
   const runtimeStatus = runtime?.status || bot?.status || "configured";
@@ -356,7 +356,7 @@ export function CustomBotTab({ guildId }: Props) {
         </div>
       </div>
 
-      {/* Erreur runtime — token rejeté, rate-limit, etc. */}
+      {/* Erreur runtime, token rejeté, rate-limit, etc. */}
       {bot && runtimeStatus === "error" && (
         <div className="rounded-2xl border border-red-500/25 bg-red-500/[0.05] p-5 flex items-start gap-3">
           <CircleAlert className="w-4 h-4 text-red-300 mt-0.5 shrink-0" />
@@ -373,7 +373,7 @@ export function CustomBotTab({ guildId }: Props) {
         </div>
       )}
 
-      {/* Bot en ligne mais dans 0 serveur — typique après un delete/recreate. */}
+      {/* Bot en ligne mais dans 0 serveur, typique après un delete/recreate. */}
       {notInAnyGuild && (
         <div className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.04] p-5 flex items-start gap-3">
           <UserPlus className="w-4 h-4 text-amber-300 mt-0.5 shrink-0" />
@@ -467,7 +467,7 @@ export function CustomBotTab({ guildId }: Props) {
               </div>
             </div>
 
-            {/* Token — masqué tant que le bot n'est pas activé. Le champ
+            {/* Token, masqué tant que le bot n'est pas activé. Le champ
                 apparaîtra après le clic sur "Activer le bot personnalisé"
                 (étape 2 du flow, à venir). */}
             {!locked && (
@@ -526,7 +526,7 @@ export function CustomBotTab({ guildId }: Props) {
 
           {/* ───── Col 3: Live preview Discord ─────
               Sticky : la preview suit le scroll et reste visible quand la
-              col 2 (form) est plus longue — du coup pas d'espace vide à
+              col 2 (form) est plus longue, du coup pas d'espace vide à
               droite quand l'utilisateur descend dans le form. */}
           <div className="space-y-4 lg:sticky lg:top-4 lg:self-start">
             <div>
@@ -620,7 +620,7 @@ export function CustomBotTab({ guildId }: Props) {
         </div>
       </div>
 
-      {/* Info Discord rate-limits — le user doit savoir que renommer trop
+      {/* Info Discord rate-limits, le user doit savoir que renommer trop
           souvent va être bloqué côté Discord (2 changements de nom / heure). */}
       <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 flex items-start gap-3">
         <Bot className="w-4 h-4 text-white/50 mt-0.5 shrink-0" />
@@ -818,7 +818,7 @@ function PermissionsModal({ clientId, guildId, onClose }: {
     return () => window.removeEventListener("message", onMessage);
   }, [onClose]);
 
-  // URL OAuth2 — scopes `bot` + `applications.commands` avec
+  // URL OAuth2, scopes `bot` + `applications.commands` avec
   // permissions=8 (Administrator) et guild_id préfixé : le même clic
   // invite le bot sur le serveur avec les pleins droits ET déclenche
   // le callback OAuth pour qu'on récupère un access_token côté backend.
@@ -827,7 +827,7 @@ function PermissionsModal({ clientId, guildId, onClose }: {
   // le user ne peut pas se tromper de guild.
   //
   // ⚠️ Ne PAS ajouter `applications.commands.update` ici : ce scope
-  // existe mais n'est valide qu'en client credentials grant — en flow
+  // existe mais n'est valide qu'en client credentials grant, en flow
   // utilisateur Discord le rejette avec "Scope1 invalid".
   const redirectUri = "https://shardtwn.fr/custom-bot-auth";
   const oauthParams = new URLSearchParams({
@@ -932,7 +932,7 @@ function MediaInput({
   value: string;
   onChange: (v: string) => void;
   aspect: "square" | "banner";
-  /** Conservé pour compat — plus utilisé depuis le passage à un file input. */
+  /** Conservé pour compat, plus utilisé depuis le passage à un file input. */
   placeholder?: string;
   fallback: React.ReactNode;
   disabled?: boolean;
@@ -983,7 +983,7 @@ function MediaInput({
         ) : (
           fallback
         )}
-        {/* Overlay "Changer / Importer" — visible au hover sur la zone,
+        {/* Overlay "Changer / Importer", visible au hover sur la zone,
             masqué quand le form est locked. */}
         {!disabled && (
           <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">

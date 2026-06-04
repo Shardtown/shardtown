@@ -89,7 +89,7 @@ export function Header() {
         }`}
       >
         <div className="container-wide flex items-center justify-between gap-3">
-          {/* LEFT — Logo pill */}
+          {/* LEFT, Logo pill */}
           <Link
             to="/"
             className={`group flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 ${pillBase} ${pillSurface} hover:bg-white/[0.08]`}
@@ -107,7 +107,7 @@ export function Header() {
             </span>
           </Link>
 
-          {/* CENTER — Nav pill with sliding indicator */}
+          {/* CENTER, Nav pill with sliding indicator */}
           <nav
             ref={navRef}
             className={`hidden lg:flex relative items-center gap-1 px-2 py-1.5 ${pillBase} ${pillSurface}`}
@@ -158,7 +158,7 @@ export function Header() {
             })}
           </nav>
 
-          {/* RIGHT — Actions pill */}
+          {/* RIGHT, Actions pill */}
           <div className="flex items-center gap-2">
             {isAdmin ? (
               <span

@@ -175,7 +175,7 @@ export function mockApiCall(method: string, path: string, _body?: unknown): Mock
     });
   }
 
-  /* ── /api/{bot}/guild/:id — config view ── */
+  /* ── /api/{bot}/guild/:id, config view ── */
   if (method === "GET" && /^\/api\/shard\/mod\/guild\/\d+$/.test(p)) {
     return ok(mockShardModGuild(p.split("/").pop()!));
   }
@@ -186,7 +186,7 @@ export function mockApiCall(method: string, path: string, _body?: unknown): Mock
     return ok(mockShardGuild(p.split("/").pop()!));
   }
 
-  /* ── POST endpoints (settings, etc.) — pretend success ── */
+  /* ── POST endpoints (settings, etc.), pretend success ── */
   if (method === "POST" && /^\/(shardguard|shard\/mod|shard)\//.test(p)) {
     return ok({ success: true });
   }

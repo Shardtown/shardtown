@@ -113,7 +113,7 @@ export function Terms() {
           L'Éditeur se réserve le droit, à tout moment, de modifier, d'ajouter
           ou de retirer une fonctionnalité, sans que cela ouvre droit à
           indemnisation, sauf à ce que cette suppression rende le Premium
-          déjà payé substantiellement inutilisable — auquel cas un remboursement
+          déjà payé substantiellement inutilisable, auquel cas un remboursement
           au prorata pourra être effectué.
         </p>
       </LegalSection>
@@ -159,8 +159,8 @@ export function Terms() {
           en euros, toutes taxes comprises. Deux formules existent :
         </p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Mensuel</strong> — abonnement automatiquement renouvelé chaque mois jusqu'à résiliation par l'Utilisateur. La résiliation prend effet à la fin de la période en cours.</li>
-          <li><strong>À vie</strong> — paiement unique non-renouvelable, attaché au serveur Discord désigné lors de l'achat. « À vie » signifie « tant que les Services existent et restent exploités par l'Éditeur ».</li>
+          <li><strong>Mensuel</strong>, abonnement automatiquement renouvelé chaque mois jusqu'à résiliation par l'Utilisateur. La résiliation prend effet à la fin de la période en cours.</li>
+          <li><strong>À vie</strong>, paiement unique non-renouvelable, attaché au serveur Discord désigné lors de l'achat. « À vie » signifie « tant que les Services existent et restent exploités par l'Éditeur ».</li>
         </ul>
         <p>
           Les paiements sont traités par <strong>Stripe Payments Europe Ltd</strong>
@@ -223,7 +223,7 @@ export function Terms() {
         </p>
       </LegalSection>
 
-      <LegalSection id="disponibilite" title="12. Disponibilité — service fourni « en l'état »">
+      <LegalSection id="disponibilite" title="12. Disponibilité, service fourni « en l'état »">
         <p>
           Les Services sont fournis « <strong>en l'état</strong> » et « selon
           disponibilité ». L'Éditeur ne garantit pas (i) un fonctionnement

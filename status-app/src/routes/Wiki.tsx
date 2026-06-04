@@ -6,7 +6,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Admonition } from "@/components/ui/admonition";
 
 /* ─────────────────────────────────────────────────────────────
-   Wiki content — single source of truth
+   Wiki content, single source of truth
    ─────────────────────────────────────────────────────────────
    Each section has a stable id (used for #anchor + sidebar),
    a group (used to organize sidebar), a title and a body that
@@ -52,7 +52,7 @@ const SECTIONS: Section[] = [
     tagline: "Deux bots Discord, un seul écosystème, zéro commande à apprendre.",
     intro: [
       "Shardtown propose Shard, un bot Discord tout-en-un avec deux modules complémentaires : Sécurité (captcha, anti-raid, modération automatique) et Communauté (niveaux, économie, tickets, sondages, giveaways). Un seul dashboard, un seul compte, un seul Premium.",
-      "Toute la configuration se fait depuis le web — pas de commandes à apprendre par cœur, pas de fichier à éditer. Tu cliques, tu sauvegardes, le bot applique en moins d'une seconde.",
+      "Toute la configuration se fait depuis le web, pas de commandes à apprendre par cœur, pas de fichier à éditer. Tu cliques, tu sauvegardes, le bot applique en moins d'une seconde.",
       "Ce wiki documente chaque module avec : ce qu'il fait, les paramètres exacts disponibles, les étapes pour le configurer, et les pièges à éviter.",
     ],
     notes: [
@@ -65,14 +65,14 @@ const SECTIONS: Section[] = [
     title: "Ajouter les bots à ton serveur",
     tagline: "Inviter Shard sur ton serveur avec les bonnes permissions.",
     intro: [
-      "Les deux bots s'invitent indépendamment via les liens d'invitation Discord officiels. Ils demandent les permissions dont ils ont besoin pour fonctionner — accepte-les en bloc, sinon certaines fonctionnalités tomberont en silence.",
+      "Les deux bots s'invitent indépendamment via les liens d'invitation Discord officiels. Ils demandent les permissions dont ils ont besoin pour fonctionner, accepte-les en bloc, sinon certaines fonctionnalités tomberont en silence.",
       "Tu peux n'installer qu'un seul bot si tu n'as besoin que d'une moitié des fonctionnalités, mais ils sont conçus pour cohabiter sans conflit.",
     ],
     steps: [
       "Connecte-toi sur shardtwn.fr avec ton compte Discord (le même qui administre le serveur cible).",
       "Va dans le Dashboard → onglet Mes serveurs et clique sur « Inviter le bot ».",
       "Discord ouvre un écran d'autorisation : confirme avec ton serveur sélectionné dans le menu déroulant.",
-      "Garde la case « Administrateur » cochée si elle apparaît — elle évite les erreurs de permission au lancement.",
+      "Garde la case « Administrateur » cochée si elle apparaît, elle évite les erreurs de permission au lancement.",
       "De retour sur le dashboard, le serveur apparaît dans la liste et tu peux ouvrir sa config.",
     ],
     notes: [
@@ -86,13 +86,13 @@ const SECTIONS: Section[] = [
     title: "Premiers pas",
     tagline: "Le minimum vital pour qu'un nouveau membre puisse rejoindre proprement.",
     intro: [
-      "Si tu n'as que 5 minutes pour configurer Shardtown, voici ce que je te conseille de faire — ça couvre 80 % des cas et tu pourras affiner plus tard.",
+      "Si tu n'as que 5 minutes pour configurer Shardtown, voici ce que je te conseille de faire, ça couvre 80 % des cas et tu pourras affiner plus tard.",
     ],
     steps: [
       "Shard → Général : choisis le salon de vérification (où le captcha sera envoyé) et le rôle vérifié (attribué après réussite).",
       "Shard → Captcha : laisse les valeurs par défaut (6 chiffres, bruit moyen, 3 essais, 15 min). Active « auto-kick » si tu veux que les non-vérifiés partent tout seuls.",
       "Shard → Règlement : ajoute 3-5 règles courtes, en français et en anglais (les deux versions sont obligatoires).",
-      "Shard → Bienvenue & Départ : sélectionne le salon d'accueil et personnalise le message — utilise {user} pour mentionner et {memberCount} pour le compteur.",
+      "Shard → Bienvenue & Départ : sélectionne le salon d'accueil et personnalise le message, utilise {user} pour mentionner et {memberCount} pour le compteur.",
       "Shard → Auto-rôle : choisis un rôle « Membre » à donner automatiquement aux arrivants vérifiés.",
     ],
     notes: [
@@ -108,7 +108,7 @@ const SECTIONS: Section[] = [
   {
     id: "shardguard-overview",
     group: "Shard · Sécurité",
-    title: "Vue d'ensemble — Shard",
+    title: "Vue d'ensemble, Shard",
     tagline: "Sécurité, vérification et modération sans configuration manuelle.",
     intro: [
       "Shard couvre tout ce qui touche à la sécurité du serveur : captcha de vérification à l'arrivée, anti-raid, modération automatique, sanctions progressives, mode panic, statistiques d'arrivées et logs détaillés.",
@@ -168,12 +168,12 @@ const SECTIONS: Section[] = [
     tagline: "Les règles affichées dans le message de vérification.",
     intro: [
       "Les règles que tu définis ici apparaissent dans le message envoyé au nouveau membre, juste avant le captcha. C'est aussi le contenu accepté implicitement par la validation.",
-      "Tu dois fournir une version en français et une en anglais — le bot affiche celle qui correspond à la langue choisie dans Général.",
+      "Tu dois fournir une version en français et une en anglais, le bot affiche celle qui correspond à la langue choisie dans Général.",
     ],
     steps: [
       "Onglet Règlement → onglet « Français » : clique « + Ajouter une règle » et tape ta première règle.",
       "Garde-les courtes (une phrase). 5-7 règles c'est l'optimum lisible.",
-      "Bascule sur l'onglet « English » et duplique en anglais — ne saute pas cette étape, sinon les anglophones verront un règlement vide.",
+      "Bascule sur l'onglet « English » et duplique en anglais, ne saute pas cette étape, sinon les anglophones verront un règlement vide.",
       "Sauvegarde.",
     ],
     notes: [
@@ -235,7 +235,7 @@ const SECTIONS: Section[] = [
     tagline: "Qui peut utiliser les commandes de modération du bot.",
     intro: [
       "Sélectionne les rôles dont les membres peuvent appliquer warn / mute / kick / ban via le bot. Tous les autres rôles n'auront aucun accès aux commandes.",
-      "Discord garde le contrôle des permissions natives — cette liste n'autorise que les commandes du bot.",
+      "Discord garde le contrôle des permissions natives, cette liste n'autorise que les commandes du bot.",
     ],
     steps: [
       "Onglet Modérateurs → clique sur les rôles à autoriser dans la grille.",
@@ -295,7 +295,7 @@ const SECTIONS: Section[] = [
       "C'est conçu pour les attaques en cours : pas de paramétrage, pas de réflexion. Tu cliques, tu reprends le contrôle, tu désactives plus tard.",
     ],
     notes: [
-      { kind: "warning", title: "C'est une action manuelle", body: "Le mode panic n'est pas automatique — c'est un kill switch. Pour une réaction automatique, configure plutôt Anti-raid / Quarantaine." },
+      { kind: "warning", title: "C'est une action manuelle", body: "Le mode panic n'est pas automatique, c'est un kill switch. Pour une réaction automatique, configure plutôt Anti-raid / Quarantaine." },
     ],
   },
   {
@@ -315,11 +315,11 @@ const SECTIONS: Section[] = [
   {
     id: "shard-overview",
     group: "Shard · Communauté",
-    title: "Vue d'ensemble — Shard · Communauté",
+    title: "Vue d'ensemble, Shard · Communauté",
     tagline: "Communauté, engagement, fun. Tout est désactivable.",
     intro: [
       "Le module Communauté de Shard : messages d'accueil, niveaux, économie virtuelle, giveaways, sondages, tickets, anniversaires, vocaux temporaires, embeds personnalisés…",
-      "Chaque module se gère indépendamment depuis le dashboard. Tu peux n'en activer qu'un seul ou les vingt — pas d'interdépendance forcée.",
+      "Chaque module se gère indépendamment depuis le dashboard. Tu peux n'en activer qu'un seul ou les vingt, pas d'interdépendance forcée.",
     ],
   },
   {
@@ -338,7 +338,7 @@ const SECTIONS: Section[] = [
       { field: "leaveChannelId / leaveTitle / leaveMessage / leaveFooter / leaveColor", desc: "Mêmes options pour le départ. Peut être un salon différent." },
     ],
     notes: [
-      { kind: "tip", title: "Bouton « Tester » du dashboard", body: "Pas besoin d'attendre un nouveau membre pour vérifier — clique sur Tester dans l'onglet pour envoyer le message dans le salon configuré." },
+      { kind: "tip", title: "Bouton « Tester » du dashboard", body: "Pas besoin d'attendre un nouveau membre pour vérifier, clique sur Tester dans l'onglet pour envoyer le message dans le salon configuré." },
     ],
   },
   {
@@ -357,7 +357,7 @@ const SECTIONS: Section[] = [
     title: "Anniversaires",
     tagline: "Annonces auto + rôle anniversaire de 24 h.",
     intro: [
-      "Les membres enregistrent leur date d'anniversaire via une commande (sans l'année — Shard respecte la vie privée). Chaque jour à minuit UTC, Shard cherche les anniversaires du jour, envoie un message dans le salon configuré et attribue un rôle spécial pour 24 h.",
+      "Les membres enregistrent leur date d'anniversaire via une commande (sans l'année, Shard respecte la vie privée). Chaque jour à minuit UTC, Shard cherche les anniversaires du jour, envoie un message dans le salon configuré et attribue un rôle spécial pour 24 h.",
     ],
     settings: [
       { field: "birthdayChannelId", desc: "Salon des annonces." },
@@ -371,7 +371,7 @@ const SECTIONS: Section[] = [
     title: "Niveaux & XP",
     tagline: "Progression XP, paliers, récompenses de rôles, multiplicateurs.",
     intro: [
-      "Le système de niveaux le plus complet : chaque message rapporte de l'XP (entre xpMin et xpMax), avec un cooldown anti-grind. Les paliers sont totalement éditables — tu décides l'XP nécessaire pour chaque niveau.",
+      "Le système de niveaux le plus complet : chaque message rapporte de l'XP (entre xpMin et xpMax), avec un cooldown anti-grind. Les paliers sont totalement éditables, tu décides l'XP nécessaire pour chaque niveau.",
       "Tu peux récompenser certains niveaux par un rôle (ex : niveau 10 = rôle « Habitué ») et appliquer des multiplicateurs d'XP par rôle (ex : booster ×2).",
     ],
     settings: [
@@ -458,7 +458,7 @@ const SECTIONS: Section[] = [
     tagline: "Constructeur visuel d'embeds avec aperçu en direct.",
     intro: [
       "Outil pur de création d'embeds : tu remplis titre, description, pied, image, couleur et tu vois le rendu en temps réel. Quand tu es content, tu cliques « Envoyer » pour poster dans le salon choisi.",
-      "C'est une commande ponctuelle — pas de configuration persistée. Pratique pour annoncer un événement ou écrire le règlement de manière propre.",
+      "C'est une commande ponctuelle, pas de configuration persistée. Pratique pour annoncer un événement ou écrire le règlement de manière propre.",
     ],
   },
   {
@@ -507,22 +507,22 @@ const SECTIONS: Section[] = [
     ],
     steps: [
       "Va sur le Discord Developer Portal (discord.com/developers/applications), clique sur « New Application », donne-lui le nom de ton futur bot puis « Create ». L'icône de l'app pourra être remplacée plus tard via la pp uploadée dans Shardtown.",
-      "Dans ta nouvelle app, ouvre l'onglet « Bot » (menu de gauche). Sous la section Token, clique sur « Reset Token » puis « Yes, do it! ». Discord affiche le token une seule fois — copie-le immédiatement.",
+      "Dans ta nouvelle app, ouvre l'onglet « Bot » (menu de gauche). Sous la section Token, clique sur « Reset Token » puis « Yes, do it! ». Discord affiche le token une seule fois, copie-le immédiatement.",
       "Toujours dans l'onglet « Bot », scroll jusqu'à « Privileged Gateway Intents ». Active SERVER MEMBERS INTENT (obligatoire pour /warn, /kick, /ban, /mute et la vérification des membres). MESSAGE CONTENT INTENT et PRESENCE INTENT ne sont pas requis. Clique sur « Save Changes » en bas.",
       "Toujours dans « Bot », tu peux désactiver « Public Bot » si tu ne veux pas que d'autres puissent l'inviter ailleurs. Recommandé pour un bot communautaire perso.",
       "Onglet « OAuth2 » → « General ». Vérifie que « Require OAuth2 Code Grant » est désactivé. Sous « Redirects », ajoute exactement : https://shardtwn.fr/custom-bot-auth puis « Save Changes ». Copie également ton « Client Secret » depuis cette page (visible une seule fois après reset).",
       "Reviens sur ton dashboard Shardtown → onglet « Bot personnalisé » → bouton « Activer le bot personnalisé ». Coche les 3 cases de la modal, colle ton Client Secret OAuth2 et ton token, puis valide. Shardtown chiffre les deux, valide le token côté Discord et lance le client.",
-      "Une seconde modal apparaît : « Autoriser les Permissions des Commandes ». Clique sur le bouton, autorise dans la popup Discord — Shardtown récupère le code, l'échange contre un access_token et marque l'autorisation OK. Tu peux fermer la popup.",
-      "Le badge passe en « En ligne » sur le dashboard. La card bleue « Inviter le bot » apparaît plus bas avec un lien OAuth pré-rempli pour ce serveur — clique pour ajouter le bot, permissions Administrateur.",
+      "Une seconde modal apparaît : « Autoriser les Permissions des Commandes ». Clique sur le bouton, autorise dans la popup Discord, Shardtown récupère le code, l'échange contre un access_token et marque l'autorisation OK. Tu peux fermer la popup.",
+      "Le badge passe en « En ligne » sur le dashboard. La card bleue « Inviter le bot » apparaît plus bas avec un lien OAuth pré-rempli pour ce serveur, clique pour ajouter le bot, permissions Administrateur.",
     ],
     notes: [
       { kind: "warning", title: "Ne partage jamais ton token", body: "Toute personne qui a ton token peut contrôler ton bot. Si tu soupçonnes une fuite, retourne dans le Developer Portal → Bot → Reset Token, puis remets le nouveau dans Shardtown via « Mettre à jour »." },
       { kind: "warning", title: "SERVER MEMBERS INTENT requis", body: "Sans cet intent activé dans le portail, le bot se connectera mais la plupart des commandes mod plantent silencieusement côté Discord (le bot ne peut pas fetch les membres par ID)." },
-      { kind: "info", title: "Discord rate-limit les changements de nom à 2/heure", body: "Si tu modifies trop souvent le nom du bot depuis Shardtown, l'API renvoie un 429 — la config locale est sauvegardée et l'identité Discord sera mise à jour au prochain créneau." },
+      { kind: "info", title: "Discord rate-limit les changements de nom à 2/heure", body: "Si tu modifies trop souvent le nom du bot depuis Shardtown, l'API renvoie un 429, la config locale est sauvegardée et l'identité Discord sera mise à jour au prochain créneau." },
       { kind: "premium", body: "Le Bot Personnalisé est une fonctionnalité Premium. La licence est liée au serveur Discord." },
     ],
     seeAlso: [
-      { id: "premium", label: "Premium — formules et limites" },
+      { id: "premium", label: "Premium, formules et limites" },
     ],
   },
   {
@@ -531,12 +531,12 @@ const SECTIONS: Section[] = [
     title: "Premium · à quoi ça sert",
     tagline: "Limites supérieures, modules avancés, support prioritaire.",
     intro: [
-      "Le Premium déverrouille les options avancées des modules existants — il n'ajoute pas de bots ni de commandes complètement nouvelles. Tu paies pour repousser les limites du plan gratuit (mots interdits illimités, jusqu'à 20 paliers XP, multiplicateurs par rôle, mode sondage anonyme, parrainage, alertes Twitch/YouTube, panel de tickets…) et pour le support prioritaire.",
+      "Le Premium déverrouille les options avancées des modules existants, il n'ajoute pas de bots ni de commandes complètement nouvelles. Tu paies pour repousser les limites du plan gratuit (mots interdits illimités, jusqu'à 20 paliers XP, multiplicateurs par rôle, mode sondage anonyme, parrainage, alertes Twitch/YouTube, panel de tickets…) et pour le support prioritaire.",
       "Une licence est liée à un serveur Discord, pas à un compte. Tu peux changer le serveur lié en contactant le support.",
       "Deux formules : abonnement mensuel sans engagement, ou achat à vie payé une fois pour toujours.",
     ],
     seeAlso: [
-      { id: "faq", label: "FAQ — facturation, transferts, remboursement" },
+      { id: "faq", label: "FAQ, facturation, transferts, remboursement" },
     ],
   },
 
@@ -651,7 +651,7 @@ export function Wiki() {
   return (
     <AppLayout>
       <section className="container-wide pt-32 md:pt-40 pb-32 overflow-hidden">
-        {/* Hero — same editorial home pattern */}
+        {/* Hero, same editorial home pattern */}
         <header className="text-center max-w-3xl mx-auto mb-16 md:mb-20">
           <motion.p
             className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"
@@ -712,7 +712,7 @@ export function Wiki() {
             )}
           </motion.div>
 
-          {/* Samia (AI assistant) CTA — same neutral DA as the rest of the site */}
+          {/* Samia (AI assistant) CTA, same neutral DA as the rest of the site */}
           <Link
             to="/assistant"
             className="group inline-flex items-center gap-2.5 mt-6 px-4 py-2.5 rounded-full bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.07] hover:border-white/25 text-white/80 hover:text-white transition-colors"
@@ -769,7 +769,7 @@ export function Wiki() {
             </nav>
           </aside>
 
-          {/* Content — narrow editorial column */}
+          {/* Content, narrow editorial column */}
           <div className="space-y-20 min-w-0 lg:col-start-2">
             {filtered.map(s => (
               <SectionView key={s.id} section={s} />
@@ -788,7 +788,7 @@ export function Wiki() {
             )}
           </div>
 
-          {/* Right rail — empty for now, reserves rhythm on lg+ */}
+          {/* Right rail, empty for now, reserves rhythm on lg+ */}
           <div className="hidden lg:block" />
         </div>
       </section>
@@ -824,7 +824,7 @@ function SectionView({ section: s }: { section: Section }) {
         {s.intro.map((p, i) => <p key={i}>{p}</p>)}
       </div>
 
-      {/* Settings — borderless table */}
+      {/* Settings, borderless table */}
       {s.settings && s.settings.length > 0 && (
         <div className="mb-10">
           <h3 className="text-[11px] font-medium uppercase tracking-[0.24em] text-white/35 mb-4">
@@ -853,7 +853,7 @@ function SectionView({ section: s }: { section: Section }) {
         </div>
       )}
 
-      {/* Steps — refined numbered list */}
+      {/* Steps, refined numbered list */}
       {s.steps && s.steps.length > 0 && (
         <div className="mb-10">
           <h3 className="text-[11px] font-medium uppercase tracking-[0.24em] text-white/35 mb-4">

@@ -23,7 +23,7 @@ interface Props {
   subtitle: string;
   /** Texte d'introduction sous le hero (max 2-3 phrases). */
   intro?: ReactNode;
-  /** "23 avril 2026" — affiché dans la pastille meta. */
+  /** "23 avril 2026", affiché dans la pastille meta. */
   lastUpdated?: string;
   /** Liste des sections pour le sommaire latéral. */
   toc?: TocEntry[];
@@ -45,7 +45,7 @@ export function LegalPage({
   return (
     <AppLayout>
       <section className="container-wide pt-32 md:pt-40 pb-32 overflow-hidden">
-        {/* Hero — same editorial home pattern */}
+        {/* Hero, same editorial home pattern */}
         <header className="text-center max-w-3xl mx-auto mb-20">
           <motion.p
             className="text-sm font-bold tracking-widest text-white/40 uppercase mb-8"

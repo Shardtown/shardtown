@@ -38,7 +38,7 @@ function uptimePercent(states: Health[]): number {
 }
 
 /**
- * Desktop /statut — visual language uses var(--ds-*) tokens so it adapts to
+ * Desktop /statut, visual language uses var(--ds-*) tokens so it adapts to
  * the aurora / noir / light themes. Layout aligned on the cronitor-style
  * status page : global banner + service rows with uptime bars.
  */

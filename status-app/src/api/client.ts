@@ -1,5 +1,5 @@
 /**
- * API client — works in two modes:
+ * API client, works in two modes:
  *
  *   Web   : cookie-based session auth + CSRF token (current behavior).
  *   Tauri : Bearer-token auth via `tauri-plugin-http` (Rust-side fetch, so
@@ -8,7 +8,7 @@
  *           Authorization headers.
  *
  * The mode is decided at module load by `IS_DESKTOP` from `lib/desktop.ts`.
- * Callers don't change — `apiGet`/`apiPost` etc. dispatch transparently.
+ * Callers don't change, `apiGet`/`apiPost` etc. dispatch transparently.
  */
 
 import { IS_DESKTOP, API_BASE } from "../lib/desktop";
@@ -43,7 +43,7 @@ const bearerListeners = new Set<(token: string | null) => void>();
 export function setBearerToken(token: string | null) {
   bearerToken = token;
   // If we're handed the demo magic, auto-enable demo mode so any
-  // subsequent request goes through the mock — even if localStorage's
+  // subsequent request goes through the mock, even if localStorage's
   // demo flag has been wiped between launches.
   if (token === DEMO_TOKEN) enableDemoMode();
   bearerListeners.forEach(fn => fn(token));
@@ -122,7 +122,7 @@ async function rawSend({ method, path, body, stream }: TransportOptions): Promis
   // built from the mock module so the rest of the pipeline (apiGet / send
   // / parseError) keeps working unchanged. Fully offline-capable.
   //
-  // Two triggers — either the localStorage flag is on, OR the current
+  // Two triggers, either the localStorage flag is on, OR the current
   // bearer token is the demo magic. The second case covers the launch-
   // after-localStorage-wipe scenario: keychain still has the demo
   // token, app should automatically stay offline.
@@ -161,7 +161,7 @@ async function rawSend({ method, path, body, stream }: TransportOptions): Promis
   const res = await fetch(url, init);
 
   // CSRF token may be stale (session regenerated, server restarted, ...).
-  // Refresh once and retry — surfacing the original 403 if the retry also fails.
+  // Refresh once and retry, surfacing the original 403 if the retry also fails.
   // Streaming requests can't be retried after the body's been consumed, so
   // we only retry non-stream requests.
   if (res.status === 403 && !stream && (method !== "GET" && method !== "HEAD")) {

@@ -30,7 +30,7 @@ export function GreetingToast() {
     try {
       if (sessionStorage.getItem(SHOWN_KEY)) return;
       sessionStorage.setItem(SHOWN_KEY, "1");
-    } catch { /* sessionStorage may be unavailable — still show once */ }
+    } catch { /* sessionStorage may be unavailable, still show once */ }
 
     const g = greetingFor(new Date());
     const name = user.global_name || user.username || "ami";
@@ -42,7 +42,7 @@ export function GreetingToast() {
       title: `${g.text}, ${name}.`,
       body: "Heureux de te revoir sur Shardtown.",
     }).then(delivered => {
-      // Native notification took it — no need to render the in-app card.
+      // Native notification took it, no need to render the in-app card.
       if (cancelled || delivered) return;
       setGreeting(g);
       timers.push(window.setTimeout(() => setPhase("in"), 100));

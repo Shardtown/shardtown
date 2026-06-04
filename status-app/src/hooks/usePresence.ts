@@ -20,7 +20,7 @@ const FAST_POLL_MS = 1500;
 
 interface Options {
   scope: string | null;
-  /** Current SPA path — broadcast so peers can "follow" this user. */
+  /** Current SPA path, broadcast so peers can "follow" this user. */
   path?: string | null;
   /** When true, polling/heartbeat run at the fast cadence (~1.5 s) and
    *  cursor coordinates are broadcast. Caller sets this when peers are
@@ -141,7 +141,7 @@ export function usePresence({ scope, path, fast }: Options) {
   return { peers };
 }
 
-/** Deterministic accent color per user id — same ring color every time. */
+/** Deterministic accent color per user id, same ring color every time. */
 export function presenceColor(id: string): string {
   const palette = [
     "#5b6dff", "#ec4899", "#10b981", "#f59e0b",

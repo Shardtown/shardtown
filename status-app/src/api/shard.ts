@@ -73,7 +73,7 @@ export interface ShardSettings {
   referralEnabled?: number | string;
   referralReward?: number;
   autoReactions?: { text: string; emoji: string }[];
-  // Paramètres globaux du serveur (mee6-style) — persistés en table
+  // Paramètres globaux du serveur (mee6-style), persistés en table
   // shard_settings, colonnes timezone (VARCHAR 64) et embedColor (VARCHAR 7).
   timezone?: string;
   embedColor?: string;

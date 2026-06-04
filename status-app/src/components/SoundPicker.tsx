@@ -3,7 +3,7 @@ import { ChevronDown, Check, Play, VolumeX } from "lucide-react";
 import { PRESETS, playPreset } from "@/lib/sounds";
 
 /**
- * Theme-aware sound picker — replaces the native <select> in Preferences.
+ * Theme-aware sound picker, replaces the native <select> in Preferences.
  *
  * - Pill-shaped trigger button showing the current preset label
  * - Popover with all presets, click to select, current marked with a check

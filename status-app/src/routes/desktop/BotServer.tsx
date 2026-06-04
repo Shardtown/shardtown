@@ -53,7 +53,7 @@ export function DesktopBotServer() {
       const merged = new Map<string, Guild>();
       // 1) Seed avec les guildes côté moderation, en forçant bot_present=false.
       sec?.guilds.forEach(g => merged.set(g.id, { ...g, bot_present: false }));
-      // 2) Override avec les guildes côté Shard — c'est la source de vérité
+      // 2) Override avec les guildes côté Shard, c'est la source de vérité
       //    pour bot_present (présence du bot Shard).
       com?.guilds.forEach(g => merged.set(g.id, g));
 

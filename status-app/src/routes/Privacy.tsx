@@ -23,7 +23,7 @@ export function Privacy() {
     <LegalPage
       overline="Légal · Vie privée"
       title="VIE PRIVÉE"
-      subtitle="Politique de confidentialité — comment Shardtown traite vos données personnelles, conformément au RGPD."
+      subtitle="Politique de confidentialité, comment Shardtown traite vos données personnelles, conformément au RGPD."
       lastUpdated="1er mai 2026"
       toc={TOC}
     >
@@ -36,7 +36,7 @@ export function Privacy() {
         </p>
         <p>
           En l'absence de désignation d'un Délégué à la Protection des Données
-          (DPO) — dispositif non obligatoire au regard de notre activité —
+          (DPO), dispositif non obligatoire au regard de notre activité —
           toute demande relative à la protection de vos données peut être
           adressée à la même adresse.
         </p>
@@ -130,24 +130,24 @@ export function Privacy() {
         </p>
         <ul className="list-disc pl-5 space-y-2">
           <li>
-            <strong>Discord Inc.</strong> (États-Unis) — exécution des bots
+            <strong>Discord Inc.</strong> (États-Unis), exécution des bots
             Discord, authentification OAuth2.
             <a href="https://discord.com/privacy" target="_blank" rel="noopener noreferrer" className="underline ml-1">Politique Discord</a>.
           </li>
           <li>
-            <strong>Stripe Payments Europe Ltd</strong> (Irlande) — traitement
+            <strong>Stripe Payments Europe Ltd</strong> (Irlande), traitement
             des paiements (PCI-DSS Level 1).
             <a href="https://stripe.com/fr/privacy" target="_blank" rel="noopener noreferrer" className="underline ml-1">Politique Stripe</a>.
           </li>
           <li>
-            <strong>Hébergeur</strong> — serveur dédié situé en
+            <strong>Hébergeur</strong>, serveur dédié situé en
             <strong> Allemagne (Union Européenne)</strong>. Stockage de la
             base de données, exécution du backend Node.js, hébergement du
             modèle d'IA Shard (auto-hébergé via Ollama, aucune requête
             sortante vers une IA tierce).
           </li>
           <li>
-            <strong>Service email transactionnel</strong> — pour l'envoi des
+            <strong>Service email transactionnel</strong>, pour l'envoi des
             codes de vérification et notifications, sous SPF/DKIM/DMARC.
           </li>
         </ul>
@@ -212,10 +212,10 @@ export function Privacy() {
         <ul className="list-disc pl-5 space-y-2">
           <li>
             <code className="mx-1 px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[12.5px] font-mono">sgid</code>
-            — cookie de session, HTTP-only, SameSite=Lax, Secure en production. Durée 24 h. Maintient votre connexion.
+           , cookie de session, HTTP-only, SameSite=Lax, Secure en production. Durée 24 h. Maintient votre connexion.
           </li>
           <li>Jeton CSRF en mémoire navigateur, durée de la session.</li>
-          <li>Préférences locales d'interface (thème, langue) stockées en <code className="mx-1 px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[12.5px] font-mono">localStorage</code> — non transmises au serveur.</li>
+          <li>Préférences locales d'interface (thème, langue) stockées en <code className="mx-1 px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-[12.5px] font-mono">localStorage</code>, non transmises au serveur.</li>
         </ul>
         <p>
           <strong>Aucun cookie publicitaire, analytics tiers ou de profilage</strong> n'est déposé sur nos sites.
@@ -233,7 +233,7 @@ export function Privacy() {
         <p>
           Si vous estimez qu'un mineur de moins de 13 ans nous a fourni des
           données personnelles, contactez-nous immédiatement à
-          <strong> contact@shardtwn.fr</strong> — nous procéderons à la
+          <strong> contact@shardtwn.fr</strong>, nous procéderons à la
           suppression dans les 30 jours.
         </p>
       </LegalSection>
@@ -260,11 +260,11 @@ export function Privacy() {
       <LegalSection id="droits" title="11. Vos droits (articles 15 à 22 du RGPD)">
         <p>Vous disposez à tout moment des droits suivants :</p>
         <ul className="list-disc pl-5 space-y-2">
-          <li><strong>Droit d'accès</strong> (art. 15) — copie de vos données.</li>
-          <li><strong>Droit de rectification</strong> (art. 16) — correction des données inexactes.</li>
+          <li><strong>Droit d'accès</strong> (art. 15), copie de vos données.</li>
+          <li><strong>Droit de rectification</strong> (art. 16), correction des données inexactes.</li>
           <li><strong>Droit à l'effacement</strong> / « droit à l'oubli » (art. 17).</li>
           <li><strong>Droit à la limitation</strong> du traitement (art. 18).</li>
-          <li><strong>Droit à la portabilité</strong> de vos données (art. 20) — export structuré.</li>
+          <li><strong>Droit à la portabilité</strong> de vos données (art. 20), export structuré.</li>
           <li><strong>Droit d'opposition</strong> au traitement fondé sur l'intérêt légitime (art. 21).</li>
           <li><strong>Droit de retirer votre consentement</strong> à tout moment (révocation OAuth Discord, déconnexion, suppression du compte).</li>
           <li><strong>Droit de définir des directives post-mortem</strong> (art. 85 loi Informatique et Libertés).</li>
@@ -312,7 +312,7 @@ export function Privacy() {
         <ul className="list-disc pl-5 space-y-2">
           <li>Email Données personnelles : <strong>contact@shardtwn.fr</strong></li>
           <li>Discord : serveur de support officiel (lien sur shardtwn.fr).</li>
-          <li>Autorité de contrôle : <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="underline">CNIL</a> — 3 place de Fontenoy, 75007 Paris.</li>
+          <li>Autorité de contrôle : <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="underline">CNIL</a>, 3 place de Fontenoy, 75007 Paris.</li>
         </ul>
       </LegalSection>
     </LegalPage>

@@ -153,7 +153,7 @@ export function Account() {
     const target = tokenToDelete;
     if (!target) return;
     setTokenToDelete(null);
-    // Touch ID prompt on desktop — token revocation can lock the user out
+    // Touch ID prompt on desktop, token revocation can lock the user out
     // of any app that's currently using it.
     const ok = await biometricConfirm(`Révoquer le token « ${target.name} »`);
     if (!ok) return;
@@ -276,7 +276,7 @@ export function Account() {
   return (
     <AppLayout>
       <section className="container-wide pt-32 md:pt-40 pb-32 overflow-hidden">
-        {/* Hero — same DA tokens as the home / dashboard pages */}
+        {/* Hero, same DA tokens as the home / dashboard pages */}
         <header className="flex items-start gap-4 flex-wrap justify-between mb-16">
           <div className="min-w-0">
             <motion.p
@@ -335,7 +335,7 @@ export function Account() {
           </div>
         )}
 
-        {/* Email non vérifié — pill compacte au lieu d'un gros bloc */}
+        {/* Email non vérifié, pill compacte au lieu d'un gros bloc */}
         {!account.email_verified && (
           <div className="mb-10 inline-flex items-start gap-2 px-3.5 py-2 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-200 text-[12.5px]">
             <ShieldAlert className="w-3.5 h-3.5 mt-0.5 shrink-0" />
@@ -345,7 +345,7 @@ export function Account() {
           </div>
         )}
 
-        {/* CONNEXIONS — une seule carte avec les 4 intégrations en lignes */}
+        {/* CONNEXIONS, une seule carte avec les 4 intégrations en lignes */}
         <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden mb-6">
           <div className="px-6 md:px-8 pt-6 md:pt-7 pb-5 border-b border-white/[0.05]">
             <p className="text-[10.5px] font-bold tracking-[0.22em] text-white/35 uppercase mb-2">
@@ -359,11 +359,11 @@ export function Account() {
           </div>
 
           <div className="divide-y divide-white/[0.05]">
-            {/* Discord — main login (passport-discord) */}
+            {/* Discord, main login (passport-discord) */}
             <ConnectionRow
               kind="discord"
               title="Discord"
-              caption="Compte principal — nécessaire pour configurer Shard et les dashboards"
+              caption="Compte principal, nécessaire pour configurer Shard et les dashboards"
               linkedId={account.discord_id}
               linkedName={account.discord_username}
               linkedAvatar={account.discord_avatar}
@@ -388,11 +388,11 @@ export function Account() {
               }
             />
 
-            {/* Discord — secondary OAuth (custom shard flow, kept for legacy users) */}
+            {/* Discord, secondary OAuth (custom shard flow, kept for legacy users) */}
             <ConnectionRow
               kind="discord"
               title="Connexion secondaire"
-              caption="Discord alternatif — utile si tu administres Shard depuis deux comptes (optionnel)"
+              caption="Discord alternatif, utile si tu administres Shard depuis deux comptes (optionnel)"
               linkedId={account.shard_id}
               linkedName={account.shard_username}
               linkedAvatar={account.shard_avatar}
@@ -514,7 +514,7 @@ export function Account() {
           )}
         </div>
 
-        {/* Personal access tokens — pour app desktop, CLI, intégrations */}
+        {/* Personal access tokens, pour app desktop, CLI, intégrations */}
         <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
@@ -571,7 +571,7 @@ export function Account() {
           )}
         </div>
 
-        {/* Mon espace — quick nav */}
+        {/* Mon espace, quick nav */}
         <div className="mt-12 flex items-center justify-center">
           <Link
             to="/outils"
@@ -762,7 +762,7 @@ export function Account() {
         </div>
       )}
 
-      {/* Reveal-token modal — shown ONCE after creation */}
+      {/* Reveal-token modal, shown ONCE after creation */}
       {revealedToken && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-6"
@@ -792,7 +792,7 @@ export function Account() {
               « {revealedToken.name} »
             </h3>
             <p className="text-white/55 text-sm leading-relaxed mb-5">
-              Copie ce token <b className="text-white">maintenant</b>. Il ne sera plus jamais affiché — seul son hash est gardé en base.
+              Copie ce token <b className="text-white">maintenant</b>. Il ne sera plus jamais affiché, seul son hash est gardé en base.
             </p>
             <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 mb-6">
               <code className="flex-1 min-w-0 text-[12.5px] font-mono text-white/85 break-all select-all">
@@ -931,7 +931,7 @@ export function Account() {
 }
 
 /**
- * Une rangée de la carte "Connexions" — provider + état + action.
+ * Une rangée de la carte "Connexions", provider + état + action.
  * Utilisée pour Discord (×2), Google et GitHub.
  */
 function ConnectionRow({

@@ -38,7 +38,7 @@ const MODULES: Module[] = [
   { icon: Ticket,             title: "Tickets",             desc: "Système de support intégré avec catégories et transcripts.",                 tint: "from-pink-500/20 to-rose-500/10",        ring: "ring-pink-400/30" },
   { icon: Vote,               title: "Sondages",            desc: "Polls interactifs, votes anonymes, résultats en temps réel.",                tint: "from-cyan-500/20 to-sky-500/10",         ring: "ring-cyan-400/30" },
   { icon: Gift,               title: "Giveaways",           desc: "Concours minutés, conditions d'entrée, tirage automatique.",                 tint: "from-fuchsia-500/20 to-purple-500/10",   ring: "ring-fuchsia-400/30" },
-  { icon: Bell,               title: "Alertes sociales",    desc: "Notifications Twitch + YouTube — alertes en direct, salon dédié.",           tint: "from-red-500/20 to-rose-500/10",         ring: "ring-red-400/30" },
+  { icon: Bell,               title: "Alertes sociales",    desc: "Notifications Twitch + YouTube, alertes en direct, salon dédié.",           tint: "from-red-500/20 to-rose-500/10",         ring: "ring-red-400/30" },
   { icon: Zap,                title: "Et plus encore",      desc: "Rappels, anti-pub, réactions auto, anniversaires, sondages…",                tint: "from-white/10 to-white/[0.03]",          ring: "ring-white/20" },
 ];
 
@@ -304,7 +304,7 @@ export function Produits() {
           </h2>
           <p className="text-lg text-white/55 leading-relaxed">
             Toutes les fonctionnalités, sur tous les plans. Tu choisis juste
-            comment tu paies — mensuel, annuel ou à vie.
+            comment tu paies, mensuel, annuel ou à vie.
           </p>
         </Reveal>
 

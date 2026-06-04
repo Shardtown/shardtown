@@ -504,7 +504,7 @@ export function PollsTab({ guildId, channels }: TabBase & { polls?: Poll[] }) {
 
   return (
     <div className="space-y-4">
-      <SectionCard title="Créer un sondage" description="Utilise les sondages natifs de Discord — vote en un clic, résultats en direct.">
+      <SectionCard title="Créer un sondage" description="Utilise les sondages natifs de Discord, vote en un clic, résultats en direct.">
         <Field label="Salon"><Select options={channelOpts(channels)} value={form.channelId} onChange={v => setForm(f => ({ ...f, channelId: v }))} /></Field>
         <Field label="Question"><TextInput value={form.question} onChange={e => setForm(f => ({ ...f, question: e.target.value }))} placeholder="Pizza ou kebab ?" /></Field>
         <Field label="Choix (2 à 5)">
@@ -572,7 +572,7 @@ export function TempVoiceTab({ settings, update, voiceChannels, categories }: Ta
 /**
  * The previous "title + description + image" form was a thin wrapper around
  * a legacy embed. The user requested a real, Discord-tool-like visual editor
- * built on Components V2 — drag-drop blocks, a `＋` insert button between
+ * built on Components V2, drag-drop blocks, a `＋` insert button between
  * every block, and a fidèle preview. The implementation lives in
  * `ComponentsBuilder.tsx`; this tab now just hosts it (and keeps the legacy
  * single-embed form as a fallback toggle).
@@ -721,7 +721,7 @@ export function ReactionsTab({ guildId, settings, update }: TabBase) {
 
 /* ========== TICKETS ========== */
 /**
- * Tickets — divisé en deux sous-onglets :
+ * Tickets, divisé en deux sous-onglets :
  *  • Configuration   → tout ce qui touche aux 4 embeds + boutons + emoji + style
  *  • Transcription   → génération HTML des conversations à la fermeture
  *
@@ -734,7 +734,7 @@ export function ReactionsTab({ guildId, settings, update }: TabBase) {
  * Chaque bouton (Ouvrir / Fermer) a son label, son emoji (unicode ou
  * custom Discord <:name:id>) et son style (Primary / Secondary / Success /
  * Danger). Côté Components V1 le bouton ne peut pas être un Link parce
- * qu'on a besoin d'une interaction côté bot — c'est par design.
+ * qu'on a besoin d'une interaction côté bot, c'est par design.
  */
 const BUTTON_STYLES = [
   { value: "1", label: "Primary (bleu)" },
@@ -904,7 +904,7 @@ function TicketsTranscripts({ guildId, settings, update }: { guildId: string; se
     } catch { return ""; }
   };
 
-  // Backend base — used to build absolute viewer URLs on the desktop app
+  // Backend base, used to build absolute viewer URLs on the desktop app
   // where window.location is the bundled file://. We resolve at runtime.
   const BASE = typeof window !== "undefined" && /^https?:/.test(window.location.protocol)
     ? window.location.origin
@@ -921,7 +921,7 @@ function TicketsTranscripts({ guildId, settings, update }: { guildId: string; se
           />
         </Field>
         <p className="text-[11.5px] text-white/40 mt-1">
-          URL : <code className="px-1.5 py-0.5 rounded bg-white/[0.05] font-mono-num">{BASE}/transcripts/&lt;id&gt;</code> — le lien est unique et non-deviné. Vous pouvez le partager sans authentification.
+          URL : <code className="px-1.5 py-0.5 rounded bg-white/[0.05] font-mono-num">{BASE}/transcripts/&lt;id&gt;</code>, le lien est unique et non-deviné. Vous pouvez le partager sans authentification.
         </p>
       </SectionCard>
 

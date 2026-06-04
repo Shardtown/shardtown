@@ -7,7 +7,7 @@ import {
 import { useAuth, avatarUrl } from "@/api/auth";
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
 // TourHost + PostUpdateNotes were here before but they're now mounted at
-// the App level (above <Routes>) so they survive route changes — otherwise
+// the App level (above <Routes>) so they survive route changes, otherwise
 // every navigation remounts DesktopShell and kills the tour mid-step.
 import { GreetingToast } from "@/components/GreetingToast";
 import {
@@ -25,7 +25,7 @@ import { disableDemoMode, isDemoMode } from "@/lib/demo";
 import { useTheme } from "@/lib/theme";
 
 /**
- * Desktop chrome — full NordVPN-style redesign.
+ * Desktop chrome, full NordVPN-style redesign.
  *
  * Layout:
  *   ┌────┬─────────────────────────────────────────┐
@@ -110,7 +110,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
       className="h-screen w-screen flex overflow-hidden relative"
       style={{ color: "var(--ds-text)" }}
     >
-      {/* Animated multi-color gradient background — uniquement quand le
+      {/* Animated multi-color gradient background, uniquement quand le
           thème "aurora" est actif. En "noir" et "light" on garde une surface
           plate qui suit var(--ds-bg). */}
       {theme === "aurora" && (
@@ -131,7 +131,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      {/* Drag region — invisible strip at the top of the window */}
+      {/* Drag region, invisible strip at the top of the window */}
       <div className="fixed inset-x-0 top-0 h-7 z-50 pointer-events-none" data-tauri-drag-region />
 
       {/* ─── SIDEBAR ──────────────────────────────────────────────── */}
@@ -183,7 +183,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
 
       {/* ─── RIGHT PANE: TOP BAR + CONTENT ─────────────────────────── */}
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* Top bar — search bar absolutely centered, right cluster pinned right.
+        {/* Top bar, search bar absolutely centered, right cluster pinned right.
             z-30 sets a stacking context so the popovers below (search,
             update, profile) stay above the scrolling page content which
             otherwise paints later in document order. */}
@@ -227,19 +227,19 @@ export function DesktopShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* Main content area — scrolls, full-bleed (pages decide their own widths) */}
+        {/* Main content area, scrolls, full-bleed (pages decide their own widths) */}
         <main className="flex-1 min-h-0 overflow-y-auto">
           <div className="w-full px-8 pt-8 pb-16">{children}</div>
         </main>
       </div>
 
-      {/* Bonjour / Bonsoir — pops once par lancement avec le prénom.
+      {/* Bonjour / Bonsoir, pops once par lancement avec le prénom.
           (PostUpdateNotes + TourHost ont été remontés au niveau App.tsx
-          pour survivre aux changements de route — sinon chaque navigation
+          pour survivre aux changements de route, sinon chaque navigation
           remount DesktopShell et la modale du tour disparaît mid-step.) */}
       <GreetingToast />
 
-      {/* Live presence — floating avatar + lock overlay on each input a
+      {/* Live presence, floating avatar + lock overlay on each input a
           peer is editing, ghost cursors for peers in fast mode, and a
           "Following X" banner when a follow session is active.
           PresenceStack in the top bar shows the per-guild stack. */}
@@ -436,7 +436,7 @@ function SearchBox({
     return () => window.removeEventListener("keydown", onKey);
   }, [setOpen]);
 
-  // Search hits — locations (page actions) + live guild search
+  // Search hits, locations (page actions) + live guild search
   useEffect(() => {
     const q = query.trim().toLowerCase();
     if (!q) { setHits([]); return; }
@@ -575,7 +575,7 @@ function SearchBox({
 }
 
 /**
- * Bot avatar — used in the rail and anywhere we'd otherwise show a
+ * Bot avatar, used in the rail and anywhere we'd otherwise show a
  * Shield/Zap lucide icon for ShardGuard or Shard. Loads from the
  * bundled /image/{shardguard,shard}.png so it works offline + in demo.
  */
@@ -608,7 +608,7 @@ function AppVersion() {
         const v = await getVersion();
         if (!cancelled) setVersion(v);
       } catch {
-        /* desktop API unavailable — skip */
+        /* desktop API unavailable, skip */
       }
     })();
     return () => { cancelled = true; };
@@ -747,7 +747,7 @@ function UpdateButton() {
           className="ds-glass absolute z-50 right-0 top-[calc(100%+12px)] w-[320px] rounded-[18px] border overflow-hidden update-pop"
           style={{ borderColor: "var(--ds-border-strong)" }}
         >
-          {/* Accent strip — green if update, neutral otherwise */}
+          {/* Accent strip, green if update, neutral otherwise */}
           <div
             className="h-[3px] w-full"
             style={{ background: hasUpdate ? "var(--ds-status-ok)" : "var(--ds-border-strong)" }}
