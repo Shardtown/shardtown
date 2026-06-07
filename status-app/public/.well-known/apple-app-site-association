@@ -1,0 +1,19 @@
+{
+  "webcredentials": {
+    "apps": ["52U7K2AGSB.fr.shardtown.shardlink"]
+  },
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["52U7K2AGSB.fr.shardtown.shardlink"],
+        "components": [
+          { "/": "/oauth-done*", "comment": "Callback OAuth iOS" }
+        ]
+      }
+    ]
+  },
+  "appclips": {
+    "apps": []
+  }
+}
