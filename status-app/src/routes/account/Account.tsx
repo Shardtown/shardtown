@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   LogOut, ShieldCheck, ShieldAlert,
@@ -46,7 +46,8 @@ export function Account() {
 
   // 2FA state
   const [totpSetup, setTotpSetup] = useState<{ secret: string; qrDataUri: string } | null>(null);
-  const [totpSetupCode, setTotpSetupCode] = useState("");
+  const [totpSetupCode, setTotpSetupCode] = useState(["","","","","",""]);
+  const totpSetupRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [totpSetupBusy, setTotpSetupBusy] = useState(false);
   const [showDisableTotp, setShowDisableTotp] = useState(false);
   const [disableTotpCode, setDisableTotpCode] = useState("");
@@ -154,8 +155,24 @@ export function Account() {
     setParams(params, { replace: true });
   }, [params, setParams]);
 
+  function handleTotpBoxChange(i: number, v: string) {
+    const digit = v.replace(/\D/g, "").slice(0, 1);
+    const next = [...totpSetupCode]; next[i] = digit; setTotpSetupCode(next);
+    if (digit && i < 5) totpSetupRefs.current[i + 1]?.focus();
+  }
+  function handleTotpBoxKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !totpSetupCode[i] && i > 0) totpSetupRefs.current[i - 1]?.focus();
+  }
+  function handleTotpBoxPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return; e.preventDefault();
+    const next = [...pasted.split(""), ...["","","","","",""]].slice(0, 6);
+    setTotpSetupCode(next);
+    totpSetupRefs.current[Math.min(pasted.length, 5)]?.focus();
+  }
+
   async function startTotpSetup() {
-    setTotpSetupCode("");
+    setTotpSetupCode(["","","","","",""]);
     setTotpSetupBusy(true);
     try {
       const r = await apiPost<{ secret: string; qrDataUri: string }>("/api/account/2fa/totp/setup");
@@ -170,7 +187,7 @@ export function Account() {
     if (!totpSetup) return;
     setTotpSetupBusy(true);
     try {
-      await apiPost("/api/account/2fa/totp/confirm", { code: totpSetupCode });
+      await apiPost("/api/account/2fa/totp/confirm", { code: totpSetupCode.join("") });
       setTotpSetup(null);
       setBanner({ kind: "ok", text: "Authentificateur activé." });
       refresh();
@@ -797,86 +814,107 @@ export function Account() {
         </div>
       )}
 
-      {/* TOTP Setup modal */}
+      {/* TOTP Setup modal — full-width two-column */}
       {totpSetup && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-y-auto"
           onClick={() => setTotpSetup(null)}
           onKeyDown={e => e.key === "Escape" && setTotpSetup(null)}
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div
-            className="relative rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-7 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)] w-full max-w-sm"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setTotpSetup(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-
-            <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-1">
-              Étape 1 — Scanner
-            </p>
-            <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-2xl mb-3">
-              Configure ton application
-            </h3>
-            <p className="text-white/50 text-sm mb-5">
-              Scanne ce QR code avec Google Authenticator, Authy, 1Password ou toute app compatible.
-            </p>
-
-            <div className="flex justify-center mb-4 bg-white rounded-2xl p-4">
-              <img src={totpSetup.qrDataUri} alt="QR code TOTP" className="w-44 h-44" />
+          <div className="relative w-full max-w-3xl my-auto" onClick={e => e.stopPropagation()}>
+            {/* Header above card */}
+            <div className="text-center mb-8">
+              <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-3">
+                Authentification à deux facteurs
+              </p>
+              <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl">
+                Configure ton application
+              </h3>
+              <p className="text-white/50 text-sm mt-3">
+                Scanne le QR code puis entre le code généré pour activer.
+              </p>
             </div>
 
-            <details className="mb-5 group">
-              <summary className="text-[11px] text-white/35 cursor-pointer hover:text-white/60 transition-colors list-none flex items-center gap-1.5">
-                <span className="group-open:hidden">▶</span>
-                <span className="hidden group-open:inline">▼</span>
-                Saisie manuelle (clé secrète)
-              </summary>
-              <p className="mt-2 px-3 py-2 rounded-xl bg-black/40 border border-white/10 font-mono text-[12px] text-white/70 break-all select-all">
-                {totpSetup.secret}
-              </p>
-            </details>
+            {/* Card */}
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
+              <button
+                type="button"
+                onClick={() => setTotpSetup(null)}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+                aria-label="Fermer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
 
-            <div className="pt-4 border-t border-white/[0.06]">
-              <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-3">
-                Étape 2 — Vérifier
-              </p>
-              <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-2">
-                Code à 6 chiffres
-              </label>
-              <input
-                autoFocus
-                type="text"
-                inputMode="numeric"
-                value={totpSetupCode}
-                onChange={e => setTotpSetupCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                onKeyDown={e => { if (e.key === "Enter" && totpSetupCode.length === 6) confirmTotpSetup(); }}
-                placeholder="000000"
-                maxLength={6}
-                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/20 text-sm font-mono tracking-widest text-center mb-4 transition-all"
-              />
-              <div className="flex gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setTotpSetup(null)}
-                  className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmTotpSetup}
-                  disabled={totpSetupCode.length !== 6 || totpSetupBusy}
-                  className="btn-liquid btn-liquid--primary flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3 font-bold text-sm disabled:opacity-50"
-                >
-                  {totpSetupBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Activer"}
-                </button>
+              <div className="flex gap-0 items-start">
+                {/* Left — QR + secret */}
+                <div className="flex-1 pr-8">
+                  <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-4">
+                    Étape 1 — Scanner
+                  </p>
+                  <div className="flex justify-center mb-5 bg-white rounded-2xl p-5">
+                    <img src={totpSetup.qrDataUri} alt="QR code TOTP" className="w-48 h-48" />
+                  </div>
+                  <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-2">
+                    Clé secrète
+                  </p>
+                  <p className="px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 font-mono text-[11.5px] text-white/65 break-all select-all leading-relaxed">
+                    {totpSetup.secret}
+                  </p>
+                  <p className="text-[11px] text-white/30 mt-2 leading-relaxed">
+                    Google Authenticator, Authy, 1Password ou toute app TOTP compatible.
+                  </p>
+                </div>
+
+                {/* Divider */}
+                <div className="w-px self-stretch bg-white/[0.06] mx-0" />
+
+                {/* Right — code + actions */}
+                <div className="flex-1 pl-8 flex flex-col">
+                  <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-4">
+                    Étape 2 — Vérifier
+                  </p>
+                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3 text-center">
+                    Code à 6 chiffres
+                  </label>
+                  <div className="flex justify-center gap-2 mb-6">
+                    {totpSetupCode.map((d, i) => (
+                      <input
+                        key={i}
+                        ref={el => { totpSetupRefs.current[i] = el; }}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={1}
+                        value={d}
+                        autoFocus={i === 0}
+                        onChange={e => handleTotpBoxChange(i, e.target.value)}
+                        onKeyDown={e => handleTotpBoxKey(i, e)}
+                        onPaste={i === 0 ? handleTotpBoxPaste : undefined}
+                        className="w-11 h-14 text-center text-2xl font-bold rounded-xl bg-black/40 border border-white/10 focus:border-white/40 focus:outline-none text-white transition-colors"
+                      />
+                    ))}
+                  </div>
+
+                  <div className="mt-auto pt-4 border-t border-white/[0.06] flex gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setTotpSetup(null)}
+                      className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={confirmTotpSetup}
+                      disabled={totpSetupCode.join("").length !== 6 || totpSetupBusy}
+                      className="btn-liquid btn-liquid--primary flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3 font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {totpSetupBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Activer"}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
