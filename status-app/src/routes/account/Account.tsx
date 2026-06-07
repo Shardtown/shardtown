@@ -459,9 +459,10 @@ export function Account() {
                     type="button"
                     onClick={startTotpSetup}
                     disabled={totpSetupBusy}
-                    className="px-3 py-1.5 rounded-lg bg-white text-black text-[11px] font-bold hover:opacity-90 disabled:opacity-50"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
                   >
-                    {totpSetupBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : "Configurer"}
+                    {totpSetupBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    Configurer
                   </button>
                 )}
               </div>
