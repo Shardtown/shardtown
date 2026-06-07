@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   LogOut, ShieldCheck, ShieldAlert,
   RefreshCw, Server, Fingerprint, Plus, Trash2, Loader2, X,
-  KeyRound, Copy, Check, Shield, Mail, QrCode,
+  KeyRound, Copy, Check, Shield, Mail, QrCode, Eye, EyeOff,
 } from "lucide-react";
 import { Toggle as GooeyToggle } from "@/components/ui/toggle";
 import { motion, useReducedMotion } from "framer-motion";
@@ -15,12 +15,6 @@ import { useAuth } from "@/api/auth";
 import { useAccount } from "@/api/account";
 import type { Account as AccountT } from "@/api/account";
 
-interface TokenRow {
-  id: number;
-  name: string;
-  last_used_at: string | null;
-  created_at: string;
-}
 
 export function Account() {
   const nav = useNavigate();
@@ -39,13 +33,12 @@ export function Account() {
   const [showAddPasskey, setShowAddPasskey] = useState(false);
   const [newPasskeyName, setNewPasskeyName] = useState("");
   const [passkeyToDelete, setPasskeyToDelete] = useState<{ id: number; name: string } | null>(null);
-  const [tokens, setTokens] = useState<TokenRow[] | null>(null);
-  const [tokenBusy, setTokenBusy] = useState(false);
-  const [showAddToken, setShowAddToken] = useState(false);
-  const [newTokenName, setNewTokenName] = useState("");
-  const [revealedToken, setRevealedToken] = useState<{ name: string; token: string } | null>(null);
+  // Token principal
+  const [myToken, setMyToken] = useState<string | null | undefined>(undefined); // undefined = pas encore chargé
+  const [tokenVisible, setTokenVisible] = useState(false);
   const [tokenCopied, setTokenCopied] = useState(false);
-  const [tokenToDelete, setTokenToDelete] = useState<{ id: number; name: string } | null>(null);
+  const [tokenBusy, setTokenBusy] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [unlinkConfirm, setUnlinkConfirm] = useState<{
     label: string;
     detail: string;
@@ -115,64 +108,34 @@ export function Account() {
     }
   }
 
-  const refreshTokens = useCallback(async () => {
+  const loadMyToken = useCallback(async () => {
     try {
-      const r = await apiGet<{ tokens: TokenRow[] }>("/api/account/tokens");
-      setTokens(r.tokens);
-    } catch { setTokens([]); }
+      const r = await apiGet<{ token: string | null }>("/api/account/tokens/my-token");
+      setMyToken(r.token);
+    } catch { setMyToken(null); }
   }, []);
-  useEffect(() => { refreshTokens(); }, [refreshTokens]);
+  useEffect(() => { loadMyToken(); }, [loadMyToken]);
 
-  function openAddToken() {
-    setNewTokenName("");
-    setShowAddToken(true);
-  }
-
-  async function confirmAddToken() {
-    const name = newTokenName.trim() || "Token sans nom";
-    setShowAddToken(false);
-    setTokenBusy(true);
+  async function copyToken() {
+    if (!myToken) return;
     try {
-      const r = await apiPost<{ id: number; name: string; token: string; created_at: string }>(
-        "/api/account/tokens",
-        { name },
-      );
-      setRevealedToken({ name: r.name, token: r.token });
-      refreshTokens();
-    } catch (err) {
-      const msg = isApiError(err) ? err.message : "Erreur inconnue";
-      setBanner({ kind: "error", text: `Échec : ${msg}` });
-    } finally { setTokenBusy(false); }
-  }
-
-  async function copyRevealedToken() {
-    if (!revealedToken) return;
-    try {
-      await navigator.clipboard.writeText(revealedToken.token);
+      await navigator.clipboard.writeText(myToken);
       setTokenCopied(true);
       setTimeout(() => setTokenCopied(false), 2000);
-    } catch { /* clipboard blocked, user copies manually */ }
+    } catch { /* clipboard blocked */ }
   }
 
-  function askDeleteToken(id: number, name: string) {
-    setTokenToDelete({ id, name });
-  }
-
-  async function confirmDeleteToken() {
-    const target = tokenToDelete;
-    if (!target) return;
-    setTokenToDelete(null);
-    // Touch ID prompt on desktop, token revocation can lock the user out
-    // of any app that's currently using it.
-    const ok = await biometricConfirm(`Révoquer le token « ${target.name} »`);
-    if (!ok) return;
+  async function confirmResetToken() {
+    setShowResetConfirm(false);
+    setTokenBusy(true);
     try {
-      await apiDelete(`/api/account/tokens/${target.id}`);
-      setBanner({ kind: "ok", text: `Token « ${target.name} » révoqué.` });
-      refreshTokens();
-    } catch {
-      setBanner({ kind: "error", text: "Échec de la révocation." });
-    }
+      const r = await apiPost<{ token: string }>("/api/account/tokens/reset");
+      setMyToken(r.token);
+      setTokenVisible(true);
+    } catch (err) {
+      const msg = isApiError(err) ? err.message : "Erreur";
+      setBanner({ kind: "error", text: `Échec : ${msg}` });
+    } finally { setTokenBusy(false); }
   }
 
   // Surface ?linked=ok / ?linked=error from the OAuth callback
@@ -591,7 +554,7 @@ export function Account() {
           )}
         </div>
 
-        {/* Personal access tokens, pour app desktop, CLI, intégrations */}
+        {/* Token d'accès */}
         <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
@@ -599,51 +562,59 @@ export function Account() {
             </div>
             <div>
               <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">Intégrations</p>
-              <h2 className="text-xl font-extrabold tracking-tight">Tokens d'accès personnel</h2>
+              <h2 className="text-xl font-extrabold tracking-tight">Token d'accès</h2>
             </div>
-            <button
-              type="button"
-              onClick={openAddToken}
-              disabled={tokenBusy}
-              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
-            >
-              {tokenBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-              Générer
-            </button>
           </div>
           <p className="text-white/55 text-sm mb-5 max-w-xl">
             Pour t'authentifier depuis l'app desktop, un script ou une intégration tierce.
           </p>
-          {tokens === null ? (
-            <p className="text-white/30 text-xs uppercase tracking-widest font-bold py-3">Chargement…</p>
-          ) : tokens.length === 0 ? (
-            <p className="text-white/30 text-xs uppercase tracking-widest font-bold py-3">Aucun token</p>
+
+          {myToken === undefined ? (
+            <div className="h-12 bg-white/[0.03] rounded-xl animate-pulse" />
           ) : (
-            <div className="space-y-2">
-              {tokens.map(t => (
-                <div key={t.id} className="flex items-center gap-3 p-3 rounded-2xl border border-white/[0.06] bg-white/[0.02]">
-                  <div className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-white/55 shrink-0">
-                    <KeyRound className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm truncate">{t.name}</p>
-                    <p className="text-[11px] text-white/35 font-mono-num">
-                      créé {new Date(t.created_at).toLocaleDateString("fr-FR")}
-                      {t.last_used_at
-                        ? <> · dernière utilisation {new Date(t.last_used_at).toLocaleDateString("fr-FR")}</>
-                        : <> · jamais utilisé</>}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => askDeleteToken(t.id, t.name)}
-                    aria-label="Révoquer"
-                    className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/15 flex items-center justify-center shrink-0"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
+            <div className="space-y-3">
+              {/* Affichage du token */}
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-black/40 border border-white/10">
+                <code className="flex-1 min-w-0 text-[12.5px] font-mono text-white/80 break-all select-all">
+                  {myToken
+                    ? (tokenVisible ? myToken : "jr_" + "•".repeat(myToken.length - 3))
+                    : <span className="text-white/30 italic">Aucun token — réinitialise pour en créer un</span>
+                  }
+                </code>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 flex-wrap">
+                {myToken && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setTokenVisible(v => !v)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/70 hover:text-white hover:bg-white/[0.07] text-[12px] font-bold transition-colors"
+                    >
+                      {tokenVisible ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {tokenVisible ? "Masquer" : "Voir"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={copyToken}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/70 hover:text-white hover:bg-white/[0.07] text-[12px] font-bold transition-colors"
+                    >
+                      {tokenCopied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                      {tokenCopied ? "Copié !" : "Copier"}
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(true)}
+                  disabled={tokenBusy}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 hover:bg-amber-500/15 text-[12px] font-bold transition-colors disabled:opacity-50"
+                >
+                  {tokenBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  Réinitialiser
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -775,12 +746,12 @@ export function Account() {
         </div>
       )}
 
-      {/* Add-token modal */}
-      {showAddToken && (
+      {/* Reset-token confirmation modal */}
+      {showResetConfirm && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-6"
-          onClick={() => setShowAddToken(false)}
-          onKeyDown={e => e.key === "Escape" && setShowAddToken(false)}
+          onClick={() => setShowResetConfirm(false)}
+          onKeyDown={e => e.key === "Escape" && setShowResetConfirm(false)}
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
@@ -789,160 +760,39 @@ export function Account() {
           >
             <button
               type="button"
-              onClick={() => setShowAddToken(false)}
+              onClick={() => setShowResetConfirm(false)}
               className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
               aria-label="Fermer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white/70 mb-5">
-              <KeyRound className="w-5 h-5" />
+            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-300 border border-amber-500/20 mb-5">
+              <RefreshCw className="w-5 h-5" />
             </div>
-            <p className="text-[10px] font-bold tracking-[0.28em] text-white/35 uppercase mb-2">
-              Nouveau token
+            <p className="text-[10px] font-bold tracking-[0.28em] text-amber-300/80 uppercase mb-2">
+              Confirmation
             </p>
             <h3 className="text-xl font-extrabold tracking-tight mb-2">
-              Nom du token
-            </h3>
-            <p className="text-white/55 text-sm leading-relaxed mb-5">
-              Pour identifier d'où viennent les requêtes (ex. App desktop, Script de backup).
-            </p>
-            <input
-              autoFocus
-              type="text"
-              value={newTokenName}
-              onChange={e => setNewTokenName(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter") { e.preventDefault(); confirmAddToken(); }
-              }}
-              placeholder="App desktop, Script CI…"
-              maxLength={64}
-              className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/[0.06] text-white placeholder:text-white/25 text-sm transition-all mb-6"
-            />
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowAddToken(false)}
-                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={confirmAddToken}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
-              >
-                Générer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reveal-token modal, shown ONCE after creation */}
-      {revealedToken && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
-          onClick={() => setRevealedToken(null)}
-          onKeyDown={e => e.key === "Escape" && setRevealedToken(null)}
-        >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-md shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setRevealedToken(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 mb-5">
-              <KeyRound className="w-5 h-5" />
-            </div>
-            <p className="text-[10px] font-bold tracking-[0.28em] text-emerald-300/80 uppercase mb-2">
-              Token créé
-            </p>
-            <h3 className="text-xl font-extrabold tracking-tight mb-2">
-              « {revealedToken.name} »
-            </h3>
-            <p className="text-white/55 text-sm leading-relaxed mb-5">
-              Copie ce token <b className="text-white">maintenant</b>. Il ne sera plus jamais affiché, seul son hash est gardé en base.
-            </p>
-            <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 mb-6">
-              <code className="flex-1 min-w-0 text-[12.5px] font-mono text-white/85 break-all select-all">
-                {revealedToken.token}
-              </code>
-              <button
-                type="button"
-                onClick={copyRevealedToken}
-                aria-label="Copier"
-                className="shrink-0 w-8 h-8 rounded-lg bg-white/[0.06] border border-white/10 hover:bg-white/[0.1] flex items-center justify-center"
-              >
-                {tokenCopied
-                  ? <Check className="w-3.5 h-3.5 text-emerald-300" />
-                  : <Copy className="w-3.5 h-3.5 text-white/65" />}
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setRevealedToken(null)}
-              className="w-full py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
-            >
-              J'ai copié
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Delete-token confirmation */}
-      {tokenToDelete && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
-          onClick={() => setTokenToDelete(null)}
-          onKeyDown={e => e.key === "Escape" && setTokenToDelete(null)}
-        >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setTokenToDelete(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-red-500/10 text-red-300 border border-red-500/20 mb-5">
-              <Trash2 className="w-5 h-5" />
-            </div>
-            <p className="text-[10px] font-bold tracking-[0.28em] text-red-300/80 uppercase mb-2">
-              Action irréversible
-            </p>
-            <h3 className="text-xl font-extrabold tracking-tight mb-2">
-              Révoquer ce token ?
+              Réinitialiser le token ?
             </h3>
             <p className="text-white/55 text-sm leading-relaxed mb-6">
-              Toute requête utilisant <b className="text-white">« {tokenToDelete.name} »</b> sera immédiatement rejetée.
+              L'ancien token sera immédiatement invalidé. Toute app ou script qui l'utilise devra être mis à jour avec le nouveau.
             </p>
             <div className="flex gap-2.5">
               <button
                 type="button"
-                onClick={() => setTokenToDelete(null)}
+                onClick={() => setShowResetConfirm(false)}
                 className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
               >
                 Annuler
               </button>
               <button
                 type="button"
-                onClick={confirmDeleteToken}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90"
+                onClick={confirmResetToken}
+                disabled={tokenBusy}
+                className="flex-1 py-3 rounded-full font-bold text-sm bg-amber-500 text-black transition-opacity hover:opacity-90 disabled:opacity-50"
               >
-                Révoquer
+                {tokenBusy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "Réinitialiser"}
               </button>
             </div>
           </div>

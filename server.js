@@ -386,6 +386,10 @@ async function connectDB() {
                     INDEX idx_token (token_hash)
                 )
             `);
+            // token_plain pour affichage côté compte
+            try {
+                await db.execute(`ALTER TABLE account_personal_tokens ADD COLUMN token_plain TEXT DEFAULT NULL`);
+            } catch { /* already exists */ }
             // Phase 2 — Discord linking columns
             for (const ddl of [
                 `ALTER TABLE accounts ADD COLUMN discord_access_token TEXT DEFAULT NULL`,
@@ -2196,6 +2200,17 @@ app.post('/api/account/signup', accountSignupLimiter, async (req, res) => {
         );
         await sendVerificationEmail({ email, pseudo }, code);
 
+        // Token d'accès automatique à la création du compte
+        try {
+            const tok = TOKEN_PREFIX + crypto.randomBytes(TOKEN_BYTES).toString('hex');
+            const tokHash = crypto.createHash('sha256').update(tok).digest('hex');
+            const tokPlain = encryptToken(tok);
+            await db.execute(
+                'INSERT INTO account_personal_tokens (account_id, name, token_hash, token_plain) VALUES (?, ?, ?, ?)',
+                [accountId, 'Token principal', tokHash, tokPlain],
+            );
+        } catch (e) { console.error('signup token creation:', e.message); }
+
         res.json({ success: true, pendingVerification: true, email });
     } catch (err) {
         console.error('signup:', err.message);
@@ -2377,46 +2392,68 @@ app.post('/api/account/logout', (req, res) => {
 // stored. Bearer auth skips CSRF (see middleware above).
 const TOKEN_PREFIX = 'jr_';
 const TOKEN_BYTES = 32;
+// AES-256-GCM key derived from SESSION_SECRET so the token can be shown again.
+const TOKEN_ENC_KEY = crypto.scryptSync(process.env.SESSION_SECRET, 'shard-tok-enc-v1', 32);
+function encryptToken(plain) {
+    const iv = crypto.randomBytes(12);
+    const c = crypto.createCipheriv('aes-256-gcm', TOKEN_ENC_KEY, iv);
+    const enc = Buffer.concat([c.update(plain, 'utf8'), c.final()]);
+    return `${iv.toString('hex')}:${c.getAuthTag().toString('hex')}:${enc.toString('hex')}`;
+}
+function decryptToken(stored) {
+    const [ivH, tagH, dataH] = stored.split(':');
+    const d = crypto.createDecipheriv('aes-256-gcm', TOKEN_ENC_KEY, Buffer.from(ivH, 'hex'));
+    d.setAuthTag(Buffer.from(tagH, 'hex'));
+    return Buffer.concat([d.update(Buffer.from(dataH, 'hex')), d.final()]).toString('utf8');
+}
 
-app.post('/api/account/tokens', requireAccount, async (req, res) => {
-    const name = String(req.body?.name || '').trim().slice(0, 64);
-    if (!name) return res.status(400).json({ error: 'Nom requis' });
-    if (req.session.account.viaToken) {
-        return res.status(403).json({ error: 'Création de token interdite via une auth par token' });
-    }
+// Token principal du compte — lecture (déchiffré)
+app.get('/api/account/tokens/my-token', requireAccount, async (req, res) => {
     try {
-        const [existing] = await db.execute(
-            'SELECT COUNT(*) AS n FROM account_personal_tokens WHERE account_id = ?',
+        const [rows] = await db.execute(
+            `SELECT id, name, token_plain, last_used_at, created_at
+             FROM account_personal_tokens WHERE account_id = ? ORDER BY id ASC LIMIT 1`,
             [req.session.account.id],
         );
-        if (existing[0].n >= 20) {
-            return res.status(400).json({ error: 'Maximum 20 tokens par compte. Révoque-en avant d\'en créer un nouveau.' });
-        }
-        const token = TOKEN_PREFIX + crypto.randomBytes(TOKEN_BYTES).toString('hex');
-        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-        const [r] = await db.execute(
-            'INSERT INTO account_personal_tokens (account_id, name, token_hash) VALUES (?, ?, ?)',
-            [req.session.account.id, name, tokenHash],
-        );
-        res.json({
-            id: r.insertId,
-            name,
-            token,
-            created_at: new Date().toISOString(),
-        });
+        if (!rows[0]) return res.json({ token: null });
+        const plain = rows[0].token_plain ? decryptToken(rows[0].token_plain) : null;
+        res.json({ token: plain, last_used_at: rows[0].last_used_at, created_at: rows[0].created_at });
     } catch (err) {
-        console.error('create token:', err.message);
+        console.error('my-token:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 
+// Réinitialiser le token principal
+app.post('/api/account/tokens/reset', requireAccount, async (req, res) => {
+    if (req.session.account.viaToken) {
+        return res.status(403).json({ error: 'Réinitialisation interdite via auth par token' });
+    }
+    try {
+        await db.execute(
+            'DELETE FROM account_personal_tokens WHERE account_id = ?',
+            [req.session.account.id],
+        );
+        const tok = TOKEN_PREFIX + crypto.randomBytes(TOKEN_BYTES).toString('hex');
+        const tokHash = crypto.createHash('sha256').update(tok).digest('hex');
+        const tokPlain = encryptToken(tok);
+        await db.execute(
+            'INSERT INTO account_personal_tokens (account_id, name, token_hash, token_plain) VALUES (?, ?, ?, ?)',
+            [req.session.account.id, 'Token principal', tokHash, tokPlain],
+        );
+        res.json({ token: tok });
+    } catch (err) {
+        console.error('reset token:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Conservé pour compatibilité desktop / CLI — retourne le token principal existant
 app.get('/api/account/tokens', requireAccount, async (req, res) => {
     try {
         const [rows] = await db.execute(
             `SELECT id, name, last_used_at, created_at
-             FROM account_personal_tokens
-             WHERE account_id = ?
-             ORDER BY id DESC`,
+             FROM account_personal_tokens WHERE account_id = ? ORDER BY id ASC LIMIT 1`,
             [req.session.account.id],
         );
         res.json({ tokens: rows });
