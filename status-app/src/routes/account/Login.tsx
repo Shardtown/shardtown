@@ -715,7 +715,7 @@ export function AccountLogin() {
                       <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3 text-center">
                         Code application
                       </label>
-                      <div className="flex justify-center gap-2 mb-2">
+                      <div className="flex justify-center gap-2">
                         {twoFaTotpCode.map((d, i) => (
                           <input
                             key={i}
@@ -733,20 +733,19 @@ export function AccountLogin() {
                           />
                         ))}
                       </div>
-                      <p className="text-[11px] text-white/35 text-center mt-1.5">
-                        Google Authenticator, Authy, 1Password…
-                      </p>
                     </div>
 
-                    <SubmitButton
-                      loading={loading}
-                      label="Confirmer"
-                      disabled={twoFaTotpCode.join("").length !== 6}
-                    />
+                    <button
+                      type="submit"
+                      disabled={loading || twoFaTotpCode.join("").length !== 6}
+                      className="btn-liquid btn-liquid--primary w-full py-3 rounded-full font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {loading ? "Chargement…" : "Confirmer"}
+                    </button>
                     <button
                       type="button"
                       onClick={() => switchMode("login")}
-                      className="w-full text-xs text-white/40 hover:text-white/70 transition-colors"
+                      className="w-full text-xs text-center text-white/40 hover:text-white/70 transition-colors"
                     >
                       ← Revenir à la connexion
                     </button>
