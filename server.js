@@ -754,6 +754,8 @@ async function connectDB() {
             for (const ddl of customBotAlters) {
                 try { await db.execute(ddl); } catch (e) { /* idempotent */ }
             }
+            // Verified badge: accounts with a specific Discord role get a badge on their profile.
+            try { await db.execute(`ALTER TABLE accounts ADD COLUMN verified TINYINT(1) DEFAULT 0`); } catch { /* idempotent */ }
             await db.execute(`
                 CREATE TABLE IF NOT EXISTS global_blacklist (
                     userId VARCHAR(255) NOT NULL PRIMARY KEY,
@@ -2101,6 +2103,7 @@ function publicAccount(a) {
         created_at: a.created_at,
         totp_enabled: !!a.totp_enabled,
         email_2fa_enabled: !!a.email_2fa_enabled,
+        verified: !!a.verified,
     };
 }
 
@@ -8262,6 +8265,156 @@ app.post('/admin/bot/:botId/guild/:guildId/premium', checkAdmin, verifyCsrf, asy
     } catch (err) {
         await logAdminAction(req, 'premium.set.failed', { botId, guildId }, { error: err.message || 'Erreur serveur' });
         res.json({ success: false, error: 'Erreur serveur' });
+    }
+});
+
+/* ── Admin: utilisateurs ─────────────────────────────────────────────── */
+
+app.get('/api/admin/users', checkAdmin, async (req, res) => {
+    try {
+        const search = req.query.q ? `%${req.query.q}%` : null;
+        const [rows] = search
+            ? await db.execute(
+                `SELECT id, pseudo, email, discord_id, discord_username, discord_avatar,
+                        verified, totp_enabled, created_at
+                 FROM accounts
+                 WHERE pseudo LIKE ? OR email LIKE ? OR discord_username LIKE ?
+                 ORDER BY created_at DESC LIMIT 100`,
+                [search, search, search],
+              )
+            : await db.execute(
+                `SELECT id, pseudo, email, discord_id, discord_username, discord_avatar,
+                        verified, totp_enabled, created_at
+                 FROM accounts ORDER BY created_at DESC LIMIT 100`,
+              );
+
+        // Récupère les guilds premium pour chaque user
+        const accountIds = rows.map(r => r.id);
+        let premiumMap = {};
+        if (accountIds.length) {
+            const [customs] = await db.execute(
+                `SELECT cb.accountId, cb.guildId, ss.isPremium
+                 FROM shard_custom_bots cb
+                 LEFT JOIN shard_settings ss ON ss.guildId = cb.guildId
+                 WHERE cb.accountId IN (${accountIds.map(() => '?').join(',')})`,
+                accountIds,
+            );
+            for (const r of customs) {
+                if (!premiumMap[r.accountId]) premiumMap[r.accountId] = { total: 0, premium: 0 };
+                premiumMap[r.accountId].total++;
+                if (r.isPremium) premiumMap[r.accountId].premium++;
+            }
+        }
+
+        const users = rows.map(r => ({
+            id: r.id,
+            pseudo: r.pseudo,
+            email: r.email,
+            discord_id: r.discord_id || null,
+            discord_username: r.discord_username || null,
+            discord_avatar: r.discord_avatar || null,
+            verified: !!r.verified,
+            totp_enabled: !!r.totp_enabled,
+            created_at: r.created_at,
+            bots_total: premiumMap[r.id]?.total ?? 0,
+            bots_premium: premiumMap[r.id]?.premium ?? 0,
+        }));
+        res.json({ users });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/admin/user/:id/verified', checkAdmin, verifyCsrf, async (req, res) => {
+    const userId = parseInt(req.params.id, 10);
+    if (!userId) return res.status(400).json({ error: 'ID invalide' });
+    const { verified } = req.body;
+    try {
+        await db.execute(`UPDATE accounts SET verified = ? WHERE id = ?`, [verified ? 1 : 0, userId]);
+        await logAdminAction(req, 'user.verified.set', { userId }, { verified: !!verified });
+        res.json({ success: true, verified: !!verified });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/* ── Admin: bots personnalisés ───────────────────────────────────────── */
+
+app.get('/api/admin/custom-bots', checkAdmin, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT cb.id, cb.guildId, cb.name, cb.avatarUrl, cb.status, cb.statusMessage,
+                    cb.presence, cb.activityType, cb.activityText, cb.createdAt,
+                    cb.accountId, a.pseudo, a.email, a.discord_username
+             FROM shard_custom_bots cb
+             LEFT JOIN accounts a ON a.id = cb.accountId
+             ORDER BY cb.createdAt DESC`,
+        );
+        const bots = rows.map(r => ({
+            id: r.id,
+            guildId: r.guildId,
+            name: r.name,
+            avatarUrl: r.avatarUrl && r.avatarUrl.length < 300 ? r.avatarUrl : null,
+            status: r.status,
+            statusMessage: r.statusMessage,
+            presence: r.presence,
+            activityType: r.activityType,
+            activityText: r.activityText,
+            createdAt: r.createdAt,
+            accountId: r.accountId,
+            ownerPseudo: r.pseudo || null,
+            ownerEmail: r.email || null,
+            ownerDiscord: r.discord_username || null,
+            runtime: customBotManager.getRuntimeStatus(r.guildId),
+        }));
+        res.json({ bots });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/admin/custom-bot/:id/disable', checkAdmin, verifyCsrf, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'ID invalide' });
+    try {
+        const [[row]] = await db.execute(`SELECT guildId, name FROM shard_custom_bots WHERE id = ?`, [id]);
+        if (!row) return res.status(404).json({ error: 'Bot introuvable' });
+        await db.execute(`UPDATE shard_custom_bots SET status = 'admin_disabled' WHERE id = ?`, [id]);
+        await customBotManager.stop(row.guildId, { reason: 'admin_disabled' });
+        await logAdminAction(req, 'custom_bot.disable', { id }, { guildId: row.guildId, name: row.name });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/admin/custom-bot/:id/enable', checkAdmin, verifyCsrf, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'ID invalide' });
+    try {
+        const [[row]] = await db.execute(`SELECT guildId, name FROM shard_custom_bots WHERE id = ?`, [id]);
+        if (!row) return res.status(404).json({ error: 'Bot introuvable' });
+        await db.execute(`UPDATE shard_custom_bots SET status = 'configured' WHERE id = ?`, [id]);
+        await customBotManager.start(row);
+        await logAdminAction(req, 'custom_bot.enable', { id }, { guildId: row.guildId, name: row.name });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/admin/custom-bot/:id', checkAdmin, verifyCsrf, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'ID invalide' });
+    try {
+        const [[row]] = await db.execute(`SELECT guildId, name FROM shard_custom_bots WHERE id = ?`, [id]);
+        if (!row) return res.status(404).json({ error: 'Bot introuvable' });
+        await customBotManager.stop(row.guildId, { reason: 'admin_deleted' });
+        await db.execute(`DELETE FROM shard_custom_bots WHERE id = ?`, [id]);
+        await logAdminAction(req, 'custom_bot.delete', { id }, { guildId: row.guildId, name: row.name });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

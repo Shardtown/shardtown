@@ -264,7 +264,7 @@ export function Account() {
               Mon compte
             </motion.p>
             <motion.h1
-              className="font-extrabold tracking-tight leading-[0.95] truncate text-4xl md:text-6xl lg:text-7xl"
+              className="font-extrabold tracking-tight leading-[0.95] text-4xl md:text-6xl lg:text-7xl flex items-center gap-3 flex-wrap"
               initial={{
                 opacity: 0,
                 x: reduce ? 0 : -120,
@@ -274,6 +274,15 @@ export function Account() {
               transition={{ duration: 0.95, delay: 0.15, ease: heroEase }}
             >
               {account.pseudo}
+              {account.verified && (
+                <span
+                  title="Compte vérifié"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-sm font-bold"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Vérifié
+                </span>
+              )}
             </motion.h1>
             <motion.p
               className="text-base md:text-lg text-white/55 mt-4 leading-relaxed"

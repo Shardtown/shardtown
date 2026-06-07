@@ -11,12 +11,15 @@ import {
   Search,
   Server,
   ShieldAlert,
+  ShieldCheck,
   ShieldOff,
+  Trash2,
   Users,
   X,
+  Zap,
 } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { apiGet, apiPost, isApiError } from "@/api/client";
+import { apiDelete, apiGet, apiPost, isApiError } from "@/api/client";
 
 interface Bot {
   id: string;
@@ -37,6 +40,38 @@ interface AdminData {
   totalGuilds: number;
   totalMembers: number;
   csrfToken: string;
+}
+
+interface UserAdmin {
+  id: number;
+  pseudo: string;
+  email: string;
+  discord_id: string | null;
+  discord_username: string | null;
+  discord_avatar: string | null;
+  verified: boolean;
+  totp_enabled: boolean;
+  created_at: string;
+  bots_total: number;
+  bots_premium: number;
+}
+
+interface CustomBotAdmin {
+  id: number;
+  guildId: string;
+  name: string;
+  avatarUrl: string | null;
+  status: string;
+  statusMessage: string | null;
+  presence: string;
+  activityType: string;
+  activityText: string;
+  createdAt: string;
+  accountId: number;
+  ownerPseudo: string | null;
+  ownerEmail: string | null;
+  ownerDiscord: string | null;
+  runtime: { running: boolean; inMemory: boolean; status?: string; lastError?: string };
 }
 
 interface AuditEntry {
@@ -98,6 +133,11 @@ export function Admin() {
   const [auditLoading, setAuditLoading] = useState(false);
   const [sessions, setSessions] = useState<AdminSession[] | null>(null);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [users, setUsers] = useState<UserAdmin[] | null>(null);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userQuery, setUserQuery] = useState("");
+  const [customBots, setCustomBots] = useState<CustomBotAdmin[] | null>(null);
+  const [customBotsLoading, setCustomBotsLoading] = useState(false);
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
@@ -140,7 +180,32 @@ export function Admin() {
     }
   }, []);
 
-  useEffect(() => { refresh(); refreshAudit(); refreshSessions(); }, [refresh, refreshAudit, refreshSessions]);
+  const refreshUsers = useCallback(async (q?: string) => {
+    setUsersLoading(true);
+    try {
+      const url = q ? `/api/admin/users?q=${encodeURIComponent(q)}` : "/api/admin/users";
+      const r = await apiGet<{ users: UserAdmin[] }>(url);
+      setUsers(r.users);
+    } catch {
+      setUsers([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  const refreshCustomBots = useCallback(async () => {
+    setCustomBotsLoading(true);
+    try {
+      const r = await apiGet<{ bots: CustomBotAdmin[] }>("/api/admin/custom-bots");
+      setCustomBots(r.bots);
+    } catch {
+      setCustomBots([]);
+    } finally {
+      setCustomBotsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { refresh(); refreshAudit(); refreshSessions(); refreshUsers(); refreshCustomBots(); }, [refresh, refreshAudit, refreshSessions, refreshUsers, refreshCustomBots]);
 
   function showToast(text: string, type: "success" | "error" = "success") {
     setToast({ text, type });
@@ -218,6 +283,63 @@ export function Admin() {
           refreshAudit();
         } else {
           showToast(r.error || "Erreur", "error");
+        }
+      },
+    });
+  }
+
+  async function toggleVerified(user: UserAdmin) {
+    const next = !user.verified;
+    const r = await postAction(`/api/admin/user/${user.id}/verified`, { verified: next });
+    if (r.success) {
+      showToast(`${user.pseudo} ${next ? "vérifié" : "non vérifié"}`, "success");
+      refreshUsers(userQuery || undefined);
+    } else {
+      showToast(r.error || "Erreur", "error");
+    }
+  }
+
+  function disableCustomBot(bot: CustomBotAdmin) {
+    setPending({
+      label: "Désactivation admin",
+      title: `Désactiver ${bot.name} ?`,
+      desc: `Le bot sera arrêté et marqué comme désactivé par l'admin. Le propriétaire ne pourra plus le lancer.`,
+      variant: "warning",
+      confirm: async () => {
+        const r = await postAction(`/api/admin/custom-bot/${bot.id}/disable`);
+        if (r.success) { showToast(`Bot ${bot.name} désactivé`, "success"); refreshCustomBots(); }
+        else showToast(r.error || "Erreur", "error");
+      },
+    });
+  }
+
+  function enableCustomBot(bot: CustomBotAdmin) {
+    setPending({
+      label: "Réactivation",
+      title: `Réactiver ${bot.name} ?`,
+      desc: `Le bot sera remis en état configuré et redémarré.`,
+      variant: "success",
+      confirm: async () => {
+        const r = await postAction(`/api/admin/custom-bot/${bot.id}/enable`);
+        if (r.success) { showToast(`Bot ${bot.name} réactivé`, "success"); refreshCustomBots(); }
+        else showToast(r.error || "Erreur", "error");
+      },
+    });
+  }
+
+  function deleteCustomBot(bot: CustomBotAdmin) {
+    setPending({
+      label: "Suppression définitive",
+      title: `Supprimer ${bot.name} ?`,
+      desc: `Le bot sera supprimé de la base de données et arrêté définitivement. Action irréversible.`,
+      variant: "danger",
+      confirm: async () => {
+        try {
+          await apiDelete(`/api/admin/custom-bot/${bot.id}`);
+          showToast(`Bot ${bot.name} supprimé`, "success");
+          refreshCustomBots();
+        } catch {
+          showToast("Erreur lors de la suppression", "error");
         }
       },
     });
@@ -551,6 +673,95 @@ export function Admin() {
               sessions.map(s => (
                 <SessionRow key={s.id} session={s} onRevoke={() => revokeSession(s.id)} />
               ))
+            )}
+          </div>
+        </div>
+
+        {/* Utilisateurs */}
+        <div className="mt-16">
+          <div className="flex items-center gap-3 mb-5 flex-wrap">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-300">
+              <Users className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-emerald-300/70 uppercase">Comptes</p>
+              <h2 className="text-xl font-extrabold tracking-tight">Utilisateurs</h2>
+            </div>
+            <div className="ml-auto flex items-center gap-2">
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-white/35 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="search"
+                  value={userQuery}
+                  onChange={e => setUserQuery(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && refreshUsers(userQuery || undefined)}
+                  placeholder="Pseudo, email, Discord…"
+                  className="pl-8 pr-3 py-1.5 text-xs bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-white/30 outline-none focus:border-white/20 w-52"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => refreshUsers(userQuery || undefined)}
+                disabled={usersLoading}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/[0.07] transition-colors disabled:opacity-40"
+              >
+                <RefreshCw className={`w-3 h-3 ${usersLoading ? "animate-spin" : ""}`} />
+                Actualiser
+              </button>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent overflow-hidden">
+            {users === null ? (
+              <div className="p-8 text-center text-white/30 text-xs font-bold uppercase tracking-widest">Chargement…</div>
+            ) : users.length === 0 ? (
+              <div className="p-8 text-center text-white/30 text-xs font-bold uppercase tracking-widest">Aucun utilisateur</div>
+            ) : (
+              <ul className="divide-y divide-white/[0.04] max-h-[520px] overflow-y-auto">
+                {users.map(u => (
+                  <UserRow key={u.id} user={u} onToggleVerified={() => toggleVerified(u)} />
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+
+        {/* Bots personnalisés */}
+        <div className="mt-16">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-300">
+              <BotIcon className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-orange-300/70 uppercase">Hébergement</p>
+              <h2 className="text-xl font-extrabold tracking-tight">Bots personnalisés</h2>
+            </div>
+            <button
+              type="button"
+              onClick={refreshCustomBots}
+              disabled={customBotsLoading}
+              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-bold uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/[0.07] transition-colors disabled:opacity-40"
+            >
+              <RefreshCw className={`w-3 h-3 ${customBotsLoading ? "animate-spin" : ""}`} />
+              Actualiser
+            </button>
+          </div>
+          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent overflow-hidden">
+            {customBots === null ? (
+              <div className="p-8 text-center text-white/30 text-xs font-bold uppercase tracking-widest">Chargement…</div>
+            ) : customBots.length === 0 ? (
+              <div className="p-8 text-center text-white/30 text-xs font-bold uppercase tracking-widest">Aucun bot personnalisé</div>
+            ) : (
+              <ul className="divide-y divide-white/[0.04] max-h-[560px] overflow-y-auto">
+                {customBots.map(b => (
+                  <CustomBotRow
+                    key={b.id}
+                    bot={b}
+                    onDisable={() => disableCustomBot(b)}
+                    onEnable={() => enableCustomBot(b)}
+                    onDelete={() => deleteCustomBot(b)}
+                  />
+                ))}
+              </ul>
             )}
           </div>
         </div>
@@ -996,6 +1207,119 @@ function SessionRow({
         </button>
       )}
     </div>
+  );
+}
+
+function UserRow({ user, onToggleVerified }: { user: UserAdmin; onToggleVerified: () => void }) {
+  const avatarUrl = user.discord_avatar
+    ? `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.discord_avatar}.png?size=64`
+    : null;
+  return (
+    <li className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="" className="w-9 h-9 rounded-full border border-white/10 shrink-0" />
+      ) : (
+        <div className="w-9 h-9 rounded-full bg-white/[0.05] border border-white/10 flex items-center justify-center font-bold text-white/40 text-xs shrink-0">
+          {user.pseudo[0]?.toUpperCase()}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+          <span className="font-bold text-sm">{user.pseudo}</span>
+          {user.verified && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-[10px] font-bold">
+              <ShieldCheck className="w-2.5 h-2.5" /> Vérifié
+            </span>
+          )}
+          {user.bots_premium > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px] font-bold">
+              <Zap className="w-2.5 h-2.5" /> {user.bots_premium} premium
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-white/40 truncate">{user.email}</p>
+        <p className="text-[10px] text-white/25 font-mono-num mt-0.5">
+          {user.discord_username ? `@${user.discord_username} · ` : ""}
+          {user.bots_total > 0 ? `${user.bots_total} bot${user.bots_total > 1 ? "s" : ""} · ` : ""}
+          Inscrit {formatWhen(user.created_at)}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onToggleVerified}
+        className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors shrink-0 ${
+          user.verified
+            ? "bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20"
+            : "bg-white/[0.04] border border-white/10 text-white/50 hover:text-white hover:bg-white/[0.08]"
+        }`}
+      >
+        {user.verified ? "Retirer badge" : "Vérifier"}
+      </button>
+    </li>
+  );
+}
+
+function CustomBotRow({
+  bot,
+  onDisable,
+  onEnable,
+  onDelete,
+}: {
+  bot: CustomBotAdmin;
+  onDisable: () => void;
+  onEnable: () => void;
+  onDelete: () => void;
+}) {
+  const disabled = bot.status === "admin_disabled";
+  const running = bot.runtime?.running;
+  return (
+    <li className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors">
+      {bot.avatarUrl ? (
+        <img src={bot.avatarUrl} alt="" className="w-9 h-9 rounded-xl border border-white/10 object-cover shrink-0" />
+      ) : (
+        <div className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center font-bold text-white/40 text-xs shrink-0">
+          {bot.name[0]?.toUpperCase()}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+          <span className="font-bold text-sm">{bot.name}</span>
+          {disabled ? (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-300 text-[10px] font-bold">
+              <Ban className="w-2.5 h-2.5" /> Désactivé
+            </span>
+          ) : running ? (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[10px] font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> En ligne
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-white/40 text-[10px] font-bold">
+              Hors ligne
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-white/40 truncate">
+          {bot.ownerPseudo ? `${bot.ownerPseudo}` : ""}
+          {bot.ownerDiscord ? ` (@${bot.ownerDiscord})` : ""}
+          {bot.ownerEmail ? ` · ${bot.ownerEmail}` : ""}
+        </p>
+        <p className="text-[10px] text-white/25 font-mono-num mt-0.5">Guild {bot.guildId} · Créé {formatWhen(bot.createdAt)}</p>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {disabled ? (
+          <button type="button" onClick={onEnable} className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-bold hover:bg-emerald-500/15 transition-colors">
+            Réactiver
+          </button>
+        ) : (
+          <button type="button" onClick={onDisable} className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-bold hover:bg-amber-500/15 transition-colors">
+            Désactiver
+          </button>
+        )}
+        <button type="button" onClick={onDelete} className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/15 transition-colors">
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </li>
   );
 }
 

@@ -19,6 +19,7 @@ export interface Account {
   created_at: string;
   totp_enabled: boolean;
   email_2fa_enabled: boolean;
+  verified: boolean;
 }
 
 interface AccountState {
