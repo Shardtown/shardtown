@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   LogOut, ShieldCheck, ShieldAlert,
-  RefreshCw, Server, Fingerprint, Plus, Trash2, Loader2, X,
+  RefreshCw, Server, Fingerprint, Plus, Trash2, Loader2,
   KeyRound, Copy, Check, Shield, Mail, QrCode, Eye, EyeOff,
 } from "lucide-react";
 import { Toggle as GooeyToggle } from "@/components/ui/toggle";
@@ -620,62 +620,50 @@ export function Account() {
       {/* Add-passkey modal */}
       {showAddPasskey && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-y-auto"
           onClick={() => setShowAddPasskey(false)}
           onKeyDown={e => e.key === "Escape" && setShowAddPasskey(false)}
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setShowAddPasskey(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white/70 mb-5">
-              <Fingerprint className="w-5 h-5" />
+          <div className="relative w-full max-w-sm my-auto" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-8">
+              <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-3">
+                Clés de sécurité
+              </p>
+              <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl">
+                Nouvelle clé
+              </h3>
+              <p className="text-white/50 text-sm mt-3">
+                Donne-lui un nom pour t'y retrouver dans ta liste.
+              </p>
             </div>
-            <p className="text-[10px] font-bold tracking-[0.28em] text-white/35 uppercase mb-2">
-              Nouvelle clé
-            </p>
-            <h3 className="text-xl font-extrabold tracking-tight mb-2">
-              Nom de la clé
-            </h3>
-            <p className="text-white/55 text-sm leading-relaxed mb-5">
-              Donne-lui un nom pour t'y retrouver dans ta liste.
-            </p>
-            <input
-              autoFocus
-              type="text"
-              value={newPasskeyName}
-              onChange={e => setNewPasskeyName(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === "Enter") { e.preventDefault(); confirmAddPasskey(); }
-              }}
-              placeholder="MacBook, iPhone, YubiKey…"
-              maxLength={64}
-              className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/[0.06] text-white placeholder:text-white/25 text-sm transition-all mb-6"
-            />
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowAddPasskey(false)}
-                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={confirmAddPasskey}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
-              >
-                Continuer
-              </button>
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
+              <input
+                autoFocus
+                type="text"
+                value={newPasskeyName}
+                onChange={e => setNewPasskeyName(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); confirmAddPasskey(); } }}
+                placeholder="MacBook, iPhone, YubiKey…"
+                maxLength={64}
+                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/[0.06] text-white placeholder:text-white/25 text-sm transition-all mb-6"
+              />
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPasskey(false)}
+                  className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmAddPasskey}
+                  className="flex-1 py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
+                >
+                  Continuer
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -684,50 +672,40 @@ export function Account() {
       {/* Delete-passkey confirmation modal */}
       {passkeyToDelete && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-y-auto"
           onClick={() => setPasskeyToDelete(null)}
           onKeyDown={e => e.key === "Escape" && setPasskeyToDelete(null)}
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setPasskeyToDelete(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-red-500/10 text-red-300 border border-red-500/20 mb-5">
-              <Trash2 className="w-5 h-5" />
+          <div className="relative w-full max-w-sm my-auto" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-8">
+              <p className="text-[11px] font-bold tracking-[0.32em] text-red-300/60 uppercase mb-3">
+                Action irréversible
+              </p>
+              <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl">
+                Supprimer cette clé ?
+              </h3>
             </div>
-            <p className="text-[10px] font-bold tracking-[0.28em] text-red-300/80 uppercase mb-2">
-              Action irréversible
-            </p>
-            <h3 className="text-xl font-extrabold tracking-tight mb-2">
-              Supprimer cette clé ?
-            </h3>
-            <p className="text-white/55 text-sm leading-relaxed mb-6">
-              Tu ne pourras plus utiliser <b className="text-white">« {passkeyToDelete.name} »</b> pour te connecter. Cette action ne supprime pas la clé sur l'appareil lui-même.
-            </p>
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setPasskeyToDelete(null)}
-                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={confirmDeletePasskey}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90"
-              >
-                Supprimer
-              </button>
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
+              <p className="text-white/55 text-sm leading-relaxed mb-6">
+                Tu ne pourras plus utiliser <b className="text-white">« {passkeyToDelete.name} »</b> pour te connecter. Cette action ne supprime pas la clé sur l'appareil lui-même.
+              </p>
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setPasskeyToDelete(null)}
+                  className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeletePasskey}
+                  className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90"
+                >
+                  Supprimer
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -736,51 +714,44 @@ export function Account() {
       {/* Reset-token confirmation modal */}
       {showResetConfirm && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-y-auto"
           onClick={() => setShowResetConfirm(false)}
           onKeyDown={e => e.key === "Escape" && setShowResetConfirm(false)}
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setShowResetConfirm(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-300 border border-amber-500/20 mb-5">
-              <RefreshCw className="w-5 h-5" />
+          <div className="relative w-full max-w-sm my-auto" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-8">
+              <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-3">
+                Token d'accès
+              </p>
+              <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl">
+                Réinitialiser le token ?
+              </h3>
+              <p className="text-white/50 text-sm mt-3">
+                L'ancien token sera immédiatement invalidé.
+              </p>
             </div>
-            <p className="text-[10px] font-bold tracking-[0.28em] text-amber-300/80 uppercase mb-2">
-              Confirmation
-            </p>
-            <h3 className="text-xl font-extrabold tracking-tight mb-2">
-              Réinitialiser le token ?
-            </h3>
-            <p className="text-white/55 text-sm leading-relaxed mb-6">
-              L'ancien token sera immédiatement invalidé. Toute app ou script qui l'utilise devra être mis à jour avec le nouveau.
-            </p>
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowResetConfirm(false)}
-                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={confirmResetToken}
-                disabled={tokenBusy}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-amber-500 text-black transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {tokenBusy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "Réinitialiser"}
-              </button>
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
+              <p className="text-white/55 text-sm leading-relaxed mb-6">
+                Toute app ou script qui l'utilise devra être mis à jour avec le nouveau token.
+              </p>
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowResetConfirm(false)}
+                  className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmResetToken}
+                  disabled={tokenBusy}
+                  className="flex-1 py-3 rounded-full font-bold text-sm bg-amber-500 text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {tokenBusy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "Réinitialiser"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -900,62 +871,52 @@ export function Account() {
       {/* Disable TOTP modal */}
       {showDisableTotp && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-y-auto"
           onClick={() => setShowDisableTotp(false)}
           onKeyDown={e => e.key === "Escape" && setShowDisableTotp(false)}
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setShowDisableTotp(false)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-red-500/10 text-red-300 border border-red-500/20 mb-5">
-              <Shield className="w-5 h-5" />
+          <div className="relative w-full max-w-sm my-auto" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-8">
+              <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-3">
+                Sécurité
+              </p>
+              <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl">
+                Désactiver le TOTP ?
+              </h3>
+              <p className="text-white/50 text-sm mt-3">
+                Entre le code de ton application pour confirmer.
+              </p>
             </div>
-            <p className="text-[10px] font-bold tracking-[0.28em] text-red-300/80 uppercase mb-2">
-              Confirmation
-            </p>
-            <h3 className="text-xl font-extrabold tracking-tight mb-2">
-              Désactiver le TOTP ?
-            </h3>
-            <p className="text-white/55 text-sm leading-relaxed mb-5">
-              Entre le code de ton application pour confirmer la désactivation.
-            </p>
-            <input
-              autoFocus
-              type="text"
-              inputMode="numeric"
-              value={disableTotpCode}
-              onChange={e => setDisableTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              onKeyDown={e => { if (e.key === "Enter" && disableTotpCode.length === 6) confirmDisableTotp(); }}
-              placeholder="Code à 6 chiffres"
-              maxLength={6}
-              className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/25 text-sm font-mono tracking-widest text-center mb-5 transition-all"
-            />
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setShowDisableTotp(false)}
-                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={confirmDisableTotp}
-                disabled={disableTotpCode.length !== 6 || totpSetupBusy}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {totpSetupBusy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "Désactiver"}
-              </button>
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
+              <input
+                autoFocus
+                type="text"
+                inputMode="numeric"
+                value={disableTotpCode}
+                onChange={e => setDisableTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                onKeyDown={e => { if (e.key === "Enter" && disableTotpCode.length === 6) confirmDisableTotp(); }}
+                placeholder="Code à 6 chiffres"
+                maxLength={6}
+                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/25 text-sm font-mono tracking-widest text-center mb-6 transition-all"
+              />
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowDisableTotp(false)}
+                  className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDisableTotp}
+                  disabled={disableTotpCode.length !== 6 || totpSetupBusy}
+                  className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                  {totpSetupBusy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "Désactiver"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
