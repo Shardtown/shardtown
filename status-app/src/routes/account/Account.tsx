@@ -850,7 +850,7 @@ export function Account() {
                   <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-2">
                     Clé secrète
                   </p>
-                  <p className="px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-[13px] font-medium tracking-[0.12em] text-white/70 break-all select-all leading-relaxed">
+                  <p className="px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-[11px] font-medium tracking-[0.04em] text-white/70 whitespace-nowrap overflow-x-auto select-all">
                     {totpSetup.secret}
                   </p>
                   <p className="text-[11px] text-white/30 mt-2 leading-relaxed">
