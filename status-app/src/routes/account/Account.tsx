@@ -24,8 +24,6 @@ export function Account() {
   const [params, setParams] = useSearchParams();
   const [account, setAccount] = useState<AccountT | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [guildsCount, setGuildsCount] = useState<number | null>(null);
   const [banner, setBanner] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
   const [passkeys, setPasskeys] = useState<PasskeyRow[] | null>(null);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
@@ -244,16 +242,6 @@ export function Account() {
     nav("/", { replace: true });
   }
 
-  async function refreshGuilds() {
-    setRefreshing(true);
-    try {
-      const r = await apiPost<{ guilds_count: number }>("/api/account/discord/refresh-guilds");
-      setGuildsCount(r.guilds_count);
-      setBanner({ kind: "ok", text: `${r.guilds_count} serveurs synchronisés.` });
-    } catch {
-      setBanner({ kind: "error", text: "Échec du refresh." });
-    } finally { setRefreshing(false); }
-  }
 
   if (loading || !account) {
     return (
@@ -371,23 +359,6 @@ export function Account() {
                 setBanner({ kind: "ok", text: "Connexion Discord déliée." });
                 refresh();
               }}
-              extraAction={
-                account.discord_id ? (
-                  <button
-                    type="button"
-                    onClick={refreshGuilds}
-                    disabled={refreshing}
-                    aria-label="Actualiser mes serveurs"
-                    title="Actualiser mes serveurs"
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/55 hover:text-white hover:bg-white/[0.07] text-[11px] font-bold transition-colors disabled:opacity-40"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
-                    {guildsCount !== null && (
-                      <span className="font-mono-num">{guildsCount}</span>
-                    )}
-                  </button>
-                ) : null
-              }
             />
 
             {/* Google */}
