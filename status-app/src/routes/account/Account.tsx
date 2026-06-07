@@ -851,15 +851,15 @@ export function Account() {
                 {/* Left — QR + secret */}
                 <div className="flex-1 pr-8">
                   <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-4">
-                    Étape 1 — Scanner
+                    Étape 1 · Scanner
                   </p>
-                  <div className="flex justify-center mb-5 bg-white rounded-2xl p-5">
+                  <div className="flex justify-center mb-5">
                     <img src={totpSetup.qrDataUri} alt="QR code TOTP" className="w-48 h-48" />
                   </div>
                   <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-2">
                     Clé secrète
                   </p>
-                  <p className="px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 font-mono text-[11.5px] text-white/65 break-all select-all leading-relaxed">
+                  <p className="px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-[13px] font-medium tracking-[0.12em] text-white/70 break-all select-all leading-relaxed">
                     {totpSetup.secret}
                   </p>
                   <p className="text-[11px] text-white/30 mt-2 leading-relaxed">
@@ -873,7 +873,7 @@ export function Account() {
                 {/* Right — code + actions */}
                 <div className="flex-1 pl-8 flex flex-col">
                   <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-4">
-                    Étape 2 — Vérifier
+                    Étape 2 · Vérifier
                   </p>
                   <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3 text-center">
                     Code à 6 chiffres
