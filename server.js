@@ -97,8 +97,9 @@ async function connectDB() {
         console.log('✅ Dashboard connecté à MySQL');
 
         // Migration: Ajouter les colonnes captcha si elles n'existent pas
-        try {
-            const [columns] = await db.execute('SHOW COLUMNS FROM settings');
+        // Wrapped in its own try/catch — on a fresh DB `settings` doesn't
+        // exist yet and we must not block the CREATE TABLE statements below.
+        try { const [columns] = await db.execute('SHOW COLUMNS FROM settings');
             const colNames = columns.map(c => c.Field);
             
             if (!colNames.includes('captchaDigits')) {
@@ -170,6 +171,7 @@ async function connectDB() {
                     console.log(`✅ Colonne ${col} ajoutée`);
                 }
             }
+        } catch { /* settings table not yet created — skip, CREATE TABLE below handles it */ }
 
             // Table Audit Logs
             await db.execute(`
@@ -823,7 +825,6 @@ async function connectDB() {
                     blocked_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             `);
-        } catch (e) { console.error('Erreur migration:', e.message); }
     } catch (err) {
         console.error('❌ Erreur MySQL Dashboard:', err.message);
     }
