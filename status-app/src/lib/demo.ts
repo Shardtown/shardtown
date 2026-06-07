@@ -67,6 +67,8 @@ const DEMO_ACCOUNT: Account = {
   shard_avatar: null,
   shard_linked_at: new Date().toISOString(),
   created_at: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(), // 30 days ago
+  totp_enabled: false,
+  email_2fa_enabled: false,
 };
 
 const DEMO_DISCORD_USER: DiscordUser = {
