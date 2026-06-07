@@ -95,13 +95,8 @@ export function AccountLogin() {
 
   // 2FA state
   const [twoFaPendingToken, setTwoFaPendingToken] = useState("");
-  const [twoFaMethods, setTwoFaMethods] = useState<{ totp: boolean; email: boolean }>({ totp: false, email: false });
-  const [twoFaActiveMethod, setTwoFaActiveMethod] = useState<"totp" | "email">("totp");
   const [twoFaTotpCode, setTwoFaTotpCode] = useState(["", "", "", "", "", ""]);
   const twoFaTotpCodeRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [twoFaEmailCode, setTwoFaEmailCode] = useState(["", "", "", "", "", ""]);
-  const twoFaEmailCodeRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [twoFaResendCooldown, setTwoFaResendCooldown] = useState(0);
 
   const [loading, setLoading] = useState(false);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
@@ -113,20 +108,9 @@ export function AccountLogin() {
   }
 
   useEffect(() => {
-    if (mode === "verify") {
-      setTimeout(() => codeRefs.current[0]?.focus(), 200);
-    }
-    if (mode === "2fa") {
-      const refs = twoFaActiveMethod === "totp" ? twoFaTotpCodeRefs : twoFaEmailCodeRefs;
-      setTimeout(() => refs.current[0]?.focus(), 200);
-    }
-  }, [mode, twoFaActiveMethod]);
-
-  useEffect(() => {
-    if (twoFaResendCooldown <= 0) return;
-    const id = setInterval(() => setTwoFaResendCooldown(s => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(id);
-  }, [twoFaResendCooldown]);
+    if (mode === "verify") setTimeout(() => codeRefs.current[0]?.focus(), 200);
+    if (mode === "2fa") setTimeout(() => twoFaTotpCodeRefs.current[0]?.focus(), 200);
+  }, [mode]);
 
   // Vérifie la dispo du pseudo en live (debounce 400ms). Le bouton
   // "Suivant" reste bloqué tant que `pseudoStatus !== "available"` —
@@ -180,33 +164,14 @@ export function AccountLogin() {
     setInfo(null);
     setCode(["", "", "", "", "", ""]);
     setTwoFaTotpCode(["", "", "", "", "", ""]);
-    setTwoFaEmailCode(["", "", "", "", "", ""]);
   }
 
-  function goTo2fa(token: string, methods: { totp: boolean; email: boolean }) {
+  function goTo2fa(token: string, _methods: { totp: boolean; email: boolean }) {
     setTwoFaPendingToken(token);
-    setTwoFaMethods(methods);
     setTwoFaTotpCode(["", "", "", "", "", ""]);
-    setTwoFaEmailCode(["", "", "", "", "", ""]);
-    const active = methods.totp ? "totp" : "email";
-    setTwoFaActiveMethod(active);
     setMode("2fa");
     setError(null);
-    setInfo(active === "email" && methods.email ? "Un code a été envoyé à ton adresse email." : null);
-    setTwoFaResendCooldown(60);
-  }
-
-  async function resend2faEmail() {
-    if (twoFaResendCooldown > 0) return;
-    try {
-      await apiPost("/api/account/2fa/email-resend", { pendingToken: twoFaPendingToken });
-      setInfo("Nouveau code envoyé.");
-      setTwoFaEmailCode(["", "", "", "", "", ""]);
-      twoFaEmailCodeRefs.current[0]?.focus();
-      setTwoFaResendCooldown(60);
-    } catch (err) {
-      setError(extractAuthError(err).error || "Impossible de renvoyer le code.");
-    }
+    setInfo(null);
   }
 
   function handle2faTotpBoxChange(i: number, v: string) {
@@ -225,24 +190,6 @@ export function AccountLogin() {
     twoFaTotpCodeRefs.current[Math.min(pasted.length, 5)]?.focus();
   }
 
-  function handle2faEmailCodeChange(i: number, v: string) {
-    const digit = v.replace(/\D/g, "").slice(0, 1);
-    const next = [...twoFaEmailCode];
-    next[i] = digit;
-    setTwoFaEmailCode(next);
-    if (digit && i < 5) twoFaEmailCodeRefs.current[i + 1]?.focus();
-  }
-  function handle2faEmailCodeKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Backspace" && !twoFaEmailCode[i] && i > 0) twoFaEmailCodeRefs.current[i - 1]?.focus();
-  }
-  function handle2faEmailCodePaste(e: React.ClipboardEvent<HTMLInputElement>) {
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!pasted) return;
-    e.preventDefault();
-    const next = pasted.split("").concat(["", "", "", "", "", ""]).slice(0, 6);
-    setTwoFaEmailCode(next);
-    twoFaEmailCodeRefs.current[Math.min(pasted.length, 5)]?.focus();
-  }
 
   function goToVerify(targetEmail: string, infoMsg?: string) {
     setVerifyEmail(targetEmail);
@@ -319,18 +266,13 @@ export function AccountLogin() {
     setInfo(null);
     try {
       if (mode === "2fa") {
-        const totpCode = twoFaActiveMethod === "totp" ? twoFaTotpCode.join("") : undefined;
-        const emailCode = twoFaActiveMethod === "email" ? twoFaEmailCode.join("") : undefined;
-        if (twoFaActiveMethod === "totp" && (!totpCode || totpCode.length !== 6)) {
+        const totpCode = twoFaTotpCode.join("");
+        if (totpCode.length !== 6) {
           setError("Entre le code à 6 chiffres de ton application.");
           return;
         }
-        if (twoFaActiveMethod === "email" && (!emailCode || emailCode.length !== 6)) {
-          setError("Entre le code à 6 chiffres reçu par email.");
-          return;
-        }
         try {
-          await apiPost("/api/account/2fa/verify", { pendingToken: twoFaPendingToken, totpCode, emailCode });
+          await apiPost("/api/account/2fa/verify", { pendingToken: twoFaPendingToken, totpCode });
           await Promise.all([refreshAuth(), refreshAccount()]);
           nav("/account", { replace: true });
         } catch (err) {
@@ -769,104 +711,37 @@ export function AccountLogin() {
                   transition={{ duration: 0.25 }}
                 >
                   <form onSubmit={submit} className="space-y-5">
-                    {twoFaActiveMethod === "totp" && (
-                      <div>
-                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3 text-center">
-                          Code application
-                        </label>
-                        <div className="flex justify-center gap-2 mb-2">
-                          {twoFaTotpCode.map((d, i) => (
-                            <input
-                              key={i}
-                              ref={el => { twoFaTotpCodeRefs.current[i] = el; }}
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              maxLength={1}
-                              value={d}
-                              autoFocus={i === 0}
-                              onChange={e => handle2faTotpBoxChange(i, e.target.value)}
-                              onKeyDown={e => handle2faTotpBoxKey(i, e)}
-                              onPaste={i === 0 ? handle2faTotpBoxPaste : undefined}
-                              className="w-11 h-14 text-center text-2xl font-bold rounded-xl bg-black/40 border border-white/10 focus:border-white/40 focus:outline-none text-white transition-colors"
-                            />
-                          ))}
-                        </div>
-                        <p className="text-[11px] text-white/35 text-center mt-1.5">
-                          Google Authenticator, Authy, 1Password…
-                        </p>
-                        {twoFaMethods.email && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTwoFaActiveMethod("email");
-                              setError(null);
-                              setInfo("Un code a été envoyé à ton adresse email.");
-                            }}
-                            className="block mx-auto mt-3 text-xs text-white/50 hover:text-white transition-colors"
-                          >
-                            Essayer avec le code email
-                          </button>
-                        )}
+                    <div>
+                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3 text-center">
+                        Code application
+                      </label>
+                      <div className="flex justify-center gap-2 mb-2">
+                        {twoFaTotpCode.map((d, i) => (
+                          <input
+                            key={i}
+                            ref={el => { twoFaTotpCodeRefs.current[i] = el; }}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={1}
+                            value={d}
+                            autoFocus={i === 0}
+                            onChange={e => handle2faTotpBoxChange(i, e.target.value)}
+                            onKeyDown={e => handle2faTotpBoxKey(i, e)}
+                            onPaste={i === 0 ? handle2faTotpBoxPaste : undefined}
+                            className="w-11 h-14 text-center text-2xl font-bold rounded-xl bg-black/40 border border-white/10 focus:border-white/40 focus:outline-none text-white transition-colors"
+                          />
+                        ))}
                       </div>
-                    )}
-
-                    {twoFaActiveMethod === "email" && (
-                      <div>
-                        <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3 text-center">
-                          Code email
-                        </label>
-                        <div className="flex justify-center gap-2 mb-2">
-                          {twoFaEmailCode.map((d, i) => (
-                            <input
-                              key={i}
-                              ref={el => { twoFaEmailCodeRefs.current[i] = el; }}
-                              type="text"
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              maxLength={1}
-                              value={d}
-                              autoFocus={i === 0}
-                              onChange={e => handle2faEmailCodeChange(i, e.target.value)}
-                              onKeyDown={e => handle2faEmailCodeKey(i, e)}
-                              onPaste={i === 0 ? handle2faEmailCodePaste : undefined}
-                              className="w-11 h-14 text-center text-2xl font-bold rounded-xl bg-black/40 border border-white/10 focus:border-white/40 focus:outline-none text-white transition-colors"
-                            />
-                          ))}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={resend2faEmail}
-                          disabled={twoFaResendCooldown > 0}
-                          className="block mx-auto text-xs text-white/50 hover:text-white transition-colors disabled:text-white/30 disabled:cursor-not-allowed"
-                        >
-                          {twoFaResendCooldown > 0
-                            ? `Renvoyer dans ${twoFaResendCooldown}s`
-                            : "Renvoyer le code"}
-                        </button>
-                        {twoFaMethods.totp && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTwoFaActiveMethod("totp");
-                              setError(null);
-                              setInfo(null);
-                            }}
-                            className="block mx-auto mt-3 text-xs text-white/50 hover:text-white transition-colors"
-                          >
-                            Essayer avec l'application
-                          </button>
-                        )}
-                      </div>
-                    )}
+                      <p className="text-[11px] text-white/35 text-center mt-1.5">
+                        Google Authenticator, Authy, 1Password…
+                      </p>
+                    </div>
 
                     <SubmitButton
                       loading={loading}
                       label="Confirmer"
-                      disabled={
-                        (twoFaActiveMethod === "totp" && twoFaTotpCode.join("").length !== 6) ||
-                        (twoFaActiveMethod === "email" && twoFaEmailCode.join("").length !== 6)
-                      }
+                      disabled={twoFaTotpCode.join("").length !== 6}
                     />
                     <button
                       type="button"
