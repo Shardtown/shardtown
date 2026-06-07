@@ -1,25 +1,9 @@
-import { ArrowRight, MessageSquare, Mail, Download as DownloadIcon, Code2, Bot, Layers } from "lucide-react";
+import { ArrowRight, MessageSquare, Mail, Code2, Bot, Layers } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { LiquidButton } from "@/components/ui/liquid-glass-button";
 import { HolographicCard } from "@/components/ui/holographic-card";
 import { Reveal, RevealStagger, RevealItem } from "@/components/ui/reveal";
-
-function AppleLogo({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-    </svg>
-  );
-}
-
-function WindowsLogo({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
-      <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801" />
-    </svg>
-  );
-}
 
 const SERVICES = [
   {
@@ -160,72 +144,7 @@ export function Index() {
         </RevealStagger>
       </section>
 
-      {/* Espace tampon entre la grille des métiers et la section Télécharger */}
-      <div className="h-32 md:h-48" aria-hidden />
-
-      {/* Download, app desktop */}
-      <section id="download" className="container-wide pt-32 pb-32 scroll-mt-32 overflow-x-clip">
-        <Reveal direction="right" distance={80} className="max-w-3xl ml-auto mb-16 text-right">
-          <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
-            App desktop
-          </p>
-          <h2 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05] mb-6">
-            Shardtown,
-            <br />
-            sur ton bureau.
-          </h2>
-          <p className="text-lg text-white/50 leading-relaxed">
-            Gère tes serveurs Discord depuis une app native, avec mises à jour
-            automatiques signées Apple et statut temps réel.
-          </p>
-        </Reveal>
-
-        <RevealStagger className="grid md:grid-cols-2 gap-6 md:gap-8" staggerChildren={0.1} delayChildren={0.15}>
-          {/* macOS, disponible */}
-          <RevealItem direction="up" distance={50} className="relative hover:z-10">
-            <HolographicCard className="h-full">
-              <div className="relative flex flex-col h-full min-h-[240px]">
-                <AppleLogo className="absolute top-1 right-8 w-44 h-44 text-white/[0.06] pointer-events-none" />
-
-                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter pt-1">
-                  macOS
-                </h3>
-
-                <a
-                  href="/download/mac"
-                  className="relative z-10 mt-auto group inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-white text-black font-bold text-sm transition-all hover:bg-white/95 hover:-translate-y-0.5 active:translate-y-0 shadow-[0_10px_30px_-12px_rgba(255,255,255,0.35)]"
-                >
-                  <DownloadIcon className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
-                  Télécharger le .dmg
-                </a>
-              </div>
-            </HolographicCard>
-          </RevealItem>
-
-          {/* Windows, prochainement */}
-          <RevealItem direction="up" distance={50} className="relative hover:z-10">
-            <HolographicCard className="h-full">
-              <div className="relative flex flex-col h-full min-h-[240px]">
-                <WindowsLogo className="absolute top-1 right-8 w-44 h-44 text-white/[0.06] pointer-events-none" />
-
-                <h3 className="relative z-10 font-extrabold text-5xl md:text-6xl tracking-tighter text-white/75 pt-1">
-                  Windows
-                </h3>
-
-                <button
-                  type="button"
-                  disabled
-                  className="relative z-10 mt-auto inline-flex items-center justify-center gap-2.5 w-full px-6 py-4 rounded-2xl bg-white/[0.06] text-white/65 font-bold text-sm border border-white/15 cursor-not-allowed"
-                >
-                  Build en préparation
-                </button>
-              </div>
-            </HolographicCard>
-          </RevealItem>
-        </RevealStagger>
-      </section>
-
-      {/* Espace tampon entre la section Télécharger et le CTA Parlons-en */}
+      {/* Espace tampon entre la grille des métiers et le CTA Parlons-en */}
       <div className="h-32 md:h-48" aria-hidden />
 
       {/* Contact CTA, rises up */}
