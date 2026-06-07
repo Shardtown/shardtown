@@ -46,7 +46,8 @@ export function Account() {
   const [totpSetupBusy, setTotpSetupBusy] = useState(false);
   const [secretCopied, setSecretCopied] = useState(false);
   const [showDisableTotp, setShowDisableTotp] = useState(false);
-  const [disableTotpCode, setDisableTotpCode] = useState("");
+  const [disableTotpCode, setDisableTotpCode] = useState(["","","","","",""]);
+  const disableTotpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [emailTwoFaBusy, setEmailTwoFaBusy] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -193,12 +194,28 @@ export function Account() {
     } finally { setTotpSetupBusy(false); }
   }
 
+  function handleDisableTotpBoxChange(i: number, v: string) {
+    const digit = v.replace(/\D/g, "").slice(0, 1);
+    const next = [...disableTotpCode]; next[i] = digit; setDisableTotpCode(next);
+    if (digit && i < 5) disableTotpRefs.current[i + 1]?.focus();
+  }
+  function handleDisableTotpBoxKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Backspace" && !disableTotpCode[i] && i > 0) disableTotpRefs.current[i - 1]?.focus();
+  }
+  function handleDisableTotpBoxPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (!pasted) return; e.preventDefault();
+    const next = [...pasted.split(""), ...["","","","","",""]].slice(0, 6);
+    setDisableTotpCode(next);
+    disableTotpRefs.current[Math.min(pasted.length, 5)]?.focus();
+  }
+
   async function confirmDisableTotp() {
     setTotpSetupBusy(true);
     try {
-      await apiPost("/api/account/2fa/totp/disable", { code: disableTotpCode });
+      await apiPost("/api/account/2fa/totp/disable", { code: disableTotpCode.join("") });
       setShowDisableTotp(false);
-      setDisableTotpCode("");
+      setDisableTotpCode(["","","","","",""]);
       setBanner({ kind: "ok", text: "Authentificateur désactivé." });
       refresh();
     } catch (err) {
@@ -439,7 +456,7 @@ export function Account() {
                 {account.totp_enabled ? (
                   <button
                     type="button"
-                    onClick={() => { setShowDisableTotp(true); setDisableTotpCode(""); }}
+                    onClick={() => { setShowDisableTotp(true); setDisableTotpCode(["","","","","",""]); }}
                     className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/15 text-[11px] font-bold transition-colors"
                   >
                     Désactiver
@@ -889,17 +906,27 @@ export function Account() {
               </p>
             </div>
             <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
-              <input
-                autoFocus
-                type="text"
-                inputMode="numeric"
-                value={disableTotpCode}
-                onChange={e => setDisableTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                onKeyDown={e => { if (e.key === "Enter" && disableTotpCode.length === 6) confirmDisableTotp(); }}
-                placeholder="Code à 6 chiffres"
-                maxLength={6}
-                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/25 text-sm font-mono tracking-widest text-center mb-6 transition-all"
-              />
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3 text-center">
+                Code à 6 chiffres
+              </label>
+              <div className="flex justify-center gap-2 mb-6">
+                {disableTotpCode.map((d, i) => (
+                  <input
+                    key={i}
+                    ref={el => { disableTotpRefs.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={1}
+                    value={d}
+                    autoFocus={i === 0}
+                    onChange={e => handleDisableTotpBoxChange(i, e.target.value)}
+                    onKeyDown={e => handleDisableTotpBoxKey(i, e)}
+                    onPaste={i === 0 ? handleDisableTotpBoxPaste : undefined}
+                    className="w-11 h-14 text-center text-2xl font-bold rounded-xl bg-black/40 border border-white/10 focus:border-white/40 focus:outline-none text-white transition-colors"
+                  />
+                ))}
+              </div>
               <div className="flex gap-2.5">
                 <button
                   type="button"
@@ -911,7 +938,7 @@ export function Account() {
                 <button
                   type="button"
                   onClick={confirmDisableTotp}
-                  disabled={disableTotpCode.length !== 6 || totpSetupBusy}
+                  disabled={disableTotpCode.join("").length !== 6 || totpSetupBusy}
                   className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   {totpSetupBusy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "Désactiver"}
