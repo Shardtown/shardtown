@@ -2392,20 +2392,6 @@ app.post('/api/account/logout', (req, res) => {
 // stored. Bearer auth skips CSRF (see middleware above).
 const TOKEN_PREFIX = 'jr_';
 const TOKEN_BYTES = 32;
-// AES-256-GCM key derived from SESSION_SECRET so the token can be shown again.
-const TOKEN_ENC_KEY = crypto.scryptSync(process.env.SESSION_SECRET, 'shard-tok-enc-v1', 32);
-function encryptToken(plain) {
-    const iv = crypto.randomBytes(12);
-    const c = crypto.createCipheriv('aes-256-gcm', TOKEN_ENC_KEY, iv);
-    const enc = Buffer.concat([c.update(plain, 'utf8'), c.final()]);
-    return `${iv.toString('hex')}:${c.getAuthTag().toString('hex')}:${enc.toString('hex')}`;
-}
-function decryptToken(stored) {
-    const [ivH, tagH, dataH] = stored.split(':');
-    const d = crypto.createDecipheriv('aes-256-gcm', TOKEN_ENC_KEY, Buffer.from(ivH, 'hex'));
-    d.setAuthTag(Buffer.from(tagH, 'hex'));
-    return Buffer.concat([d.update(Buffer.from(dataH, 'hex')), d.final()]).toString('utf8');
-}
 
 // Token principal du compte — lecture (déchiffré)
 app.get('/api/account/tokens/my-token', requireAccount, async (req, res) => {
