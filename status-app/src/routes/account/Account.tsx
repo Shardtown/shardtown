@@ -49,6 +49,7 @@ export function Account() {
   const [totpSetupCode, setTotpSetupCode] = useState(["","","","","",""]);
   const totpSetupRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [totpSetupBusy, setTotpSetupBusy] = useState(false);
+  const [secretCopied, setSecretCopied] = useState(false);
   const [showDisableTotp, setShowDisableTotp] = useState(false);
   const [disableTotpCode, setDisableTotpCode] = useState("");
   const [emailTwoFaBusy, setEmailTwoFaBusy] = useState(false);
@@ -850,9 +851,22 @@ export function Account() {
                   <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-2">
                     Clé secrète
                   </p>
-                  <p className="px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-[11px] font-medium tracking-[0.04em] text-white/70 whitespace-nowrap overflow-x-auto select-all">
-                    {totpSetup.secret}
-                  </p>
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-black/40 border border-white/10">
+                    <span className="flex-1 text-[11px] font-medium tracking-[0.04em] text-white/70 whitespace-nowrap overflow-x-auto select-all">
+                      {totpSetup.secret}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(totpSetup.secret).catch(() => {});
+                        setSecretCopied(true);
+                        setTimeout(() => setSecretCopied(false), 2000);
+                      }}
+                      className="shrink-0 w-6 h-6 rounded-md bg-white/[0.06] hover:bg-white/[0.12] flex items-center justify-center transition-colors"
+                    >
+                      {secretCopied ? <Check className="w-3 h-3 text-emerald-300" /> : <Copy className="w-3 h-3 text-white/50" />}
+                    </button>
+                  </div>
                   <p className="text-[11px] text-white/30 mt-2 leading-relaxed">
                     Google Authenticator, Authy, 1Password ou toute app TOTP compatible.
                   </p>
