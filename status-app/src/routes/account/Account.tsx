@@ -38,11 +38,6 @@ export function Account() {
   const [tokenCopied, setTokenCopied] = useState(false);
   const [tokenBusy, setTokenBusy] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
-  const [unlinkConfirm, setUnlinkConfirm] = useState<{
-    label: string;
-    detail: string;
-    onConfirm: () => Promise<void>;
-  } | null>(null);
 
   // 2FA state
   const [totpSetup, setTotpSetup] = useState<{ secret: string; qrDataUri: string } | null>(null);
@@ -232,22 +227,6 @@ export function Account() {
     nav("/", { replace: true });
   }
 
-  function unlink() {
-    setUnlinkConfirm({
-      label: "Discord",
-      detail: "Tu pourras te reconnecter à tout moment via la section Connexions.",
-      onConfirm: async () => {
-        try {
-          await apiPost("/api/account/discord/unlink");
-          setBanner({ kind: "ok", text: "Connexion Discord déliée." });
-          refresh();
-        } catch {
-          setBanner({ kind: "error", text: "Échec du déliage." });
-        }
-      },
-    });
-  }
-
   async function refreshGuilds() {
     setRefreshing(true);
     try {
@@ -370,7 +349,11 @@ export function Account() {
               linkedName={account.discord_username}
               linkedAvatar={account.discord_avatar}
               hrefLink="/api/account/discord/link"
-              onUnlink={unlink}
+              onUnlink={async () => {
+                await apiPost("/api/account/discord/unlink");
+                setBanner({ kind: "ok", text: "Connexion Discord déliée." });
+                refresh();
+              }}
               extraAction={
                 account.discord_id ? (
                   <button
@@ -398,15 +381,9 @@ export function Account() {
               linkedId={account.oauth_google_id}
               linkedName={account.oauth_google_email}
               hrefLink="/api/account/oauth/google"
-              onUnlink={() => {
-                setUnlinkConfirm({
-                  label: "Google",
-                  detail: "Tu ne pourras plus te connecter via Google tant que tu ne le relieras pas.",
-                  onConfirm: async () => {
-                    await apiPost("/api/account/oauth/google/unlink").catch(() => {});
-                    refresh();
-                  },
-                });
+              onUnlink={async () => {
+                await apiPost("/api/account/oauth/google/unlink");
+                refresh();
               }}
             />
 
@@ -418,15 +395,9 @@ export function Account() {
               linkedId={account.oauth_github_id}
               linkedName={account.oauth_github_username}
               hrefLink="/api/account/oauth/github"
-              onUnlink={() => {
-                setUnlinkConfirm({
-                  label: "GitHub",
-                  detail: "Tu ne pourras plus te connecter via GitHub tant que tu ne le relieras pas.",
-                  onConfirm: async () => {
-                    await apiPost("/api/account/oauth/github/unlink").catch(() => {});
-                    refresh();
-                  },
-                });
+              onUnlink={async () => {
+                await apiPost("/api/account/oauth/github/unlink");
+                refresh();
               }}
             />
           </div>
@@ -990,60 +961,6 @@ export function Account() {
         </div>
       )}
 
-      {unlinkConfirm && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
-          onClick={() => setUnlinkConfirm(null)}
-          onKeyDown={e => e.key === "Escape" && setUnlinkConfirm(null)}
-        >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setUnlinkConfirm(null)}
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
-              aria-label="Fermer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-red-500/10 text-red-300 border border-red-500/20 mb-5">
-              <X className="w-5 h-5" />
-            </div>
-            <p className="text-[10px] font-bold tracking-[0.28em] text-red-300/80 uppercase mb-2">
-              Confirmation
-            </p>
-            <h3 className="text-xl font-extrabold tracking-tight mb-2">
-              Délier {unlinkConfirm.label} ?
-            </h3>
-            <p className="text-white/55 text-sm leading-relaxed mb-6">
-              {unlinkConfirm.detail}
-            </p>
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setUnlinkConfirm(null)}
-                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const fn = unlinkConfirm.onConfirm;
-                  setUnlinkConfirm(null);
-                  await fn();
-                }}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90"
-              >
-                Délier
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </AppLayout>
   );
 }
@@ -1070,13 +987,33 @@ function ConnectionRow({
   linkedName: string | null;
   linkedAvatar?: string | null;
   hrefLink: string;
-  onUnlink: () => void;
+  onUnlink: () => Promise<void>;
   extraAction?: React.ReactNode;
 }) {
-  const linked = !!linkedId;
+  const [busy, setBusy] = useState(false);
+  const [localLinked, setLocalLinked] = useState(!!linkedId);
+
+  useEffect(() => { setLocalLinked(!!linkedId); }, [linkedId]);
+
   const avatarUrl = linkedAvatar && kind === "discord" && linkedId
     ? `https://cdn.discordapp.com/avatars/${linkedId}/${linkedAvatar}.png?size=64`
     : null;
+
+  async function handleToggle(v: boolean) {
+    if (v) {
+      window.location.href = hrefLink;
+    } else {
+      setLocalLinked(false);
+      setBusy(true);
+      try {
+        await onUnlink();
+      } catch {
+        setLocalLinked(true);
+      } finally {
+        setBusy(false);
+      }
+    }
+  }
 
   return (
     <div className="flex items-center gap-4 px-6 md:px-8 py-4">
@@ -1095,7 +1032,7 @@ function ConnectionRow({
       <div className="flex-1 min-w-0">
         <p className="font-bold text-[14.5px] flex items-center gap-1.5">
           {title}
-          {linked && (
+          {localLinked && (
             <ShieldCheck
               className="w-3.5 h-3.5 text-emerald-300"
               aria-label="Lié"
@@ -1103,29 +1040,17 @@ function ConnectionRow({
           )}
         </p>
         <p className="text-[12px] text-white/45 truncate">
-          {linked ? (linkedName || caption) : caption}
+          {localLinked ? (linkedName || caption) : caption}
         </p>
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
         {extraAction}
-        {linked ? (
-          <button
-            type="button"
-            onClick={onUnlink}
-            className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/10 text-white/55 hover:bg-white/[0.08] hover:text-white text-[11px] font-bold transition-colors"
-          >
-            Délier
-          </button>
-        ) : (
-          <a
-            href={hrefLink}
-            className="px-3 py-1.5 rounded-lg bg-white text-black text-[11px] font-bold hover:opacity-90"
-          >
-            Lier
-          </a>
-        )}
+        {busy
+          ? <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+          : <GooeyToggle checked={localLinked} onCheckedChange={handleToggle} variant="success" />
+        }
       </div>
     </div>
   );
