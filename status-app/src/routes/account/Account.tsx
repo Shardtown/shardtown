@@ -862,11 +862,11 @@ export function Account() {
                 <div className="w-px self-stretch bg-white/[0.06] mx-0" />
 
                 {/* Right — code + actions */}
-                <div className="flex-1 pl-8 flex flex-col items-center justify-center text-center">
-                  <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-4">
+                <div className="flex-1 pl-8 flex flex-col justify-center">
+                  <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-6">
                     Étape 2 · Vérifier
                   </p>
-                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3">
+                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3 text-center">
                     Code à 6 chiffres
                   </label>
                   <div className="flex justify-center gap-2 mb-6">
@@ -888,7 +888,7 @@ export function Account() {
                     ))}
                   </div>
 
-                  <div className="mt-auto pt-4 border-t border-white/[0.06] flex gap-2.5 w-full">
+                  <div className="flex gap-2.5 w-full">
                     <button
                       type="button"
                       onClick={() => setTotpSetup(null)}
