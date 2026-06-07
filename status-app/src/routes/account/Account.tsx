@@ -483,7 +483,7 @@ export function Account() {
                   {account.email_2fa_enabled ? "Activé" : "Reçois un code à chaque connexion"}
                 </p>
               </div>
-              <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] hover:bg-white/[0.05] hover:border-white/15 transition-colors">
+              <div className="shrink-0">
                 {emailTwoFaBusy
                   ? <Loader2 className="w-5 h-5 animate-spin text-white/40" />
                   : <GooeyToggle
@@ -492,9 +492,6 @@ export function Account() {
                       variant="success"
                     />
                 }
-                <span className="text-sm font-medium text-white/80">
-                  {account.email_2fa_enabled ? "Activé" : "Désactivé"}
-                </span>
               </div>
             </div>
           </div>
