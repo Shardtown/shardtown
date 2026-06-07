@@ -3925,7 +3925,7 @@ app.post('/api/account/2fa/totp/setup', requireAccount, async (req, res) => {
         if (!a) return res.status(401).json({ error: 'Compte introuvable' });
         const secret = authenticator.generateSecret();
         const otpAuthUrl = authenticator.keyuri(a.email, 'Shardtown', secret);
-        const qrDataUri = await QRCode.toDataURL(otpAuthUrl, { color: { dark: '#ffffff', light: '#00000000' } });
+        const qrDataUri = await QRCode.toDataURL(otpAuthUrl, { color: { dark: '#000000', light: '#00000000' } });
         req.session.totp2faSetupSecret = secret;
         res.json({ secret, qrDataUri });
     } catch (err) {
