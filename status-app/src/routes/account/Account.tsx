@@ -3,8 +3,9 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   LogOut, ShieldCheck, ShieldAlert,
   RefreshCw, Server, Fingerprint, Plus, Trash2, Loader2, X,
-  KeyRound, Copy, Check, Shield, Mail, QrCode, ToggleLeft, ToggleRight,
+  KeyRound, Copy, Check, Shield, Mail, QrCode,
 } from "lucide-react";
+import { Toggle as GooeyToggle } from "@/components/ui/toggle";
 import { motion, useReducedMotion } from "framer-motion";
 import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@/api/passkey";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -234,8 +235,7 @@ export function Account() {
     setEmailTwoFaBusy(true);
     try {
       await apiPost(enabled ? "/api/account/2fa/email/enable" : "/api/account/2fa/email/disable");
-      setBanner({ kind: "ok", text: enabled ? "Code email activé." : "Code email désactivé." });
-      refresh();
+      setAccount(prev => prev ? { ...prev, email_2fa_enabled: enabled } : prev);
     } catch {
       setBanner({ kind: "error", text: "Erreur lors de la mise à jour." });
     } finally { setEmailTwoFaBusy(false); }
@@ -516,22 +516,22 @@ export function Account() {
                   {account.email_2fa_enabled && <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />}
                 </p>
                 <p className="text-[12px] text-white/45">
-                  {account.email_2fa_enabled ? `Activé — envoyé à ${account.email}` : `Un code sera envoyé à ${account.email}`}
+                  {account.email_2fa_enabled ? "Activé" : "Reçois un code à chaque connexion"}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => toggleEmailTwoFa(!account.email_2fa_enabled)}
-                disabled={emailTwoFaBusy}
-                aria-label={account.email_2fa_enabled ? "Désactiver code email" : "Activer code email"}
-                className="shrink-0 disabled:opacity-50"
-              >
+              <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] hover:bg-white/[0.05] hover:border-white/15 transition-colors">
                 {emailTwoFaBusy
                   ? <Loader2 className="w-5 h-5 animate-spin text-white/40" />
-                  : account.email_2fa_enabled
-                    ? <ToggleRight className="w-8 h-8 text-emerald-400" />
-                    : <ToggleLeft className="w-8 h-8 text-white/30" />}
-              </button>
+                  : <GooeyToggle
+                      checked={account.email_2fa_enabled}
+                      onCheckedChange={v => toggleEmailTwoFa(v)}
+                      variant="success"
+                    />
+                }
+                <span className="text-sm font-medium text-white/80">
+                  {account.email_2fa_enabled ? "Activé" : "Désactivé"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
