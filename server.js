@@ -21,7 +21,32 @@ const {
     verifyAuthenticationResponse,
 } = require('@simplewebauthn/server');
 const helmet = require('helmet');
-const { authenticator } = require('otplib');
+/* ─── TOTP (RFC 6238) — no external dep, pure crypto ──────────────────── */
+const _B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function totpGenerateSecret() {
+    const buf = crypto.randomBytes(20);
+    let bits = 0, acc = 0, out = '';
+    for (const b of buf) { acc = (acc << 8) | b; bits += 8; while (bits >= 5) { bits -= 5; out += _B32[(acc >> bits) & 31]; } }
+    if (bits) out += _B32[(acc << (5 - bits)) & 31];
+    return out;
+}
+function _b32decode(s) {
+    s = s.toUpperCase().replace(/=+$/, '');
+    let bits = 0, acc = 0; const out = [];
+    for (const c of s) { const v = _B32.indexOf(c); if (v < 0) continue; acc = (acc << 5) | v; bits += 5; if (bits >= 8) { bits -= 8; out.push((acc >> bits) & 0xff); } }
+    return Buffer.from(out);
+}
+function _totpCode(secret, step) {
+    const msg = Buffer.alloc(8); msg.writeBigUInt64BE(BigInt(step));
+    const h = crypto.createHmac('sha1', _b32decode(secret)).update(msg).digest();
+    const off = h[h.length - 1] & 0x0f;
+    return String(((h[off] & 0x7f) << 24 | h[off+1] << 16 | h[off+2] << 8 | h[off+3]) % 1_000_000).padStart(6, '0');
+}
+const authenticator = {
+    generateSecret: () => totpGenerateSecret(),
+    keyuri: (account, issuer, secret) => `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&digits=6&period=30`,
+    verify: ({ token, secret }) => { const step = Math.floor(Date.now() / 30000); return [-1,0,1].some(d => _totpCode(secret, step+d) === String(token).trim()); },
+};
 const QRCode = require('qrcode');
 const { SHARDTOWN_KNOWLEDGE } = require('./chatbot-knowledge');
 const presence = require('./presence');
