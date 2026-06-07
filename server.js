@@ -2565,6 +2565,34 @@ app.delete('/api/account/tokens/:id', requireAccount, async (req, res) => {
     }
 });
 
+// Auto-verified: check Discord role 1417244225950453933 in guild 1409954518682042462.
+// Cached per user for 5 min to avoid hammering the Discord API.
+const VERIFIED_ROLE_ID  = '1417244225950453933';
+const VERIFIED_GUILD_ID = '1409954518682042462';
+const verifiedCheckCache = new Map(); // discordId → { ts, verified }
+
+async function syncVerifiedRole(account) {
+    if (!account.discord_id) return account.verified;
+    const cached = verifiedCheckCache.get(account.discord_id);
+    if (cached && Date.now() - cached.ts < 5 * 60_000) return cached.verified;
+    try {
+        const r = await axios.get(
+            `https://discord.com/api/v10/guilds/${VERIFIED_GUILD_ID}/members/${account.discord_id}`,
+            { headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` }, timeout: 4000 },
+        );
+        const hasRole = Array.isArray(r.data.roles) && r.data.roles.includes(VERIFIED_ROLE_ID);
+        verifiedCheckCache.set(account.discord_id, { ts: Date.now(), verified: hasRole });
+        if (!!hasRole !== !!account.verified) {
+            await db.execute('UPDATE accounts SET verified = ? WHERE id = ?', [hasRole ? 1 : 0, account.id]);
+        }
+        return hasRole;
+    } catch {
+        // Discord API unreachable or user not in guild → keep current DB value.
+        verifiedCheckCache.set(account.discord_id, { ts: Date.now(), verified: !!account.verified });
+        return !!account.verified;
+    }
+}
+
 app.get('/api/account/me', async (req, res) => {
     if (!req.session?.account?.id) return res.json({ account: null });
     try {
@@ -2573,7 +2601,9 @@ app.get('/api/account/me', async (req, res) => {
             req.session.account = null;
             return res.json({ account: null });
         }
-        res.json({ account: publicAccount(rows[0]) });
+        const a = rows[0];
+        a.verified = await syncVerifiedRole(a);
+        res.json({ account: publicAccount(a) });
     } catch {
         res.status(500).json({ error: 'Erreur serveur' });
     }
