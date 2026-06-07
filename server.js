@@ -3925,12 +3925,13 @@ app.post('/api/account/2fa/totp/setup', requireAccount, async (req, res) => {
         if (!a) return res.status(401).json({ error: 'Compte introuvable' });
         const secret = authenticator.generateSecret();
         const otpAuthUrl = authenticator.keyuri(a.email, 'Shardtown', secret);
-        const qrDataUri = await QRCode.toDataURL(otpAuthUrl, { color: { dark: '#000000', light: '#00000000' } });
+        const qrDataUri = await QRCode.toDataURL(otpAuthUrl, { width: 200, margin: 1 });
         req.session.totp2faSetupSecret = secret;
+        await new Promise((resolve, reject) => req.session.save(e => e ? reject(e) : resolve()));
         res.json({ secret, qrDataUri });
     } catch (err) {
-        console.error('2fa/totp/setup:', err.message);
-        res.status(500).json({ error: 'Erreur serveur' });
+        console.error('2fa/totp/setup:', err.stack || err.message);
+        res.status(500).json({ error: err.message || 'Erreur serveur' });
     }
 });
 

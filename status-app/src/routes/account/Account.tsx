@@ -160,8 +160,9 @@ export function Account() {
     try {
       const r = await apiPost<{ secret: string; qrDataUri: string }>("/api/account/2fa/totp/setup");
       setTotpSetup(r);
-    } catch {
-      setBanner({ kind: "error", text: "Impossible de démarrer la configuration TOTP." });
+    } catch (err) {
+      const msg = isApiError(err) ? err.message : "Impossible de démarrer la configuration TOTP.";
+      setBanner({ kind: "error", text: msg });
     } finally { setTotpSetupBusy(false); }
   }
 
