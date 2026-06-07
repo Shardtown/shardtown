@@ -268,14 +268,16 @@ async function connectDB() {
                 "Not knowing the rules is not an excuse to break them. You must agree to these rules in order to get full access to the server.",
                 "Click on **Continue** if you agree to the server rules."
             ]);
-            await db.execute(
-                `UPDATE settings SET rules_fr = ? WHERE rules_fr IS NULL OR rules_fr = '' OR rules_fr = '[]'`,
-                [defaultRulesFr]
-            );
-            await db.execute(
-                `UPDATE settings SET rules_en = ? WHERE rules_en IS NULL OR rules_en = '' OR rules_en = '[]'`,
-                [defaultRulesEn]
-            );
+            try {
+                await db.execute(
+                    `UPDATE settings SET rules_fr = ? WHERE rules_fr IS NULL OR rules_fr = '' OR rules_fr = '[]'`,
+                    [defaultRulesFr]
+                );
+                await db.execute(
+                    `UPDATE settings SET rules_en = ? WHERE rules_en IS NULL OR rules_en = '' OR rules_en = '[]'`,
+                    [defaultRulesEn]
+                );
+            } catch { /* legacy table — skip on fresh DB */ }
 
             await db.execute(`
                 CREATE TABLE IF NOT EXISTS redeem_codes (
