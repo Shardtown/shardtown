@@ -461,7 +461,7 @@ export function Account() {
                   {account.totp_enabled && <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />}
                 </p>
                 <p className="text-[12px] text-white/45">
-                  {account.totp_enabled ? "Activé — Google Authenticator, Authy, 1Password…" : "Google Authenticator, Authy, 1Password…"}
+                  {account.totp_enabled ? "Activé" : "Google Authenticator, Authy, 1Password…"}
                 </p>
               </div>
               <div className="shrink-0">
