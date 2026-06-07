@@ -838,15 +838,6 @@ export function Account() {
 
             {/* Card */}
             <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
-              <button
-                type="button"
-                onClick={() => setTotpSetup(null)}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
-                aria-label="Fermer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-
               <div className="flex gap-0 items-start">
                 {/* Left — QR + secret */}
                 <div className="flex-1 pr-8">
@@ -871,11 +862,11 @@ export function Account() {
                 <div className="w-px self-stretch bg-white/[0.06] mx-0" />
 
                 {/* Right — code + actions */}
-                <div className="flex-1 pl-8 flex flex-col">
+                <div className="flex-1 pl-8 flex flex-col items-center justify-center text-center">
                   <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-4">
                     Étape 2 · Vérifier
                   </p>
-                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3 text-center">
+                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-3">
                     Code à 6 chiffres
                   </label>
                   <div className="flex justify-center gap-2 mb-6">
@@ -897,7 +888,7 @@ export function Account() {
                     ))}
                   </div>
 
-                  <div className="mt-auto pt-4 border-t border-white/[0.06] flex gap-2.5">
+                  <div className="mt-auto pt-4 border-t border-white/[0.06] flex gap-2.5 w-full">
                     <button
                       type="button"
                       onClick={() => setTotpSetup(null)}
