@@ -21,6 +21,8 @@ const {
     verifyAuthenticationResponse,
 } = require('@simplewebauthn/server');
 const helmet = require('helmet');
+const { authenticator } = require('otplib');
+const QRCode = require('qrcode');
 const { SHARDTOWN_KNOWLEDGE } = require('./chatbot-knowledge');
 const presence = require('./presence');
 const { cryptoShuffle, timingSafeEqual, verifyAdminPassword } = require('./lib/security');
@@ -413,6 +415,27 @@ async function connectDB() {
             ]) {
                 try { await db.execute(ddl); } catch { /* already exists */ }
             }
+            // 2FA columns
+            for (const ddl of [
+                `ALTER TABLE accounts ADD COLUMN totp_secret VARCHAR(64) DEFAULT NULL`,
+                `ALTER TABLE accounts ADD COLUMN totp_enabled TINYINT DEFAULT 0`,
+                `ALTER TABLE accounts ADD COLUMN email_2fa_enabled TINYINT DEFAULT 0`,
+            ]) {
+                try { await db.execute(ddl); } catch { /* already exists */ }
+            }
+            // Pending 2FA login sessions (short-lived, verified after password)
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS account_2fa_pending (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    account_id INT NOT NULL,
+                    token_hash CHAR(64) NOT NULL UNIQUE,
+                    email_code_hash CHAR(64) DEFAULT NULL,
+                    expires_at DATETIME NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_token (token_hash),
+                    INDEX idx_account (account_id)
+                )
+            `);
             // Passkeys / WebAuthn credentials
             await db.execute(`
                 CREATE TABLE IF NOT EXISTS account_passkeys (
@@ -1967,6 +1990,38 @@ async function sendVerificationEmail(account, code) {
     }
 }
 
+async function send2faEmailCode(account, code) {
+    const m = getMailer();
+    const subject = `Code A2F Shardtown : ${code}`;
+    const text = `Salut ${account.pseudo},\n\nTon code de connexion à deux facteurs : ${code}\n\nValable 5 minutes. Si tu n'es pas à l'origine de cette connexion, change ton mot de passe immédiatement.\n\n— Shardtown`;
+    const html = `<div style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#0a0a0a;color:#fff;padding:40px 20px">
+  <div style="max-width:480px;margin:0 auto;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:24px;padding:40px;text-align:center">
+    <h1 style="margin:0 0 16px;font-size:24px;font-weight:800;letter-spacing:-0.02em">Code de connexion 🔐</h1>
+    <p style="margin:0 0 28px;color:rgba(255,255,255,0.6);font-size:15px;line-height:1.5">
+      Un code de vérification à deux facteurs a été demandé pour ton compte <strong>${account.pseudo}</strong>.
+    </p>
+    <div style="font-size:36px;font-weight:800;letter-spacing:0.4em;background:#000;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:24px;margin-bottom:28px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#fff">${code}</div>
+    <p style="margin:0;color:rgba(255,255,255,0.4);font-size:13px;line-height:1.5">
+      Code valable 5 minutes. Si tu n'es pas à l'origine de cette connexion, change ton mot de passe immédiatement.
+    </p>
+  </div>
+  <p style="text-align:center;margin:24px 0 0;color:rgba(255,255,255,0.3);font-size:11px">— L'équipe Shardtown</p>
+</div>`;
+    if (!m) {
+        console.warn(`[mailer] SMTP non configuré — code 2FA impossible pour ${account.email}`);
+        return;
+    }
+    try {
+        await m.sendMail({
+            from: process.env.SMTP_FROM || '"Shardtown" <noreply@shardtwn.fr>',
+            to: account.email,
+            subject, text, html,
+        });
+    } catch (e) {
+        console.error('[mailer] envoi 2FA échoué pour', account.email, '—', e.message);
+    }
+}
+
 function generateVerificationCode() {
     return String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
 }
@@ -2012,6 +2067,8 @@ function publicAccount(a) {
         shard_avatar: a.shard_avatar || null,
         shard_linked_at: a.shard_linked_at || null,
         created_at: a.created_at,
+        totp_enabled: !!a.totp_enabled,
+        email_2fa_enabled: !!a.email_2fa_enabled,
     };
 }
 
@@ -2255,6 +2312,29 @@ app.post('/api/account/login', accountAuthLimiter, async (req, res) => {
                 error: 'Email non vérifié — un nouveau code a été envoyé.'
             });
         }
+        // Si A2F activée, bloquer ici et demander les codes
+        if (a.totp_enabled || a.email_2fa_enabled) {
+            const pendingTokenRaw = crypto.randomBytes(32).toString('hex');
+            const pendingTokenHash = crypto.createHash('sha256').update(pendingTokenRaw).digest('hex');
+            let emailCodeHash = null;
+            if (a.email_2fa_enabled) {
+                const emailCode = generateVerificationCode();
+                emailCodeHash = crypto.createHash('sha256').update(emailCode).digest('hex');
+                try { await send2faEmailCode(a, emailCode); }
+                catch (e) { console.error('2fa email send failed:', e.message); }
+            }
+            await db.execute(
+                `INSERT INTO account_2fa_pending (account_id, token_hash, email_code_hash, expires_at)
+                 VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))`,
+                [a.id, pendingTokenHash, emailCodeHash],
+            );
+            return res.json({
+                pending2fa: true,
+                methods: { totp: !!a.totp_enabled, email: !!a.email_2fa_enabled },
+                pendingToken: pendingTokenRaw,
+            });
+        }
+
         await db.execute('UPDATE accounts SET last_login_at = NOW() WHERE id = ?', [a.id]);
         req.session.regenerate(err => {
             if (err) return res.status(500).json({ error: 'Erreur serveur' });
@@ -3789,6 +3869,199 @@ app.post('/api/account/resend-verification', accountAuthLimiter, async (req, res
         res.json({ success: true });
     } catch (err) {
         console.error('resend:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// ─── A2F / 2FA ───────────────────────────────────────────────────────────────
+
+// Statut A2F du compte connecté
+app.get('/api/account/2fa/status', requireAccount, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT totp_enabled, email_2fa_enabled FROM accounts WHERE id = ? LIMIT 1`,
+            [req.session.account.id],
+        );
+        const a = rows[0];
+        if (!a) return res.status(401).json({ error: 'Compte introuvable' });
+        res.json({ totpEnabled: !!a.totp_enabled, emailTwoFaEnabled: !!a.email_2fa_enabled });
+    } catch (err) {
+        console.error('2fa/status:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Générer un secret TOTP temporaire + QR code (stocké en session, pas encore en DB)
+app.post('/api/account/2fa/totp/setup', requireAccount, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT pseudo, email FROM accounts WHERE id = ? LIMIT 1`,
+            [req.session.account.id],
+        );
+        const a = rows[0];
+        if (!a) return res.status(401).json({ error: 'Compte introuvable' });
+        const secret = authenticator.generateSecret();
+        const otpAuthUrl = authenticator.keyuri(a.email, 'Shardtown', secret);
+        const qrDataUri = await QRCode.toDataURL(otpAuthUrl, { color: { dark: '#ffffff', light: '#00000000' } });
+        req.session.totp2faSetupSecret = secret;
+        res.json({ secret, qrDataUri });
+    } catch (err) {
+        console.error('2fa/totp/setup:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Confirmer le setup TOTP : vérifier le premier code, sauvegarder en DB
+app.post('/api/account/2fa/totp/confirm', requireAccount, async (req, res) => {
+    try {
+        const code = String(req.body?.code || '').replace(/\s/g, '');
+        const secret = req.session.totp2faSetupSecret;
+        if (!secret) return res.status(400).json({ error: 'Session de configuration expirée. Recommence.' });
+        if (!authenticator.verify({ token: code, secret })) {
+            return res.status(400).json({ error: 'Code invalide. Vérifie que l\'heure de ton appareil est correcte.' });
+        }
+        await db.execute(
+            `UPDATE accounts SET totp_secret = ?, totp_enabled = 1 WHERE id = ?`,
+            [secret, req.session.account.id],
+        );
+        delete req.session.totp2faSetupSecret;
+        res.json({ success: true });
+    } catch (err) {
+        console.error('2fa/totp/confirm:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Désactiver le TOTP (requiert le code TOTP actuel)
+app.post('/api/account/2fa/totp/disable', requireAccount, async (req, res) => {
+    try {
+        const code = String(req.body?.code || '').replace(/\s/g, '');
+        const [rows] = await db.execute(
+            `SELECT totp_secret FROM accounts WHERE id = ? LIMIT 1`,
+            [req.session.account.id],
+        );
+        const a = rows[0];
+        if (!a?.totp_secret) return res.status(400).json({ error: 'TOTP non activé.' });
+        if (!authenticator.verify({ token: code, secret: a.totp_secret })) {
+            return res.status(401).json({ error: 'Code TOTP invalide.' });
+        }
+        await db.execute(
+            `UPDATE accounts SET totp_secret = NULL, totp_enabled = 0 WHERE id = ?`,
+            [req.session.account.id],
+        );
+        res.json({ success: true });
+    } catch (err) {
+        console.error('2fa/totp/disable:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Activer/désactiver le code par email
+app.post('/api/account/2fa/email/enable', requireAccount, async (req, res) => {
+    try {
+        await db.execute(`UPDATE accounts SET email_2fa_enabled = 1 WHERE id = ?`, [req.session.account.id]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('2fa/email/enable:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.post('/api/account/2fa/email/disable', requireAccount, async (req, res) => {
+    try {
+        await db.execute(`UPDATE accounts SET email_2fa_enabled = 0 WHERE id = ?`, [req.session.account.id]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('2fa/email/disable:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Vérification A2F lors du login (après le mot de passe)
+app.post('/api/account/2fa/verify', accountAuthLimiter, async (req, res) => {
+    try {
+        const pendingTokenRaw = String(req.body?.pendingToken || '');
+        const totpCode = String(req.body?.totpCode || '').replace(/\s/g, '');
+        const emailCode = String(req.body?.emailCode || '').replace(/\s/g, '');
+        if (!pendingTokenRaw) return res.status(400).json({ error: 'Token requis.' });
+
+        const tokenHash = crypto.createHash('sha256').update(pendingTokenRaw).digest('hex');
+        const [pendingRows] = await db.execute(
+            `SELECT * FROM account_2fa_pending WHERE token_hash = ? AND expires_at > NOW() LIMIT 1`,
+            [tokenHash],
+        );
+        const pending = pendingRows[0];
+        if (!pending) return res.status(401).json({ error: 'Session A2F expirée ou invalide. Reconnecte-toi.' });
+
+        const [accountRows] = await db.execute(
+            `SELECT * FROM accounts WHERE id = ? LIMIT 1`,
+            [pending.account_id],
+        );
+        const a = accountRows[0];
+        if (!a) return res.status(401).json({ error: 'Compte introuvable.' });
+
+        // Vérifier TOTP
+        if (a.totp_enabled) {
+            if (!totpCode) return res.status(400).json({ error: 'Code TOTP requis.' });
+            if (!authenticator.verify({ token: totpCode, secret: a.totp_secret })) {
+                return res.status(401).json({ error: 'Code TOTP invalide.' });
+            }
+        }
+
+        // Vérifier code email
+        if (a.email_2fa_enabled) {
+            if (!emailCode) return res.status(400).json({ error: 'Code email requis.' });
+            const emailCodeHash = crypto.createHash('sha256').update(emailCode).digest('hex');
+            if (pending.email_code_hash !== emailCodeHash) {
+                return res.status(401).json({ error: 'Code email invalide.' });
+            }
+        }
+
+        // Supprimer le pending, créer la session
+        await db.execute(`DELETE FROM account_2fa_pending WHERE token_hash = ?`, [tokenHash]);
+        await db.execute('UPDATE accounts SET last_login_at = NOW() WHERE id = ?', [a.id]);
+        req.session.regenerate(err => {
+            if (err) return res.status(500).json({ error: 'Erreur serveur' });
+            req.session.account = { id: a.id, loginAt: Date.now() };
+            res.json({ account: publicAccount(a) });
+        });
+    } catch (err) {
+        console.error('2fa/verify:', err.message);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+// Renvoyer le code email A2F pendant le login
+app.post('/api/account/2fa/email-resend', accountAuthLimiter, async (req, res) => {
+    try {
+        const pendingTokenRaw = String(req.body?.pendingToken || '');
+        if (!pendingTokenRaw) return res.status(400).json({ error: 'Token requis.' });
+        const tokenHash = crypto.createHash('sha256').update(pendingTokenRaw).digest('hex');
+        const [pendingRows] = await db.execute(
+            `SELECT * FROM account_2fa_pending WHERE token_hash = ? AND expires_at > NOW() LIMIT 1`,
+            [tokenHash],
+        );
+        const pending = pendingRows[0];
+        if (!pending) return res.status(401).json({ error: 'Session A2F expirée.' });
+
+        const [accountRows] = await db.execute(
+            `SELECT * FROM accounts WHERE id = ? AND email_2fa_enabled = 1 LIMIT 1`,
+            [pending.account_id],
+        );
+        const a = accountRows[0];
+        if (!a) return res.status(400).json({ error: 'Email A2F non activé.' });
+
+        const emailCode = generateVerificationCode();
+        const emailCodeHash = crypto.createHash('sha256').update(emailCode).digest('hex');
+        await db.execute(
+            `UPDATE account_2fa_pending SET email_code_hash = ? WHERE token_hash = ?`,
+            [emailCodeHash, tokenHash],
+        );
+        try { await send2faEmailCode(a, emailCode); }
+        catch (e) { console.error('2fa email resend failed:', e.message); }
+        res.json({ success: true });
+    } catch (err) {
+        console.error('2fa/email-resend:', err.message);
         res.status(500).json({ error: 'Erreur serveur' });
     }
 });

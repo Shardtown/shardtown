@@ -17,6 +17,8 @@ export interface Account {
   shard_avatar: string | null;
   shard_linked_at: string | null;
   created_at: string;
+  totp_enabled: boolean;
+  email_2fa_enabled: boolean;
 }
 
 interface AccountState {

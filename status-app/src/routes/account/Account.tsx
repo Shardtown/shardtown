@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   LogOut, ShieldCheck, ShieldAlert,
   RefreshCw, Server, Fingerprint, Plus, Trash2, Loader2, X,
-  KeyRound, Copy, Check,
+  KeyRound, Copy, Check, Shield, Mail, QrCode, ToggleLeft, ToggleRight,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@/api/passkey";
@@ -48,6 +48,14 @@ export function Account() {
     detail: string;
     onConfirm: () => Promise<void>;
   } | null>(null);
+
+  // 2FA state
+  const [totpSetup, setTotpSetup] = useState<{ secret: string; qrDataUri: string } | null>(null);
+  const [totpSetupCode, setTotpSetupCode] = useState("");
+  const [totpSetupBusy, setTotpSetupBusy] = useState(false);
+  const [showDisableTotp, setShowDisableTotp] = useState(false);
+  const [disableTotpCode, setDisableTotpCode] = useState("");
+  const [emailTwoFaBusy, setEmailTwoFaBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -180,6 +188,56 @@ export function Account() {
     params.delete("linked"); params.delete("reason");
     setParams(params, { replace: true });
   }, [params, setParams]);
+
+  async function startTotpSetup() {
+    setTotpSetupCode("");
+    setTotpSetupBusy(true);
+    try {
+      const r = await apiPost<{ secret: string; qrDataUri: string }>("/api/account/2fa/totp/setup");
+      setTotpSetup(r);
+    } catch {
+      setBanner({ kind: "error", text: "Impossible de démarrer la configuration TOTP." });
+    } finally { setTotpSetupBusy(false); }
+  }
+
+  async function confirmTotpSetup() {
+    if (!totpSetup) return;
+    setTotpSetupBusy(true);
+    try {
+      await apiPost("/api/account/2fa/totp/confirm", { code: totpSetupCode });
+      setTotpSetup(null);
+      setBanner({ kind: "ok", text: "Authentificateur activé." });
+      refresh();
+    } catch (err) {
+      const msg = isApiError(err) ? err.message : "Erreur";
+      setBanner({ kind: "error", text: msg });
+    } finally { setTotpSetupBusy(false); }
+  }
+
+  async function confirmDisableTotp() {
+    setTotpSetupBusy(true);
+    try {
+      await apiPost("/api/account/2fa/totp/disable", { code: disableTotpCode });
+      setShowDisableTotp(false);
+      setDisableTotpCode("");
+      setBanner({ kind: "ok", text: "Authentificateur désactivé." });
+      refresh();
+    } catch (err) {
+      const msg = isApiError(err) ? err.message : "Erreur";
+      setBanner({ kind: "error", text: msg });
+    } finally { setTotpSetupBusy(false); }
+  }
+
+  async function toggleEmailTwoFa(enabled: boolean) {
+    setEmailTwoFaBusy(true);
+    try {
+      await apiPost(enabled ? "/api/account/2fa/email/enable" : "/api/account/2fa/email/disable");
+      setBanner({ kind: "ok", text: enabled ? "Code email activé." : "Code email désactivé." });
+      refresh();
+    } catch {
+      setBanner({ kind: "error", text: "Erreur lors de la mise à jour." });
+    } finally { setEmailTwoFaBusy(false); }
+  }
 
   async function logout() {
     await apiPost("/api/account/logout").catch(() => {});
@@ -390,6 +448,91 @@ export function Account() {
                 });
               }}
             />
+          </div>
+        </div>
+
+        {/* Authentification à deux facteurs */}
+        <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
+          <div className="px-6 md:px-8 pt-6 md:pt-7 pb-5 border-b border-white/[0.05]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70 shrink-0">
+                <Shield className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">Sécurité</p>
+                <h2 className="text-xl font-extrabold tracking-tight">Authentification à deux facteurs</h2>
+              </div>
+            </div>
+            <p className="text-[13px] text-white/50 mt-3 max-w-xl leading-relaxed">
+              Ajoute une couche de sécurité supplémentaire. À chaque connexion, un code te sera demandé en plus de ton mot de passe.
+            </p>
+          </div>
+
+          <div className="divide-y divide-white/[0.05]">
+            {/* TOTP */}
+            <div className="flex items-center gap-4 px-6 md:px-8 py-4">
+              <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/65 shrink-0">
+                <QrCode className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-[14.5px] flex items-center gap-1.5">
+                  Application d'authentification
+                  {account.totp_enabled && <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />}
+                </p>
+                <p className="text-[12px] text-white/45">
+                  {account.totp_enabled ? "Activé — Google Authenticator, Authy, 1Password…" : "Google Authenticator, Authy, 1Password…"}
+                </p>
+              </div>
+              <div className="shrink-0">
+                {account.totp_enabled ? (
+                  <button
+                    type="button"
+                    onClick={() => { setShowDisableTotp(true); setDisableTotpCode(""); }}
+                    className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/15 text-[11px] font-bold transition-colors"
+                  >
+                    Désactiver
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={startTotpSetup}
+                    disabled={totpSetupBusy}
+                    className="px-3 py-1.5 rounded-lg bg-white text-black text-[11px] font-bold hover:opacity-90 disabled:opacity-50"
+                  >
+                    {totpSetupBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : "Configurer"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Email 2FA */}
+            <div className="flex items-center gap-4 px-6 md:px-8 py-4">
+              <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/65 shrink-0">
+                <Mail className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-[14.5px] flex items-center gap-1.5">
+                  Code par email
+                  {account.email_2fa_enabled && <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />}
+                </p>
+                <p className="text-[12px] text-white/45">
+                  {account.email_2fa_enabled ? `Activé — envoyé à ${account.email}` : `Un code sera envoyé à ${account.email}`}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleEmailTwoFa(!account.email_2fa_enabled)}
+                disabled={emailTwoFaBusy}
+                aria-label={account.email_2fa_enabled ? "Désactiver code email" : "Activer code email"}
+                className="shrink-0 disabled:opacity-50"
+              >
+                {emailTwoFaBusy
+                  ? <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+                  : account.email_2fa_enabled
+                    ? <ToggleRight className="w-8 h-8 text-emerald-400" />
+                    : <ToggleLeft className="w-8 h-8 text-white/30" />}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -800,6 +943,148 @@ export function Account() {
                 className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90"
               >
                 Révoquer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TOTP Setup modal */}
+      {totpSetup && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          onClick={() => setTotpSetup(null)}
+          onKeyDown={e => e.key === "Escape" && setTotpSetup(null)}
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+          <div
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setTotpSetup(null)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+              aria-label="Fermer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white/70 mb-5">
+              <QrCode className="w-5 h-5" />
+            </div>
+            <p className="text-[10px] font-bold tracking-[0.28em] text-white/35 uppercase mb-1">
+              Étape 1 — Scanner
+            </p>
+            <h3 className="text-lg font-extrabold tracking-tight mb-3">
+              Configure ton application
+            </h3>
+            <p className="text-white/55 text-[13px] leading-relaxed mb-4">
+              Scanne ce QR code avec Google Authenticator, Authy, 1Password ou toute app compatible.
+            </p>
+            <div className="flex justify-center mb-4 bg-white rounded-xl p-3">
+              <img src={totpSetup.qrDataUri} alt="QR code TOTP" className="w-40 h-40" />
+            </div>
+            <details className="mb-5">
+              <summary className="text-[11px] text-white/35 cursor-pointer hover:text-white/60 transition-colors">
+                Saisie manuelle (clé secrète)
+              </summary>
+              <p className="mt-2 px-3 py-2 rounded-lg bg-black/40 border border-white/10 font-mono text-[12px] text-white/70 break-all select-all">
+                {totpSetup.secret}
+              </p>
+            </details>
+            <p className="text-[10px] font-bold tracking-[0.28em] text-white/35 uppercase mb-2">
+              Étape 2 — Vérifier
+            </p>
+            <input
+              autoFocus
+              type="text"
+              inputMode="numeric"
+              value={totpSetupCode}
+              onChange={e => setTotpSetupCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onKeyDown={e => { if (e.key === "Enter" && totpSetupCode.length === 6) confirmTotpSetup(); }}
+              placeholder="Code à 6 chiffres"
+              maxLength={6}
+              className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/25 text-sm font-mono tracking-widest text-center mb-5 transition-all"
+            />
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setTotpSetup(null)}
+                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmTotpSetup}
+                disabled={totpSetupCode.length !== 6 || totpSetupBusy}
+                className="flex-1 py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {totpSetupBusy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "Activer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disable TOTP modal */}
+      {showDisableTotp && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6"
+          onClick={() => setShowDisableTotp(false)}
+          onKeyDown={e => e.key === "Escape" && setShowDisableTotp(false)}
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+          <div
+            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowDisableTotp(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors"
+              aria-label="Fermer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-red-500/10 text-red-300 border border-red-500/20 mb-5">
+              <Shield className="w-5 h-5" />
+            </div>
+            <p className="text-[10px] font-bold tracking-[0.28em] text-red-300/80 uppercase mb-2">
+              Confirmation
+            </p>
+            <h3 className="text-xl font-extrabold tracking-tight mb-2">
+              Désactiver le TOTP ?
+            </h3>
+            <p className="text-white/55 text-sm leading-relaxed mb-5">
+              Entre le code de ton application pour confirmer la désactivation.
+            </p>
+            <input
+              autoFocus
+              type="text"
+              inputMode="numeric"
+              value={disableTotpCode}
+              onChange={e => setDisableTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              onKeyDown={e => { if (e.key === "Enter" && disableTotpCode.length === 6) confirmDisableTotp(); }}
+              placeholder="Code à 6 chiffres"
+              maxLength={6}
+              className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/25 text-sm font-mono tracking-widest text-center mb-5 transition-all"
+            />
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={() => setShowDisableTotp(false)}
+                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={confirmDisableTotp}
+                disabled={disableTotpCode.length !== 6 || totpSetupBusy}
+                className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {totpSetupBusy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "Désactiver"}
               </button>
             </div>
           </div>

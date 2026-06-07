@@ -31,8 +31,10 @@
     "helmet": "^8.1.0",
     "mysql2": "^3.22.0",
     "nodemailer": "^8.0.7",
+    "otplib": "^13.4.1",
     "passport": "^0.7.0",
     "passport-discord": "^0.1.4",
+    "qrcode": "^1.5.4",
     "stripe": "^22.0.2"
   }
 }
