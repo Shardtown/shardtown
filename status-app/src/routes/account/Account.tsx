@@ -945,6 +945,7 @@ function ConnectionRow({
 }) {
   const [busy, setBusy] = useState(false);
   const [localLinked, setLocalLinked] = useState(!!linkedId);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => { setLocalLinked(!!linkedId); }, [linkedId]);
 
@@ -952,54 +953,100 @@ function ConnectionRow({
     ? `https://cdn.discordapp.com/avatars/${linkedId}/${linkedAvatar}.png?size=64`
     : null;
 
-  async function handleToggle(v: boolean) {
+  function handleToggle(v: boolean) {
     if (v) {
       window.location.href = hrefLink;
     } else {
-      setLocalLinked(false);
-      setBusy(true);
-      try {
-        await onUnlink();
-      } catch {
-        setLocalLinked(true);
-      } finally {
-        setBusy(false);
-      }
+      setShowConfirm(true);
+    }
+  }
+
+  async function confirmUnlink() {
+    setShowConfirm(false);
+    setLocalLinked(false);
+    setBusy(true);
+    try {
+      await onUnlink();
+    } catch {
+      setLocalLinked(true);
+    } finally {
+      setBusy(false);
     }
   }
 
   return (
-    <div className="flex items-center gap-4 px-6 md:px-8 py-4">
-      {/* Icône / avatar */}
-      <div className="shrink-0">
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="" className="w-10 h-10 rounded-xl border border-white/10" />
-        ) : (
-          <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/65">
-            <ProviderIcon kind={kind} />
+    <>
+      <div className="flex items-center gap-4 px-6 md:px-8 py-4">
+        {/* Icône / avatar */}
+        <div className="shrink-0">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="" className="w-10 h-10 rounded-xl border border-white/10" />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/65">
+              <ProviderIcon kind={kind} />
+            </div>
+          )}
+        </div>
+
+        {/* Title + caption + linked meta */}
+        <div className="flex-1 min-w-0">
+          <p className="font-bold text-[14.5px]">{title}</p>
+          <p className="text-[12px] text-white/45 truncate">
+            {localLinked ? (linkedName || caption) : caption}
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          {extraAction}
+          {busy
+            ? <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+            : <GooeyToggle checked={localLinked} onCheckedChange={handleToggle} variant="success" />
+          }
+        </div>
+      </div>
+
+      {showConfirm && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-y-auto"
+          onClick={() => setShowConfirm(false)}
+          onKeyDown={e => e.key === "Escape" && setShowConfirm(false)}
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+          <div className="relative w-full max-w-sm my-auto" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-8">
+              <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-3">
+                Connexions
+              </p>
+              <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl">
+                Délier {title} ?
+              </h3>
+            </div>
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
+              <p className="text-white/55 text-sm leading-relaxed mb-6">
+                Tu ne pourras plus utiliser {title} pour te connecter tant que tu ne relies pas ce compte.
+              </p>
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(false)}
+                  className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmUnlink}
+                  className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90"
+                >
+                  Délier
+                </button>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* Title + caption + linked meta */}
-      <div className="flex-1 min-w-0">
-        <p className="font-bold text-[14.5px] flex items-center gap-1.5">
-          {title}
-        </p>
-        <p className="text-[12px] text-white/45 truncate">
-          {localLinked ? (linkedName || caption) : caption}
-        </p>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-2 shrink-0">
-        {extraAction}
-        {busy
-          ? <Loader2 className="w-5 h-5 animate-spin text-white/40" />
-          : <GooeyToggle checked={localLinked} onCheckedChange={handleToggle} variant="success" />
-        }
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }
 
