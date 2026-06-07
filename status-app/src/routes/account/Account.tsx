@@ -453,25 +453,21 @@ export function Account() {
                 </p>
               </div>
               <div className="shrink-0">
-                {account.totp_enabled ? (
-                  <button
-                    type="button"
-                    onClick={() => { setShowDisableTotp(true); setDisableTotpCode(["","","","","",""]); }}
-                    className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/15 text-[11px] font-bold transition-colors"
-                  >
-                    Désactiver
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={startTotpSetup}
-                    disabled={totpSetupBusy}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
-                  >
-                    {totpSetupBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-                    Configurer
-                  </button>
-                )}
+                {totpSetupBusy
+                  ? <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+                  : <GooeyToggle
+                      checked={account.totp_enabled}
+                      onCheckedChange={v => {
+                        if (v) {
+                          startTotpSetup();
+                        } else {
+                          setShowDisableTotp(true);
+                          setDisableTotpCode(["","","","","",""]);
+                        }
+                      }}
+                      variant="success"
+                    />
+                }
               </div>
             </div>
 
