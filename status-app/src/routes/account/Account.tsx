@@ -417,7 +417,6 @@ export function Account() {
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[14.5px] flex items-center gap-1.5">
                   Application d'authentification
-                  {account.totp_enabled && <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />}
                 </p>
                 <p className="text-[12px] text-white/45">
                   {account.totp_enabled ? "Activé" : "Google Authenticator, Authy, 1Password…"}
@@ -450,7 +449,6 @@ export function Account() {
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[14.5px] flex items-center gap-1.5">
                   Code par email
-                  {account.email_2fa_enabled && <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />}
                 </p>
                 <p className="text-[12px] text-white/45">
                   {account.email_2fa_enabled ? "Activé" : "Reçois un code à chaque connexion"}
@@ -987,12 +985,6 @@ function ConnectionRow({
       <div className="flex-1 min-w-0">
         <p className="font-bold text-[14.5px] flex items-center gap-1.5">
           {title}
-          {localLinked && (
-            <ShieldCheck
-              className="w-3.5 h-3.5 text-emerald-300"
-              aria-label="Lié"
-            />
-          )}
         </p>
         <p className="text-[12px] text-white/45 truncate">
           {localLinked ? (linkedName || caption) : caption}
