@@ -806,7 +806,7 @@ export function Account() {
         >
           <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
           <div
-            className="relative bg-[#0a0a0a]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-7 w-full max-w-sm shadow-2xl"
+            className="relative rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-7 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)] w-full max-w-sm"
             onClick={e => e.stopPropagation()}
           >
             <button
@@ -817,59 +817,67 @@ export function Account() {
             >
               <X className="w-3.5 h-3.5" />
             </button>
-            <div className="inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white/70 mb-5">
-              <QrCode className="w-5 h-5" />
-            </div>
-            <p className="text-[10px] font-bold tracking-[0.28em] text-white/35 uppercase mb-1">
+
+            <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-1">
               Étape 1 — Scanner
             </p>
-            <h3 className="text-lg font-extrabold tracking-tight mb-3">
+            <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-2xl mb-3">
               Configure ton application
             </h3>
-            <p className="text-white/55 text-[13px] leading-relaxed mb-4">
+            <p className="text-white/50 text-sm mb-5">
               Scanne ce QR code avec Google Authenticator, Authy, 1Password ou toute app compatible.
             </p>
-            <div className="flex justify-center mb-4 bg-white rounded-xl p-3">
-              <img src={totpSetup.qrDataUri} alt="QR code TOTP" className="w-40 h-40" />
+
+            <div className="flex justify-center mb-4 bg-white rounded-2xl p-4">
+              <img src={totpSetup.qrDataUri} alt="QR code TOTP" className="w-44 h-44" />
             </div>
-            <details className="mb-5">
-              <summary className="text-[11px] text-white/35 cursor-pointer hover:text-white/60 transition-colors">
+
+            <details className="mb-5 group">
+              <summary className="text-[11px] text-white/35 cursor-pointer hover:text-white/60 transition-colors list-none flex items-center gap-1.5">
+                <span className="group-open:hidden">▶</span>
+                <span className="hidden group-open:inline">▼</span>
                 Saisie manuelle (clé secrète)
               </summary>
-              <p className="mt-2 px-3 py-2 rounded-lg bg-black/40 border border-white/10 font-mono text-[12px] text-white/70 break-all select-all">
+              <p className="mt-2 px-3 py-2 rounded-xl bg-black/40 border border-white/10 font-mono text-[12px] text-white/70 break-all select-all">
                 {totpSetup.secret}
               </p>
             </details>
-            <p className="text-[10px] font-bold tracking-[0.28em] text-white/35 uppercase mb-2">
-              Étape 2 — Vérifier
-            </p>
-            <input
-              autoFocus
-              type="text"
-              inputMode="numeric"
-              value={totpSetupCode}
-              onChange={e => setTotpSetupCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              onKeyDown={e => { if (e.key === "Enter" && totpSetupCode.length === 6) confirmTotpSetup(); }}
-              placeholder="Code à 6 chiffres"
-              maxLength={6}
-              className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/25 text-sm font-mono tracking-widest text-center mb-5 transition-all"
-            />
-            <div className="flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setTotpSetup(null)}
-                className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={confirmTotpSetup}
-                disabled={totpSetupCode.length !== 6 || totpSetupBusy}
-                className="flex-1 py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90 disabled:opacity-50"
-              >
-                {totpSetupBusy ? <Loader2 className="w-4 h-4 animate-spin inline" /> : "Activer"}
-              </button>
+
+            <div className="pt-4 border-t border-white/[0.06]">
+              <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-3">
+                Étape 2 — Vérifier
+              </p>
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-2">
+                Code à 6 chiffres
+              </label>
+              <input
+                autoFocus
+                type="text"
+                inputMode="numeric"
+                value={totpSetupCode}
+                onChange={e => setTotpSetupCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                onKeyDown={e => { if (e.key === "Enter" && totpSetupCode.length === 6) confirmTotpSetup(); }}
+                placeholder="000000"
+                maxLength={6}
+                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none text-white placeholder:text-white/20 text-sm font-mono tracking-widest text-center mb-4 transition-all"
+              />
+              <div className="flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setTotpSetup(null)}
+                  className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmTotpSetup}
+                  disabled={totpSetupCode.length !== 6 || totpSetupBusy}
+                  className="btn-liquid btn-liquid--primary flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3 font-bold text-sm disabled:opacity-50"
+                >
+                  {totpSetupBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : "Activer"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
