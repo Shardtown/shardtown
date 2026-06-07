@@ -11,6 +11,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost, apiDelete, isApiError } from "@/api/client";
 import { biometricConfirm } from "@/lib/desktop";
 import { useAuth } from "@/api/auth";
+import { useAccount } from "@/api/account";
 import type { Account as AccountT } from "@/api/account";
 
 interface TokenRow {
@@ -23,6 +24,7 @@ interface TokenRow {
 export function Account() {
   const nav = useNavigate();
   const { refresh: refreshAuth } = useAuth();
+  const { refresh: refreshAccountCtx } = useAccount();
   const reduce = useReducedMotion();
   const heroEase = [0.22, 1, 0.36, 1] as const;
   const [params, setParams] = useSearchParams();
@@ -245,9 +247,7 @@ export function Account() {
     // pour que le Header (et tout le reste de l'app) reflète l'état déconnecté
     // sans recharger la page.
     refreshAuth();
-    // Retour à l'accueil plutôt que la page de connexion : c'est moins
-    // ambigu pour l'utilisateur ("Bon retour." sur /account/login donnait
-    // l'impression d'être encore connecté).
+    refreshAccountCtx();
     nav("/", { replace: true });
   }
 
