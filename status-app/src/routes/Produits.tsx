@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  ArrowRight, Plus, Crown, Check, Star,
+  ArrowRight, Plus, Crown, Star,
   TrendingUp, ShieldCheck, MessageSquarePlus, UserPlus,
   Tags, ScrollText, Coins, Zap, Ticket, Vote, Gift, Bell,
   LayoutDashboard,
@@ -171,120 +171,6 @@ export function Produits() {
             );
           })}
         </RevealStagger>
-      </section>
-
-      {/* ─── SPOTLIGHT 1 : Niveaux ────────────────────────────── */}
-      <section className="container-wide py-20 overflow-x-clip">
-        <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
-          <Reveal direction="left" distance={60}>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/15 border border-violet-400/30 mb-6">
-              <TrendingUp className="w-3.5 h-3.5 text-violet-200" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-violet-200">Niveaux & XP</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-5">
-              Récompense l'activité
-              <br />
-              de tes membres.
-            </h2>
-            <p className="text-[15px] text-white/55 leading-relaxed mb-7">
-              Système de niveaux automatique avec XP par message, carte de rang
-              personnalisable et rôles palier. Boost d'engagement immédiat.
-            </p>
-            <ul className="space-y-2.5 text-[14px] text-white/65 mb-2">
-              {["XP par message avec cooldown anti-spam", "Rôles palier auto à des niveaux configurables", "Carte de rang personnalisable", "Multiplicateurs XP par rôle (Premium)"].map(li => (
-                <li key={li} className="flex items-start gap-2.5">
-                  <Check className="w-4 h-4 text-violet-300 flex-shrink-0 mt-0.5" />
-                  {li}
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-
-          <Reveal direction="right" distance={60}>
-            <div className="relative rounded-3xl border border-white/[0.08] bg-gradient-to-br from-violet-500/10 to-fuchsia-500/5 p-6 md:p-8 aspect-[4/3]">
-              <div className="absolute inset-0 m-6 md:m-8 rounded-2xl bg-zinc-950/70 border border-white/[0.06] p-5 flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-400" />
-                  <div className="flex-1">
-                    <div className="text-sm font-extrabold">Maya</div>
-                    <div className="text-[11px] text-white/40 font-semibold">Niveau 42 · 18 240 XP</div>
-                  </div>
-                  <div className="text-xs font-bold text-violet-200">#1</div>
-                </div>
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-[10px] font-bold text-white/40 uppercase tracking-widest">
-                    <span>Progression</span><span>72 %</span>
-                  </div>
-                  <div className="h-2.5 rounded-full bg-white/[0.06] overflow-hidden">
-                    <div className="h-full w-[72%] rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 pt-1">
-                  {[{ l: "Rang", v: "#1" }, { l: "Messages", v: "12.4k" }, { l: "Streak", v: "31j" }].map(s => (
-                    <div key={s.l} className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-2 text-center">
-                      <div className="text-sm font-extrabold">{s.v}</div>
-                      <div className="text-[9px] font-bold uppercase tracking-widest text-white/40">{s.l}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ─── SPOTLIGHT 2 : Modération (inversé) ───────────────── */}
-      <section className="container-wide py-20 overflow-x-clip">
-        <div className="grid md:grid-cols-2 gap-12 md:gap-20 items-center">
-          <Reveal direction="left" distance={60} className="md:order-1 order-2">
-            <div className="relative rounded-3xl border border-white/[0.08] bg-gradient-to-br from-rose-500/10 to-red-500/5 p-6 md:p-8 aspect-[4/3]">
-              <div className="absolute inset-0 m-6 md:m-8 rounded-2xl bg-zinc-950/70 border border-white/[0.06] p-5 flex flex-col gap-2.5 overflow-hidden">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-white/40">Logs · #mod-logs</div>
-                {[
-                  { act: "WARN", user: "@spam-bot-42", reason: "lien interdit", tone: "amber" },
-                  { act: "MUTE 1h", user: "@toxic-dude", reason: "insulte répétée", tone: "orange" },
-                  { act: "KICK", user: "@raid-account", reason: "anti-raid", tone: "rose" },
-                  { act: "BAN", user: "@phisher", reason: "lien phishing", tone: "red" },
-                ].map((l, i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-lg bg-white/[0.03] border border-white/[0.06] px-3 py-2">
-                    <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
-                      l.tone === "amber" ? "bg-amber-400/15 text-amber-200" :
-                      l.tone === "orange" ? "bg-orange-400/15 text-orange-200" :
-                      l.tone === "rose" ? "bg-rose-400/15 text-rose-200" :
-                      "bg-red-500/20 text-red-200"
-                    }`}>{l.act}</span>
-                    <span className="text-xs font-semibold text-white/80 flex-1 truncate">{l.user}</span>
-                    <span className="text-[11px] text-white/40 hidden sm:block">{l.reason}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-
-          <Reveal direction="right" distance={60} className="md:order-2 order-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-rose-500/15 border border-rose-400/30 mb-6">
-              <ShieldCheck className="w-3.5 h-3.5 text-rose-200" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-rose-200">Modération</span>
-            </div>
-            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight leading-[1.05] mb-5">
-              Garde un serveur sain,
-              <br />
-              en auto.
-            </h2>
-            <p className="text-[15px] text-white/55 leading-relaxed mb-7">
-              Anti-spam, anti-raid, anti-pub, filtres de mots, captcha à
-              l'arrivée. Toute l'artillerie sans avoir 12 modos en ligne 24/7.
-            </p>
-            <ul className="space-y-2.5 text-[14px] text-white/65">
-              {["Warn / mute / kick / ban en slash command", "Sanctions automatiques par seuil de warns", "Captcha + quarantaine anti-raid", "Logs détaillés dans un salon dédié"].map(li => (
-                <li key={li} className="flex items-start gap-2.5">
-                  <Check className="w-4 h-4 text-rose-300 flex-shrink-0 mt-0.5" />
-                  {li}
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-        </div>
       </section>
 
       {/* ─── TARIFICATION ─────────────────────────────────────── */}

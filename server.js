@@ -8281,14 +8281,12 @@ app.post('/admin/bot/:botId/guild/:guildId/premium', checkAdmin, verifyCsrf, asy
         // appliqués alors que le serveur est censé être Premium.
         // Même comportement que le webhook Stripe (server.js:932-933).
         await db.execute(
-            `INSERT INTO settings (guildId, isPremium) VALUES (?, ?)
-             ON DUPLICATE KEY UPDATE isPremium = VALUES(isPremium)`,
-            [guildId, flag],
+            'UPDATE settings SET isPremium = ? WHERE guildId = ?',
+            [flag, guildId],
         );
         await db.execute(
-            `INSERT INTO shard_settings (guildId, isPremium) VALUES (?, ?)
-             ON DUPLICATE KEY UPDATE isPremium = VALUES(isPremium)`,
-            [guildId, flag],
+            'UPDATE shard_settings SET isPremium = ? WHERE guildId = ?',
+            [flag, guildId],
         );
         await logAdminAction(req, 'premium.set', { botId, guildId }, { enabled: !!enabled, syncedBoth: true });
         res.json({ success: true, isPremium: !!enabled });

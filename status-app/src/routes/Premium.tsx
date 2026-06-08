@@ -191,9 +191,7 @@ export function Premium() {
   const [guildId, setGuildId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  // Modal de paiement Shardtown, fenêtre blanche embedded Stripe Elements.
-  // Plus de redirect vers checkout.stripe.com : carte saisie ici, intent
-  // confirmé direct. Le modal gère son propre cycle de vie.
+  const [guildModalOpen, setGuildModalOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
   useEffect(() => {
@@ -203,8 +201,6 @@ export function Premium() {
       .catch(() => setData({ adminGuilds: [] }))
       .finally(() => setLoading(false));
   }, [user]);
-
-  const buttonLabel = "Continuer vers le paiement";
 
   // Détails du plan sélectionné, formatés pour passer au CheckoutModal.
   const selectedPlan = {
@@ -218,29 +214,6 @@ export function Premium() {
   };
   const selectedGuildName = data?.adminGuilds.find(g => g.id === guildId)?.name ?? "—";
   const accountName = user?.global_name || user?.username || "—";
-
-  // Kept for backwards compat, l'ancien flow Stripe Checkout reste
-  // disponible si jamais le terminal embedded échoue (ex: Stripe.js
-  // bloqué par un AdBlock). Non utilisé par le bouton principal.
-  async function startLegacyCheckout() {
-    if (!guildId) {
-      setError("Sélectionne d'abord le serveur Discord à activer.");
-      return;
-    }
-    setError(null);
-    try {
-      const res = await apiPost<{ success: boolean; url?: string; error?: string }>("/api/create-checkout", { guildId, plan });
-      if (res.success && res.url) {
-        window.location.href = res.url;
-      } else {
-        setError(res.error || "Erreur lors de la création du paiement.");
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur réseau.");
-    }
-  }
-  // Référence retenue pour pouvoir relancer le flow legacy si besoin.
-  void startLegacyCheckout;
 
   return (
     <AppLayout>
@@ -324,7 +297,8 @@ export function Premium() {
                   recommended: true,
                   onSelect: () => {
                     setPlan("lifetime");
-                    document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" });
+                    if (!user) { window.location.href = "/account/login"; return; }
+                    setGuildId(null); setError(null); setGuildModalOpen(true);
                   },
                 },
                 {
@@ -339,7 +313,8 @@ export function Premium() {
                   features: FEATURES.yearly.map(f => ({ label: f, included: true })),
                   onSelect: () => {
                     setPlan("yearly");
-                    document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" });
+                    if (!user) { window.location.href = "/account/login"; return; }
+                    setGuildId(null); setError(null); setGuildModalOpen(true);
                   },
                 },
                 {
@@ -354,7 +329,8 @@ export function Premium() {
                   features: FEATURES.monthly.map(f => ({ label: f, included: true })),
                   onSelect: () => {
                     setPlan("monthly");
-                    document.getElementById("activate")?.scrollIntoView({ behavior: "smooth" });
+                    if (!user) { window.location.href = "/account/login"; return; }
+                    setGuildId(null); setError(null); setGuildModalOpen(true);
                   },
                 },
               ];
@@ -366,112 +342,20 @@ export function Premium() {
           </p>
         </div>
 
-        {/* Activate */}
-        <div id="activate" className="max-w-2xl mx-auto mb-20 scroll-mt-32">
-          <p className="text-sm font-bold tracking-[0.22em] text-white/40 uppercase mb-3 text-center">Activer Premium</p>
-          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight text-center mb-8">Sur quel serveur ?</h2>
-
-          {paymentResult === "success" && (
-            <div className="mb-5">
-              <Admonition type="success" title="Paiement confirmé !">
-                Premium sera activé sur ton serveur dès réception de la confirmation Stripe (quelques secondes).
-              </Admonition>
-            </div>
-          )}
-          {paymentResult === "cancelled" && (
-            <div className="mb-5">
-              <Admonition type="warning" title="Paiement annulé">
-                Aucun débit n'a été effectué. Tu peux relancer la souscription à tout moment.
-              </Admonition>
-            </div>
-          )}
-
-          <div className="rounded-2xl bg-white/[0.025] border border-white/[0.08] p-6 md:p-8 backdrop-blur-sm">
-            {!user && !loading ? (
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                    <Lock className="w-5 h-5" />
-                  </div>
-                  <p className="text-white/70">Connecte-toi à ton compte Shardtown (avec Discord lié) pour activer Premium sur ton serveur.</p>
-                </div>
-                <a
-                  href="/account/login"
-                  className="btn-liquid btn-liquid--primary rounded-full px-6 py-3 font-bold text-sm inline-flex items-center justify-center"
-                >
-                  Se connecter
-                </a>
-              </div>
-            ) : loading ? (
-              <div className="h-32 animate-pulse" />
-            ) : (
-              <div className="space-y-5">
-                {/* Plan toggle, 3 formules */}
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-white/40 mb-2.5">
-                    Formule
-                  </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1 bg-white/[0.03] border border-white/[0.06] rounded-2xl">
-                    {(["lifetime", "yearly", "monthly"] as const).map(p => {
-                      const labelByPlan = { lifetime: "Lifetime", yearly: "Annuel", monthly: "Mensuel" } as const;
-                      return (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setPlan(p)}
-                          className={`px-4 py-3 rounded-xl text-sm font-bold transition-all text-left sm:text-center ${
-                            plan === p
-                              ? "bg-amber-500/15 text-amber-200 border border-amber-500/40 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.15)]"
-                              : "text-white/50 hover:text-white border border-transparent"
-                          }`}
-                        >
-                          {labelByPlan[p]}{" "}
-                          <span className="text-white/30 font-mono-num">— {PRICE[p].label}{PRICE[p].suffix}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-2 text-[11px] text-white/40 leading-relaxed">
-                    {PRICE[plan].introNote}
-                  </p>
-                </div>
-
-                {/* Guild selector */}
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-white/40 mb-2.5">
-                    Serveur Discord
-                  </label>
-                  <GuildSelect guilds={data?.adminGuilds || []} value={guildId} onChange={setGuildId} />
-                </div>
-
-                {error && (
-                  <Admonition type="danger" title="Vérification">
-                    {error}
-                  </Admonition>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!guildId) {
-                      setError("Sélectionne d'abord le serveur Discord à activer.");
-                      return;
-                    }
-                    setError(null);
-                    setCheckoutOpen(true);
-                  }}
-                  disabled={!guildId}
-                  className="btn-liquid btn-liquid--gold w-full rounded-full px-6 py-4 font-extrabold text-sm flex items-center justify-center"
-                >
-                  {buttonLabel}
-                </button>
-                <p className="text-[11px] text-white/35 text-center leading-relaxed">
-                  Paiement sécurisé · carte saisie directement chez Shardtown via Stripe Elements (zéro redirection).
-                </p>
-              </div>
-            )}
+        {paymentResult === "success" && (
+          <div className="max-w-2xl mx-auto mb-10">
+            <Admonition type="success" title="Paiement confirmé !">
+              Premium sera activé sur ton serveur dès réception de la confirmation Stripe (quelques secondes).
+            </Admonition>
           </div>
-        </div>
+        )}
+        {paymentResult === "cancelled" && (
+          <div className="max-w-2xl mx-auto mb-10">
+            <Admonition type="warning" title="Paiement annulé">
+              Aucun débit n'a été effectué. Tu peux relancer la souscription à tout moment.
+            </Admonition>
+          </div>
+        )}
 
         {/* Comparison */}
         <p className="text-sm font-bold tracking-[0.22em] text-white/40 uppercase mb-3">Comparaison détaillée</p>
@@ -544,6 +428,69 @@ export function Premium() {
           Une question qui n'apparaît pas ? <Link to="/wiki#faq" className="text-emerald-300 hover:text-emerald-200 underline-offset-2 hover:underline">Consulte le wiki</Link> ou ouvre un ticket sur notre serveur.
         </p>
       </section>
+
+      {/* Modal : sélection du serveur */}
+      {guildModalOpen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-y-auto"
+          onClick={() => setGuildModalOpen(false)}
+          onKeyDown={e => e.key === "Escape" && setGuildModalOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+          <div className="relative w-full max-w-sm my-auto" onClick={e => e.stopPropagation()}>
+            <div className="text-center mb-8">
+              <p className="text-[11px] font-bold tracking-[0.32em] text-amber-300/60 uppercase mb-3">
+                Premium
+              </p>
+              <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl">
+                Sur quel serveur ?
+              </h3>
+              <p className="text-white/50 text-sm mt-3">
+                {plan === "lifetime" ? `Lifetime · ${PRICE.lifetime.label}`
+                  : plan === "yearly" ? `Annuel · ${PRICE.yearly.label}/mois`
+                  : `Mensuel · ${PRICE.monthly.label}/mois`}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
+              {loading ? (
+                <div className="h-12 bg-white/[0.03] rounded-xl animate-pulse mb-6" />
+              ) : (
+                <>
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.22em] text-white/40 mb-2.5">
+                    Serveur Discord
+                  </label>
+                  <GuildSelect guilds={data?.adminGuilds || []} value={guildId} onChange={setGuildId} />
+                  {error && (
+                    <p className="mt-3 text-[12px] text-red-400 font-semibold">{error}</p>
+                  )}
+                </>
+              )}
+              <div className="flex gap-2.5 mt-6">
+                <button
+                  type="button"
+                  onClick={() => { setGuildModalOpen(false); setError(null); }}
+                  className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  disabled={!guildId}
+                  onClick={() => {
+                    if (!guildId) { setError("Sélectionne un serveur."); return; }
+                    setError(null);
+                    setGuildModalOpen(false);
+                    setCheckoutOpen(true);
+                  }}
+                  className="flex-1 py-3 rounded-full font-bold text-sm bg-amber-300 text-amber-950 transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Continuer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Terminal de paiement Shardtown, Stripe Elements embedded. */}
       <CheckoutModal
