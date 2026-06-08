@@ -388,16 +388,9 @@ export function ShardGuild() {
               <div key={i} className="h-44 bg-white/[0.03] rounded-2xl animate-pulse" />
             ))}
           </div>
-          <div className="grid md:grid-cols-[230px_1fr] gap-10">
-            <div className="space-y-2">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-9 bg-white/[0.03] rounded-full animate-pulse" />
-              ))}
-            </div>
-            <div className="space-y-4">
-              <div className="h-48 bg-white/[0.03] rounded-2xl animate-pulse" />
-              <div className="h-64 bg-white/[0.03] rounded-2xl animate-pulse" />
-            </div>
+          <div className="space-y-4">
+            <div className="h-48 bg-white/[0.03] rounded-2xl animate-pulse" />
+            <div className="h-64 bg-white/[0.03] rounded-2xl animate-pulse" />
           </div>
         </section>
       </AppLayout>
@@ -692,106 +685,126 @@ export function ShardGuild() {
 
         </header>
 
-        <div className="grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14">
-          <aside className={`md:self-start md:sticky ${IS_DESKTOP ? "md:top-2 md:max-h-[calc(100dvh-96px)]" : "md:top-24 md:max-h-[calc(100dvh-7rem)]"} md:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
-            <nav
-              ref={navRef}
-              className="space-y-7 relative"
-              onMouseLeave={() => moveIndicatorTo(tab)}
-            >
-              {/* Indicateur coulissant, même mécanisme que la pill du
-                  Header. Positionné en absolute, suit la souris via
-                  transition CSS, retombe sur le tab actif au mouseleave. */}
-              <span
-                aria-hidden
-                className="absolute pointer-events-none rounded-lg bg-[#1c2238] border border-white/[0.14] transition-all duration-300 ease-out"
-                style={{
-                  top: indicator.top,
-                  left: indicator.left,
-                  width: indicator.width,
-                  height: indicator.height,
-                  opacity: indicator.opacity,
-                }}
-              />
-              {/* "Vue d'ensemble" → traitée en standalone (pas de header de
-                  groupe), elle joue le rôle de landing par défaut. */}
-              {/* Fond unique englobant TOUT (items épinglés + catégories).
-                  Transparent + simple bordure, conformément à la demande
-                  de DA "transparente". */}
-              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] backdrop-blur-sm p-2 space-y-3">
-                {/* Section haute, items épinglés (style mee6, sans
-                    en-tête de groupe). Premium et l'assistante restent dans
-                    l'ensemble unifié. */}
-                <div className="flex md:flex-col gap-0.5">
-                  {TABS.filter(t => "pinned" in t && t.pinned).map(t => (
-                    <SidebarTab
-                      key={t.key}
-                      t={t}
-                      active={t.key === tab}
-                      status={getModuleStatus(t.key, security?.settings ?? null, community?.settings ?? null)}
-                      onClick={() => {
-                        if ("externalTo" in t && t.externalTo) {
-                          nav(t.externalTo);
-                        } else {
-                          setTab(t.key);
-                        }
-                      }}
-                      refCallback={el => { tabRefs.current[t.key] = el; }}
-                      onHover={() => moveIndicatorTo(t.key)}
-                    />
-                  ))}
-                </div>
+        <div className={tab !== "overview" ? "grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14" : ""}>
+          {tab !== "overview" && (
+            <aside className={`md:self-start md:sticky ${IS_DESKTOP ? "md:top-2 md:max-h-[calc(100dvh-96px)]" : "md:top-24 md:max-h-[calc(100dvh-7rem)]"} md:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
+              <nav
+                ref={navRef}
+                className="space-y-7 relative"
+                onMouseLeave={() => moveIndicatorTo(tab)}
+              >
+                <span
+                  aria-hidden
+                  className="absolute pointer-events-none rounded-lg bg-[#1c2238] border border-white/[0.14] transition-all duration-300 ease-out"
+                  style={{
+                    top: indicator.top,
+                    left: indicator.left,
+                    width: indicator.width,
+                    height: indicator.height,
+                    opacity: indicator.opacity,
+                  }}
+                />
+                <div className="rounded-2xl border border-white/[0.06] bg-white/[0.015] backdrop-blur-sm p-2 space-y-3">
+                  <div className="flex md:flex-col gap-0.5">
+                    {TABS.filter(t => "pinned" in t && t.pinned).map(t => (
+                      <SidebarTab
+                        key={t.key}
+                        t={t}
+                        active={t.key === tab}
+                        status={getModuleStatus(t.key, security?.settings ?? null, community?.settings ?? null)}
+                        onClick={() => {
+                          if ("externalTo" in t && t.externalTo) {
+                            nav(t.externalTo);
+                          } else {
+                            setTab(t.key);
+                          }
+                        }}
+                        refCallback={el => { tabRefs.current[t.key] = el; }}
+                        onHover={() => moveIndicatorTo(t.key)}
+                      />
+                    ))}
+                  </div>
 
-                {/* Séparateur fin entre les épinglés et les catégories
-                    pour rappeler la division mee6, sans casser le fond. */}
-                <div className="h-px bg-white/[0.06] mx-2" aria-hidden />
+                  <div className="h-px bg-white/[0.06] mx-2" aria-hidden />
 
-                {/* Catégories collapsibles. */}
-                <div className="space-y-1">
-                  {groups.map(g => {
-                  const isOpen = openGroups.has(g);
-                  const tabsInGroup = TABS.filter(t => t.group === g);
-                  return (
-                    <div key={g}>
-                      <button
-                        type="button"
-                        onClick={() => toggleGroup(g)}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] text-white/55 hover:text-white/85 hover:bg-white/[0.04] transition-colors"
-                        aria-expanded={isOpen}
-                      >
-                        <ChevronDown
-                          className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
-                          strokeWidth={2.5}
-                        />
-                        <span className="flex-1 text-left">{g}</span>
-                        <span className="text-[10px] font-mono-num text-white/30 normal-case tracking-normal">
-                          {tabsInGroup.length}
-                        </span>
-                      </button>
-                      {isOpen && (
-                        <div className="flex md:flex-col gap-0.5 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0 mt-0.5">
-                          {tabsInGroup.map(t => (
-                            <SidebarTab
-                              key={t.key}
-                              t={t}
-                              active={t.key === tab}
-                              status={getModuleStatus(t.key, security?.settings ?? null, community?.settings ?? null)}
-                              onClick={() => setTab(t.key)}
-                              refCallback={el => { tabRefs.current[t.key] = el; }}
-                              onHover={() => moveIndicatorTo(t.key)}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                  <div className="space-y-1">
+                    {groups.map(g => {
+                    const isOpen = openGroups.has(g);
+                    const tabsInGroup = TABS.filter(t => t.group === g);
+                    return (
+                      <div key={g}>
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(g)}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-bold uppercase tracking-[0.2em] text-white/55 hover:text-white/85 hover:bg-white/[0.04] transition-colors"
+                          aria-expanded={isOpen}
+                        >
+                          <ChevronDown
+                            className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 ${isOpen ? "rotate-0" : "-rotate-90"}`}
+                            strokeWidth={2.5}
+                          />
+                          <span className="flex-1 text-left">{g}</span>
+                          <span className="text-[10px] font-mono-num text-white/30 normal-case tracking-normal">
+                            {tabsInGroup.length}
+                          </span>
+                        </button>
+                        {isOpen && (
+                          <div className="flex md:flex-col gap-0.5 overflow-x-auto md:overflow-visible -mx-1 md:mx-0 px-1 md:px-0 pb-1 md:pb-0 mt-0.5">
+                            {tabsInGroup.map(t => (
+                              <SidebarTab
+                                key={t.key}
+                                t={t}
+                                active={t.key === tab}
+                                status={getModuleStatus(t.key, security?.settings ?? null, community?.settings ?? null)}
+                                onClick={() => setTab(t.key)}
+                                refCallback={el => { tabRefs.current[t.key] = el; }}
+                                onHover={() => moveIndicatorTo(t.key)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  </div>
                 </div>
-              </div>
-            </nav>
-          </aside>
+              </nav>
+            </aside>
+          )}
 
           <div className={`min-w-0 ${dirty ? "pb-28" : ""}`}>
+            {tab === "overview" && (
+              <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden mb-6 pb-px border-b border-white/[0.06]">
+                {TABS.filter(t => "pinned" in t && t.pinned).map(t => {
+                  const Icon = t.icon;
+                  const badge = "badge" in t ? t.badge : undefined;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => {
+                        if ("externalTo" in t && t.externalTo) nav(t.externalTo);
+                        else setTab(t.key);
+                      }}
+                      className={`relative flex items-center gap-2 px-4 py-3 text-[13px] font-semibold whitespace-nowrap transition-colors flex-shrink-0 ${
+                        t.key === tab ? "text-white" : "text-white/45 hover:text-white/75"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.8} />
+                      <span>{t.label}</span>
+                      {badge && (
+                        <span className="ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-200 border border-blue-400/30">
+                          {badge}
+                        </span>
+                      )}
+                      {t.key === tab && (
+                        <span aria-hidden className="absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-white" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {renderTab()}
           </div>
         </div>
@@ -979,7 +992,7 @@ function OverviewPanel({
             .map(g => (
               <section key={g}>
                 <h3 className="text-2xl font-extrabold tracking-tight text-white mb-5">{g}</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
                   {TABS.filter(t => t.group === g && isVisibleModule(t)).map(t => (
                     <ModuleCard
                       key={t.key}
