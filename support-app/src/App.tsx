@@ -43,7 +43,7 @@ export default function App() {
           Connectez-vous d'abord au dashboard principal pour accéder au support.
         </p>
         <a
-          href="https://shardtwn.fr/shard/login"
+          href={`https://shardtwn.fr/shard/login?returnTo=${encodeURIComponent(window.location.href)}`}
           className="mt-2 px-6 py-2.5 rounded-full bg-white text-black font-bold text-sm hover:opacity-90 transition-opacity"
         >
           Se connecter

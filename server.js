@@ -928,6 +928,8 @@ function decryptToken(stored) {
 
 function isSafeRedirect(url) {
     if (!url || typeof url !== 'string') return false;
+    const TRUSTED = ['https://support.shardtwn.fr'];
+    if (TRUSTED.some(o => url === o || url.startsWith(o + '/'))) return true;
     if (!url.startsWith('/') || url.startsWith('//') || url.startsWith('/\\')) return false;
     try {
         const u = new URL(url, 'https://placeholder.local');
