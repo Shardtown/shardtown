@@ -8273,19 +8273,24 @@ app.post('/admin/bot/:botId/guild/:guildId/premium', checkAdmin, verifyCsrf, asy
     if (!bot) return res.json({ success: false, error: 'Bot introuvable' });
     const flag = enabled ? 1 : 0;
     try {
-        // Offre unifiée : un seul Premium couvre les deux bots.
-        // INSERT ... ON DUPLICATE KEY UPDATE pour gérer le cas où la guild
-        // n'a pas encore de row (serveur récent jamais configuré).
-        await db.execute(
-            `INSERT INTO settings (guildId, isPremium) VALUES (?, ?)
-             ON DUPLICATE KEY UPDATE isPremium = VALUES(isPremium)`,
-            [guildId, flag],
-        );
+        // shard_settings est la table principale (base shardguard).
+        // settings (ShardGuard) peut ne pas exister dans cette base — on
+        // l'essaie en best-effort sans bloquer si la table est absente.
         await db.execute(
             `INSERT INTO shard_settings (guildId, isPremium) VALUES (?, ?)
              ON DUPLICATE KEY UPDATE isPremium = VALUES(isPremium)`,
             [guildId, flag],
         );
+        try {
+            await db.execute(
+                `INSERT INTO settings (guildId, isPremium) VALUES (?, ?)
+                 ON DUPLICATE KEY UPDATE isPremium = VALUES(isPremium)`,
+                [guildId, flag],
+            );
+        } catch (e) {
+            // settings n'existe pas dans cette base (ShardGuard séparé) — non fatal.
+            console.warn('[admin/premium] settings skip:', e.message);
+        }
         await logAdminAction(req, 'premium.set', { botId, guildId }, { enabled: !!enabled, syncedBoth: true });
         res.json({ success: true, isPremium: !!enabled });
     } catch (err) {
