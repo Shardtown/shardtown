@@ -685,98 +685,143 @@ function ActivateModal({
   const allChecked = c1 && c2 && c3;
   const canSubmit = allChecked && token.trim().length >= 50 && secret.trim().length > 0 && !submitting;
 
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onCancel]);
+
   return (
-    <ModalShell onClose={onCancel}>
-      <div className="p-7">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="absolute top-4 right-4 w-8 h-8 rounded-lg hover:bg-white/[0.06] flex items-center justify-center text-white/60 hover:text-white"
-          aria-label="Fermer"
-        >
-          <X className="w-4 h-4" />
-        </button>
-        <h2 className="text-[20px] font-bold mb-3 pr-8">Configure ton bot personnalisé</h2>
-        <p className="text-[13.5px] text-white/65 leading-relaxed mb-4">
-          Configurer le Bot Personnalisé est rapide et simple : tu peux personnaliser
-          l'avatar, le nom, la bannière, le statut et l'activité du bot.
-        </p>
-        <p className="text-[13.5px] text-white/65 leading-relaxed mb-4">
-          Pour configurer le Bot Personnalisé, suis ce{" "}
-          <a
-            href="/wiki#custom-bot"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-300 underline decoration-blue-300/40 hover:decoration-blue-300 underline-offset-2 inline-flex items-center gap-1"
-          >
-            guide d'installation <ExternalLink className="w-3 h-3" />
-          </a>.
-        </p>
-        <p className="text-[13.5px] text-white/65 leading-relaxed mb-3">
-          Avant de continuer, assure-toi que les paramètres suivants sont corrects dans le{" "}
-          <a
-            href="https://discord.com/developers/applications"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-300 underline decoration-blue-300/40 hover:decoration-blue-300 underline-offset-2 inline-flex items-center gap-1"
-          >
-            Portail Développeur Discord
-          </a>{" "}:
-        </p>
-        <div className="space-y-3 mb-5">
-          <CheckRow checked={c1} onChange={setC1}>
-            Le <strong className="text-white/85">SERVER MEMBERS INTENT</strong> est activé{" "}
-            <span className="text-white/45">(obligatoire pour les commandes mod).</span>
-          </CheckRow>
-          <CheckRow checked={c2} onChange={setC2}>
-            « <strong className="text-white/85">Require OAuth2 Code Grant</strong> » est désactivé.
-          </CheckRow>
-          <CheckRow checked={c3} onChange={setC3}>
-            <code className="text-white/85 text-[11.5px] bg-white/[0.06] px-1.5 py-0.5 rounded">https://shardtwn.fr/custom-bot-auth</code>{" "}
-            est ajouté dans <strong className="text-white/85">OAuth2 → Redirects</strong>.
-          </CheckRow>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-y-auto">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onCancel} />
+      <div className="relative w-full max-w-2xl my-auto">
+
+        {/* Header au-dessus de la card, même DA que le modal 2FA */}
+        <div className="text-center mb-8">
+          <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-3">
+            Bot personnalisé
+          </p>
+          <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl">
+            Configure ton bot
+          </h3>
+          <p className="text-white/50 text-sm mt-3">
+            Vérifie les prérequis Discord, puis entre ton token pour activer.
+          </p>
         </div>
-        <div className="space-y-3 mb-6">
-          <input
-            type="password"
-            value={secret}
-            onChange={e => setSecret(e.target.value)}
-            placeholder="Entre ici ton secret client OAuth2…"
-            autoComplete="off"
-            spellCheck={false}
-            className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 font-mono-num tracking-tight transition-colors"
-          />
-          <input
-            type="password"
-            value={token}
-            onChange={e => setToken(e.target.value)}
-            placeholder="Mets le token du bot ici…"
-            autoComplete="off"
-            spellCheck={false}
-            className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/[0.08] focus:border-blue-400/50 focus:outline-none text-[14px] text-white placeholder:text-white/30 font-mono-num tracking-tight transition-colors"
-          />
-        </div>
-        <div className="flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={submitting}
-            className="px-5 py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-white text-[13px] font-semibold transition-colors disabled:opacity-50"
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={() => onSubmit({ token: token.trim(), clientSecret: secret.trim() })}
-            disabled={!canSubmit}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-white text-[13px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            Activer le bot personnalisé
-          </button>
+
+        {/* Card glassmorphism */}
+        <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
+          <div className="flex gap-0 items-start">
+
+            {/* Colonne gauche : prérequis */}
+            <div className="flex-1 pr-8">
+              <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-4">
+                Étape 1 · Prérequis
+              </p>
+              <p className="text-[12px] text-white/50 leading-relaxed mb-4">
+                Vérifie dans le{" "}
+                <a
+                  href="https://discord.com/developers/applications"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-300 underline decoration-blue-300/40 hover:decoration-blue-300 underline-offset-2"
+                >
+                  Portail Développeur
+                </a>{" "}
+                et suis notre{" "}
+                <a
+                  href="/wiki#custom-bot"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-300 underline decoration-blue-300/40 hover:decoration-blue-300 underline-offset-2 inline-flex items-center gap-1"
+                >
+                  guide <ExternalLink className="w-3 h-3" />
+                </a>.
+              </p>
+              <div className="space-y-3">
+                <CheckRow checked={c1} onChange={setC1}>
+                  Le <strong className="text-white/85">SERVER MEMBERS INTENT</strong> est activé{" "}
+                  <span className="text-white/40">(obligatoire pour les commandes mod).</span>
+                </CheckRow>
+                <CheckRow checked={c2} onChange={setC2}>
+                  « <strong className="text-white/85">Require OAuth2 Code Grant</strong> » est désactivé.
+                </CheckRow>
+                <CheckRow checked={c3} onChange={setC3}>
+                  <code className="text-white/85 text-[11px] bg-white/[0.06] px-1.5 py-0.5 rounded">https://shardtwn.fr/custom-bot-auth</code>{" "}
+                  est ajouté dans <strong className="text-white/85">OAuth2 → Redirects</strong>.
+                </CheckRow>
+              </div>
+            </div>
+
+            {/* Séparateur vertical */}
+            <div className="w-px self-stretch bg-white/[0.06] mx-0" />
+
+            {/* Colonne droite : inputs + actions */}
+            <div className="flex-1 pl-8 flex flex-col justify-center">
+              <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase mb-6">
+                Étape 2 · Ton token
+              </p>
+
+              <div className="space-y-3 mb-6">
+                <div>
+                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-2">
+                    Secret Client OAuth2
+                  </label>
+                  <input
+                    type="password"
+                    value={secret}
+                    onChange={e => setSecret(e.target.value)}
+                    placeholder="OAuth2 → Client Secret…"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/40 focus:outline-none text-[13px] text-white placeholder:text-white/30 font-mono tracking-tight transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-2">
+                    Token du bot
+                  </label>
+                  <input
+                    type="password"
+                    value={token}
+                    onChange={e => setToken(e.target.value)}
+                    placeholder="Bot → Reset Token…"
+                    autoComplete="off"
+                    spellCheck={false}
+                    className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/40 focus:outline-none text-[13px] text-white placeholder:text-white/30 font-mono tracking-tight transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2.5 w-full">
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  disabled={submitting}
+                  className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSubmit({ token: token.trim(), clientSecret: secret.trim() })}
+                  disabled={!canSubmit}
+                  className="btn-liquid btn-liquid--primary flex-1 inline-flex items-center justify-center gap-2 rounded-full py-3 font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Activer"}
+                </button>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
-    </ModalShell>
+    </div>
   );
 }
 
