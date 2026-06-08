@@ -8751,6 +8751,7 @@ if (process.env.TWITCH_CLIENT_ID || process.env.YOUTUBE_API_KEY) {
 // SPA catch-all — must be last. Anything that didn't match an Express route
 // (and isn't an API/webhook/OAuth path) gets the React build.
 app.get(/.*/, (req, res, next) => {
+    if (req.hostname === 'support.shardtwn.fr') return next();
     const p = req.path;
     if (
         p.startsWith('/api/') ||
