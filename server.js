@@ -1059,7 +1059,8 @@ app.use(session({
         httpOnly: true,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000
+        maxAge: 24 * 60 * 60 * 1000,
+        domain: process.env.APP_URL?.includes('shardtwn.fr') ? '.shardtwn.fr' : undefined,
     }
 }));
 
@@ -8784,6 +8785,20 @@ app.use((err, req, res, next) => {
 // ── Ticket system API ─────────────────────────────────────────────────────────
 const ticketRoutes = require('./lib/ticketRoutes');
 app.use('/api/support', ticketRoutes);
+
+// ── Support subdomain (support.shardtwn.fr) ───────────────────────────────────
+const SUPPORT_DIST = path.join(__dirname, 'support-app', 'dist');
+if (require('fs').existsSync(SUPPORT_DIST)) {
+    const supportStatic = require('express').static(SUPPORT_DIST, { index: false, fallthrough: true, maxAge: '1h' });
+    const supportAssets = require('express').static(path.join(SUPPORT_DIST, 'assets'), { maxAge: '1y', immutable: true });
+    app.use((req, res, next) => {
+        const host = req.hostname;
+        if (host !== 'support.shardtwn.fr') return next();
+        if (req.path.startsWith('/api/') || req.path.startsWith('/transcripts/')) return next();
+        if (req.path.startsWith('/assets/')) return supportAssets(req, res, next);
+        supportStatic(req, res, () => res.sendFile(path.join(SUPPORT_DIST, 'index.html')));
+    });
+}
 
 
 console.log('Tentative de démarrage du serveur...');

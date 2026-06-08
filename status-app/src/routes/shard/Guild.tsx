@@ -20,7 +20,7 @@ import {
 } from "@/components/shard/moderation/tabs";
 import {
   WelcomeTab, AutoRoleTab, BirthdaysTab, LevelsTab, EconomyTab,
-  GiveawaysTab, PollsTab, TempVoiceTab, EmbedBuilderTab, ReactionsTab, TicketsTab,
+  GiveawaysTab, PollsTab, TempVoiceTab, EmbedBuilderTab, ReactionsTab,
   StreamAlertsTab,
 } from "@/components/shard/tabs";
 import { CustomBotTab } from "@/components/shard/CustomBotTab";
@@ -74,7 +74,6 @@ const TABS = [
   { key: "giveaways", label: "Giveaways",        icon: Gift,               group: "Jeux et divertissements", side: "community" },
   { key: "polls",     label: "Sondages",         icon: Vote,               group: "Jeux et divertissements", side: "community" },
   { key: "tempvoice", label: "Vocal temporaire", icon: Volume2,            group: "Jeux et divertissements", side: "community" },
-  { key: "tickets",   label: "Tickets",          icon: MessageCircleHeart, group: "Jeux et divertissements", side: "community" },
   { key: "reactions", label: "Réactions auto",   icon: Smile,              group: "Jeux et divertissements", side: "community" },
 
   // ─── MONÉTISATION (futur système d'affiliation) ──────────────────────
@@ -538,7 +537,6 @@ export function ShardGuild() {
         case "tempvoice": return <TempVoiceTab {...tp} />;
         case "embed":     return <EmbedBuilderTab {...tp} />;
         case "reactions": return <ReactionsTab {...tp} />;
-        case "tickets":   return <TicketsTab {...tp} />;
         case "twitch":    return <StreamAlertsTab {...tp} platformFilter="twitch" />;
         case "youtube":   return <StreamAlertsTab {...tp} platformFilter="youtube" />;
       }
@@ -1100,7 +1098,6 @@ function getModuleStatus(
     case "birthdays": return com?.birthdayChannelId ? "active" : "inactive";
     case "levels":    return truthy(com?.levelsEnabled) ? "active" : "inactive";
     case "economy":   return truthy(com?.economyEnabled) ? "active" : "inactive";
-    case "tickets":   return truthy(com?.ticketEnabled) ? "active" : "inactive";
     case "tempvoice": return com?.tempVoiceTrigger ? "active" : "inactive";
     case "premium":   return (com?.isPremium === 1 || com?.isPremium === "1" || sec?.isPremium === 1 || sec?.isPremium === "1") ? "active" : "inactive";
     // Modules sans flag on/off direct dans les settings, l'utilisateur
