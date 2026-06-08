@@ -791,17 +791,22 @@ function useSupportConfig(guildId: string) {
   return { config, loading, error, save };
 }
 
+type TicketTab = "config" | "stats" | "transcripts" | "incidents";
+
 export function TicketsTab({ guildId, channels, categories, roles }: TabBase) {
-  const [tab, setTab] = useState<"config" | "transcripts">("config");
+  const [tab, setTab] = useState<TicketTab>("config");
   return (
     <div className="space-y-4">
       <div className="inline-flex p-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-bold">
         <TicketSubTab active={tab === "config"} onClick={() => setTab("config")}>Configuration</TicketSubTab>
+        <TicketSubTab active={tab === "stats"} onClick={() => setTab("stats")}>Statistiques</TicketSubTab>
         <TicketSubTab active={tab === "transcripts"} onClick={() => setTab("transcripts")}>Transcripts</TicketSubTab>
+        <TicketSubTab active={tab === "incidents"} onClick={() => setTab("incidents")}>Incidents</TicketSubTab>
       </div>
-      {tab === "config"
-        ? <TicketsConfig guildId={guildId} channels={channels} categories={categories} roles={roles} />
-        : <TicketsTranscripts guildId={guildId} />}
+      {tab === "config"      && <TicketsConfig guildId={guildId} channels={channels} categories={categories} roles={roles} />}
+      {tab === "stats"       && <TicketsStats guildId={guildId} />}
+      {tab === "transcripts" && <TicketsTranscripts guildId={guildId} />}
+      {tab === "incidents"   && <TicketsIncidents guildId={guildId} />}
     </div>
   );
 }
@@ -1029,6 +1034,223 @@ function TicketsTranscripts({ guildId }: { guildId: string }) {
           </div>
         )}
       </SectionCard>
+    </div>
+  );
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+
+interface StatsDay  { day: string; cnt: number }
+interface StatsCat  { category: string; cnt: number }
+interface StatsTotal { event_type: string; cnt: number }
+interface SupportStats {
+  opened: StatsDay[];
+  closed: StatsDay[];
+  byCategory: StatsCat[];
+  totals: StatsTotal[];
+  openCount: number;
+  closedCount: number;
+}
+
+function StatCard({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4 flex flex-col gap-1">
+      <p className="text-[11px] font-bold tracking-[0.15em] uppercase text-white/40">{label}</p>
+      <p className="text-2xl font-black text-white">{value}</p>
+      {sub && <p className="text-[11px] text-white/30">{sub}</p>}
+    </div>
+  );
+}
+
+function MiniBar({ data, color }: { data: StatsDay[]; color: string }) {
+  if (!data.length) return <p className="text-[11px] text-white/30 italic">Aucune donnée</p>;
+  const max = Math.max(...data.map(d => d.cnt), 1);
+  return (
+    <div className="flex items-end gap-[2px] h-16 w-full">
+      {data.map(d => (
+        <div key={d.day} className="flex-1 flex flex-col items-center gap-0.5 group relative">
+          <div
+            className={`w-full rounded-sm ${color} opacity-70 group-hover:opacity-100 transition-opacity`}
+            style={{ height: `${Math.max((d.cnt / max) * 100, 4)}%` }}
+          />
+          <span className="absolute -top-5 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10">
+            {d.day.slice(5)} · {d.cnt}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TicketsStats({ guildId }: { guildId: string }) {
+  const [stats, setStats] = useState<SupportStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [days, setDays] = useState(30);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    apiGet<SupportStats>(`/api/support/stats/${guildId}?days=${days}`)
+      .then(r => { if (!cancelled) setStats(r); })
+      .catch(() => { if (!cancelled) setStats(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [guildId, days]);
+
+  const totalOpened  = stats?.totals?.find(t => t.event_type === "opened")?.cnt  ?? 0;
+  const totalClosed  = stats?.totals?.find(t => t.event_type === "closed")?.cnt  ?? 0;
+  const catMax       = Math.max(...(stats?.byCategory?.map(c => c.cnt) ?? [1]), 1);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        {[7, 30, 90].map(d => (
+          <button key={d} type="button" onClick={() => setDays(d)}
+            className={`px-3 py-1 rounded-full text-[11px] font-bold border transition-colors ${
+              days === d
+                ? "bg-white text-black border-white"
+                : "border-white/10 text-white/50 hover:border-white/20 hover:text-white/80"
+            }`}>
+            {d}j
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <p className="text-[12px] text-white/30 italic">Chargement…</p>
+      ) : !stats ? (
+        <p className="text-[12px] text-red-400">Erreur de chargement</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard label="Ouverts" value={totalOpened} sub={`${days} derniers jours`} />
+            <StatCard label="Fermés" value={totalClosed} sub={`${days} derniers jours`} />
+            <StatCard label="En cours" value={stats.openCount} sub="actuellement" />
+          </div>
+
+          <SectionCard title="Tickets ouverts par jour">
+            <MiniBar data={stats.opened} color="bg-blue-400" />
+          </SectionCard>
+
+          <SectionCard title="Tickets fermés par jour">
+            <MiniBar data={stats.closed} color="bg-emerald-400" />
+          </SectionCard>
+
+          {stats.byCategory.length > 0 && (
+            <SectionCard title="Par catégorie">
+              <div className="space-y-2">
+                {stats.byCategory.map(c => (
+                  <div key={c.category} className="flex items-center gap-3">
+                    <span className="text-[12px] font-bold text-white/70 w-24 truncate capitalize">{c.category}</span>
+                    <div className="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-white/40"
+                        style={{ width: `${(c.cnt / catMax) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-[11px] text-white/40 w-6 text-right">{c.cnt}</span>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Incidents ─────────────────────────────────────────────────────────────────
+
+interface Incident {
+  id: number;
+  service_name: string;
+  status: "up" | "down" | "degraded";
+  message: string | null;
+  started_at: string;
+  ended_at: string | null;
+}
+
+const INCIDENT_BADGE: Record<string, string> = {
+  down:     "bg-red-500/20 text-red-400 border-red-500/30",
+  degraded: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+  up:       "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+};
+
+const INCIDENT_DOT: Record<string, string> = {
+  down:     "bg-red-400",
+  degraded: "bg-amber-400",
+  up:       "bg-emerald-400",
+};
+
+function IncidentRow({ i, fmt }: { i: Incident; fmt: (s: string) => string }) {
+  const active = !i.ended_at;
+  return (
+    <div className={`flex items-start gap-3 py-3 border-b border-white/[0.04] last:border-0 ${active ? "opacity-100" : "opacity-60"}`}>
+      <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${INCIDENT_DOT[i.status] ?? "bg-white/20"} ${active && i.status !== "up" ? "animate-pulse" : ""}`} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-bold text-white">{i.service_name}</p>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${INCIDENT_BADGE[i.status] ?? ""}`}>
+            {i.status}
+          </span>
+          {active && <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider">En cours</span>}
+        </div>
+        {i.message && <p className="text-[11.5px] text-white/50 mt-0.5">{i.message}</p>}
+        <p className="text-[11px] text-white/30 mt-0.5">
+          Débuté le {fmt(i.started_at)}
+          {i.ended_at && <> · Résolu le {fmt(i.ended_at)}</>}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function TicketsIncidents({ guildId }: { guildId: string }) {
+  const [incidents, setIncidents] = useState<Incident[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    apiGet<Incident[]>(`/api/support/incidents/${guildId}`)
+      .then(r => { if (!cancelled) setIncidents(Array.isArray(r) ? r : []); })
+      .catch(() => { if (!cancelled) setIncidents([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [guildId]);
+
+  const fmt = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    } catch { return ""; }
+  };
+
+  const active   = incidents?.filter(i => !i.ended_at)  ?? [];
+  const resolved = incidents?.filter(i =>  i.ended_at)  ?? [];
+
+  return (
+    <div className="space-y-4">
+      {loading ? (
+        <p className="text-[12px] text-white/30 italic">Chargement…</p>
+      ) : !incidents || incidents.length === 0 ? (
+        <SectionCard title="Aucun incident enregistré">
+          <p className="text-[12px] text-white/30 italic">Les incidents sont créés automatiquement via le webhook Uptime Kuma.</p>
+        </SectionCard>
+      ) : (
+        <>
+          {active.length > 0 && (
+            <SectionCard title={`Incidents actifs (${active.length})`}>
+              {active.map(i => <IncidentRow key={i.id} i={i} fmt={fmt} />)}
+            </SectionCard>
+          )}
+          {resolved.length > 0 && (
+            <SectionCard title="Historique">
+              {resolved.map(i => <IncidentRow key={i.id} i={i} fmt={fmt} />)}
+            </SectionCard>
+          )}
+        </>
+      )}
     </div>
   );
 }
