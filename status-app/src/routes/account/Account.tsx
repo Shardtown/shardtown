@@ -2,12 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   LogOut, ShieldCheck, ShieldAlert,
-  RefreshCw, Server, Fingerprint, Plus, Trash2, Loader2,
+  RefreshCw, Server, Loader2,
   KeyRound, Copy, Check, Shield, QrCode, Eye, EyeOff,
 } from "lucide-react";
 import { Toggle as GooeyToggle } from "@/components/ui/toggle";
 import { motion, useReducedMotion } from "framer-motion";
-import { listPasskeys, deletePasskey, registerPasskey, type PasskeyRow } from "@/api/passkey";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost, isApiError } from "@/api/client";
 import { useAuth } from "@/api/auth";
@@ -25,11 +24,6 @@ export function Account() {
   const [account, setAccount] = useState<AccountT | null>(null);
   const [loading, setLoading] = useState(true);
   const [banner, setBanner] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
-  const [passkeys, setPasskeys] = useState<PasskeyRow[] | null>(null);
-  const [passkeyBusy, setPasskeyBusy] = useState(false);
-  const [showAddPasskey, setShowAddPasskey] = useState(false);
-  const [newPasskeyName, setNewPasskeyName] = useState("");
-  const [passkeyToDelete, setPasskeyToDelete] = useState<{ id: number; name: string } | null>(null);
   // Token principal
   const [myToken, setMyToken] = useState<string | null | undefined>(undefined); // undefined = pas encore chargé
   const [tokenVisible, setTokenVisible] = useState(false);
@@ -60,47 +54,6 @@ export function Account() {
   }, [nav]);
 
   useEffect(() => { refresh(); }, [refresh]);
-
-  const refreshPasskeys = useCallback(async () => {
-    try { setPasskeys(await listPasskeys()); } catch { setPasskeys([]); }
-  }, []);
-  useEffect(() => { refreshPasskeys(); }, [refreshPasskeys]);
-
-  function openAddPasskey() {
-    setNewPasskeyName("");
-    setShowAddPasskey(true);
-  }
-
-  async function confirmAddPasskey() {
-    const name = newPasskeyName.trim() || "Clé sans nom";
-    setShowAddPasskey(false);
-    setPasskeyBusy(true);
-    try {
-      await registerPasskey(name);
-      setBanner({ kind: "ok", text: "Clé enregistrée." });
-      refreshPasskeys();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setBanner({ kind: "error", text: /NotAllowedError|AbortError/.test(msg) ? "Enregistrement annulé." : "Échec : " + msg });
-    } finally { setPasskeyBusy(false); }
-  }
-
-  function askDeletePasskey(id: number, name: string) {
-    setPasskeyToDelete({ id, name });
-  }
-
-  async function confirmDeletePasskey() {
-    const target = passkeyToDelete;
-    if (!target) return;
-    setPasskeyToDelete(null);
-    try {
-      await deletePasskey(target.id);
-      setBanner({ kind: "ok", text: `Clé « ${target.name} » supprimée.` });
-      refreshPasskeys();
-    } catch {
-      setBanner({ kind: "error", text: "Échec de la suppression." });
-    }
-  }
 
   const loadMyToken = useCallback(async () => {
     try {
@@ -450,61 +403,6 @@ export function Account() {
           </div>
         </div>
 
-        {/* Passkeys */}
-        <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/70">
-              <Fingerprint className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.22em] text-white/35 uppercase">Sécurité</p>
-              <h2 className="text-xl font-extrabold tracking-tight">Clés de sécurité (passkeys)</h2>
-            </div>
-            <button
-              type="button"
-              onClick={openAddPasskey}
-              disabled={passkeyBusy}
-              className="ml-auto inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-black text-[12px] font-bold hover:opacity-90 disabled:opacity-50"
-            >
-              {passkeyBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
-              Ajouter
-            </button>
-          </div>
-          <p className="text-white/55 text-sm mb-5 max-w-xl">
-            Connecte-toi avec Touch ID, Windows Hello, ou une clé physique (YubiKey, Titan…) au lieu de ton mot de passe.
-          </p>
-          {passkeys === null ? (
-            <p className="text-white/30 text-xs uppercase tracking-widest font-bold py-3">Chargement…</p>
-          ) : passkeys.length === 0 ? (
-            <p className="text-white/30 text-xs uppercase tracking-widest font-bold py-3">Aucune clé enregistrée</p>
-          ) : (
-            <div className="space-y-2">
-              {passkeys.map(p => (
-                <div key={p.id} className="flex items-center gap-3 p-3 rounded-2xl border border-white/[0.06] bg-white/[0.02]">
-                  <div className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-white/55 shrink-0">
-                    <Fingerprint className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm truncate">{p.name}</p>
-                    <p className="text-[11px] text-white/35 font-mono-num">
-                      {p.transports || "-"} · ajoutée {new Date(p.created_at).toLocaleDateString("fr-FR")}
-                      {p.last_used_at && <> · utilisée {new Date(p.last_used_at).toLocaleDateString("fr-FR")}</>}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => askDeletePasskey(p.id, p.name)}
-                    aria-label="Supprimer"
-                    className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 hover:bg-red-500/15 flex items-center justify-center shrink-0"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Token d'accès */}
         <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 md:p-8">
           <div className="flex items-center gap-3 mb-3">
@@ -580,100 +478,6 @@ export function Account() {
           </Link>
         </div>
       </section>
-
-      {/* Add-passkey modal */}
-      {showAddPasskey && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-y-auto"
-          onClick={() => setShowAddPasskey(false)}
-          onKeyDown={e => e.key === "Escape" && setShowAddPasskey(false)}
-        >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div className="relative w-full max-w-sm my-auto" onClick={e => e.stopPropagation()}>
-            <div className="text-center mb-8">
-              <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-3">
-                Clés de sécurité
-              </p>
-              <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl">
-                Nouvelle clé
-              </h3>
-              <p className="text-white/50 text-sm mt-3">
-                Donne-lui un nom pour t'y retrouver dans ta liste.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
-              <input
-                autoFocus
-                type="text"
-                value={newPasskeyName}
-                onChange={e => setNewPasskeyName(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); confirmAddPasskey(); } }}
-                placeholder="MacBook, iPhone, YubiKey…"
-                maxLength={64}
-                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/[0.06] text-white placeholder:text-white/25 text-sm transition-all mb-6"
-              />
-              <div className="flex gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setShowAddPasskey(false)}
-                  className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmAddPasskey}
-                  className="flex-1 py-3 rounded-full font-bold text-sm bg-white text-black transition-opacity hover:opacity-90"
-                >
-                  Continuer
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete-passkey confirmation modal */}
-      {passkeyToDelete && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6 overflow-y-auto"
-          onClick={() => setPasskeyToDelete(null)}
-          onKeyDown={e => e.key === "Escape" && setPasskeyToDelete(null)}
-        >
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
-          <div className="relative w-full max-w-sm my-auto" onClick={e => e.stopPropagation()}>
-            <div className="text-center mb-8">
-              <p className="text-[11px] font-bold tracking-[0.32em] text-red-300/60 uppercase mb-3">
-                Action irréversible
-              </p>
-              <h3 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-4xl md:text-5xl">
-                Supprimer cette clé ?
-              </h3>
-            </div>
-            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl px-8 py-8 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
-              <p className="text-white/55 text-sm leading-relaxed mb-6">
-                Tu ne pourras plus utiliser <b className="text-white">« {passkeyToDelete.name} »</b> pour te connecter. Cette action ne supprime pas la clé sur l'appareil lui-même.
-              </p>
-              <div className="flex gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setPasskeyToDelete(null)}
-                  className="flex-1 py-3 rounded-full border border-white/10 bg-white/[0.02] font-bold text-sm hover:bg-white/[0.05] transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDeletePasskey}
-                  className="flex-1 py-3 rounded-full font-bold text-sm bg-red-500 text-white transition-opacity hover:opacity-90"
-                >
-                  Supprimer
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Reset-token confirmation modal */}
       {showResetConfirm && (
