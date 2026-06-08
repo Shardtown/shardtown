@@ -8791,13 +8791,10 @@ app.use('/api/support', ticketRoutes);
 // ── Support subdomain (support.shardtwn.fr) ───────────────────────────────────
 const SUPPORT_DIST = path.join(__dirname, 'support-app', 'dist');
 if (require('fs').existsSync(SUPPORT_DIST)) {
-    const supportStatic = require('express').static(SUPPORT_DIST, { index: false, fallthrough: true, maxAge: '1h' });
-    const supportAssets = require('express').static(path.join(SUPPORT_DIST, 'assets'), { maxAge: '1y', immutable: true });
+    const supportStatic = require('express').static(SUPPORT_DIST, { index: false, fallthrough: true });
     app.use((req, res, next) => {
-        const host = req.hostname;
-        if (host !== 'support.shardtwn.fr') return next();
+        if (req.hostname !== 'support.shardtwn.fr') return next();
         if (req.path.startsWith('/api/') || req.path.startsWith('/transcripts/')) return next();
-        if (req.path.startsWith('/assets/')) return supportAssets(req, res, next);
         supportStatic(req, res, () => res.sendFile(path.join(SUPPORT_DIST, 'index.html')));
     });
 }
