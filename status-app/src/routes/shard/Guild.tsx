@@ -4,7 +4,7 @@ import {
   ArrowLeft, Check, Settings, ScrollText, Shield, AlertTriangle,
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
-  Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronDown, Crown, Plus,
+  Code2, Smile, Radio, LayoutGrid, ChevronDown, Crown, Plus,
   Wand2, Sparkles, HandCoins,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -1075,7 +1075,6 @@ interface ModuleEnableMap {
 const MODULE_ENABLE: Partial<Record<TabKey, ModuleEnableMap>> = {
   levels:   { side: "community", field: "levelsEnabled",       trueValue: 1,      falseValue: 0 },
   economy:  { side: "community", field: "economyEnabled",      trueValue: 1,      falseValue: 0 },
-  tickets:  { side: "community", field: "ticketEnabled",       trueValue: 1,      falseValue: 0 },
   banned:   { side: "security",  field: "bannedWordsEnabled",  trueValue: "true", falseValue: "false" },
   security: { side: "security",  field: "antiRaidEnabled",     trueValue: "true", falseValue: "false" },
   panic:    { side: "security",  field: "panicModeActive",     trueValue: 1,      falseValue: 0 },
@@ -1139,7 +1138,6 @@ const MODULE_DESCRIPTIONS: Partial<Record<TabKey, string>> = {
   giveaways: "Lance des giveaways avec timer, multi-gagnants, conditions de participation.",
   polls:     "Crée des sondages à choix multiples avec timer optionnel et vote anonyme.",
   tempvoice: "Salons vocaux temporaires créés automatiquement quand un user rejoint un hub.",
-  tickets:   "Système de tickets de support avec catégories, transcripts et logs.",
   reactions: "Ajoute des réactions automatiques aux messages contenant certains mots-clés.",
   // Pinned items (rarement affichés en card module)
   overview:    "Vue d'ensemble de la configuration et de l'état de ton serveur.",
