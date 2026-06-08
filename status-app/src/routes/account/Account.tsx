@@ -275,12 +275,19 @@ export function Account() {
             >
               {account.pseudo}
               {account.verified && (
-                <span
-                  title="Compte vérifié"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-400 text-sm font-bold"
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  Vérifié
+                <span title="Compte vérifié" className="inline-flex shrink-0 self-center">
+                  <svg viewBox="0 0 40 40" className="w-9 h-9 md:w-11 md:h-11" aria-label="Vérifié" role="img">
+                    <circle cx="20" cy="20" r="20" fill="#5b89f7" opacity="0.25" />
+                    <circle cx="20" cy="20" r="15" fill="#5b89f7" />
+                    <polyline
+                      points="12,20 17.5,26 28,14"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </span>
               )}
             </motion.h1>
