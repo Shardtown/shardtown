@@ -437,6 +437,7 @@ export function ShardGuild() {
   const groups = Array.from(new Set(TABS.filter(t => !("pinned" in t && t.pinned)).map(t => t.group)));
 
   const currentTab = TABS.find(t => t.key === tab);
+  const currentTabIsPinned = !!(currentTab && "pinned" in currentTab && currentTab.pinned);
 
   // Tab content rendering.
   function renderTab(): React.ReactNode {
@@ -685,8 +686,8 @@ export function ShardGuild() {
 
         </header>
 
-        <div className={tab !== "overview" ? "grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14" : ""}>
-          {tab !== "overview" && (
+        <div className={!currentTabIsPinned ? "grid md:grid-cols-[260px_1fr] gap-10 lg:gap-14" : ""}>
+          {!currentTabIsPinned && (
             <aside className={`md:self-start md:sticky ${IS_DESKTOP ? "md:top-2 md:max-h-[calc(100dvh-96px)]" : "md:top-24 md:max-h-[calc(100dvh-7rem)]"} md:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
               <nav
                 ref={navRef}
@@ -773,7 +774,7 @@ export function ShardGuild() {
           )}
 
           <div className={`min-w-0 ${dirty ? "pb-28" : ""}`}>
-            {tab === "overview" && (
+            {currentTabIsPinned && (
               <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden mb-6 pb-px border-b border-white/[0.06]">
                 {TABS.filter(t => "pinned" in t && t.pinned).map(t => {
                   const Icon = t.icon;
