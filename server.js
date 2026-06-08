@@ -839,6 +839,7 @@ connectDB().then(() => {
     // Init du manager une fois `db` peuplé + encryptToken/decryptToken
     // définis, puis on relance les bots custom des serveurs Premium.
     customBotManager.init({ db, decryptToken });
+    require('./lib/ticketDB').init(db).catch(err => console.error('[ticketDB] init error:', err.message));
     customBotManager.startAll().catch(err => {
         console.error('[customBot] startAll fatal', err.message);
     });
