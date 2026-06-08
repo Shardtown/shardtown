@@ -36,18 +36,27 @@ export default function App() {
 
   if (status === "unauth") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 text-center px-4">
-        <div className="text-4xl mb-2">🔒</div>
-        <h1 className="text-xl font-bold text-white">Accès restreint</h1>
-        <p className="text-sm text-white/50 max-w-xs">
-          Connectez-vous d'abord au dashboard principal pour accéder au support.
-        </p>
-        <a
-          href={`https://shardtwn.fr/shard/login?returnTo=${encodeURIComponent(window.location.href)}`}
-          className="mt-2 px-6 py-2.5 rounded-full bg-white text-black font-bold text-sm hover:opacity-90 transition-opacity"
-        >
-          Se connecter
-        </a>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5 text-center px-4 bg-[#07080f]">
+        <div className="fixed inset-0 pointer-events-none [background:radial-gradient(ellipse_90%_60%_at_50%_0%,rgba(91,109,255,0.22)_0%,transparent_70%)]" />
+        <div className="relative z-10 flex flex-col items-center gap-5">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+            <svg className="w-5 h-5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-xl font-black text-white">Accès restreint</h1>
+            <p className="text-sm text-white/40 mt-1.5 max-w-xs leading-relaxed">
+              Connectez-vous via le dashboard SHARDTOWN pour accéder au panel de support.
+            </p>
+          </div>
+          <a
+            href={`https://shardtwn.fr/shard/login?returnTo=${encodeURIComponent(window.location.href)}`}
+            className="px-6 py-2.5 rounded-full bg-white text-black text-sm font-bold hover:opacity-90 transition-opacity"
+          >
+            Se connecter
+          </a>
+        </div>
       </div>
     );
   }
