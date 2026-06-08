@@ -11,7 +11,6 @@ import { useAuth } from "@/api/auth";
 import { OAuthIcons } from "@/components/auth/OAuthButtons";
 import { ShardSecure } from "@/components/auth/ShardSecure";
 import { ProgressIndicator } from "@/components/ui/progress-indicator";
-import { authenticateWithPasskey } from "@/api/passkey";
 
 type Mode = "login" | "register" | "verify" | "2fa";
 
@@ -99,7 +98,6 @@ export function AccountLogin() {
   const twoFaTotpCodeRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const [loading, setLoading] = useState(false);
-  const [passkeyBusy, setPasskeyBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
@@ -235,29 +233,6 @@ export function AccountLogin() {
     (mode === "login" && subStep === TOTAL_LOGIN_STEPS - 1) ||
     (mode === "register" && subStep === TOTAL_REGISTER_STEPS - 1);
   const canSubmit = isLastSubStep && shardSecure.length > 0;
-
-  async function loginWithPasskey() {
-    if (!identifier.trim()) {
-      setError("Renseigne ton email ou pseudo pour utiliser une clé de sécurité.");
-      return;
-    }
-    setPasskeyBusy(true);
-    setError(null);
-    try {
-      await authenticateWithPasskey(identifier.trim());
-      await Promise.all([refreshAuth(), refreshAccount()]);
-      nav("/account", { replace: true });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (/NotAllowedError|AbortError|not allowed/i.test(msg)) {
-        setError("Authentification annulée.");
-      } else {
-        setError(extractAuthError(err).error || "Erreur passkey");
-      }
-    } finally {
-      setPasskeyBusy(false);
-    }
-  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -640,9 +615,6 @@ export function AccountLogin() {
                     <div className="mt-4 pt-3 border-t border-white/[0.06]">
                       <OAuthIcons
                         label={mode === "login" ? "Ou se connecter avec" : "Ou s'inscrire avec"}
-                        onPasskey={mode === "login" ? loginWithPasskey : undefined}
-                        passkeyBusy={passkeyBusy}
-                        passkeyDisabled={!identifier.trim()}
                       />
                     </div>
                   )}

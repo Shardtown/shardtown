@@ -90,11 +90,7 @@ export function Produits() {
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           transition={{ duration: 0.95, delay: 0.15, ease: heroEase }}
         >
-          Tous les outils,
-          <br />
-          <span className="bg-gradient-to-r from-violet-300 via-sky-300 to-emerald-300 bg-clip-text text-transparent">
-            un seul bot.
-          </span>
+          SHARD
         </motion.h1>
 
         <motion.p
