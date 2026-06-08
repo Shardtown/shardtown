@@ -5455,90 +5455,83 @@ app.get('/custom-bot-auth', async (req, res) => {
     }
 });
 
-app.post('/shard/guild/:guildID/ticket-panel', checkAuthShard, async (req, res) => {
-    const guildID = req.params.guildID;
-    const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
-    if (!userGuild) return res.status(403).json({ success: false });
-    // Panel de tickets = Premium ([Premium.tsx:63]).
-    if (!(await getShardPremium(guildID))) {
-        return res.status(403).json(premiumRequiredResponse('panel de tickets'));
-    }
-    const { channelId, title, description, color, buttonLabel, buttonEmoji, buttonStyle } = req.body;
-    if (!channelId || !/^\d{17,20}$/.test(String(channelId))) return res.status(400).json({ success: false, error: 'Salon invalide' });
-    const colorInt = parseInt(String(color || '#3b82f6').replace('#', ''), 16) || 0x3b82f6;
-    const embed = { color: colorInt, timestamp: new Date().toISOString() };
-    if (title) embed.title = title;
-    if (description) embed.description = description;
-    const validStyles = [1, 2, 3, 4];
-    const styleInt = validStyles.includes(Number(buttonStyle)) ? Number(buttonStyle) : 1;
-    const payload = {
-        embeds: [embed],
-        components: [{
-            type: 1,
-            components: [{
-                type: 2,
-                style: styleInt,
-                label: String(buttonLabel || 'Ouvrir un ticket').slice(0, 80),
-                emoji: parseDiscordEmoji(buttonEmoji || '🎫'),
-                custom_id: 'ticket_open'
-            }]
-        }]
-    };
-    try {
-        await axios.post(`https://discord.com/api/v10/channels/${channelId}/messages`, payload, {
-            headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}`, 'Content-Type': 'application/json' }
-        });
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.response?.data?.message || 'Erreur serveur' });
-    }
-});
-
-// List the most recent transcripts for a guild — feeds the dashboard's
-// "Transcriptions" sub-tab. Auth via the shard session (admin only).
-app.get('/shard/guild/:guildID/transcripts', checkAuthShard, async (req, res) => {
-    const guildID = req.params.guildID;
-    const shardUser = req.session.shardUser;
-    const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
-    if (!userGuild) return res.status(403).json({ success: false });
-    try {
-        const [rows] = await db.execute(
-            `SELECT id, channelName, openedByName, closedByName, openedAt, closedAt
-               FROM shard_ticket_transcripts WHERE guildId = ?
-               ORDER BY closedAt DESC LIMIT 100`,
-            [guildID]
-        );
-        res.json({ success: true, transcripts: rows });
-    } catch (err) {
-        console.error('Erreur list transcripts:', err.message);
-        res.status(500).json({ success: false, error: 'Erreur serveur' });
-    }
-});
+// /shard/guild/:guildID/transcripts is now served by /api/support/transcripts/:guildId
 
 // Public transcript viewer — renders a Discord-themed HTML page from the
-// JSON blob saved at close time. No auth: the 32-char hex id is the secret.
+// JSON blob saved at close time. No auth: the ID is the secret.
+// Supports new 8-char alphanumeric IDs (support_transcripts) and legacy 32-char hex IDs.
 app.get('/transcripts/:id', async (req, res) => {
     const id = String(req.params.id || '');
-    if (!/^[a-f0-9]{32}$/i.test(id)) {
-        return res.status(404).send('Transcript introuvable.');
-    }
+    const isNewId  = /^[A-Z2-9]{8}$/i.test(id);
+    const isLegacy = /^[a-f0-9]{32}$/i.test(id);
+    if (!isNewId && !isLegacy) return res.status(404).send('Transcript introuvable.');
+
     try {
-        const [rows] = await db.execute(
-            `SELECT * FROM shard_ticket_transcripts WHERE id = ?`, [id]
-        );
+        if (isNewId) {
+            const [rows] = await db.execute('SELECT * FROM support_transcripts WHERE id = ?', [id]);
+            if (!rows[0]) return res.status(404).send('Transcript introuvable.');
+            const t = rows[0];
+            const rawMsgs = typeof t.messages === 'string' ? JSON.parse(t.messages) : (t.messages || []);
+            const users = {};
+            for (const m of rawMsgs) {
+                if (m.author && !users[m.author.id]) {
+                    users[m.author.id] = {
+                        username: m.author.displayName || m.author.username,
+                        avatar:   m.author.avatarURL,
+                        bot:      m.author.isBot || false,
+                    };
+                }
+            }
+            const messages = rawMsgs.map(m => ({
+                id:           m.id,
+                timestamp:    m.timestamp ? new Date(m.timestamp).toISOString() : new Date().toISOString(),
+                editedAt:     m.edited ? new Date(m.timestamp).toISOString() : null,
+                authorId:     m.author?.id || '',
+                authorName:   m.author?.displayName || m.author?.username || '',
+                authorAvatar: m.author?.avatarURL || '',
+                bot:          m.author?.isBot || false,
+                content:      m.content || '',
+                isVoiceMessage: false,
+                attachments:  (m.attachments || []).map(a => ({
+                    url: a.url, name: a.name, contentType: a.contentType || '',
+                    size: 0, width: null, height: null, duration: null, waveform: null,
+                })),
+                stickers: [],
+                embeds: (m.embeds || []).map(e => ({
+                    type: 'rich', title: e.title || '', description: e.description || '',
+                    url: '', color: e.color ? parseInt(String(e.color).replace('#', ''), 16) : 0,
+                    footer: e.footer?.text || '', footerIcon: '',
+                    authorName: '', authorIcon: '', authorUrl: '',
+                    image: e.image || '', thumbnail: e.thumbnail || '',
+                    video: '', videoWidth: null, videoHeight: null, providerName: '',
+                    fields: (e.fields || []).map(f => ({ name: f.name || '', value: f.value || '', inline: !!f.inline })),
+                })),
+                reply: null,
+            }));
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            return res.send(renderTranscript({
+                channelName:   `ticket-${id}`,
+                guildName:     '',
+                openedByName:  t.author_pseudo || t.author_id || '',
+                closedByName:  '',
+                openedAt:      t.created_at,
+                closedAt:      t.closed_at,
+                messages, users, roles: {}, channels: {},
+            }));
+        }
+
+        // Legacy 32-char hex transcript
+        const [rows] = await db.execute('SELECT * FROM shard_ticket_transcripts WHERE id = ?', [id]);
         if (!rows[0]) return res.status(404).send('Transcript introuvable.');
         const t = rows[0];
         const parsed = typeof t.messages === 'string' ? JSON.parse(t.messages) : t.messages;
-        // Backward-compat: older transcripts saved just an array of messages
-        // (no users/roles/channels maps). Newer ones save { messages, users, roles, channels }.
         const payload = Array.isArray(parsed)
             ? { messages: parsed, users: {}, roles: {}, channels: {} }
             : { messages: parsed?.messages || [], users: parsed?.users || {}, roles: parsed?.roles || {}, channels: parsed?.channels || {} };
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.send(renderTranscript({
             channelName: t.channelName,
-            guildName: t.guildName || '',
+            guildName:   t.guildName || '',
             openedByName: t.openedByName,
             closedByName: t.closedByName,
             openedAt: t.openedAt,
@@ -8791,14 +8784,6 @@ app.use((err, req, res, next) => {
 const ticketRoutes = require('./lib/ticketRoutes');
 app.use('/api/support', ticketRoutes);
 
-// ── Ticket dashboard (built Vite app) ─────────────────────────────────────────
-const TICKET_DIST = path.join(__dirname, 'ticket-app', 'dist');
-if (require('fs').existsSync(TICKET_DIST)) {
-    const TICKET_ASSETS = path.join(TICKET_DIST, 'assets');
-    app.use('/support/assets', express.static(TICKET_ASSETS, { maxAge: '1y', immutable: true }));
-    app.use('/support', express.static(TICKET_DIST, { index: false, fallthrough: true, maxAge: '1h' }));
-    app.get('/support/*splat', (_req, res) => res.sendFile(path.join(TICKET_DIST, 'index.html')));
-}
 
 console.log('Tentative de démarrage du serveur...');
 app.listen(PORT, () => console.log(`Tableau de bord démarré sur http://localhost:${PORT}`));

@@ -7,7 +7,7 @@ import {
 } from "@/api/shard";
 import { Field, NumberInput, TextInput, TextArea, Toggle, Select, SectionCard } from "@/components/shard/moderation/Field";
 import { ColorPicker } from "@/components/forms/ColorPicker";
-import { apiPost, apiDelete, apiGet } from "@/api/client";
+import { apiPost, apiPut, apiDelete, apiGet } from "@/api/client";
 import { IS_DESKTOP } from "@/lib/desktop";
 import { DiscordPreview } from "@/components/DiscordPreview";
 import { ComponentsBuilder } from "@/components/shard/ComponentsBuilder";
@@ -720,49 +720,88 @@ export function ReactionsTab({ guildId, settings, update }: TabBase) {
 }
 
 /* ========== TICKETS ========== */
-/**
- * Tickets, divisé en deux sous-onglets :
- *  • Configuration   → tout ce qui touche aux 4 embeds + boutons + emoji + style
- *  • Transcription   → génération HTML des conversations à la fermeture
- *
- * Le système envoie 4 embeds distincts :
- *  1. Panel public    (avec le bouton "Ouvrir un ticket")
- *  2. Message d'accueil dans le salon-ticket à l'ouverture
- *  3. Log d'ouverture dans le salon de logs
- *  4. Log de fermeture (peut contenir le lien transcript)
- *
- * Chaque bouton (Ouvrir / Fermer) a son label, son emoji (unicode ou
- * custom Discord <:name:id>) et son style (Primary / Secondary / Success /
- * Danger). Côté Components V1 le bouton ne peut pas être un Link parce
- * qu'on a besoin d'une interaction côté bot, c'est par design.
- */
-const BUTTON_STYLES = [
-  { value: "1", label: "Primary (bleu)" },
-  { value: "2", label: "Secondary (gris)" },
-  { value: "3", label: "Success (vert)" },
-  { value: "4", label: "Danger (rouge)" },
-];
 
-interface Transcript {
+interface TicketCategory {
   id: string;
-  channelName: string;
-  openedByName: string;
-  closedByName: string;
-  openedAt: string;
-  closedAt: string;
+  label: string;
+  emoji: string;
+  description: string;
+  discord_category_id: string | null;
 }
 
-export function TicketsTab({ guildId, settings, update, channels, categories, roles }: TabBase) {
+interface SupportConfig {
+  categories: TicketCategory[];
+  staff_roles: string[];
+  admin_roles: string[];
+  transcript_channel_id: string | null;
+  log_channel_id: string | null;
+  max_tickets_per_user: number;
+  afk_timeout_minutes: number;
+}
+
+interface SupportTranscript {
+  id: string;
+  author_pseudo: string;
+  category: string;
+  created_at: string;
+  closed_at: string;
+}
+
+const DEFAULT_CONFIG: SupportConfig = {
+  categories: [],
+  staff_roles: [],
+  admin_roles: [],
+  transcript_channel_id: null,
+  log_channel_id: null,
+  max_tickets_per_user: 1,
+  afk_timeout_minutes: 60,
+};
+
+async function putJson(path: string, body?: object): Promise<{ ok?: boolean; error?: string; [k: string]: unknown }> {
+  try {
+    return await apiPut(path, body);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erreur réseau" };
+  }
+}
+
+function useSupportConfig(guildId: string) {
+  const [config, setConfig] = useState<SupportConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    apiGet<SupportConfig>(`/api/support/config/${guildId}`)
+      .then(r => { if (!cancelled) { setConfig(r); setError(null); } })
+      .catch(e => { if (!cancelled) setError(e?.message || "Erreur de chargement"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [guildId]);
+
+  async function save(patch: Partial<SupportConfig>) {
+    const updated = { ...config!, ...patch };
+    setConfig(updated);
+    const r = await putJson(`/api/support/config/${guildId}`, patch);
+    if (r.error) setError(r.error as string);
+    return r;
+  }
+
+  return { config, loading, error, save };
+}
+
+export function TicketsTab({ guildId, channels, categories, roles }: TabBase) {
   const [tab, setTab] = useState<"config" | "transcripts">("config");
   return (
     <div className="space-y-4">
       <div className="inline-flex p-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[11px] font-bold">
         <TicketSubTab active={tab === "config"} onClick={() => setTab("config")}>Configuration</TicketSubTab>
-        <TicketSubTab active={tab === "transcripts"} onClick={() => setTab("transcripts")}>Transcription</TicketSubTab>
+        <TicketSubTab active={tab === "transcripts"} onClick={() => setTab("transcripts")}>Transcripts</TicketSubTab>
       </div>
       {tab === "config"
-        ? <TicketsConfig guildId={guildId} settings={settings} update={update} channels={channels} categories={categories} roles={roles} />
-        : <TicketsTranscripts guildId={guildId} settings={settings} update={update} />}
+        ? <TicketsConfig guildId={guildId} channels={channels} categories={categories} roles={roles} />
+        : <TicketsTranscripts guildId={guildId} />}
     </div>
   );
 }
@@ -779,116 +818,168 @@ function TicketSubTab({ active, onClick, children }: { active: boolean; onClick:
   );
 }
 
-function TicketsConfig({
-  guildId, settings, update, channels, categories, roles,
-}: Pick<TabBase, "guildId" | "settings" | "update" | "channels" | "categories" | "roles">) {
-  const enabled = isOn(settings.ticketEnabled);
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+function MultiRoleSelect({
+  label, value, roles, onChange,
+}: { label: string; value: string[]; roles: DRole[]; onChange: (v: string[]) => void }) {
+  const toggle = (id: string) => onChange(value.includes(id) ? value.filter(r => r !== id) : [...value, id]);
+  return (
+    <Field label={label}>
+      <div className="flex flex-wrap gap-1.5 mt-1">
+        {roles.map(r => (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => toggle(r.id)}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors ${
+              value.includes(r.id)
+                ? "bg-white/10 border-white/30 text-white"
+                : "bg-transparent border-white/10 text-white/40 hover:border-white/20 hover:text-white/60"
+            }`}
+          >
+            @{r.name}
+          </button>
+        ))}
+        {roles.length === 0 && <span className="text-[11px] text-white/30 italic">Aucun rôle disponible</span>}
+      </div>
+    </Field>
+  );
+}
+
+function TicketsConfig({ guildId, channels, categories, roles }: Pick<TabBase, "guildId" | "channels" | "categories" | "roles">) {
+  const { config, loading, error, save } = useSupportConfig(guildId);
+  const [deployChannelId, setDeployChannelId] = useState("");
+  const [deployBusy, setDeployBusy] = useState(false);
+  const [deployMsg, setDeployMsg] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  if (loading) return <p className="text-[12px] text-white/30 italic">Chargement de la configuration…</p>;
+  if (error) return <p className="text-[12px] text-red-400">{error}</p>;
+  if (!config) return null;
+
+  const cfg = { ...DEFAULT_CONFIG, ...config };
+
+  async function handleSave() {
+    const r = await save(cfg);
+    setSaveMsg(r.error ? `Erreur : ${r.error}` : "Sauvegardé !");
+    setTimeout(() => setSaveMsg(null), 3000);
+  }
 
   async function deployPanel() {
-    setBusy(true);
-    const r = await postJson(`/shard/guild/${guildId}/ticket-panel`, {
-      channelId: settings.ticketPanelChannelId,
-      title: settings.ticketPanelTitle,
-      description: settings.ticketPanelDescription,
-      color: settings.ticketPanelColor,
-      buttonLabel: settings.ticketPanelButtonLabel,
-      buttonEmoji: settings.ticketPanelButtonEmoji,
-      buttonStyle: settings.ticketPanelButtonStyle,
-    });
-    setBusy(false);
-    setResult(r.success ? "Panel envoyé !" : `Erreur : ${r.error || ""}`);
-    setTimeout(() => setResult(null), 3500);
+    if (!deployChannelId) return;
+    setDeployBusy(true);
+    const r = await postJson(`/api/support/panel/${guildId}/deploy`, { channelId: deployChannelId });
+    setDeployBusy(false);
+    setDeployMsg(r.ok ? "Panel publié !" : `Erreur : ${r.error || ""}`);
+    setTimeout(() => setDeployMsg(null), 4000);
+  }
+
+  function updateCat(idx: number, patch: Partial<TicketCategory>) {
+    const cats = cfg.categories.map((c, i) => i === idx ? { ...c, ...patch } : c);
+    save({ categories: cats });
+  }
+
+  function addCategory() {
+    const id = `cat_${Date.now()}`;
+    save({ categories: [...cfg.categories, { id, label: "Nouvelle catégorie", emoji: "📋", description: "", discord_category_id: null }] });
+  }
+
+  function removeCategory(idx: number) {
+    save({ categories: cfg.categories.filter((_, i) => i !== idx) });
   }
 
   return (
     <div className="space-y-4">
-      <SectionCard title="Système de tickets">
-        <Field label="Activer"><Toggle checked={enabled} onChange={b => update({ ticketEnabled: to01(b) })} label={enabled ? "Activé" : "Désactivé"} /></Field>
+      <SectionCard title="Paramètres généraux">
         <div className="grid md:grid-cols-2 gap-3">
-          <Field label="Catégorie des tickets"><Select options={categoryOpts(categories)} value={settings.ticketCategoryId} onChange={v => update({ ticketCategoryId: v })} /></Field>
-          <Field label="Rôle support"><Select options={roleOpts(roles)} value={settings.ticketSupportRoleId} onChange={v => update({ ticketSupportRoleId: v })} /></Field>
-          <Field label="Salon de logs"><Select options={channelOpts(channels)} value={settings.ticketLogChannelId} onChange={v => update({ ticketLogChannelId: v })} /></Field>
-          <Field label="Tickets max / utilisateur"><NumberInput min={1} max={10} value={settings.ticketMaxPerUser} onChange={e => update({ ticketMaxPerUser: Number(e.target.value) })} /></Field>
+          <Field label="Salon de logs">
+            <Select options={channelOpts(channels)} value={cfg.log_channel_id || ""} onChange={v => save({ log_channel_id: v || null })} />
+          </Field>
+          <Field label="Salon des transcripts">
+            <Select options={channelOpts(channels)} value={cfg.transcript_channel_id || ""} onChange={v => save({ transcript_channel_id: v || null })} />
+          </Field>
+          <Field label="Max tickets / utilisateur">
+            <NumberInput min={1} max={10} value={cfg.max_tickets_per_user}
+              onChange={e => save({ max_tickets_per_user: Number(e.target.value) })} />
+          </Field>
+          <Field label="Timeout AFK (minutes)">
+            <NumberInput min={10} max={10080} value={cfg.afk_timeout_minutes}
+              onChange={e => save({ afk_timeout_minutes: Number(e.target.value) })} />
+          </Field>
+        </div>
+        <MultiRoleSelect label="Rôles support" value={cfg.staff_roles} roles={roles} onChange={v => save({ staff_roles: v })} />
+        <MultiRoleSelect label="Rôles admin tickets" value={cfg.admin_roles} roles={roles} onChange={v => save({ admin_roles: v })} />
+      </SectionCard>
+
+      <SectionCard title="Catégories de tickets" description="Chaque catégorie crée un bouton séparé sur le panel. Les membres choisissent la catégorie avant d'ouvrir un ticket.">
+        <div className="space-y-3">
+          {cfg.categories.map((cat, i) => (
+            <div key={cat.id} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 space-y-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-bold text-white/50 uppercase tracking-widest">Catégorie {i + 1}</span>
+                <button type="button" onClick={() => removeCategory(i)}
+                  className="text-white/30 hover:text-red-400 transition-colors">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <div className="grid md:grid-cols-3 gap-2">
+                <Field label="Nom">
+                  <TextInput value={cat.label} onChange={e => updateCat(i, { label: e.target.value })} placeholder="Support" />
+                </Field>
+                <Field label="Emoji">
+                  <TextInput value={cat.emoji} onChange={e => updateCat(i, { emoji: e.target.value })} placeholder="🎫" />
+                </Field>
+                <Field label="Catégorie Discord">
+                  <Select options={categoryOpts(categories)} value={cat.discord_category_id || ""}
+                    onChange={v => updateCat(i, { discord_category_id: v || null })} />
+                </Field>
+              </div>
+              <Field label="Description (affichée dans la modale)">
+                <TextInput value={cat.description} onChange={e => updateCat(i, { description: e.target.value })}
+                  placeholder="Décrivez votre problème…" />
+              </Field>
+            </div>
+          ))}
+          <button type="button" onClick={addCategory}
+            className="flex items-center gap-1.5 text-[11px] font-bold text-white/50 hover:text-white transition-colors">
+            <Plus size={14} /> Ajouter une catégorie
+          </button>
         </div>
       </SectionCard>
 
-      <SectionCard title="① Panel public" description="Embed affiché aux membres pour ouvrir un ticket.">
-        <Field label="Salon du panel"><Select options={channelOpts(channels)} value={settings.ticketPanelChannelId} onChange={v => update({ ticketPanelChannelId: v })} /></Field>
-        <Field label="Titre"><TextInput value={settings.ticketPanelTitle} onChange={e => update({ ticketPanelTitle: e.target.value })} placeholder="🎫 Support" /></Field>
-        <Field label="Description"><TextArea value={settings.ticketPanelDescription} onChange={e => update({ ticketPanelDescription: e.target.value })} placeholder="Cliquez pour ouvrir un ticket…" /></Field>
-        <Field label="Couleur"><ColorPicker value={settings.ticketPanelColor} onChange={v => update({ ticketPanelColor: v })} /></Field>
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-          <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/40 mb-2">Bouton « Ouvrir »</p>
-          <div className="grid md:grid-cols-3 gap-3">
-            <Field label="Libellé">
-              <TextInput value={settings.ticketPanelButtonLabel || ""} onChange={e => update({ ticketPanelButtonLabel: e.target.value })} placeholder="Ouvrir un ticket" />
-            </Field>
-            <Field label="Emoji" hint="Unicode (🎫) ou <:nom:id>">
-              <TextInput value={settings.ticketPanelButtonEmoji || ""} onChange={e => update({ ticketPanelButtonEmoji: e.target.value })} placeholder="🎫" />
-            </Field>
-            <Field label="Style">
-              <Select options={BUTTON_STYLES} value={String(settings.ticketPanelButtonStyle ?? 1)} onChange={v => update({ ticketPanelButtonStyle: Number(v) })} />
+      <SectionCard title="Publier le panel" description="Envoie l'embed avec les boutons de catégories dans le salon choisi.">
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <Field label="Salon cible">
+              <Select options={channelOpts(channels)} value={deployChannelId} onChange={setDeployChannelId} />
             </Field>
           </div>
+          <button type="button" onClick={deployPanel} disabled={deployBusy || !deployChannelId}
+            className="px-5 py-2 rounded-full bg-white text-black font-bold text-xs hover:opacity-90 disabled:opacity-50 mb-0.5">
+            {deployBusy ? "Envoi…" : "Publier"}
+          </button>
         </div>
-        <button type="button" onClick={deployPanel} disabled={busy || !settings.ticketPanelChannelId}
-          className="bg-white text-black px-5 py-2 rounded-full font-bold text-xs hover:opacity-90 disabled:opacity-50">
-          {busy ? "Envoi…" : "Publier le panel"}
+        {deployMsg && <p className={`text-xs mt-2 ${deployMsg.startsWith("Erreur") ? "text-red-400" : "text-emerald-400"}`}>{deployMsg}</p>}
+      </SectionCard>
+
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={handleSave}
+          className="px-5 py-2 rounded-full bg-white text-black font-bold text-xs hover:opacity-90">
+          Sauvegarder
         </button>
-        {result && <p className="text-xs text-emerald-400 mt-2">{result}</p>}
-      </SectionCard>
-
-      <SectionCard title="② Message d'accueil dans le ticket" description="Posté dans le salon dès qu'un ticket est créé. Variables : {user} {username} {server} {ticketNumber}.">
-        <Field label="Titre"><TextInput value={settings.ticketOpenTitle || ""} onChange={e => update({ ticketOpenTitle: e.target.value })} placeholder="🎫 Ticket #{ticketNumber}" /></Field>
-        <Field label="Description"><TextArea value={settings.ticketOpenDescription || ""} onChange={e => update({ ticketOpenDescription: e.target.value })} placeholder="Bonjour {user}, un membre du support va vous répondre prochainement. Décrivez votre problème ci-dessous." /></Field>
-        <div className="grid md:grid-cols-2 gap-3">
-          <Field label="Footer"><TextInput value={settings.ticketOpenFooter || ""} onChange={e => update({ ticketOpenFooter: e.target.value })} placeholder="Ouvert par {username}" /></Field>
-          <Field label="Couleur"><ColorPicker value={settings.ticketOpenColor || "#3b82f6"} onChange={v => update({ ticketOpenColor: v })} /></Field>
-        </div>
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-          <p className="text-[11px] font-bold tracking-[0.18em] uppercase text-white/40 mb-2">Bouton « Fermer »</p>
-          <div className="grid md:grid-cols-3 gap-3">
-            <Field label="Libellé">
-              <TextInput value={settings.ticketCloseButtonLabel || ""} onChange={e => update({ ticketCloseButtonLabel: e.target.value })} placeholder="Fermer le ticket" />
-            </Field>
-            <Field label="Emoji">
-              <TextInput value={settings.ticketCloseButtonEmoji || ""} onChange={e => update({ ticketCloseButtonEmoji: e.target.value })} placeholder="🔒" />
-            </Field>
-            <Field label="Style">
-              <Select options={BUTTON_STYLES} value={String(settings.ticketCloseButtonStyle ?? 4)} onChange={v => update({ ticketCloseButtonStyle: Number(v) })} />
-            </Field>
-          </div>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="③ Log d'ouverture" description="Envoyé dans le salon de logs quand un ticket est ouvert.">
-        <div className="grid md:grid-cols-2 gap-3">
-          <Field label="Titre"><TextInput value={settings.ticketLogOpenTitle || ""} onChange={e => update({ ticketLogOpenTitle: e.target.value })} placeholder="🎫 Ticket ouvert" /></Field>
-          <Field label="Couleur"><ColorPicker value={settings.ticketLogOpenColor || "#3b82f6"} onChange={v => update({ ticketLogOpenColor: v })} /></Field>
-        </div>
-      </SectionCard>
-
-      <SectionCard title="④ Log de fermeture" description="Envoyé dans le salon de logs quand un ticket est fermé.">
-        <div className="grid md:grid-cols-2 gap-3">
-          <Field label="Titre"><TextInput value={settings.ticketLogCloseTitle || ""} onChange={e => update({ ticketLogCloseTitle: e.target.value })} placeholder="🔒 Ticket fermé" /></Field>
-          <Field label="Couleur"><ColorPicker value={settings.ticketLogCloseColor || "#ef4444"} onChange={v => update({ ticketLogCloseColor: v })} /></Field>
-        </div>
-      </SectionCard>
+        {saveMsg && <p className={`text-xs ${saveMsg.startsWith("Erreur") ? "text-red-400" : "text-emerald-400"}`}>{saveMsg}</p>}
+      </div>
     </div>
   );
 }
 
-function TicketsTranscripts({ guildId, settings, update }: { guildId: string; settings: ShardSettings; update: Update }) {
-  const transcriptEnabled = isOn(settings.ticketTranscriptEnabled);
-  const [list, setList] = useState<Transcript[] | null>(null);
+function TicketsTranscripts({ guildId }: { guildId: string }) {
+  const [list, setList] = useState<SupportTranscript[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    apiGet<{ success: boolean; transcripts: Transcript[] }>(`/shard/guild/${guildId}/transcripts`)
+    apiGet<{ transcripts: SupportTranscript[] }>(`/api/support/transcripts/${guildId}`)
       .then(r => { if (!cancelled) setList(r.transcripts || []); })
       .catch(() => { if (!cancelled) setList([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -904,41 +995,26 @@ function TicketsTranscripts({ guildId, settings, update }: { guildId: string; se
     } catch { return ""; }
   };
 
-  // Backend base, used to build absolute viewer URLs on the desktop app
-  // where window.location is the bundled file://. We resolve at runtime.
   const BASE = typeof window !== "undefined" && /^https?:/.test(window.location.protocol)
     ? window.location.origin
     : "https://shardtwn.fr";
 
   return (
     <div className="space-y-4">
-      <SectionCard title="Génération des transcripts" description="À chaque fermeture de ticket, Shardtown enregistre toutes les messages dans une page web style Discord. Le lien est posté dans le salon de logs et envoyé en MP au membre.">
-        <Field label="Activer">
-          <Toggle
-            checked={transcriptEnabled}
-            onChange={b => update({ ticketTranscriptEnabled: to01(b) })}
-            label={transcriptEnabled ? "Activé" : "Désactivé"}
-          />
-        </Field>
-        <p className="text-[11.5px] text-white/40 mt-1">
-          URL : <code className="px-1.5 py-0.5 rounded bg-white/[0.05] font-mono-num">{BASE}/transcripts/&lt;id&gt;</code>, le lien est unique et non-deviné. Vous pouvez le partager sans authentification.
-        </p>
-      </SectionCard>
-
-      <SectionCard title="Tickets fermés récemment" description="100 derniers transcripts générés pour ce serveur.">
+      <SectionCard title="Tickets fermés récemment" description="50 derniers transcripts générés pour ce serveur.">
         {loading ? (
           <p className="text-[12px] text-white/30 italic">Chargement…</p>
         ) : !list || list.length === 0 ? (
-          <p className="text-[12px] text-white/30 italic">Aucun transcript pour le moment. Fermez un ticket pour en générer un.</p>
+          <p className="text-[12px] text-white/30 italic">Aucun transcript pour le moment.</p>
         ) : (
           <div className="space-y-1">
             {list.map(t => (
               <div key={t.id} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold truncate">#{t.channelName}</p>
-                  <p className="text-[11px] text-white/40">
-                    {t.openedByName} → fermé par {t.closedByName || "—"} · {fmt(t.closedAt)}
+                  <p className="text-sm font-bold truncate">
+                    <span className="text-white/40 mr-2">[{t.category}]</span>{t.author_pseudo || t.id}
                   </p>
+                  <p className="text-[11px] text-white/40">{fmt(t.closed_at)}</p>
                 </div>
                 <a
                   href={`${BASE}/transcripts/${t.id}`}
