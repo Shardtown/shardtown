@@ -2578,7 +2578,7 @@ async function syncVerifiedRole(account) {
     try {
         const r = await axios.get(
             `https://discord.com/api/v10/guilds/${VERIFIED_GUILD_ID}/members/${account.discord_id}`,
-            { headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` }, timeout: 4000 },
+            { headers: { Authorization: `Bot ${process.env.SHARD_TOKEN}` }, timeout: 4000 },
         );
         const hasRole = Array.isArray(r.data.roles) && r.data.roles.includes(VERIFIED_ROLE_ID);
         verifiedCheckCache.set(account.discord_id, { ts: Date.now(), verified: hasRole });
