@@ -10,7 +10,7 @@ import {
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, apiPost, isApiError } from "@/api/client";
-import { IS_DESKTOP } from "@/lib/desktop";
+import { IS_DESKTOP, openExternal } from "@/lib/desktop";
 import type { ShardGuildData, ShardSettings } from "@/api/shard";
 import type { ShardModGuildData, ShardModSettings } from "@/api/shardMod";
 import { SaveBar } from "@/components/shard/moderation/SaveBar";
@@ -760,7 +760,7 @@ export function ShardGuild() {
                                 status={getModuleStatus(t.key, security?.settings ?? null, community?.settings ?? null)}
                                 onClick={() => {
                                   if ("href" in t && t.href) {
-                                    window.open(`${t.href}/guild/${gid}`, "_blank", "noopener");
+                                    openExternal(`${t.href}/guild/${gid}`);
                                   } else {
                                     setTab(t.key);
                                   }
