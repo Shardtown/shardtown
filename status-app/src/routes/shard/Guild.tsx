@@ -5,7 +5,7 @@ import {
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
   Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronDown, Crown, Plus,
-  Wand2, Sparkles, HandCoins, CheckCircle2, ArrowRight,
+  Wand2, Sparkles, HandCoins, CheckCircle2,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -943,10 +943,6 @@ function OverviewPanel({
     ? getModuleStatus(activating.key, secSettings, comSettings)
     : "info";
 
-  const isPremium =
-    comSettings?.isPremium === 1 || comSettings?.isPremium === "1" ||
-    secSettings?.isPremium === 1 || secSettings?.isPremium === "1";
-
   return (
     <motion.div
       initial={{ opacity: 0, y: reduce ? 0 : 12 }}
@@ -954,13 +950,6 @@ function OverviewPanel({
       transition={{ duration: 0.45, ease: heroEase }}
       className="space-y-8"
     >
-      {/* ─── Carousel hero auto-scroll ────────────────────────────────
-          Slides : Premium (uniquement si pas premium) + 3-4 modules
-          phares avec mockup visuel à droite. Auto-rotate toutes les 7s,
-          pause au hover, navigation par dots. */}
-      <HeroCarousel isPremium={isPremium} onJumpTo={onJumpTo} />
-
-
       {/* ─── Modules ────────────────────────────────────────────────── */}
       <div>
         <h2 className="text-2xl font-extrabold tracking-tight mb-5">
@@ -1179,42 +1168,28 @@ function ModuleCard({
     <button
       type="button"
       onClick={onClick}
-      className="group relative text-left rounded-2xl border p-5 transition-colors h-full flex flex-col bg-white/[0.025] hover:bg-white/[0.05] border-white/[0.06] hover:border-white/[0.12] backdrop-blur-sm"
+      className="group w-full text-left rounded-2xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.14] transition-colors p-5 h-full flex flex-col"
       title={label}
     >
-      {/* Icône bleue carrée style mee6 */}
-      <div className="w-14 h-14 rounded-2xl bg-blue-500/15 border border-blue-400/25 flex items-center justify-center text-blue-300 mb-5 shadow-[inset_0_1px_0_rgba(96,165,250,0.15)]">
-        <Icon className="w-6 h-6" strokeWidth={2} />
+      <div className="flex items-start gap-3.5 mb-3">
+        <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/65 shrink-0">
+          <Icon className="w-4 h-4" strokeWidth={1.8} />
+        </div>
+        <div className="flex-1 min-w-0 pt-0.5">
+          <h4 className="text-[14px] font-extrabold tracking-tight leading-snug text-white truncate">
+            {label}
+          </h4>
+          <p className={`text-[11px] font-semibold mt-0.5 ${isActive ? "text-emerald-400" : "text-white/35"}`}>
+            {isActive ? "Actif" : "Désactivé"}
+          </p>
+        </div>
       </div>
 
-      <h4 className="text-[15.5px] font-extrabold tracking-tight leading-snug mb-1.5 text-white">
-        {label}
-      </h4>
-
       {description && (
-        <p className="text-[12.5px] text-white/45 leading-relaxed line-clamp-3 mb-4 flex-1">
+        <p className="text-[12px] text-white/40 leading-relaxed line-clamp-3 flex-1">
           {description}
         </p>
       )}
-
-      {/* Pill statut mee6-style, bleue si actif, grise si non */}
-      <div className={`mt-auto inline-flex items-center gap-1.5 self-start px-3 py-1.5 rounded-lg text-[11.5px] font-bold ${
-        isActive
-          ? "bg-blue-500/15 text-blue-300 border border-blue-400/25"
-          : "bg-white/[0.04] text-white/40 border border-white/[0.06]"
-      }`}>
-        {isActive ? (
-          <>
-            <CheckCircle2 className="w-3.5 h-3.5" strokeWidth={2.5} />
-            Actif
-          </>
-        ) : (
-          <>
-            <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
-            Désactivé
-          </>
-        )}
-      </div>
     </button>
   );
 }
@@ -1367,300 +1342,6 @@ function ActivateModuleModal({
               ? "L'activation prend effet immédiatement après avoir cliqué Enregistrer."
               : "Le module deviendra actif dès que tu auras renseigné les options requises."}
         </p>
-      </div>
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────
-//  HeroCarousel, carousel auto-rotate au-dessus de la grille modules
-//
-//  - Slide Premium (gradient violet) si l'utilisateur n'est pas Premium
-//  - 4 slides de modules phares avec mockup mee6-style à droite :
-//    Niveaux & XP / Modération auto / Économie / Bot personnalisé
-//  - Auto-rotate toutes les 7s, pause au hover
-//  - Dots de navigation cliquables en bas
-// ──────────────────────────────────────────────────────────────────────
-
-interface CarouselSlide {
-  /** Clé du tab à ouvrir au clic du CTA. */
-  jumpTo: TabKey;
-  /** Mini-pretitle violet/teinté. */
-  kicker: string;
-  /** Titre principal du slide (peut contenir <br/>). */
-  title: React.ReactNode;
-  /** Sous-texte explicatif. */
-  subtitle: string;
-  /** Label du bouton CTA. */
-  cta: string;
-  /** Gradient CSS appliqué à la card. */
-  gradient: string;
-  /** Couleur principale du bouton (text-X-700) + accent. */
-  accent: string;
-  /** Mockup visuel rendu à droite, un composant React qui dessine le preview. */
-  visual: React.ReactNode;
-}
-
-function HeroCarousel({
-  isPremium, onJumpTo,
-}: {
-  isPremium: boolean;
-  onJumpTo: (key: TabKey) => void;
-}) {
-  const slides: CarouselSlide[] = [
-    // Slide Premium, uniquement si pas premium
-    ...(!isPremium ? [{
-      jumpTo: "premium" as TabKey,
-      kicker: "Shard Premium",
-      title: <>Débloque tout le potentiel<br />de ton serveur.</>,
-      subtitle: "XP boost, custom bot, modules illimités, support prioritaire.",
-      cta: "ESSAIE-LE GRATUITEMENT",
-      gradient: "from-violet-600 via-fuchsia-600 to-purple-700",
-      accent: "text-violet-700",
-      visual: <PremiumVisual />,
-    }] : []),
-    {
-      jumpTo: "levels" as TabKey,
-      kicker: "Niveaux & XP",
-      title: <>Récompense l'activité<br />de tes membres.</>,
-      subtitle: "Système de niveaux automatique avec carte de rang et rôles palier.",
-      cta: "ACTIVER LES NIVEAUX",
-      gradient: "from-sky-600 via-blue-600 to-indigo-700",
-      accent: "text-blue-700",
-      visual: <LevelsVisual />,
-    },
-    {
-      jumpTo: "automod" as TabKey,
-      kicker: "Modération auto",
-      title: <>Protège ton serveur<br />sans lever le doigt.</>,
-      subtitle: "Anti-spam, anti-pub, anti-raid, captcha. Tout filtré en temps réel.",
-      cta: "DÉCOUVRIR L'AUTOMOD",
-      gradient: "from-rose-600 via-red-600 to-orange-700",
-      accent: "text-red-700",
-      visual: <ModerationVisual />,
-    },
-    {
-      jumpTo: "economy" as TabKey,
-      kicker: "Économie",
-      title: <>Anime ta commu<br />avec une vraie économie.</>,
-      subtitle: "Monnaie virtuelle, daily, shop de rôles, leaderboard, transferts.",
-      cta: "ACTIVER L'ÉCONOMIE",
-      gradient: "from-amber-500 via-yellow-600 to-orange-600",
-      accent: "text-amber-700",
-      visual: <EconomyVisual />,
-    },
-    {
-      jumpTo: "custombot" as TabKey,
-      kicker: "Bot personnalisé",
-      title: <>Donne ton identité<br />au bot.</>,
-      subtitle: "Renomme, change l'avatar, customise les couleurs, c'est ton bot.",
-      cta: "PERSONNALISER",
-      gradient: "from-emerald-600 via-teal-600 to-cyan-700",
-      accent: "text-emerald-700",
-      visual: <CustomBotVisual />,
-    },
-  ];
-
-  const [index, setIndex] = useState(0);
-  const [hovered, setHovered] = useState(false);
-
-  // Auto-rotate toutes les 7 s, pause au hover. On reset si slides change.
-  useEffect(() => {
-    if (hovered || slides.length <= 1) return;
-    const id = window.setInterval(() => {
-      setIndex(i => (i + 1) % slides.length);
-    }, 7000);
-    return () => window.clearInterval(id);
-  }, [hovered, slides.length]);
-
-  // Si l'utilisateur passe Premium en cours de session, le slide Premium
-  // disparaît et l'index peut sortir des bornes, clamp.
-  useEffect(() => {
-    if (index >= slides.length) setIndex(0);
-  }, [index, slides.length]);
-
-  const slide = slides[index];
-  if (!slide) return null;
-
-  return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      className="relative"
-    >
-      <button
-        type="button"
-        onClick={() => onJumpTo(slide.jumpTo)}
-        className={`group relative w-full text-left rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-br ${slide.gradient} transition-transform hover:scale-[1.005]`}
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.18),transparent_60%)] pointer-events-none" />
-        <div className="absolute -top-12 -right-8 w-56 h-56 rounded-full bg-white/10 blur-3xl pointer-events-none" />
-
-        <div className="relative grid md:grid-cols-[1.1fr_1fr] gap-6 items-center px-7 py-9 md:px-10 md:py-12 min-h-[280px]">
-          {/* TEXT, left */}
-          <div>
-            <p className="text-[11px] font-extrabold tracking-[0.22em] uppercase text-white/85 mb-3">
-              {slide.kicker}
-            </p>
-            <h2 className="text-3xl md:text-4xl font-extrabold leading-[1.05] tracking-tight text-white mb-4">
-              {slide.title}
-            </h2>
-            <p className="text-[14px] text-white/75 leading-relaxed mb-6 max-w-md">
-              {slide.subtitle}
-            </p>
-            <span className={`inline-flex items-center gap-2 bg-white ${slide.accent} font-extrabold text-[13px] tracking-tight px-5 py-3 rounded-full shadow-lg group-hover:bg-white/95 transition-colors`}>
-              {slide.cta}
-              <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
-            </span>
-          </div>
-
-          {/* VISUAL, right (mockup) */}
-          <div className="hidden md:block relative">
-            {slide.visual}
-          </div>
-        </div>
-      </button>
-
-      {/* Dots */}
-      {slides.length > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-4">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => setIndex(i)}
-              aria-label={`Slide ${i + 1}`}
-              className={`h-1.5 rounded-full transition-all ${
-                i === index ? "w-8 bg-white" : "w-1.5 bg-white/25 hover:bg-white/45"
-              }`}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────
-//  Mockups des slides, petits cards Discord-style à droite du hero
-// ──────────────────────────────────────────────────────────────────────
-
-function PremiumVisual() {
-  return (
-    <div className="relative w-full max-w-[280px] ml-auto">
-      <div className="rounded-2xl bg-black/40 backdrop-blur-sm border border-white/15 p-4 shadow-xl">
-        <div className="flex items-center gap-2 mb-3">
-          <Crown className="w-4 h-4 text-amber-300" fill="currentColor" />
-          <span className="text-[11px] font-bold uppercase tracking-widest text-amber-200">Shard Premium</span>
-        </div>
-        <div className="space-y-2">
-          {["XP Boost ×2", "Custom Bot", "Modules illimités", "Support prioritaire"].map(l => (
-            <div key={l} className="flex items-center gap-2 text-[12px] text-white">
-              <CheckCircle2 className="w-3.5 h-3.5 text-amber-300 flex-shrink-0" strokeWidth={2.5} />
-              {l}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LevelsVisual() {
-  return (
-    <div className="relative w-full max-w-[280px] ml-auto">
-      <div className="rounded-2xl bg-black/40 backdrop-blur-sm border border-white/15 p-4 shadow-xl">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-indigo-500" />
-          <div className="flex-1">
-            <div className="text-[12.5px] font-extrabold text-white">Maya</div>
-            <div className="text-[10px] text-white/55 font-semibold">Niveau 42 · 18 240 XP</div>
-          </div>
-          <div className="text-[11px] font-bold text-sky-300">#1</div>
-        </div>
-        <div className="space-y-1">
-          <div className="flex justify-between text-[9px] font-bold text-white/45 uppercase tracking-widest">
-            <span>Progression</span><span>72 %</span>
-          </div>
-          <div className="h-2 rounded-full bg-white/[0.08] overflow-hidden">
-            <div className="h-full w-[72%] rounded-full bg-gradient-to-r from-sky-400 to-indigo-400" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ModerationVisual() {
-  return (
-    <div className="relative w-full max-w-[280px] ml-auto">
-      <div className="rounded-2xl bg-black/40 backdrop-blur-sm border border-white/15 p-4 shadow-xl space-y-2">
-        <div className="text-[9px] font-bold uppercase tracking-widest text-white/45 mb-1">#mod-logs</div>
-        {[
-          { act: "WARN", user: "@spam-bot", tone: "amber" },
-          { act: "MUTE 1h", user: "@toxic-dude", tone: "orange" },
-          { act: "BAN", user: "@phisher", tone: "red" },
-        ].map((l, i) => (
-          <div key={i} className="flex items-center gap-2 rounded-lg bg-white/[0.04] border border-white/[0.06] px-2 py-1.5">
-            <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded ${
-              l.tone === "amber" ? "bg-amber-400/15 text-amber-200" :
-              l.tone === "orange" ? "bg-orange-400/15 text-orange-200" :
-              "bg-red-500/20 text-red-200"
-            }`}>{l.act}</span>
-            <span className="text-[11px] text-white/80">{l.user}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function EconomyVisual() {
-  return (
-    <div className="relative w-full max-w-[280px] ml-auto">
-      <div className="rounded-2xl bg-black/40 backdrop-blur-sm border border-white/15 p-4 shadow-xl">
-        <div className="text-center mb-3">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-amber-200 mb-1">Solde</div>
-          <div className="text-2xl font-extrabold text-white tabular-nums">12 480 <span className="text-sm text-amber-300">coins</span></div>
-        </div>
-        <div className="grid grid-cols-3 gap-1.5">
-          {[
-            { l: "Daily", v: "+150" },
-            { l: "Work", v: "+80" },
-            { l: "Shop", v: "−500" },
-          ].map(s => (
-            <div key={s.l} className="rounded-lg bg-white/[0.04] border border-white/[0.06] p-2 text-center">
-              <div className="text-[11px] font-bold text-white tabular-nums">{s.v}</div>
-              <div className="text-[8px] font-bold uppercase tracking-widest text-white/45">{s.l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CustomBotVisual() {
-  return (
-    <div className="relative w-full max-w-[280px] ml-auto">
-      <div className="rounded-2xl bg-black/40 backdrop-blur-sm border border-white/15 p-4 shadow-xl">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white font-extrabold text-lg">
-            T
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <div className="text-[13px] font-extrabold text-white">TonBot</div>
-              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-200">BOT</span>
-            </div>
-            <div className="text-[10px] text-white/55">en ligne</div>
-          </div>
-        </div>
-        <div className="rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-2">
-          <div className="text-[10.5px] text-white/70 italic">
-            "Salut ! Je suis TonBot, prêt à animer ta commu 🚀"
-          </div>
-        </div>
       </div>
     </div>
   );
