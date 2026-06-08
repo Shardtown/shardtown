@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import {
-  Sparkles, ArrowRight, Lock, Mail,
+  ArrowRight, Lock, Mail,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -196,24 +196,26 @@ export function Outils() {
           transition={{ duration: 0.6, delay: 0.08, ease: heroEase }}
           className="mb-10"
         >
-          <Link to="/assistant" className="group block">
+          <Link to="/shard/server" className="group block">
             <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/20 p-6 md:p-8 transition-colors flex items-center gap-6">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border border-white/10 bg-white/[0.04] flex items-center justify-center text-white/70 shrink-0">
-                <Sparkles className="w-8 h-8 md:w-10 md:h-10" strokeWidth={1.5} />
-              </div>
+              <img
+                src="/image/shard.png"
+                alt="Shard"
+                className="w-16 h-16 md:w-20 md:h-20 rounded-2xl border border-white/10 object-cover shrink-0"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-[10.5px] font-bold uppercase tracking-widest text-white/35 mb-1.5">
-                  Assistante IA
+                  Bot Discord
                 </p>
                 <h2 className="text-xl md:text-2xl font-extrabold tracking-tight mb-2">
                   Shard
                 </h2>
                 <p className="text-[13.5px] text-white/55 leading-relaxed max-w-2xl">
-                  Pose tes questions sur le bot, le dashboard, le Premium ou nos services.
+                  Configure tes serveurs Discord, gère les membres, les niveaux, l'économie et bien plus.
                 </p>
               </div>
               <span className="hidden md:inline-flex items-center gap-2 text-[13px] font-bold text-white shrink-0 group-hover:gap-3 transition-all">
-                Ouvrir <ArrowRight className="w-3.5 h-3.5" />
+                Gérer <ArrowRight className="w-3.5 h-3.5" />
               </span>
             </div>
           </Link>

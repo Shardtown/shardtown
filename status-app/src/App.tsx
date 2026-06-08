@@ -33,7 +33,6 @@ import { ShardGuild } from "@/routes/shard/Guild";
 import { AdminLogin } from "@/routes/admin/Login";
 import { Admin } from "@/routes/admin/Admin";
 import { AdminGuildDetail } from "@/routes/admin/GuildDetail";
-import { Assistant } from "@/routes/Assistant";
 import { AccountLogin } from "@/routes/account/Login";
 import { VerifyEmail } from "@/routes/account/VerifyEmail";
 import { Account } from "@/routes/account/Account";
@@ -108,7 +107,7 @@ function AppMain() {
                   <Route path="/status" element={<Navigate to="/statut" replace />} />
                   <Route path="/statut" element={<DesktopStatus />} />
                   <Route path="/premium" element={<DesktopPremium />} />
-                  <Route path="/assistant" element={<Assistant />} />
+                  <Route path="/assistant" element={<Navigate to="/outils" replace />} />
                 </>
               ) : (
                 <>
@@ -116,7 +115,7 @@ function AppMain() {
                   <Route path="/status" element={<Status />} />
                   <Route path="/wiki" element={<Wiki />} />
                   <Route path="/download" element={<Navigate to="/#download" replace />} />
-                  <Route path="/assistant" element={<Assistant />} />
+                  <Route path="/assistant" element={<Navigate to="/outils" replace />} />
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/premium" element={<Premium />} />

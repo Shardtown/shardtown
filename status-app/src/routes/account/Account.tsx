@@ -754,7 +754,11 @@ function ConnectionRow({
           {avatarUrl ? (
             <img src={avatarUrl} alt="" className="w-10 h-10 rounded-xl border border-white/10" />
           ) : (
-            <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-white/65">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${
+              kind === "discord"
+                ? "bg-[#5865f2]"
+                : "bg-[#1f2328] border border-white/10"
+            }`}>
               <ProviderIcon kind={kind} />
             </div>
           )}
