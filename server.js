@@ -8273,26 +8273,25 @@ app.post('/admin/bot/:botId/guild/:guildId/premium', checkAdmin, verifyCsrf, asy
     if (!bot) return res.json({ success: false, error: 'Bot introuvable' });
     const flag = enabled ? 1 : 0;
     try {
-        // Offre unifiée : un seul Premium couvre les deux bots — on
-        // synchronise donc TOUJOURS settings + shard_settings ensemble,
-        // peu importe quel BotPresenceCard a déclenché le clic. Sinon,
-        // un admin qui n'active Premium que sur le toggle ShardGuard
-        // laisse Shard à 0 (et inversement) → les caps Shard restent
-        // appliqués alors que le serveur est censé être Premium.
-        // Même comportement que le webhook Stripe (server.js:932-933).
+        // Offre unifiée : un seul Premium couvre les deux bots.
+        // INSERT ... ON DUPLICATE KEY UPDATE pour gérer le cas où la guild
+        // n'a pas encore de row (serveur récent jamais configuré).
         await db.execute(
-            'UPDATE settings SET isPremium = ? WHERE guildId = ?',
-            [flag, guildId],
+            `INSERT INTO settings (guildId, isPremium) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE isPremium = VALUES(isPremium)`,
+            [guildId, flag],
         );
         await db.execute(
-            'UPDATE shard_settings SET isPremium = ? WHERE guildId = ?',
-            [flag, guildId],
+            `INSERT INTO shard_settings (guildId, isPremium) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE isPremium = VALUES(isPremium)`,
+            [guildId, flag],
         );
         await logAdminAction(req, 'premium.set', { botId, guildId }, { enabled: !!enabled, syncedBoth: true });
         res.json({ success: true, isPremium: !!enabled });
     } catch (err) {
+        console.error('[admin/premium]', err.message, err.stack);
         await logAdminAction(req, 'premium.set.failed', { botId, guildId }, { error: err.message || 'Erreur serveur' });
-        res.json({ success: false, error: 'Erreur serveur' });
+        res.json({ success: false, error: err.message || 'Erreur serveur' });
     }
 });
 
