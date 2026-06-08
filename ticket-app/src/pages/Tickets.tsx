@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useOutletContext } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import { useApi } from '@/hooks/useApi';
 import { api } from '@/api/client';
 import type { Guild } from '@/api/client';

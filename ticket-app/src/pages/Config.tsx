@@ -168,7 +168,7 @@ function CategoryRow({ cat, discordCategories, onChange, onDelete }: {
           {COLORS.map(c => (
             <button key={c} onClick={() => onChange({ ...cat, color: c })}
               className="w-5 h-5 rounded-full transition-all"
-              style={{ background: c, ring: cat.color === c ? `2px solid white` : 'none', opacity: cat.color === c ? 1 : 0.5, transform: cat.color === c ? 'scale(1.25)' : 'scale(1)' }}
+              style={{ background: c, outline: cat.color === c ? '2px solid white' : 'none', opacity: cat.color === c ? 1 : 0.5, transform: cat.color === c ? 'scale(1.25)' : 'scale(1)' }}
             />
           ))}
         </div>

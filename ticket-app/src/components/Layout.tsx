@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import type { Me, Guild } from '@/api/client';
 
 const NAV = [
@@ -18,8 +18,6 @@ interface LayoutProps {
 }
 
 export function Layout({ me, guild, guilds, onGuildChange }: LayoutProps) {
-  const navigate = useNavigate();
-
   return (
     <div className="flex h-full">
       {/* Sidebar */}

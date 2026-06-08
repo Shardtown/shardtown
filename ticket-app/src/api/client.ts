@@ -27,7 +27,7 @@ export const api = {
   incidents:      (gid: string)   => req<Incident[]>(`/incidents/${gid}`),
 };
 
-function qs(p: Record<string, unknown>) {
+function qs(p: PageParams | TicketsParams) {
   return Object.entries(p).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}=${v}`).join('&');
 }
 
