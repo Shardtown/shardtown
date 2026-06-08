@@ -6,7 +6,7 @@ import {
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useAuth } from "@/api/auth";
-import { apiGet, apiPost } from "@/api/client";
+import { apiGet } from "@/api/client";
 import { Admonition } from "@/components/ui/admonition";
 import { PricingModule, type PricingPlan } from "@/components/ui/pricing-module";
 import { CheckoutModal } from "@/components/premium/CheckoutModal";

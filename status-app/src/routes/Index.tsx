@@ -93,7 +93,7 @@ export function Index() {
 
       {/* Services / Métiers, slides in from the LEFT */}
       <section id="services" className="container-wide pt-48 pb-48 scroll-mt-32 overflow-x-clip">
-        <Reveal direction="left" distance={80} className="max-w-3xl mb-20">
+        <Reveal direction="up" distance={40} className="text-center max-w-3xl mx-auto mb-20">
           <p className="text-sm font-bold tracking-widest text-white/40 uppercase mb-6">
             Nos métiers
           </p>
