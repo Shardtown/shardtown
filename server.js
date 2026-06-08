@@ -8787,5 +8787,18 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Erreur serveur' });
 });
 
+// ── Ticket system API ─────────────────────────────────────────────────────────
+const ticketRoutes = require('./lib/ticketRoutes');
+app.use('/api/support', ticketRoutes);
+
+// ── Ticket dashboard (built Vite app) ─────────────────────────────────────────
+const TICKET_DIST = path.join(__dirname, 'ticket-app', 'dist');
+if (require('fs').existsSync(TICKET_DIST)) {
+    const TICKET_ASSETS = path.join(TICKET_DIST, 'assets');
+    app.use('/support/assets', express.static(TICKET_ASSETS, { maxAge: '1y', immutable: true }));
+    app.use('/support', express.static(TICKET_DIST, { index: false, fallthrough: true, maxAge: '1h' }));
+    app.get('/support/*splat', (_req, res) => res.sendFile(path.join(TICKET_DIST, 'index.html')));
+}
+
 console.log('Tentative de démarrage du serveur...');
 app.listen(PORT, () => console.log(`Tableau de bord démarré sur http://localhost:${PORT}`));

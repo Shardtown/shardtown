@@ -419,6 +419,9 @@ async function applyModAction(message, action, reason, settings = {}) {
 // =========================== READY ========================================
 client.once('ready', async () => {
     await connectDB();
+    // Init ticket tables
+    const ticketDB = require('../lib/ticketDB');
+    await ticketDB.init(db).catch(err => console.error('Erreur init ticket tables:', err.message));
     console.log(`✅ Shard connecté en tant que ${client.user.tag}`);
 
     // Branche le handler partagé interactionCreate (slash commands +
