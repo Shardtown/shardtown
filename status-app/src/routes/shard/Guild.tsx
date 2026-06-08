@@ -79,8 +79,6 @@ const TABS = [
   // ─── MONÉTISATION (futur système d'affiliation) ──────────────────────
   { key: "affiliation", label: "Affiliation", icon: HandCoins, group: "Monétisation", side: "any", placeholder: true },
 
-  // ─── SUPPORT (lien externe vers support.shardtwn.fr) ─────────────────
-  { key: "support", label: "Support", icon: LifeBuoy, group: "Support", side: "any", href: "https://support.shardtwn.fr" },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -776,6 +774,18 @@ export function ShardGuild() {
                   })}
                   </div>
                 </div>
+
+                <div className="h-px bg-white/[0.06] mx-2" aria-hidden />
+
+                <button
+                  type="button"
+                  onClick={() => openExternal(`https://support.shardtwn.fr/guild/${gid}`)}
+                  className="inline-flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium whitespace-nowrap transition-colors duration-150 w-full text-white/60 hover:text-white"
+                >
+                  <LifeBuoy className="w-[17px] h-[17px] flex-shrink-0" strokeWidth={1.8} />
+                  <span className="flex-1 text-left">Support</span>
+                  <ExternalLink className="w-3 h-3 flex-shrink-0 text-white/30" strokeWidth={2} />
+                </button>
               </nav>
             </aside>
           )}
