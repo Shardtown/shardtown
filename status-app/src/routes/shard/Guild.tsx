@@ -5,7 +5,7 @@ import {
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
   Code2, Smile, MessageCircleHeart, Radio, LayoutGrid, ChevronDown, Crown, Plus,
-  Wand2, Sparkles, HandCoins, CheckCircle2,
+  Wand2, Sparkles, HandCoins,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
