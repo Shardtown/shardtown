@@ -5,7 +5,7 @@ import {
   Users2, Bot, BarChart3, ShieldOff, FileText, Filter,
   MessageSquare, UserPlus, Cake, Award, Coins, Gift, Vote, Volume2,
   Code2, Smile, Radio, LayoutGrid, ChevronDown, Crown, Plus,
-  Wand2, Sparkles, HandCoins,
+  Wand2, Sparkles, HandCoins, ExternalLink, LifeBuoy,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -78,6 +78,9 @@ const TABS = [
 
   // ─── MONÉTISATION (futur système d'affiliation) ──────────────────────
   { key: "affiliation", label: "Affiliation", icon: HandCoins, group: "Monétisation", side: "any", placeholder: true },
+
+  // ─── SUPPORT (lien externe vers support.shardtwn.fr) ─────────────────
+  { key: "support", label: "Support", icon: LifeBuoy, group: "Support", side: "any", href: "https://support.shardtwn.fr" },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -755,7 +758,13 @@ export function ShardGuild() {
                                 t={t}
                                 active={t.key === tab}
                                 status={getModuleStatus(t.key, security?.settings ?? null, community?.settings ?? null)}
-                                onClick={() => setTab(t.key)}
+                                onClick={() => {
+                                  if ("href" in t && t.href) {
+                                    window.open(`${t.href}/guild/${gid}`, "_blank", "noopener");
+                                  } else {
+                                    setTab(t.key);
+                                  }
+                                }}
                                 refCallback={el => { tabRefs.current[t.key] = el; }}
                                 onHover={() => moveIndicatorTo(t.key)}
                               />
@@ -831,6 +840,7 @@ function SidebarTab({
 }) {
   const Icon = t.icon;
   const badge = "badge" in t ? t.badge : undefined;
+  const isExternal = "href" in t && !!t.href;
   const dotTone =
     status === "active"   ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.55)]" :
     status === "inactive" ? "bg-white/20" :
@@ -873,6 +883,9 @@ function SidebarTab({
         <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider bg-blue-500/20 text-blue-200 border border-blue-400/30">
           {badge}
         </span>
+      )}
+      {isExternal && (
+        <ExternalLink className="w-3 h-3 flex-shrink-0 text-white/30" strokeWidth={2} />
       )}
     </button>
   );
