@@ -466,6 +466,7 @@ export function ShardGuild() {
             }
             return true;
           }}
+          supportUrl={`https://support.shardtwn.fr/guild/${gid}`}
           reduce={reduce}
           heroEase={heroEase}
         />
@@ -775,17 +776,6 @@ export function ShardGuild() {
                   </div>
                 </div>
 
-                <div className="h-px bg-white/[0.06] mx-2" aria-hidden />
-
-                <button
-                  type="button"
-                  onClick={() => openExternal(`https://support.shardtwn.fr/guild/${gid}`)}
-                  className="inline-flex items-center gap-3 px-3 py-2.5 rounded-lg text-[14px] font-medium whitespace-nowrap transition-colors duration-150 w-full text-white/60 hover:text-white"
-                >
-                  <LifeBuoy className="w-[17px] h-[17px] flex-shrink-0" strokeWidth={1.8} />
-                  <span className="flex-1 text-left">Support</span>
-                  <ExternalLink className="w-3 h-3 flex-shrink-0 text-white/30" strokeWidth={2} />
-                </button>
               </nav>
             </aside>
           )}
@@ -931,19 +921,13 @@ type Reduce = boolean | null;
 type Ease = readonly [number, number, number, number];
 
 function OverviewPanel({
-  secSettings, comSettings, onJumpTo, onToggleModule, reduce, heroEase,
+  secSettings, comSettings, onJumpTo, onToggleModule, supportUrl, reduce, heroEase,
 }: {
-  /** Settings DRAFT côté moderation (= ce que l'admin a modifié sans
-   *  encore Save). Utiliser le draft plutôt que le blob serveur
-   *  permet de voir la card devenir "Actif" instantanément quand on
-   *  clique Activer dans la modale, sans attendre le Save. */
   secSettings: ShardModSettings | null;
   comSettings: ShardSettings | null;
   onJumpTo: (key: TabKey) => void;
-  /** Active ou désactive un module. Retourne true si le toggle a fait
-   *  quelque chose (le module a un flag), false si le module n'a pas
-   *  de flag explicite (devient actif seulement quand configuré). */
   onToggleModule: (key: TabKey, enable: boolean) => boolean;
+  supportUrl: string;
   reduce: Reduce;
   heroEase: Ease;
 }) {
@@ -971,6 +955,22 @@ function OverviewPanel({
       transition={{ duration: 0.45, ease: heroEase }}
       className="space-y-8"
     >
+      {/* ─── Support ────────────────────────────────────────────────── */}
+      <button
+        type="button"
+        onClick={() => openExternal(supportUrl)}
+        className="group w-full text-left rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.04] hover:bg-indigo-500/[0.08] hover:border-indigo-500/30 transition-colors p-5 flex items-center gap-4"
+      >
+        <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-300 shrink-0">
+          <LifeBuoy className="w-5 h-5" strokeWidth={1.8} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-extrabold tracking-tight text-white">Tickets Support</p>
+          <p className="text-[12px] text-white/40 mt-0.5">Gérer les tickets, transcripts et incidents de ce serveur.</p>
+        </div>
+        <ExternalLink className="w-4 h-4 text-white/25 group-hover:text-white/50 transition-colors shrink-0" strokeWidth={1.8} />
+      </button>
+
       {/* ─── Modules ────────────────────────────────────────────────── */}
       <div>
         <h2 className="text-2xl font-extrabold tracking-tight mb-5">
