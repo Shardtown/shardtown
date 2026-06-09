@@ -4,6 +4,7 @@ import { get } from '@/api/client';
 import type { Guild } from '@/types';
 import Header from '@/components/Header/Header';
 import { Footer } from '@/components/Footer';
+import { BackgroundGradientAnimation } from '@/components/ui/BackgroundGradientAnimation';
 
 const Ctx = createContext<Guild | null>(null);
 export const useGuild = () => useContext(Ctx);
@@ -50,13 +51,10 @@ export default function GuildLayout() {
         <Ctx.Provider value={guild}>
             <div className="min-h-screen text-white flex flex-col">
 
-                {/* Base sombre */}
-                <div className="fixed inset-0 -z-20 bg-[#0a0a0a]" />
-                {/* Aurora */}
-                <div className="fixed inset-0 pointer-events-none -z-10">
-                    <div className="absolute inset-0 [background:radial-gradient(ellipse_110%_60%_at_50%_-5%,rgba(59,130,246,0.28)_0%,rgba(37,99,235,0.14)_40%,transparent_70%)]" />
-                    <div className="absolute inset-0 [background:radial-gradient(ellipse_60%_50%_at_85%_15%,rgba(99,102,241,0.18)_0%,transparent_60%)]" />
-                    <div className="absolute inset-0 [background:radial-gradient(ellipse_50%_40%_at_15%_85%,rgba(29,78,216,0.15)_0%,transparent_60%)]" />
+                {/* Background — identique au site principal (AppLayout) */}
+                <div className="fixed inset-0 pointer-events-none -z-10 opacity-60">
+                    <BackgroundGradientAnimation />
+                    <div aria-hidden className="absolute inset-x-0 top-0 h-[140vh] [background:radial-gradient(ellipse_90%_100%_at_50%_0%,rgba(91,109,255,0.45)_0%,rgba(139,92,246,0.22)_35%,rgba(91,109,255,0.10)_60%,transparent_100%)]" />
                 </div>
 
                 <Header

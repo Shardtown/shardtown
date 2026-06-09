@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { get, ApiError } from "@/api/client";
 import type { Me } from "@/types";
+import { BackgroundGradientAnimation } from "@/components/ui/BackgroundGradientAnimation";
 import Guilds from "@/pages/Guilds";
 import GuildLayout from "@/pages/GuildLayout";
 import Stats from "@/pages/tabs/Stats";
@@ -35,7 +36,10 @@ export default function App() {
 
   if (status === "loading") {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="relative flex items-center justify-center min-h-screen">
+        <div className="fixed inset-0 pointer-events-none -z-10 opacity-60">
+          <BackgroundGradientAnimation />
+        </div>
         <div className="flex flex-col items-center gap-4">
           <ShardLogo />
           <div className="flex gap-1.5">
@@ -50,12 +54,10 @@ export default function App() {
 
   if (status === "unauth") {
     return (
-      <div className="flex items-center justify-center min-h-screen overflow-hidden">
-        {/* Base sombre */}
-        <div className="fixed inset-0 -z-20 bg-[#0a0a0a]" />
-        {/* Aurora */}
-        <div className="fixed inset-0 pointer-events-none -z-10">
-          <div className="absolute inset-x-0 top-0 h-[100vh] [background:radial-gradient(ellipse_80%_80%_at_50%_0%,rgba(59,130,246,0.25)_0%,rgba(29,78,216,0.12)_40%,transparent_100%)]" />
+      <div className="relative flex items-center justify-center min-h-screen overflow-hidden">
+        <div className="fixed inset-0 pointer-events-none -z-10 opacity-60">
+          <BackgroundGradientAnimation />
+          <div aria-hidden className="absolute inset-x-0 top-0 h-[140vh] [background:radial-gradient(ellipse_90%_100%_at_50%_0%,rgba(91,109,255,0.45)_0%,rgba(139,92,246,0.22)_35%,rgba(91,109,255,0.10)_60%,transparent_100%)]" />
         </div>
         <div className="flex flex-col items-center gap-8 px-6 text-center max-w-md">
           <div className="p-5 rounded-3xl bg-white/[0.04] border border-white/[0.08] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)]">
