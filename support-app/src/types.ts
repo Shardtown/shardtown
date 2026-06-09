@@ -31,6 +31,9 @@ export interface SupportConfig {
   panel_description: string;
   panel_footer: string;
   panel_color: string;
+  welcome_title: string;
+  welcome_color: string;
+  welcome_footer: string;
 }
 
 export interface Ticket {
