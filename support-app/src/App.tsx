@@ -2,7 +2,6 @@ import { useState, useEffect, createContext, useContext } from "react";
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { get, ApiError } from "@/api/client";
 import type { Me } from "@/types";
-import Guilds from "@/pages/Guilds";
 import GuildLayout from "@/pages/GuildLayout";
 import Stats from "@/pages/tabs/Stats";
 import Tickets from "@/pages/tabs/Tickets";
@@ -15,9 +14,12 @@ const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
 
 // createBrowserRouter (data router) — required for useBlocker
+const MAIN_SITE = 'https://shardtwn.fr/shard/server';
+const ToMainSite = () => { window.location.replace(MAIN_SITE); return null; };
+
 const router = createBrowserRouter([
-  { path: "/",       element: <Navigate to="/guilds" replace /> },
-  { path: "/guilds", element: <Guilds /> },
+  { path: "/",       element: <ToMainSite /> },
+  { path: "/guilds", element: <ToMainSite /> },
   {
     path: "/guild/:guildId",
     element: <GuildLayout />,
@@ -31,7 +33,7 @@ const router = createBrowserRouter([
       { path: "incidents",         element: <Incidents /> },
     ],
   },
-  { path: "*", element: <Navigate to="/guilds" replace /> },
+  { path: "*", element: <ToMainSite /> },
 ]);
 
 const ShardLogo = () => (

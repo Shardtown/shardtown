@@ -27,12 +27,12 @@ export default function GuildLayout() {
         get<Guild[]>('/api/support/guilds')
             .then(list => {
                 const g = list.find(g => g.id === guildId);
-                if (!g) navigate('/guilds');
+                if (!g) window.location.replace('https://shardtwn.fr/shard/server');
                 else setGuild(g);
             })
-            .catch(() => navigate('/guilds'))
+            .catch(() => window.location.replace('https://shardtwn.fr/shard/server'))
             .finally(() => setLoading(false));
-    }, [guildId, navigate]);
+    }, [guildId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (loading) return (
         <div className="flex items-center justify-center min-h-screen">
@@ -68,7 +68,6 @@ export default function GuildLayout() {
 
                 <Header
                     navLinks={navLinks}
-                    showBack
                     guildName={guild.name}
                     guildIcon={guild.icon ?? undefined}
                     guildId={guild.id}

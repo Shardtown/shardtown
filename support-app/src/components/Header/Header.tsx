@@ -1,18 +1,16 @@
 import { JSX, useEffect, useRef, useState } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
 interface NavItem { label: string; to: string }
 
 interface HeaderProps {
     navLinks?: NavItem[];
-    showBack?: boolean;
     guildName?: string;
     guildIcon?: string;
     guildId?: string;
 }
 
-export default function Header({ navLinks = [], showBack = false, guildName, guildIcon, guildId }: HeaderProps): JSX.Element {
-    const navigate = useNavigate();
+export default function Header({ navLinks = [], guildName, guildIcon, guildId }: HeaderProps): JSX.Element {
     const { pathname } = useLocation();
 
     const [scrolled, setScrolled] = useState(false);
@@ -65,8 +63,8 @@ export default function Header({ navLinks = [], showBack = false, guildName, gui
                 <div className="container-wide flex items-center justify-between gap-3">
 
                     {/* GAUCHE — Logo pill */}
-                    <NavLink
-                        to="/guilds"
+                    <a
+                        href="https://shardtwn.fr/shard/server"
                         className={`group flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 ${pillBase} ${pillSurface} hover:bg-white/[0.08]`}
                     >
                         <span className="relative">
@@ -80,7 +78,7 @@ export default function Header({ navLinks = [], showBack = false, guildName, gui
                         <span className="font-extrabold tracking-tight text-[15px] uppercase">
                             Support
                         </span>
-                    </NavLink>
+                    </a>
 
                     {/* CENTRE — Nav pill avec indicateur glissant (identique site principal) */}
                     {navLinks.length > 0 && (
@@ -130,18 +128,6 @@ export default function Header({ navLinks = [], showBack = false, guildName, gui
                             </div>
                         )}
 
-                        {showBack && (
-                            <button
-                                type="button"
-                                onClick={() => navigate('/guilds')}
-                                className={`hidden lg:inline-flex items-center gap-2 pl-3 pr-4 py-2 text-[13px] font-semibold ${pillBase} ${pillSurface} hover:bg-white/[0.08] text-white/60 hover:text-white`}
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="7" height="11" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                    <path d="m9 1-7 7 7 7" />
-                                </svg>
-                                Serveurs
-                            </button>
-                        )}
 
                         {/* Burger mobile */}
                         <button
@@ -185,15 +171,6 @@ export default function Header({ navLinks = [], showBack = false, guildName, gui
                                 {item.label}
                             </NavLink>
                         ))}
-                        {showBack && (
-                            <button
-                                type="button"
-                                onClick={() => { navigate('/guilds'); setMobileOpen(false); }}
-                                className="mt-1 px-4 py-3 text-sm font-semibold rounded-2xl text-white/40 hover:text-white hover:bg-white/[0.06] transition-colors text-left"
-                            >
-                                Retour aux serveurs
-                            </button>
-                        )}
                     </div>
                 </div>
             </div>
