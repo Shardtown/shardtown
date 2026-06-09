@@ -475,7 +475,7 @@ export default function Config() {
                         <line x1="12" y1="9" x2="12" y2="13"/>
                         <line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
-                    <p className="flex-1 text-sm font-semibold text-white/75 whitespace-nowrap">
+                    <p className="flex-1 min-w-0 text-sm font-semibold text-white/75">
                         Attention, il reste des modifications non enregistrées !
                     </p>
 
