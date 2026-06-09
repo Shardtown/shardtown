@@ -8,6 +8,10 @@ const DEFAULT: SupportConfig = {
     categories: [], staff_roles: [], admin_roles: [],
     transcript_channel_id: null, log_channel_id: null,
     max_tickets_per_user: 1, afk_timeout_minutes: 60,
+    panel_title: 'Support Shardtown',
+    panel_description: 'Sélectionnez une catégorie ci-dessous pour ouvrir un ticket.\nNotre équipe vous répondra dans les meilleurs délais.',
+    panel_footer: '',
+    panel_color: '#7c3aed',
 };
 
 function channelOpts(ch: DChannel[]) {
@@ -290,10 +294,55 @@ export default function Config() {
                 )}
             </SectionCard>
 
+            {/* Apparence du panel */}
+            <SectionCard
+                title="Apparence du panel"
+                description="Personnalisez l'embed Discord qui s'affiche dans le salon de support. Le menu déroulant des catégories s'ajoute automatiquement en dessous."
+            >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Titre de l'embed">
+                        <TextInput
+                            value={cfg.panel_title}
+                            onChange={e => save({ panel_title: e.target.value })}
+                            placeholder="Support Shardtown"
+                        />
+                    </Field>
+                    <Field label="Couleur (hex)" hint="Ex : #7c3aed · #3b82f6 · #10b981">
+                        <div className="flex items-center gap-2">
+                            <span
+                                className="w-9 h-9 rounded-lg border border-white/10 flex-shrink-0 cursor-pointer"
+                                style={{ background: cfg.panel_color || '#7c3aed' }}
+                            />
+                            <TextInput
+                                value={cfg.panel_color}
+                                onChange={e => save({ panel_color: e.target.value })}
+                                placeholder="#7c3aed"
+                            />
+                        </div>
+                    </Field>
+                </div>
+                <Field label="Description" hint="Supports le markdown Discord (**, __, ~~, `)">
+                    <textarea
+                        value={cfg.panel_description}
+                        onChange={e => save({ panel_description: e.target.value })}
+                        placeholder="Sélectionnez une catégorie ci-dessous…"
+                        rows={3}
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] focus:border-white/25 focus:bg-white/[0.04] focus:outline-none text-white placeholder:text-white/25 transition-colors text-sm resize-y"
+                    />
+                </Field>
+                <Field label="Footer" hint="Optionnel — texte affiché en bas de l'embed">
+                    <TextInput
+                        value={cfg.panel_footer}
+                        onChange={e => save({ panel_footer: e.target.value })}
+                        placeholder="Shardtown · Réponse sous 24h"
+                    />
+                </Field>
+            </SectionCard>
+
             {/* Publier le panel */}
             <SectionCard
                 title="Publier le panel"
-                description="Envoie un message avec les boutons de catégories dans le salon Discord de votre choix. Les utilisateurs cliquent sur ces boutons pour ouvrir un ticket."
+                description="Envoie l'embed dans le salon choisi. Les membres voient un menu déroulant pour choisir leur catégorie, puis un formulaire pour décrire leur problème."
             >
                 <div className="flex items-end gap-3">
                     <div className="flex-1">
@@ -308,7 +357,7 @@ export default function Config() {
                     </div>
                     <button
                         type="button"
-                        className="btn-liquid btn-liquid--blue px-5 py-2.5 rounded-full text-sm font-bold disabled:opacity-40 flex-shrink-0 mb-px"
+                        className="btn-liquid btn-liquid--primary px-5 py-2.5 rounded-full text-sm font-bold disabled:opacity-40 flex-shrink-0 mb-px"
                         disabled={deployBusy || !deployChannelId}
                         onClick={deployPanel}
                     >

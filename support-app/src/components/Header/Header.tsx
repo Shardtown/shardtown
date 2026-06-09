@@ -78,8 +78,7 @@ export default function Header({ navLinks = [], showBack = false, guildName, gui
                             />
                         </span>
                         <span className="font-extrabold tracking-tight text-[15px] uppercase">
-                            Shardtown{' '}
-                            <span className="font-semibold text-white/40">Support</span>
+                            Support
                         </span>
                     </NavLink>
 

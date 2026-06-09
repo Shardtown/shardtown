@@ -27,6 +27,10 @@ export interface SupportConfig {
   log_channel_id: string | null;
   max_tickets_per_user: number;
   afk_timeout_minutes: number;
+  panel_title: string;
+  panel_description: string;
+  panel_footer: string;
+  panel_color: string;
 }
 
 export interface Ticket {

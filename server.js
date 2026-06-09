@@ -1406,6 +1406,8 @@ app.use((req, res, next) => {
     // donc pas de CSRF possible. Le code échangé est à usage unique +
     // protégé par PKCE, ce qui couvre l'attaque que CSRF empêche normalement.
     if (req.path === '/api/mobile/auth/exchange') return next();
+    // Uptime Kuma webhook — authenticated via secret query param, no session
+    if (req.path.startsWith('/api/support/webhook/')) return next();
     return verifyCsrf(req, res, next);
 });
 
