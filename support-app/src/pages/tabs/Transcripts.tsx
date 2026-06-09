@@ -3,23 +3,22 @@ import { useParams, NavLink } from 'react-router-dom';
 import { get } from '@/api/client';
 import type { Transcript } from '@/types';
 import { formatDate } from '@/utils/timeUtils';
-import './Transcripts.css';
 
-const TRANSCRIPTS_PER_PAGE = 15;
+const PER_PAGE = 15;
 
 export default function Transcripts() {
     const { guildId } = useParams<{ guildId: string }>();
     const [transcripts, setTranscripts] = useState<Transcript[]>([]);
     const [loading, setLoading] = useState(true);
-
     const [optionId, setOptionId] = useState('');
     const [optionCategory, setOptionCategory] = useState('');
+    const [page, setPage] = useState(1);
 
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
         get<{ transcripts: Transcript[]; total: number }>(`/api/support/transcripts/${guildId}?limit=200&offset=0`)
-            .then(r => { if (!cancelled) { setTranscripts(r.transcripts ?? []); } })
+            .then(r => { if (!cancelled) setTranscripts(r.transcripts ?? []); })
             .catch(() => { if (!cancelled) setTranscripts([]); })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
@@ -31,123 +30,126 @@ export default function Transcripts() {
         return true;
     });
 
-    const pages = Math.ceil(filtered.length / TRANSCRIPTS_PER_PAGE);
-    const [page, setPage] = useState(1);
-    const paginated = filtered.slice((page - 1) * TRANSCRIPTS_PER_PAGE, page * TRANSCRIPTS_PER_PAGE);
-
+    const pages = Math.ceil(filtered.length / PER_PAGE);
+    const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
     const categories = Array.from(new Set(transcripts.map(t => t.category)));
 
     return (
-        <div className="page-transcripts-content">
-            <div className="transcripts-header pala-item pala-item-subtitle primary">
-                <div className="pala-item pala-item-subtitle primary">
-                    <div className="pala-item-subtitle-container">
-                        <h4>Transcriptions</h4>
-                    </div>
-                    <p className="pala-item-subtitle-text">
-                        Retrouvez les transcriptions de tous les anciens tickets Discord.
-                    </p>
-                </div>
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="card-glass rounded-2xl p-6">
+                <p className="text-xs font-bold tracking-[0.2em] uppercase text-white/40 mb-1">Transcriptions</p>
+                <h2 className="text-2xl font-extrabold tracking-tight">Historique</h2>
+                <p className="text-white/50 text-sm mt-1">Retrouvez les transcriptions de tous les anciens tickets Discord.</p>
             </div>
 
-            <div className="transcripts-options pala-item">
-                <div className="transcripts-option">
-                    <h6>ID du ticket</h6>
+            {/* Filters */}
+            <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">ID</label>
                     <input
                         type="text"
-                        className="pala-item-text-input"
                         value={optionId}
                         onChange={e => { setOptionId(e.target.value.toUpperCase()); setPage(1); }}
                         placeholder="ABC123"
                         maxLength={16}
+                        className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-sm text-white placeholder-white/25 outline-none focus:border-blue-500/40 focus:bg-white/[0.06] transition-all font-mono w-32"
                     />
                 </div>
-                <div className="transcripts-option">
-                    <h6>Catégorie</h6>
-                    <div className="pala-item-select">
-                        <select value={optionCategory} onChange={e => { setOptionCategory(e.target.value); setPage(1); }}>
-                            <option value="">Toutes</option>
-                            {categories.map(c => (
-                                <option key={c} value={c}>{c}</option>
-                            ))}
-                        </select>
-                    </div>
+                <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Catégorie</label>
+                    <select
+                        value={optionCategory}
+                        onChange={e => { setOptionCategory(e.target.value); setPage(1); }}
+                        className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-sm text-white outline-none focus:border-blue-500/40 transition-all appearance-none cursor-pointer"
+                        style={{ background: 'rgba(255,255,255,0.04)' }}
+                    >
+                        <option value="" style={{ background: '#111' }}>Toutes</option>
+                        {categories.map(c => <option key={c} value={c} style={{ background: '#111' }}>{c}</option>)}
+                    </select>
                 </div>
+                {filtered.length !== transcripts.length && (
+                    <span className="text-xs text-blue-400 font-semibold">{filtered.length} résultat{filtered.length > 1 ? 's' : ''}</span>
+                )}
             </div>
 
-            <div className="transcripts-content-area">
-                <div className="pala-item pala-item-title primary">
-                    <h3 className="pala-item-title-subtitle">
-                        {filtered.length} transcription{filtered.length > 1 ? 's' : ''} trouvée{filtered.length > 1 ? 's' : ''}
-                    </h3>
+            {/* Content */}
+            {loading ? (
+                <div className="flex gap-1.5 p-6">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
-
-                {loading && <div className="pala-loading"><p>Chargement...</p></div>}
-
-                {!loading && filtered.length === 0 && (
-                    <div className="pala-empty"><p>Aucune transcription trouvée.</p></div>
-                )}
-
-                {!loading && filtered.length > 0 && (
-                    <div className="transcripts-list-container pala-item">
-                        <table className="transcripts-list">
+            ) : filtered.length === 0 ? (
+                <div className="card-glass rounded-2xl p-10 text-center">
+                    <p className="text-white/40 text-sm">Aucune transcription trouvée.</p>
+                </div>
+            ) : (
+                <div className="card-glass rounded-2xl overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
                             <thead>
-                                <tr>
-                                    <th>ID du ticket</th>
-                                    <th>Utilisateur</th>
-                                    <th>Catégorie</th>
-                                    <th>Fermé le</th>
-                                    <th></th>
+                                <tr className="border-b border-white/[0.06]">
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">ID ticket</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Utilisateur</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Catégorie</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Fermé le</th>
+                                    <th className="px-4 py-3"></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {paginated.map(t => (
-                                    <tr key={t.id} className="transcripts-item">
-                                        <td>{t.id}</td>
-                                        <td>{t.author_pseudo || '—'}</td>
-                                        <td className="transcript-category">{t.category}</td>
-                                        <td>{formatDate(t.closed_at)}</td>
-                                        <td>
+                                {paginated.map((t, i) => (
+                                    <tr key={t.id} className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors ${i === paginated.length - 1 ? 'border-0' : ''}`}>
+                                        <td className="px-4 py-3 font-mono text-xs text-white/60">{t.id}</td>
+                                        <td className="px-4 py-3 text-white/70">{t.author_pseudo || '—'}</td>
+                                        <td className="px-4 py-3 text-white/60">{t.category}</td>
+                                        <td className="px-4 py-3 text-white/50 text-xs">{formatDate(t.closed_at)}</td>
+                                        <td className="px-4 py-3 text-right">
                                             <NavLink
-                                                className="pala-item-button-container"
                                                 to={`/guild/${guildId}/transcript/${t.id}`}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-xs font-semibold text-white/70 hover:text-white hover:bg-white/[0.1] transition-all"
                                             >
-                                                <button className="pala-item-button primary small">
-                                                    <span className="pala-item-button-content">
-                                                        <p>Ouvrir</p>
-                                                    </span>
-                                                </button>
+                                                Ouvrir
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="6" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                    <path d="m1 1 7 7-7 7" />
+                                                </svg>
                                             </NavLink>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-
-                        {pages > 1 && (
-                            <div className="transcripts-pagination">
-                                <div
-                                    className={`transcripts-change-page ${page <= 1 ? 'disabled' : 'active'}`}
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
-                                        <path d="M201.4 297.4C188.9 309.9 188.9 330.2 201.4 342.7L361.4 502.7C373.9 515.2 394.2 515.2 406.7 502.7C419.2 490.2 419.2 469.9 406.7 457.4L269.3 320L406.6 182.6C419.1 170.1 419.1 149.8 406.6 137.3C394.1 124.8 373.8 124.8 361.3 137.3L201.3 297.3z"/>
-                                    </svg>
-                                </div>
-                                <div className="transcripts-page-info">Page {page}</div>
-                                <div
-                                    className={`transcripts-change-page ${page >= pages ? 'disabled' : 'active'}`}
-                                    onClick={() => setPage(p => Math.min(pages, p + 1))}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
-                                        <path d="M439.1 297.4C451.6 309.9 451.6 330.2 439.1 342.7L279.1 502.7C266.6 515.2 246.3 515.2 233.8 502.7C221.3 490.2 221.3 469.9 233.8 457.4L371.2 320L233.9 182.6C221.4 170.1 221.4 149.8 233.9 137.3C246.4 124.8 266.7 124.8 279.2 137.3L439.2 297.3z"/>
-                                    </svg>
-                                </div>
-                            </div>
-                        )}
                     </div>
-                )}
-            </div>
+
+                    {pages > 1 && (
+                        <div className="flex items-center justify-between px-4 py-3 border-t border-white/[0.06]">
+                            <button
+                                type="button"
+                                disabled={page <= 1}
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-full border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="7" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="m9 1-7 7 7 7" />
+                                </svg>
+                                Précédent
+                            </button>
+                            <span className="text-xs text-white/40 font-medium">Page {page} / {pages}</span>
+                            <button
+                                type="button"
+                                disabled={page >= pages}
+                                onClick={() => setPage(p => Math.min(pages, p + 1))}
+                                className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-full border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.05] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                            >
+                                Suivant
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="7" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="m1 1 7 7-7 7" />
+                                </svg>
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

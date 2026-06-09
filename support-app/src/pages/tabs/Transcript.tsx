@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { get } from '@/api/client';
 import { DiscordMessagesView, type MessageData } from '@/components/DiscordMessagesView/DiscordMessagesView';
-import './Transcript.css';
 
 interface TranscriptDetail {
     id: string;
@@ -31,41 +30,47 @@ export default function Transcript() {
     }, [id]);
 
     return (
-        <div className="page-transcript">
-            <div className="transcript-header pala-item pala-item-subtitle primary">
-                <div className="pala-item pala-item-subtitle primary">
-                    <div className="pala-item-subtitle-container">
-                        <h4>Transcription</h4>
-                    </div>
-                    {loading && <p className="pala-item-subtitle-text">Chargement...</p>}
-                    {!loading && notFound && <p className="pala-item-subtitle-text">Transcription introuvable.</p>}
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="card-glass rounded-2xl p-5 flex items-start justify-between gap-4">
+                <div>
+                    <p className="text-xs font-bold tracking-[0.2em] uppercase text-white/40 mb-1">Transcription</p>
+                    {loading && <p className="text-white/50 text-sm">Chargement...</p>}
+                    {!loading && notFound && <p className="text-white/50 text-sm">Transcription introuvable.</p>}
                     {!loading && transcript && (
-                        <p className="pala-item-subtitle-text">
-                            ID : {transcript.id}
-                            {transcript.category && <> · Catégorie : <span className="transcript-info-value">{transcript.category}</span></>}
-                            {transcript.author_pseudo && <> · Auteur : <span className="transcript-info-value">{transcript.author_pseudo}</span></>}
-                        </p>
+                        <>
+                            <h2 className="text-xl font-extrabold tracking-tight font-mono">{transcript.id}</h2>
+                            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                                {transcript.category && (
+                                    <span className="px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold">
+                                        {transcript.category}
+                                    </span>
+                                )}
+                                {transcript.author_pseudo && (
+                                    <span className="text-white/40 text-xs">{transcript.author_pseudo}</span>
+                                )}
+                            </div>
+                        </>
                     )}
                 </div>
                 <button
                     type="button"
-                    className="pala-item-button second width-auto"
-                    style={{ minHeight: 36, padding: '0 1em', width: 'auto' }}
                     onClick={() => navigate(`/guild/${guildId}/transcripts`)}
+                    className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.05] border border-white/[0.1] text-sm font-semibold text-white/60 hover:text-white hover:bg-white/[0.09] transition-all"
                 >
-                    <span className="pala-item-button-content">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10.182 16.121" width="7" height="auto">
-                            <path fill="none" stroke="currentColor" strokeWidth="3" d="m9.121 1.061-7 7 7 7" />
-                        </svg>
-                        <p>Retour</p>
-                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="7" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="m9 1-7 7 7 7" />
+                    </svg>
+                    Retour
                 </button>
             </div>
 
             {!loading && transcript && (
-                <div className="transcript-messages pala-item">
+                <div className="card-glass rounded-2xl overflow-hidden">
                     {(!transcript.messages_data || transcript.messages_data.length === 0) ? (
-                        <div className="pala-empty"><p>Aucun message dans cette transcription.</p></div>
+                        <div className="p-10 text-center">
+                            <p className="text-white/40 text-sm">Aucun message dans cette transcription.</p>
+                        </div>
                     ) : (
                         <DiscordMessagesView messages={transcript.messages_data} />
                     )}

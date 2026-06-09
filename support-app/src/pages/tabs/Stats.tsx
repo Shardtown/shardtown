@@ -3,9 +3,6 @@ import { useParams } from 'react-router-dom';
 import { get } from '@/api/client';
 import type { Stats as StatsType } from '@/types';
 import ReactECharts from 'echarts-for-react';
-import './Stats.css';
-
-const colors = ['#ff5c00', '#0F4C5C', '#4B1D3F', '#7A9E7E', '#E6D3B1'];
 
 const hexToRgba = (hex: string, alpha: number): string => {
     const r = parseInt(hex.slice(1, 3), 16);
@@ -20,27 +17,27 @@ function buildChartOption(data: { day: string; cnt: number }[], color: string, l
         backgroundColor: 'transparent',
         tooltip: {
             trigger: 'axis',
-            backgroundColor: 'rgba(21, 21, 21, 0.95)',
-            borderColor: '#383838',
-            textStyle: { color: '#fff', fontFamily: 'Montserrat' },
+            backgroundColor: 'rgba(10, 10, 10, 0.95)',
+            borderColor: 'rgba(255,255,255,0.1)',
+            textStyle: { color: '#fff', fontFamily: 'Inter' },
         },
         grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
         xAxis: {
             type: 'time',
-            axisLabel: { color: '#aaa', fontFamily: 'Montserrat', fontSize: 11,
+            axisLabel: { color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter', fontSize: 11,
                 formatter: (v: number) => {
                     const d = new Date(v);
-                    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
+                    return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
                 }
             },
-            axisLine: { lineStyle: { color: '#383838' } },
+            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
             splitLine: { show: false },
         },
         yAxis: {
             type: 'value',
-            axisLabel: { color: '#aaa', fontFamily: 'Montserrat', fontSize: 11 },
-            axisLine: { lineStyle: { color: '#383838' } },
-            splitLine: { lineStyle: { color: '#383838' } },
+            axisLabel: { color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter', fontSize: 11 },
+            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
             minInterval: 1,
         },
         series: [{
@@ -50,10 +47,11 @@ function buildChartOption(data: { day: string; cnt: number }[], color: string, l
             smooth: true,
             showSymbol: false,
             itemStyle: { color },
+            lineStyle: { color, width: 2 },
             areaStyle: {
                 color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                     colorStops: [
-                        { offset: 0, color: hexToRgba(color, 0.3) },
+                        { offset: 0, color: hexToRgba(color, 0.25) },
                         { offset: 1, color: hexToRgba(color, 0) },
                     ],
                 },
@@ -83,94 +81,88 @@ export default function Stats() {
     const catMax = Math.max(...(stats?.byCategory?.map(c => c.cnt) ?? [1]), 1);
 
     return (
-        <div className="page-stats-content">
-            <div className="pala-item pala-item-subtitle primary">
-                <div className="pala-item-subtitle-container">
-                    <h4>Statistiques</h4>
-                </div>
-                <p className="pala-item-subtitle-text">Observez les statistiques des tickets Discord.</p>
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="card-glass rounded-2xl p-6">
+                <p className="text-xs font-bold tracking-[0.2em] uppercase text-white/40 mb-1">Statistiques</p>
+                <h2 className="text-2xl font-extrabold tracking-tight">Analyse</h2>
+                <p className="text-white/50 text-sm mt-1">Observez les statistiques des tickets Discord.</p>
             </div>
 
-            <div className="stats-options pala-item">
-                <h6>Période</h6>
-                <div className="stats-period-buttons">
-                    {[7, 30, 90].map(d => (
-                        <button
-                            key={d}
-                            type="button"
-                            className={`pala-item-button${days === d ? ' primary' : ' second'} small`}
-                            style={{ minHeight: 32, padding: '0 1em', width: 'auto' }}
-                            onClick={() => setDays(d)}
-                        >
-                            {d} jours
-                        </button>
-                    ))}
-                </div>
+            {/* Period selector */}
+            <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-white/40 uppercase tracking-wider mr-1">Période</span>
+                {[7, 30, 90].map(d => (
+                    <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDays(d)}
+                        className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+                            days === d
+                                ? 'bg-white/[0.1] border-white/20 text-white'
+                                : 'bg-transparent border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.05]'
+                        }`}
+                    >
+                        {d} jours
+                    </button>
+                ))}
             </div>
 
-            {loading && <div className="pala-loading"><p>Chargement...</p></div>}
-
-            {!loading && !stats && (
-                <div className="pala-empty"><p>Impossible de charger les statistiques.</p></div>
-            )}
-
-            {!loading && stats && (
+            {loading ? (
+                <div className="flex gap-1.5 p-6">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+            ) : !stats ? (
+                <div className="card-glass rounded-2xl p-10 text-center">
+                    <p className="text-white/40 text-sm">Impossible de charger les statistiques.</p>
+                </div>
+            ) : (
                 <>
-                    <div className="stats-kpis pala-item">
-                        <div className="pala-item-stats">
-                            <h4 className="pala-items-stats-value">{totalOpened}</h4>
-                            <h6 className="pala-items-stats-description">Tickets ouverts ({days}j)</h6>
-                        </div>
-                        <div className="pala-item-stats">
-                            <h4 className="pala-items-stats-value">{totalClosed}</h4>
-                            <h6 className="pala-items-stats-description">Tickets fermés ({days}j)</h6>
-                        </div>
-                        <div className="pala-item-stats">
-                            <h4 className="pala-items-stats-value" style={{ color: 'var(--green)' }}>{stats.openCount}</h4>
-                            <h6 className="pala-items-stats-description">En cours actuellement</h6>
-                        </div>
+                    {/* KPIs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {[
+                            { label: `Tickets ouverts (${days}j)`, value: totalOpened, color: 'text-blue-400' },
+                            { label: `Tickets fermés (${days}j)`, value: totalClosed, color: 'text-white' },
+                            { label: 'En cours actuellement', value: stats.openCount, color: 'text-emerald-400' },
+                        ].map(kpi => (
+                            <div key={kpi.label} className="card-glass rounded-2xl p-5">
+                                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{kpi.label}</p>
+                                <p className={`text-4xl font-extrabold tracking-tight ${kpi.color}`}>{kpi.value}</p>
+                            </div>
+                        ))}
                     </div>
 
+                    {/* Charts */}
                     {stats.opened.length > 0 && (
-                        <div className="stats-chart-container pala-item">
-                            <div className="pala-item pala-item-title primary">
-                                <h3 className="pala-item-title-subtitle">Tickets ouverts / jour</h3>
-                            </div>
-                            <ReactECharts
-                                className="stats-chart"
-                                option={buildChartOption(stats.opened, colors[0], 'Tickets ouverts')}
-                            />
+                        <div className="card-glass rounded-2xl p-5">
+                            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">Tickets ouverts / jour</p>
+                            <ReactECharts option={buildChartOption(stats.opened, '#60a5fa', 'Tickets ouverts')} style={{ height: 220 }} />
                         </div>
                     )}
 
                     {stats.closed.length > 0 && (
-                        <div className="stats-chart-container pala-item">
-                            <div className="pala-item pala-item-title primary">
-                                <h3 className="pala-item-title-subtitle">Tickets fermés / jour</h3>
-                            </div>
-                            <ReactECharts
-                                className="stats-chart"
-                                option={buildChartOption(stats.closed, colors[1], 'Tickets fermés')}
-                            />
+                        <div className="card-glass rounded-2xl p-5">
+                            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">Tickets fermés / jour</p>
+                            <ReactECharts option={buildChartOption(stats.closed, '#34d399', 'Tickets fermés')} style={{ height: 220 }} />
                         </div>
                     )}
 
                     {stats.byCategory.length > 0 && (
-                        <div className="stats-categories pala-item">
-                            <div className="pala-item pala-item-title primary">
-                                <h3 className="pala-item-title-subtitle">Par catégorie</h3>
-                            </div>
-                            <div className="stats-categories-list">
+                        <div className="card-glass rounded-2xl p-5">
+                            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">Par catégorie</p>
+                            <div className="space-y-3">
                                 {stats.byCategory.map(c => (
-                                    <div key={c.category} className="stats-category-item">
-                                        <span className="stats-category-label">{c.category}</span>
-                                        <div className="stats-category-bar-wrapper">
+                                    <div key={c.category} className="flex items-center gap-3">
+                                        <span className="text-sm text-white/70 w-36 shrink-0 truncate">{c.category}</span>
+                                        <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                                             <div
-                                                className="stats-category-bar"
+                                                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400"
                                                 style={{ width: `${(c.cnt / catMax) * 100}%` }}
                                             />
                                         </div>
-                                        <span className="stats-category-count">{c.cnt}</span>
+                                        <span className="text-sm font-semibold text-white/60 w-8 text-right shrink-0">{c.cnt}</span>
                                     </div>
                                 ))}
                             </div>
