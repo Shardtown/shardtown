@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  AlertTriangle,
   Ban,
   Bot as BotIcon,
   CheckCircle2,
   ClipboardList,
   Database,
+  KeyRound,
   LogOut,
   Monitor,
   RefreshCw,
@@ -95,6 +97,13 @@ interface AdminSession {
   current: boolean;
 }
 
+interface KeyStatus {
+  active: boolean;
+  days_remaining: number;
+  expires_at?: string;
+  last_used_at?: string | null;
+}
+
 interface PendingAction {
   label: string;
   title: string;
@@ -139,6 +148,17 @@ export function Admin() {
   const [userQuery, setUserQuery] = useState("");
   const [customBots, setCustomBots] = useState<CustomBotAdmin[] | null>(null);
   const [customBotsLoading, setCustomBotsLoading] = useState(false);
+  const [keyStatus, setKeyStatus] = useState<KeyStatus | null>(null);
+
+  const refreshKeyStatus = useCallback(async () => {
+    try {
+      const r = await apiGet<KeyStatus>("/api/admin/key-status");
+      setKeyStatus(r);
+    } catch {
+      setKeyStatus(null);
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
@@ -206,7 +226,7 @@ export function Admin() {
     }
   }, []);
 
-  useEffect(() => { refresh(); refreshAudit(); refreshSessions(); refreshUsers(); refreshCustomBots(); }, [refresh, refreshAudit, refreshSessions, refreshUsers, refreshCustomBots]);
+  useEffect(() => { refresh(); refreshAudit(); refreshSessions(); refreshUsers(); refreshCustomBots(); refreshKeyStatus(); }, [refresh, refreshAudit, refreshSessions, refreshUsers, refreshCustomBots, refreshKeyStatus]);
 
   function showToast(text: string, type: "success" | "error" = "success") {
     setToast({ text, type });
@@ -484,6 +504,29 @@ export function Admin() {
           >
             <LogOut className="w-3.5 h-3.5" /> Déconnexion
           </button>
+          {/* Clé Argon2id — badge d'expiration */}
+          {keyStatus !== null && (() => {
+            if (!keyStatus.active) return (
+              <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-300 text-[11px] font-bold uppercase tracking-[0.18em]">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                Aucune clé active · <span className="font-mono normal-case">node scripts/genkey.js</span>
+              </div>
+            );
+            const d = keyStatus.days_remaining;
+            const tone = d <= 2
+              ? "bg-red-500/15 border-red-500/30 text-red-300"
+              : d <= 6
+              ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+              : "bg-emerald-500/10 border-emerald-500/25 text-emerald-300";
+            const icon = d <= 6 ? <AlertTriangle className="w-3.5 h-3.5" /> : <KeyRound className="w-3.5 h-3.5" />;
+            return (
+              <div className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full border text-[11px] font-bold uppercase tracking-[0.18em] ${tone}`}>
+                {icon}
+                Clé · {d <= 0 ? "expire aujourd'hui" : `${d} j restants`}
+              </div>
+            );
+          })()}
+
           <Link
             to="/admin/database"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/15 hover:border-blue-500/30 transition-colors text-[11px] font-bold uppercase tracking-[0.18em]"

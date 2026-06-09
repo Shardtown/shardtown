@@ -51,6 +51,7 @@ const QRCode = require('qrcode');
 const { SHARDTOWN_KNOWLEDGE } = require('./chatbot-knowledge');
 const presence = require('./presence');
 const { cryptoShuffle, timingSafeEqual, verifyAdminPassword } = require('./lib/security');
+const argon2 = require('argon2');
 const apns = require('./lib/apns');
 const customBotManager = require('./lib/customBotManager');
 
@@ -496,6 +497,20 @@ async function connectDB() {
                     user_agent VARCHAR(512) DEFAULT NULL,
                     revoked TINYINT NOT NULL DEFAULT 0,
                     INDEX idx_revoked (revoked)
+                )
+            `);
+            // Admin keys — Argon2id-hashed, 14-day expiry.
+            // Generated via: node scripts/genkey.js
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS admin_keys (
+                    id           INT AUTO_INCREMENT PRIMARY KEY,
+                    key_hash     VARCHAR(512) NOT NULL,
+                    label        VARCHAR(128) DEFAULT NULL,
+                    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    expires_at   DATETIME NOT NULL,
+                    last_used_at DATETIME DEFAULT NULL,
+                    revoked      TINYINT NOT NULL DEFAULT 0,
+                    INDEX idx_active (expires_at, revoked)
                 )
             `);
             // Shard-bot tables + columns (formerly migrated lazily on every
@@ -7741,23 +7756,16 @@ const BOTS = [
 // plaintext in the env. We don't refuse to start (would brick existing
 // deployments) but the warning is unmissable in PM2 logs and we log
 // the migration command so the operator can fix it in seconds.
+// Auth admin : depuis la migration vers les clés Argon2id (scripts/genkey.js),
+// les variables ADMIN_PASSWORD_HASH / ADMIN_PASSWORD ne sont plus requises.
+// Le serveur démarre normalement ; sans clé active en base, le login échouera
+// jusqu'à ce que `node scripts/genkey.js` soit exécuté.
 (function checkAdminPasswordHardening() {
     const hasHash = process.env.ADMIN_PASSWORD_HASH && process.env.ADMIN_PASSWORD_HASH.includes(':');
     const hasPlaintext = !!process.env.ADMIN_PASSWORD;
     if (!hasHash && !hasPlaintext) {
-        console.error('❌ Aucun ADMIN_PASSWORD_HASH ni ADMIN_PASSWORD défini — abandon du boot.');
-        console.error('   Génère un hash : node -e "const c=require(\'crypto\'),s=c.randomBytes(16).toString(\'hex\');' +
-            'console.log(s+\':\'+c.scryptSync(process.argv[1],s,64).toString(\'hex\'))" "TON_MOT_DE_PASSE"');
-        process.exit(1);
-    }
-    if (!hasHash && hasPlaintext) {
-        console.warn('━'.repeat(72));
-        console.warn('⚠️  ADMIN_PASSWORD est stocké en clair dans l\'environnement.');
-        console.warn('   Migre vers ADMIN_PASSWORD_HASH (scrypt salt:hash) :');
-        console.warn('   node -e "const c=require(\'crypto\'),s=c.randomBytes(16).toString(\'hex\');' +
-            'console.log(s+\':\'+c.scryptSync(process.argv[1],s,64).toString(\'hex\'))" "TON_MOT_DE_PASSE"');
-        console.warn('   Puis ajoute ADMIN_PASSWORD_HASH=<résultat> à .env, et supprime ADMIN_PASSWORD.');
-        console.warn('━'.repeat(72));
+        console.info('ℹ️  Aucun ADMIN_PASSWORD_HASH/ADMIN_PASSWORD — auth par clé Argon2id (admin_keys).');
+        console.info('   Si aucune clé n\'est générée : node scripts/genkey.js');
     }
 })();
 
@@ -7861,27 +7869,48 @@ async function clearAdminLockout(username) {
     } catch { /* swallow */ }
 }
 
+// ── Admin login — clé Argon2id ────────────────────────────────────────────
+// Une seule clé de 256 bits (format SHARD-XXXXXXXX-…), hachée avec Argon2id.
+// Générée via : node scripts/genkey.js   (expire après 14 jours)
+// Le lockout IP est géré par adminLoginLimiter ; le lockout par tentatives
+// est enregistré sous la clé fixe '__admin__' pour éviter toute énumération.
+const ADMIN_LOCKOUT_KEY = '__admin__';
+
 app.post('/admin/login', adminLoginLimiter, verifyCsrf, async (req, res) => {
     if (req.session && req.session.isAdmin) return res.redirect('/admin');
-    const { username, password } = req.body;
 
-    // Only track lockout against the configured admin username so an
-    // attacker can't spam random usernames to bloat the table or DoS
-    // legitimate admins (they'd just hit the IP rate limiter).
-    const validUser = timingSafeEqual(username || '', process.env.ADMIN_USERNAME || '');
-    const lockoutKey = validUser ? username : null;
+    // Lockout check (même mécanique que l'ancienne auth)
+    const lockState = await checkAdminLockout(ADMIN_LOCKOUT_KEY);
+    if (lockState.locked) return res.redirect('/admin/login?error=locked');
 
-    if (lockoutKey) {
-        const state = await checkAdminLockout(lockoutKey);
-        if (state.locked) {
-            return res.redirect('/admin/login?error=locked');
+    const supplied = String(req.body?.key || '').trim();
+    let valid = false;
+    let usedKeyId = null;
+
+    try {
+        // Récupère toutes les clés actives non révoquées
+        const [keys] = await db.execute(
+            `SELECT id, key_hash FROM admin_keys
+             WHERE revoked = 0 AND expires_at > NOW()
+             ORDER BY created_at DESC LIMIT 5`
+        );
+        for (const row of keys) {
+            if (await argon2.verify(row.key_hash, supplied)) {
+                valid = true;
+                usedKeyId = row.id;
+                break;
+            }
         }
+    } catch (e) {
+        console.error('[admin/login] argon2 verify error:', e.message);
+        return res.status(500).send('Erreur serveur');
     }
 
-    const validPass = verifyAdminPassword(password);
-    if (validUser && validPass) {
-        await clearAdminLockout(lockoutKey);
-        await logAdminAction(req, 'login.success', null, { username: lockoutKey || '(unknown)' });
+    if (valid) {
+        // Mise à jour last_used_at (best-effort)
+        db.execute('UPDATE admin_keys SET last_used_at = NOW() WHERE id = ?', [usedKeyId]).catch(() => {});
+        await clearAdminLockout(ADMIN_LOCKOUT_KEY);
+        await logAdminAction(req, 'login.success', null, { keyId: usedKeyId });
         req.session.regenerate(async (err) => {
             if (err) return res.status(500).send('Erreur serveur');
             req.session.isAdmin = true;
@@ -7900,8 +7929,8 @@ app.post('/admin/login', adminLoginLimiter, verifyCsrf, async (req, res) => {
         return;
     }
 
-    if (lockoutKey) await recordFailedAdminLogin(lockoutKey);
-    await logAdminAction(req, 'login.failure', null, { suppliedUsername: String(username || '').slice(0, 64) });
+    await recordFailedAdminLogin(ADMIN_LOCKOUT_KEY);
+    await logAdminAction(req, 'login.failure', null, {});
     res.redirect('/admin/login?error=1');
 });
 
@@ -7916,6 +7945,32 @@ app.post('/admin/logout', (req, res) => {
         logAdminAction(req, 'logout').catch(() => {});
     }
     req.session.destroy(() => res.json({ success: true }));
+});
+
+// Statut de la clé active — affiché dans le header du panneau admin
+// pour alerter l'admin avant expiration.
+app.get('/api/admin/key-status', checkAdmin, async (req, res) => {
+    try {
+        const [rows] = await db.execute(
+            `SELECT id, expires_at, last_used_at
+             FROM admin_keys
+             WHERE revoked = 0 AND expires_at > NOW()
+             ORDER BY expires_at DESC LIMIT 1`
+        );
+        if (!rows.length) return res.json({ active: false, days_remaining: 0 });
+        const row = rows[0];
+        const msLeft = new Date(row.expires_at) - Date.now();
+        const daysLeft = Math.max(0, Math.ceil(msLeft / (1000 * 60 * 60 * 24)));
+        res.json({
+            active:        true,
+            key_id:        row.id,
+            expires_at:    row.expires_at,
+            last_used_at:  row.last_used_at,
+            days_remaining: daysLeft,
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // Forensic audit trail. Best-effort — failures are swallowed so a DB
