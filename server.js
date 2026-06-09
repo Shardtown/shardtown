@@ -7775,7 +7775,7 @@ function verifyCsrf(req, res, next) {
     // verifyCsrf directly (admin login, etc.) keep working for desktop
     // clients that authenticate via PAT.
     if (req.bearerAuthed) return next();
-    const token = req.body._csrf || req.headers['x-csrf-token'];
+    const token = req.body?._csrf || req.headers['x-csrf-token'];
     const expected = req.session.csrfSecret
         ? crypto.createHmac('sha256', req.session.csrfSecret).update('csrf').digest('hex')
         : null;
