@@ -444,17 +444,14 @@ export default function Config() {
                         : 'translate-y-4 opacity-0 pointer-events-none'
                 }`}
             >
-                <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 bg-[#0d0d10]/92 backdrop-blur-2xl shadow-[0_8px_40px_rgba(0,0,0,0.65)] px-5 py-3.5 flex items-center gap-4">
-                    {/* top gradient line */}
-                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
-
+                <div className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0d0d10]/92 backdrop-blur-2xl shadow-[0_8px_40px_rgba(0,0,0,0.65)] px-5 py-3.5 flex items-center gap-4">
                     {/* icon + message */}
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
                         <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                         <line x1="12" y1="9" x2="12" y2="13"/>
                         <line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
-                    <p className="flex-1 text-sm font-semibold text-white/85">
+                    <p className="flex-1 text-sm font-semibold text-white/75 whitespace-nowrap">
                         Attention, il reste des modifications non enregistrées !
                     </p>
 
@@ -464,7 +461,7 @@ export default function Config() {
                             type="button"
                             onClick={resetAll}
                             disabled={saving}
-                            className="px-4 py-2 rounded-xl text-sm font-semibold text-white/50 hover:text-white hover:bg-white/[0.07] transition-all disabled:opacity-40"
+                            className="px-4 py-2 rounded-xl text-sm font-semibold text-white/45 hover:text-white hover:bg-white/[0.07] transition-all disabled:opacity-40"
                         >
                             Réinitialiser
                         </button>
@@ -472,7 +469,7 @@ export default function Config() {
                             type="button"
                             onClick={saveAll}
                             disabled={saving}
-                            className="px-5 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/35 text-sm font-bold text-emerald-300 hover:bg-emerald-500/28 hover:text-emerald-100 transition-all disabled:opacity-40"
+                            className="px-5 py-2 rounded-xl bg-white/[0.07] border border-white/[0.12] text-sm font-bold text-white/80 hover:bg-white/[0.11] hover:text-white transition-all disabled:opacity-40"
                         >
                             {saving ? 'Enregistrement…' : 'Enregistrer les modifications'}
                         </button>
