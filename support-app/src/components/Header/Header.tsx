@@ -64,7 +64,7 @@ export default function Header({ navLinks = [], showBack = false, guildName, gui
             <div className={`fixed top-4 left-0 right-0 z-50 px-4 sm:px-6 transition-all duration-300 ${scrolled ? 'translate-y-0' : 'translate-y-1'}`}>
                 <div className="container-wide flex items-center justify-between gap-3">
 
-                    {/* Logo pill — identique shardtwn.fr */}
+                    {/* GAUCHE — Logo pill */}
                     <NavLink
                         to="/guilds"
                         className={`group flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 ${pillBase} ${pillSurface} hover:bg-white/[0.08]`}
@@ -83,10 +83,38 @@ export default function Header({ navLinks = [], showBack = false, guildName, gui
                         </span>
                     </NavLink>
 
-                    {/* Centre — nav pill avec indicateur glissant */}
-                    <div className="hidden lg:flex items-center gap-2">
+                    {/* CENTRE — Nav pill avec indicateur glissant (identique site principal) */}
+                    {navLinks.length > 0 && (
+                        <nav
+                            ref={navRef}
+                            className={`hidden lg:flex relative items-center gap-1 px-2 py-1.5 ${pillBase} ${pillSurface}`}
+                            onMouseLeave={() => moveIndicatorTo(activeKey)}
+                        >
+                            <span
+                                aria-hidden
+                                className="absolute top-1.5 bottom-1.5 rounded-full bg-white/[0.08] border border-white/10 transition-all duration-300 ease-out pointer-events-none"
+                                style={{ left: indicator.left, width: indicator.width, opacity: indicator.opacity }}
+                            />
+                            {navLinks.map(item => (
+                                <NavLink
+                                    key={item.to}
+                                    to={item.to}
+                                    ref={(el: HTMLAnchorElement | null) => { itemRefs.current[item.to] = el; }}
+                                    onMouseEnter={() => moveIndicatorTo(item.to)}
+                                    className={({ isActive }) =>
+                                        `relative z-10 px-4 py-2 text-[13px] font-semibold tracking-tight rounded-full transition-colors duration-200 ${isActive ? 'text-white' : 'text-white/55 hover:text-white'}`
+                                    }
+                                >
+                                    {item.label}
+                                </NavLink>
+                            ))}
+                        </nav>
+                    )}
+
+                    {/* DROITE — Guild badge + retour (ou vide sur /guilds) */}
+                    <div className="flex items-center gap-2">
                         {guildName && guildId && (
-                            <div className={`flex items-center gap-2 pl-1.5 pr-3.5 py-1.5 ${pillBase} ${pillSurface}`}>
+                            <div className={`hidden lg:flex items-center gap-2 pl-1.5 pr-3.5 py-1.5 ${pillBase} ${pillSurface}`}>
                                 {guildIcon ? (
                                     <img
                                         src={`https://cdn.discordapp.com/icons/${guildId}/${guildIcon}.webp?size=64`}
@@ -99,41 +127,10 @@ export default function Header({ navLinks = [], showBack = false, guildName, gui
                                         {guildName[0]}
                                     </span>
                                 )}
-                                <span className="font-bold text-[13px] tracking-tight max-w-[140px] truncate">{guildName}</span>
+                                <span className="font-bold text-[13px] tracking-tight max-w-[120px] truncate">{guildName}</span>
                             </div>
                         )}
 
-                        {navLinks.length > 0 && (
-                            <nav
-                                ref={navRef}
-                                className={`relative flex items-center gap-1 px-2 py-1.5 ${pillBase} ${pillSurface}`}
-                                onMouseLeave={() => moveIndicatorTo(activeKey)}
-                            >
-                                {/* Indicateur glissant */}
-                                <span
-                                    aria-hidden
-                                    className="absolute top-1.5 bottom-1.5 rounded-full bg-white/[0.08] border border-white/10 transition-all duration-300 ease-out pointer-events-none"
-                                    style={{ left: indicator.left, width: indicator.width, opacity: indicator.opacity }}
-                                />
-                                {navLinks.map(item => (
-                                    <NavLink
-                                        key={item.to}
-                                        to={item.to}
-                                        ref={(el: HTMLAnchorElement | null) => { itemRefs.current[item.to] = el; }}
-                                        onMouseEnter={() => moveIndicatorTo(item.to)}
-                                        className={({ isActive }) =>
-                                            `relative z-10 px-4 py-2 text-[13px] font-semibold tracking-tight rounded-full transition-colors duration-200 ${isActive ? 'text-white' : 'text-white/55 hover:text-white'}`
-                                        }
-                                    >
-                                        {item.label}
-                                    </NavLink>
-                                ))}
-                            </nav>
-                        )}
-                    </div>
-
-                    {/* Droite — retour + burger */}
-                    <div className="flex items-center gap-2">
                         {showBack && (
                             <button
                                 type="button"
@@ -147,7 +144,7 @@ export default function Header({ navLinks = [], showBack = false, guildName, gui
                             </button>
                         )}
 
-                        {/* Burger mobile — identique shardtwn.fr */}
+                        {/* Burger mobile */}
                         <button
                             type="button"
                             aria-label="Menu"
@@ -164,7 +161,7 @@ export default function Header({ navLinks = [], showBack = false, guildName, gui
                     </div>
                 </div>
 
-                {/* Drawer mobile — identique shardtwn.fr */}
+                {/* Drawer mobile */}
                 <div className={`lg:hidden container-wide overflow-hidden transition-all duration-300 ease-out ${mobileOpen ? 'max-h-[480px] opacity-100 mt-3' : 'max-h-0 opacity-0 mt-0'}`}>
                     <div className="flex flex-col p-3 border border-white/15 bg-zinc-950/90 backdrop-blur-xl rounded-2xl shadow-[0_16px_48px_-12px_rgba(0,0,0,0.7)]">
                         {guildName && (
