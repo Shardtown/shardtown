@@ -4,17 +4,6 @@ import { get } from '@/api/client';
 import type { Stats as StatsType, SupportConfig } from '@/types';
 import ReactECharts from 'echarts-for-react';
 
-/* ── Custom emoji rendering ──────────────────────────────────────────────── */
-function renderEmoji(emoji: string, size = 18): React.ReactNode {
-    if (!emoji) return null;
-    const m = emoji.match(/^<(a?):([^:]+):(\d+)>$/);
-    if (m) {
-        const ext = m[1] ? 'gif' : 'webp';
-        return <img src={`https://cdn.discordapp.com/emojis/${m[3]}.${ext}?size=64`} alt={m[2]} width={size} height={size} className="inline-block object-contain align-middle" />;
-    }
-    return <span>{emoji}</span>;
-}
-
 /* ── Chart builder ───────────────────────────────────────────────────────── */
 function buildChart(
     data: { day: string; cnt: number }[],
