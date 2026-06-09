@@ -31,6 +31,12 @@ interface RawEmbed {
     timestamp?: string | null;
 }
 
+interface RawMentions {
+    users?: { id: string; name: string; displayName?: string }[];
+    roles?: { id: string; name: string }[];
+    channels?: { id: string; name: string }[];
+}
+
 interface RawMessage {
     id?: string;
     content?: string;
@@ -41,6 +47,7 @@ interface RawMessage {
     attachments?: RawAttachment[];
     reactions?: { emoji: string; count: number }[];
     assets?: MessageAsset[];
+    mentions?: RawMentions;
 }
 
 interface TranscriptDetail {
@@ -100,6 +107,7 @@ function toMessageData(raw: RawMessage): MessageData {
         assets: assets.length > 0 ? assets : undefined,
         embeds: embeds.length > 0 ? embeds : undefined,
         reactions: raw.reactions,
+        mentions: raw.mentions,
     };
 }
 
