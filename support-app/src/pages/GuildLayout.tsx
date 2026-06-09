@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext } from 'react';
-import { Outlet, useParams, useNavigate } from 'react-router-dom';
+import { Outlet, useParams } from 'react-router-dom';
 import { get } from '@/api/client';
 import type { Guild } from '@/types';
 import Header from '@/components/Header/Header';
@@ -19,7 +19,6 @@ const NAV_LINKS = [
 
 export default function GuildLayout() {
     const { guildId } = useParams<{ guildId: string }>();
-    const navigate = useNavigate();
     const [guild, setGuild] = useState<Guild | null>(null);
     const [loading, setLoading] = useState(true);
 
