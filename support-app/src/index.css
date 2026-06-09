@@ -53,6 +53,12 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
+    background-color: #0a0a0a;
+    background-image:
+      radial-gradient(90% 60% at 50% 0, #5b6dff38 0%, #0000 60%),
+      radial-gradient(70% 50% at 85% 100%, #a855f72e 0%, #0000 60%),
+      radial-gradient(60% 50% at 15% 70%, #3b82f629 0%, #0000 60%);
+    background-attachment: fixed;
   }
   h1,h2,h3,h4 { letter-spacing: -0.02em; }
 }
