@@ -53,14 +53,18 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     letter-spacing: -0.01em;
-    background-color: #0a0a0a;
-    background-image:
-      radial-gradient(90% 60% at 50% 0, #5b6dff38 0%, #0000 60%),
-      radial-gradient(70% 50% at 85% 100%, #a855f72e 0%, #0000 60%),
-      radial-gradient(60% 50% at 15% 70%, #3b82f629 0%, #0000 60%);
-    background-attachment: fixed;
   }
   h1,h2,h3,h4 { letter-spacing: -0.02em; }
+}
+
+/* Fond hors layer — priorité absolue sur tout CSS layered */
+body {
+  background-color: #0a0a0a;
+  background-image:
+    radial-gradient(90% 60% at 50% 0, #5b6dff38 0%, #0000 60%),
+    radial-gradient(70% 50% at 85% 100%, #a855f72e 0%, #0000 60%),
+    radial-gradient(60% 50% at 15% 70%, #3b82f629 0%, #0000 60%);
+  background-attachment: fixed;
 }
 
 @layer utilities {
@@ -123,6 +127,17 @@
     color: transparent;
     -webkit-text-fill-color: transparent;
   }
+}
+
+/* Shake animation — floating save bar */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15%       { transform: translateX(-8px); }
+  30%       { transform: translateX(8px); }
+  45%       { transform: translateX(-6px); }
+  60%       { transform: translateX(6px); }
+  75%       { transform: translateX(-3px); }
+  90%       { transform: translateX(3px); }
 }
 
 /* Scrollbar */

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useBlocker } from 'react-router-dom';
 import { get, put, post } from '@/api/client';
 import type { SupportConfig, TicketCategory, DChannel, DRole } from '@/types';
 import { Field, TextInput, NumberInput, Select, SectionCard } from '@/components/ui/Field';
@@ -48,9 +48,26 @@ export default function Config() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const [shaking, setShaking] = useState(false);
+    const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [deployChannelId, setDeployChannelId] = useState('');
     const [deployBusy, setDeployBusy] = useState(false);
     const [flash, setFlash] = useState<{ text: string; ok: boolean } | null>(null);
+
+    // Block navigation when there are unsaved changes
+    const blocker = useBlocker(isDirty);
+    useEffect(() => {
+        if (blocker.state === 'blocked') {
+            blocker.reset(); // stay on page
+            triggerShake();
+        }
+    }, [blocker.state]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    function triggerShake() {
+        if (shakeTimer.current) clearTimeout(shakeTimer.current);
+        setShaking(true);
+        shakeTimer.current = setTimeout(() => setShaking(false), 650);
+    }
 
     useEffect(() => {
         Promise.all([
@@ -444,7 +461,14 @@ export default function Config() {
                         : 'translate-y-4 opacity-0 pointer-events-none'
                 }`}
             >
-                <div className="relative overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0d0d10]/92 backdrop-blur-2xl shadow-[0_8px_40px_rgba(0,0,0,0.65)] px-5 py-3.5 flex items-center gap-4">
+                <div
+                    className={`relative overflow-hidden rounded-2xl border bg-[#0d0d10]/92 backdrop-blur-2xl shadow-[0_8px_40px_rgba(0,0,0,0.65)] px-5 py-3.5 flex items-center gap-4 transition-[border-color,box-shadow] duration-300 ${
+                        shaking
+                            ? 'border-amber-400/55 shadow-[0_8px_40px_rgba(0,0,0,0.65),0_0_0_1px_rgba(251,191,36,0.25)]'
+                            : 'border-white/[0.09]'
+                    }`}
+                    style={{ animation: shaking ? 'shake 0.55s ease-in-out' : undefined }}
+                >
                     {/* icon + message */}
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
                         <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
