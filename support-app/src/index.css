@@ -57,15 +57,8 @@
   h1,h2,h3,h4 { letter-spacing: -0.02em; }
 }
 
-/* Fond identique au site principal (index.ejs) */
 body {
-  background: #000;
-  background-image:
-    radial-gradient(at 50% 0%,    rgba(37, 99, 235, 0.2)  0px, transparent 50%),
-    radial-gradient(at 0% 100%,   rgba(139, 92, 246, 0.1) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
-    radial-gradient(at 50% 50%,   rgba(37, 99, 235, 0.05) 0px, transparent 50%);
-  background-attachment: fixed;
+  background-color: #0a0a0a;
 }
 
 @layer utilities {

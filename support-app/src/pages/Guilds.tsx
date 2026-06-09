@@ -4,6 +4,7 @@ import { get } from '@/api/client';
 import type { Guild } from '@/types';
 import Header from '@/components/Header/Header';
 import { Footer } from '@/components/Footer';
+import { BackgroundGradientAnimation } from '@/components/ui/BackgroundGradientAnimation';
 
 function guildIconUrl(id: string, icon: string | null): string {
     return icon
@@ -26,6 +27,20 @@ export default function Guilds() {
     return (
         <div className="min-h-screen text-white flex flex-col">
 
+            <div className="fixed inset-0 pointer-events-none -z-10 opacity-60">
+                <BackgroundGradientAnimation
+                    gradientBackgroundStart="rgb(7, 11, 24)"
+                    gradientBackgroundEnd="rgb(0, 0, 0)"
+                    firstColor="96, 165, 250"
+                    secondColor="59, 130, 246"
+                    thirdColor="37, 99, 235"
+                    fourthColor="29, 78, 216"
+                    fifthColor="30, 58, 138"
+                    size="100%"
+                    blendingValue="screen"
+                />
+                <div aria-hidden className="absolute inset-x-0 top-0 h-[140vh] [background:radial-gradient(ellipse_90%_100%_at_50%_0%,rgba(91,109,255,0.45)_0%,rgba(139,92,246,0.22)_35%,rgba(91,109,255,0.10)_60%,transparent_100%)]" />
+            </div>
 
             <Header />
 
