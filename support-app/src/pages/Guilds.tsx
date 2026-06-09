@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { get } from '@/api/client';
 import type { Guild } from '@/types';
 import Header from '@/components/Header/Header';
+import { BackgroundGradientAnimation } from '@/components/ui/BackgroundGradientAnimation';
 
 function guildIconUrl(id: string, icon: string | null): string {
     return icon
@@ -24,9 +25,14 @@ export default function Guilds() {
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-white">
-            {/* aurora top */}
-            <div className="fixed inset-0 pointer-events-none -z-10">
-                <div className="absolute inset-x-0 top-0 h-[70vh] [background:radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(59,130,246,0.18)_0%,rgba(29,78,216,0.08)_45%,transparent_100%)]" />
+
+            {/* Aurora animated background */}
+            <div className="fixed inset-0 pointer-events-none -z-10 opacity-50">
+                <BackgroundGradientAnimation />
+                <div
+                    aria-hidden
+                    className="absolute inset-x-0 top-0 h-[140vh] [background:radial-gradient(ellipse_90%_100%_at_50%_0%,rgba(91,109,255,0.35)_0%,rgba(59,130,246,0.15)_35%,transparent_100%)]"
+                />
             </div>
 
             <Header />
@@ -48,7 +54,7 @@ export default function Guilds() {
                             <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
                         </div>
                     ) : !guilds || guilds.length === 0 ? (
-                        <div className="card-glass p-8 text-center max-w-md">
+                        <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-8 text-center max-w-md">
                             <p className="text-white/70 font-semibold mb-2">Aucun serveur accessible</p>
                             <p className="text-white/40 text-sm">
                                 Vous devez avoir la permission "Gérer le serveur" pour accéder au dashboard de support.
@@ -61,7 +67,7 @@ export default function Guilds() {
                                     key={g.id}
                                     type="button"
                                     onClick={() => navigate(`/guild/${g.id}/tickets`)}
-                                    className="group flex items-center gap-3 p-4 card-glass rounded-2xl text-left transition-all duration-200 hover:bg-white/[0.055] hover:border-white/[0.12] cursor-pointer"
+                                    className="group flex items-center gap-3 p-4 bg-white/[0.02] border border-white/[0.08] rounded-2xl text-left transition-all duration-200 hover:bg-white/[0.05] hover:border-white/15 cursor-pointer"
                                 >
                                     <img
                                         src={guildIconUrl(g.id, g.icon)}
