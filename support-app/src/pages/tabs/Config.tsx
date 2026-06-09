@@ -1,9 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useBlocker } from 'react-router-dom';
+import {
+    Layers, Palette, Rocket, Settings2, ShieldCheck,
+    Plus, Trash2, AlertTriangle,
+} from 'lucide-react';
 import { get, put, post } from '@/api/client';
 import type { SupportConfig, TicketCategory, DChannel, DRole } from '@/types';
-import { Field, TextInput, NumberInput, Select, SectionCard } from '@/components/ui/Field';
+import { Field, TextInput, NumberInput, Select } from '@/components/ui/Field';
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+type Tab = 'general' | 'roles' | 'categories' | 'appearance' | 'deploy';
+
+const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
+    { id: 'general',    label: 'Général',    icon: Settings2   },
+    { id: 'roles',      label: 'Rôles',      icon: ShieldCheck },
+    { id: 'categories', label: 'Catégories', icon: Layers      },
+    { id: 'appearance', label: 'Apparence',  icon: Palette     },
+    { id: 'deploy',     label: 'Publier',    icon: Rocket      },
+];
+
+// ── Defaults ──────────────────────────────────────────────────────────────────
 const DEFAULT: SupportConfig = {
     categories: [], staff_roles: [], admin_roles: [],
     transcript_channel_id: null, log_channel_id: null,
@@ -17,8 +33,8 @@ const DEFAULT: SupportConfig = {
     welcome_footer: 'ID: {id}',
 };
 
-/* ── Custom emoji rendering ──────────────────────────────────────────────── */
-function renderEmoji(emoji: string, size = 22): React.ReactNode {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function renderEmoji(emoji: string, size = 20): React.ReactNode {
     if (!emoji) return null;
     const m = emoji.match(/^<(a?):([^:]+):(\d+)>$/);
     if (m) {
@@ -35,32 +51,59 @@ function categoryOpts(ch: DChannel[]) {
     return [{ value: '', label: 'Aucune' }, ...ch.filter(c => c.type === 4).map(c => ({ value: c.id, label: c.name }))];
 }
 
+// ── Sub-section header ────────────────────────────────────────────────────────
+function SectionHeader({ title, desc }: { title: string; desc?: string }) {
+    return (
+        <div className="mb-6">
+            <h2 className="text-base font-bold text-white">{title}</h2>
+            {desc && <p className="text-[12px] text-white/40 mt-1 leading-relaxed">{desc}</p>}
+        </div>
+    );
+}
+
+// ── Color field ───────────────────────────────────────────────────────────────
+function ColorField({ label, hint, value, onChange }: {
+    label: string; hint?: string; value: string; onChange: (v: string) => void;
+}) {
+    return (
+        <Field label={label} hint={hint}>
+            <div className="flex items-center gap-2.5">
+                <span
+                    className="w-9 h-9 rounded-lg border border-white/10 shrink-0 shadow-inner"
+                    style={{ background: value || '#7c3aed' }}
+                />
+                <TextInput
+                    value={value}
+                    onChange={e => onChange(e.target.value)}
+                    placeholder="#7c3aed"
+                />
+            </div>
+        </Field>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function Config() {
     const { guildId } = useParams<{ guildId: string }>();
 
-    // Server-side state (reference for reset)
-    const [savedConfig, setSavedConfig] = useState<SupportConfig | null>(null);
-    // Local draft (what the user is editing)
-    const [config, setConfig] = useState<SupportConfig | null>(null);
-
-    const [channels, setChannels] = useState<DChannel[]>([]);
-    const [roles, setRoles] = useState<DRole[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [isDirty, setIsDirty] = useState(false);
-    const [shaking, setShaking] = useState(false);
-    const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [savedConfig, setSavedConfig]   = useState<SupportConfig | null>(null);
+    const [config, setConfig]             = useState<SupportConfig | null>(null);
+    const [channels, setChannels]         = useState<DChannel[]>([]);
+    const [roles, setRoles]               = useState<DRole[]>([]);
+    const [loading, setLoading]           = useState(true);
+    const [saving, setSaving]             = useState(false);
+    const [isDirty, setIsDirty]           = useState(false);
+    const [shaking, setShaking]           = useState(false);
+    const shakeTimer                      = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [activeTab, setActiveTab]       = useState<Tab>('general');
     const [deployChannelId, setDeployChannelId] = useState('');
-    const [deployBusy, setDeployBusy] = useState(false);
-    const [flash, setFlash] = useState<{ text: string; ok: boolean } | null>(null);
+    const [deployBusy, setDeployBusy]     = useState(false);
+    const [flash, setFlash]               = useState<{ text: string; ok: boolean } | null>(null);
 
-    // Block navigation when there are unsaved changes
     const blocker = useBlocker(isDirty);
     useEffect(() => {
-        if (blocker.state === 'blocked') {
-            blocker.reset(); // stay on page
-            triggerShake();
-        }
+        if (blocker.state === 'blocked') { blocker.reset(); triggerShake(); }
     }, [blocker.state]); // eslint-disable-line react-hooks/exhaustive-deps
 
     function triggerShake() {
@@ -75,10 +118,8 @@ export default function Config() {
             get<DChannel[]>(`/api/support/discord/channels/${guildId}`).catch(() => []),
             get<DRole[]>(`/api/support/discord/roles/${guildId}`).catch(() => []),
         ]).then(([cfg, ch, ro]) => {
-            setSavedConfig(cfg);
-            setConfig(cfg);
-            setChannels(ch as DChannel[]);
-            setRoles(ro as DRole[]);
+            setSavedConfig(cfg); setConfig(cfg);
+            setChannels(ch as DChannel[]); setRoles(ro as DRole[]);
         }).catch(() => {}).finally(() => setLoading(false));
     }, [guildId]);
 
@@ -87,13 +128,11 @@ export default function Config() {
         setTimeout(() => setFlash(null), 3500);
     }
 
-    /** Update local draft only — does NOT call the API */
     function update(patch: Partial<SupportConfig>) {
         setConfig(prev => prev ? { ...DEFAULT, ...prev, ...patch } : null);
         setIsDirty(true);
     }
 
-    /** Save current draft to the server */
     async function saveAll() {
         if (!config) return;
         setSaving(true);
@@ -109,7 +148,6 @@ export default function Config() {
         }
     }
 
-    /** Discard local changes and restore last saved state */
     function resetAll() {
         if (!savedConfig) return;
         setConfig({ ...savedConfig });
@@ -142,11 +180,12 @@ export default function Config() {
         update({ categories: config.categories.filter((_, idx) => idx !== i) });
     }
 
+    // ── Loading / error ───────────────────────────────────────────────────────
     if (loading) return (
         <div className="flex gap-1.5 p-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
-            <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
-            <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+            {[0, 150, 300].map(d => (
+                <span key={d} className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+            ))}
         </div>
     );
     if (!config) return (
@@ -157,19 +196,19 @@ export default function Config() {
 
     const cfg = { ...DEFAULT, ...config };
 
+    // ── Render ────────────────────────────────────────────────────────────────
     return (
         <>
-        <div className="space-y-6 pb-32">
+        <div className="pb-32">
 
             {/* Page header */}
-            <div className="flex items-start justify-between gap-4 mb-2">
+            <div className="flex items-center justify-between mb-8">
                 <div>
-                    <p className="text-xs font-bold tracking-[0.25em] uppercase text-white/40 mb-2">Configuration</p>
-                    <h1 className="text-3xl font-extrabold tracking-tight">Paramètres</h1>
-                    <p className="text-white/50 text-sm mt-2">Personnalisez le système de support de ce serveur.</p>
+                    <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-white/35 mb-1.5">Configuration</p>
+                    <h1 className="text-2xl font-extrabold tracking-tight">Paramètres</h1>
                 </div>
                 {flash && (
-                    <span className={`mt-1 text-sm font-semibold px-3 py-1.5 rounded-full border flex-shrink-0 ${
+                    <span className={`text-xs font-semibold px-3 py-1.5 rounded-full border shrink-0 ${
                         flash.ok
                             ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                             : 'bg-red-500/10 border-red-500/20 text-red-400'
@@ -179,323 +218,396 @@ export default function Config() {
                 )}
             </div>
 
-            {/* Paramètres généraux */}
-            <SectionCard
-                title="Paramètres généraux"
-                description="Configurez les salons de logs, les limites de tickets et le timeout AFK."
-            >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Salon de logs" hint="Les actions importantes sont enregistrées dans ce salon.">
-                        <Select
-                            options={channelOpts(channels)}
-                            value={cfg.log_channel_id || ''}
-                            onChange={v => update({ log_channel_id: v || null })}
-                        />
-                    </Field>
-                    <Field label="Salon des transcriptions" hint="Les transcriptions de tickets fermés sont envoyées ici.">
-                        <Select
-                            options={channelOpts(channels)}
-                            value={cfg.transcript_channel_id || ''}
-                            onChange={v => update({ transcript_channel_id: v || null })}
-                        />
-                    </Field>
-                    <Field label="Max tickets par utilisateur" hint="Limite le nombre de tickets ouverts simultanément par personne.">
-                        <NumberInput
-                            value={cfg.max_tickets_per_user}
-                            min={1}
-                            max={10}
-                            onChange={e => update({ max_tickets_per_user: Number(e.target.value) })}
-                        />
-                    </Field>
-                    <Field label="Timeout AFK (minutes)" hint="Ferme automatiquement les tickets inactifs après ce délai.">
-                        <NumberInput
-                            value={cfg.afk_timeout_minutes}
-                            min={10}
-                            max={10080}
-                            onChange={e => update({ afk_timeout_minutes: Number(e.target.value) })}
-                        />
-                    </Field>
-                </div>
-            </SectionCard>
+            <div className="flex gap-6 items-start">
 
-            {/* Rôles */}
-            <SectionCard
-                title="Rôles d'accès"
-                description="Définissez quels rôles peuvent gérer les tickets et accéder aux paramètres avancés."
-            >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {[
-                        { label: 'Rôles support', hint: 'Ces rôles peuvent voir et répondre à tous les tickets.', field: 'staff_roles' as const },
-                        { label: 'Rôles admin tickets', hint: 'Ces rôles ont accès aux paramètres de configuration.', field: 'admin_roles' as const },
-                    ].map(({ label, hint, field }) => (
-                        <Field key={field} label={label} hint={hint}>
-                            <div className="flex flex-wrap gap-2 pt-0.5">
-                                {roles.length === 0 && (
-                                    <span className="text-white/30 text-xs py-2">Aucun rôle disponible</span>
-                                )}
-                                {roles.map(r => {
-                                    const active = (cfg[field] as string[]).includes(r.id);
-                                    return (
-                                        <button
-                                            key={r.id}
-                                            type="button"
-                                            onClick={() => update({
-                                                [field]: active
-                                                    ? (cfg[field] as string[]).filter(x => x !== r.id)
-                                                    : [...(cfg[field] as string[]), r.id]
-                                            })}
-                                            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
-                                                active
-                                                    ? 'bg-blue-500/15 border-blue-500/30 text-blue-300'
-                                                    : 'bg-white/[0.03] border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.07]'
-                                            }`}
-                                        >
-                                            @{r.name}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </Field>
+                {/* ── Sidebar (desktop) ──────────────────────────────────── */}
+                <nav className="hidden md:flex flex-col gap-0.5 w-40 shrink-0">
+                    {TABS.map(t => (
+                        <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setActiveTab(t.id)}
+                            className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-[13px] font-semibold transition-all text-left ${
+                                activeTab === t.id
+                                    ? 'bg-white/[0.07] text-white border border-white/[0.08]'
+                                    : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'
+                            }`}
+                        >
+                            <t.icon className="w-3.5 h-3.5 shrink-0" />
+                            {t.label}
+                        </button>
                     ))}
-                </div>
-            </SectionCard>
+                </nav>
 
-            {/* Catégories de tickets */}
-            <SectionCard
-                title="Catégories de tickets"
-                description="Chaque catégorie génère un bouton sur le panel Discord. Les utilisateurs choisissent la catégorie qui correspond à leur demande."
-            >
-                <div className="flex items-center justify-between -mt-2 mb-2">
-                    <span className="text-[11px] text-white/30">
-                        {cfg.categories.length} catégorie{cfg.categories.length !== 1 ? 's' : ''}
-                    </span>
-                    <button
-                        type="button"
-                        onClick={addCat}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/15 transition-all"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="70" strokeLinecap="round">
-                            <path d="M320 80v480M80 320h480" />
-                        </svg>
-                        Ajouter
-                    </button>
-                </div>
-
-                {cfg.categories.length === 0 ? (
-                    <div className="py-8 text-center rounded-xl border border-dashed border-white/[0.08]">
-                        <p className="text-white/30 text-sm">Aucune catégorie. Ajoutez-en une ci-dessus.</p>
-                    </div>
-                ) : (
-                    <div className="space-y-3">
-                        {cfg.categories.map((cat, i) => (
-                            <div key={cat.id} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-5 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-bold text-white/30 uppercase tracking-widest">Catégorie {i + 1}</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => removeCat(i)}
-                                        className="w-7 h-7 rounded-full flex items-center justify-center text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                                        aria-label="Supprimer"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="65" strokeLinecap="round">
-                                            <path d="M170.7 169.4L512 510.7M512 169.4L170.7 510.7" />
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                    <Field label="Nom">
-                                        <TextInput
-                                            value={cat.label}
-                                            onChange={e => updateCat(i, { label: e.target.value })}
-                                            placeholder="Support"
-                                        />
-                                    </Field>
-                                    <Field label="Emoji" hint="Unicode ou <:nom:id> Discord">
-                                        <div className="flex items-center gap-2">
-                                            <span className="w-9 h-9 rounded-lg border border-white/[0.08] bg-white/[0.02] flex items-center justify-center shrink-0">
-                                                {renderEmoji(cat.emoji)}
-                                            </span>
-                                            <TextInput
-                                                value={cat.emoji}
-                                                onChange={e => updateCat(i, { emoji: e.target.value })}
-                                                placeholder="🎫 ou <:nom:id>"
-                                            />
-                                        </div>
-                                    </Field>
-                                    <Field label="Catégorie Discord">
-                                        <Select
-                                            options={categoryOpts(channels)}
-                                            value={cat.discord_category_id || ''}
-                                            onChange={v => updateCat(i, { discord_category_id: v || null })}
-                                        />
-                                    </Field>
-                                </div>
-                                <Field label="Description" hint="Affichée dans le panel comme sous-titre du bouton.">
-                                    <TextInput
-                                        value={cat.description}
-                                        onChange={e => updateCat(i, { description: e.target.value })}
-                                        placeholder="Décrivez votre problème…"
-                                    />
-                                </Field>
-                            </div>
+                {/* ── Tab bar (mobile) ───────────────────────────────────── */}
+                <div className="md:hidden w-full mb-4">
+                    <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-none">
+                        {TABS.map(t => (
+                            <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => setActiveTab(t.id)}
+                                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
+                                    activeTab === t.id
+                                        ? 'bg-white/[0.08] text-white border border-white/[0.08]'
+                                        : 'text-white/40 hover:text-white/60'
+                                }`}
+                            >
+                                <t.icon className="w-3 h-3" />
+                                {t.label}
+                            </button>
                         ))}
                     </div>
-                )}
-            </SectionCard>
-
-            {/* Apparence du panel */}
-            <SectionCard
-                title="Apparence du panel"
-                description="Personnalisez l'embed Discord qui s'affiche dans le salon de support. Le menu déroulant des catégories s'ajoute automatiquement en dessous."
-            >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Titre de l'embed">
-                        <TextInput
-                            value={cfg.panel_title}
-                            onChange={e => update({ panel_title: e.target.value })}
-                            placeholder="Support Shardtown"
-                        />
-                    </Field>
-                    <Field label="Couleur (hex)" hint="Ex : #7c3aed · #3b82f6 · #10b981">
-                        <div className="flex items-center gap-2">
-                            <span
-                                className="w-9 h-9 rounded-lg border border-white/10 flex-shrink-0 cursor-pointer"
-                                style={{ background: cfg.panel_color || '#7c3aed' }}
-                            />
-                            <TextInput
-                                value={cfg.panel_color}
-                                onChange={e => update({ panel_color: e.target.value })}
-                                placeholder="#7c3aed"
-                            />
-                        </div>
-                    </Field>
                 </div>
-                <Field label="Description" hint="Supports le markdown Discord (**, __, ~~, `)">
-                    <textarea
-                        value={cfg.panel_description}
-                        onChange={e => update({ panel_description: e.target.value })}
-                        placeholder="Sélectionnez une catégorie ci-dessous…"
-                        rows={3}
-                        className="w-full px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] focus:border-white/25 focus:bg-white/[0.04] focus:outline-none text-white placeholder:text-white/25 transition-colors text-sm resize-y"
-                    />
-                </Field>
-                <Field label="Footer" hint="Optionnel — texte affiché en bas de l'embed">
-                    <TextInput
-                        value={cfg.panel_footer}
-                        onChange={e => update({ panel_footer: e.target.value })}
-                        placeholder="Shardtown · Réponse sous 24h"
-                    />
-                </Field>
-            </SectionCard>
 
-            {/* Apparence du message de bienvenue */}
-            <SectionCard
-                title="Embed de bienvenue"
-                description="L'embed envoyé dans le salon du ticket lors de son ouverture. Utilisez {id} pour l'ID du ticket."
-            >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Titre" hint="{id} sera remplacé par l'ID du ticket">
-                        <TextInput
-                            value={cfg.welcome_title}
-                            onChange={e => update({ welcome_title: e.target.value })}
-                            placeholder="Ticket #{id}"
-                        />
-                    </Field>
-                    <Field label="Couleur (hex)" hint="Vide = couleur de la catégorie">
-                        <div className="flex items-center gap-2">
-                            <span
-                                className="w-9 h-9 rounded-lg border border-white/10 flex-shrink-0"
-                                style={{ background: cfg.welcome_color || '#7c3aed' }}
-                            />
-                            <TextInput
-                                value={cfg.welcome_color}
-                                onChange={e => update({ welcome_color: e.target.value })}
-                                placeholder="#7c3aed (ou vide)"
-                            />
-                        </div>
-                    </Field>
-                </div>
-                <Field label="Footer" hint="{id} sera remplacé par l'ID du ticket">
-                    <TextInput
-                        value={cfg.welcome_footer}
-                        onChange={e => update({ welcome_footer: e.target.value })}
-                        placeholder="ID: {id}"
-                    />
-                </Field>
-            </SectionCard>
+                {/* ── Main content ───────────────────────────────────────── */}
+                <div className="flex-1 min-w-0">
+                    <div className="bg-white/[0.02] border border-white/[0.07] rounded-2xl p-6">
 
-            {/* Publier le panel */}
-            <SectionCard
-                title="Publier le panel"
-                description="Envoie l'embed dans le salon choisi. Les membres voient un menu déroulant pour choisir leur catégorie, puis un formulaire pour décrire leur problème."
-            >
-                <div className="flex items-end gap-3">
-                    <div className="flex-1">
-                        <Field label="Salon cible">
-                            <Select
-                                options={channelOpts(channels)}
-                                value={deployChannelId}
-                                onChange={setDeployChannelId}
-                                placeholder="Choisir un salon…"
+                        {/* ─ Général ─ */}
+                        {activeTab === 'general' && (
+                            <>
+                            <SectionHeader
+                                title="Paramètres généraux"
+                                desc="Salons Discord, limites de tickets et timeout inactivité."
                             />
-                        </Field>
+                            <div className="space-y-5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field label="Salon de logs" hint="Actions importantes du système de support.">
+                                        <Select
+                                            options={channelOpts(channels)}
+                                            value={cfg.log_channel_id || ''}
+                                            onChange={v => update({ log_channel_id: v || null })}
+                                        />
+                                    </Field>
+                                    <Field label="Salon des transcriptions" hint="Les transcriptions des tickets fermés y sont envoyées.">
+                                        <Select
+                                            options={channelOpts(channels)}
+                                            value={cfg.transcript_channel_id || ''}
+                                            onChange={v => update({ transcript_channel_id: v || null })}
+                                        />
+                                    </Field>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field label="Tickets simultanés / utilisateur" hint="Maximum de tickets ouverts en même temps par personne.">
+                                        <NumberInput
+                                            value={cfg.max_tickets_per_user}
+                                            min={1} max={10}
+                                            onChange={e => update({ max_tickets_per_user: Number(e.target.value) })}
+                                        />
+                                    </Field>
+                                    <Field label="Timeout AFK (minutes)" hint="Ferme les tickets sans réponse après ce délai.">
+                                        <NumberInput
+                                            value={cfg.afk_timeout_minutes}
+                                            min={10} max={10080}
+                                            onChange={e => update({ afk_timeout_minutes: Number(e.target.value) })}
+                                        />
+                                    </Field>
+                                </div>
+                            </div>
+                            </>
+                        )}
+
+                        {/* ─ Rôles ─ */}
+                        {activeTab === 'roles' && (
+                            <>
+                            <SectionHeader
+                                title="Rôles d'accès"
+                                desc="Définissez qui peut gérer les tickets et accéder aux paramètres."
+                            />
+                            <div className="space-y-6">
+                                {[
+                                    { label: 'Rôles support', desc: 'Peuvent voir et répondre à tous les tickets.', field: 'staff_roles' as const },
+                                    { label: 'Rôles admin tickets', desc: 'Ont accès aux paramètres de configuration.', field: 'admin_roles' as const },
+                                ].map(({ label, desc, field }) => (
+                                    <div key={field}>
+                                        <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-1">{label}</p>
+                                        <p className="text-[12px] text-white/30 mb-3">{desc}</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {roles.length === 0 && (
+                                                <span className="text-white/25 text-xs py-1">Aucun rôle disponible</span>
+                                            )}
+                                            {roles.map(r => {
+                                                const active = (cfg[field] as string[]).includes(r.id);
+                                                return (
+                                                    <button
+                                                        key={r.id}
+                                                        type="button"
+                                                        onClick={() => update({
+                                                            [field]: active
+                                                                ? (cfg[field] as string[]).filter(x => x !== r.id)
+                                                                : [...(cfg[field] as string[]), r.id]
+                                                        })}
+                                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                                                            active
+                                                                ? 'bg-blue-500/15 border-blue-500/30 text-blue-300'
+                                                                : 'bg-white/[0.03] border-white/[0.07] text-white/45 hover:text-white hover:bg-white/[0.07]'
+                                                        }`}
+                                                    >
+                                                        @{r.name}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            </>
+                        )}
+
+                        {/* ─ Catégories ─ */}
+                        {activeTab === 'categories' && (
+                            <>
+                            <div className="flex items-center justify-between mb-6">
+                                <SectionHeader
+                                    title="Catégories de tickets"
+                                    desc="Chaque catégorie génère un bouton sur le panel Discord."
+                                />
+                                <button
+                                    type="button"
+                                    onClick={addCat}
+                                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold hover:bg-blue-500/15 transition-all shrink-0 -mt-6"
+                                >
+                                    <Plus className="w-3 h-3" />
+                                    Ajouter
+                                </button>
+                            </div>
+
+                            {cfg.categories.length === 0 ? (
+                                <div className="py-12 text-center rounded-xl border border-dashed border-white/[0.07]">
+                                    <Layers className="w-8 h-8 text-white/15 mx-auto mb-3" />
+                                    <p className="text-white/30 text-sm">Aucune catégorie pour l'instant.</p>
+                                    <button
+                                        type="button"
+                                        onClick={addCat}
+                                        className="mt-4 text-xs text-blue-400 hover:text-blue-300 font-semibold transition-colors"
+                                    >
+                                        + Ajouter la première catégorie
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {cfg.categories.map((cat, i) => (
+                                        <div key={cat.id} className="rounded-xl border border-white/[0.07] bg-black/20 overflow-hidden">
+                                            {/* Cat header */}
+                                            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.05] bg-white/[0.02]">
+                                                <span className="w-6 h-6 rounded-md bg-white/[0.06] flex items-center justify-center text-[11px] font-bold text-white/40 shrink-0">
+                                                    {i + 1}
+                                                </span>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    {renderEmoji(cat.emoji, 18)}
+                                                </div>
+                                                <span className="flex-1 text-sm font-semibold text-white/80 truncate">
+                                                    {cat.label || 'Sans nom'}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeCat(i)}
+                                                    className="w-7 h-7 rounded-lg flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-all shrink-0"
+                                                    aria-label="Supprimer"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+
+                                            {/* Cat fields */}
+                                            <div className="p-4 space-y-3">
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                    <Field label="Nom">
+                                                        <TextInput
+                                                            value={cat.label}
+                                                            onChange={e => updateCat(i, { label: e.target.value })}
+                                                            placeholder="Support"
+                                                        />
+                                                    </Field>
+                                                    <Field label="Emoji" hint="Unicode ou <:nom:id>">
+                                                        <TextInput
+                                                            value={cat.emoji}
+                                                            onChange={e => updateCat(i, { emoji: e.target.value })}
+                                                            placeholder="🎫"
+                                                        />
+                                                    </Field>
+                                                    <Field label="Catégorie Discord">
+                                                        <Select
+                                                            options={categoryOpts(channels)}
+                                                            value={cat.discord_category_id || ''}
+                                                            onChange={v => updateCat(i, { discord_category_id: v || null })}
+                                                        />
+                                                    </Field>
+                                                </div>
+                                                <Field label="Description" hint="Sous-titre du bouton dans le panel.">
+                                                    <TextInput
+                                                        value={cat.description}
+                                                        onChange={e => updateCat(i, { description: e.target.value })}
+                                                        placeholder="Décrivez votre problème…"
+                                                    />
+                                                </Field>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            </>
+                        )}
+
+                        {/* ─ Apparence ─ */}
+                        {activeTab === 'appearance' && (
+                            <>
+                            <SectionHeader
+                                title="Apparence"
+                                desc="Personnalisez les embeds Discord du panel et des tickets."
+                            />
+                            <div className="space-y-8">
+
+                                {/* Panel embed */}
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-widest text-white/35 mb-4">Embed du panel</p>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Field label="Titre">
+                                                <TextInput
+                                                    value={cfg.panel_title}
+                                                    onChange={e => update({ panel_title: e.target.value })}
+                                                    placeholder="Support Shardtown"
+                                                />
+                                            </Field>
+                                            <ColorField
+                                                label="Couleur"
+                                                hint="Code hex · ex : #7c3aed"
+                                                value={cfg.panel_color}
+                                                onChange={v => update({ panel_color: v })}
+                                            />
+                                        </div>
+                                        <Field label="Description" hint="Supporte le markdown Discord (**, __, ~~, `)">
+                                            <textarea
+                                                value={cfg.panel_description}
+                                                onChange={e => update({ panel_description: e.target.value })}
+                                                placeholder="Sélectionnez une catégorie ci-dessous…"
+                                                rows={3}
+                                                className="w-full px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] focus:border-white/25 focus:bg-white/[0.04] focus:outline-none text-white placeholder:text-white/25 transition-colors text-sm resize-y"
+                                            />
+                                        </Field>
+                                        <Field label="Footer" hint="Optionnel · texte en bas de l'embed">
+                                            <TextInput
+                                                value={cfg.panel_footer}
+                                                onChange={e => update({ panel_footer: e.target.value })}
+                                                placeholder="Shardtown · Réponse sous 24h"
+                                            />
+                                        </Field>
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-white/[0.06]" />
+
+                                {/* Welcome embed */}
+                                <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-widest text-white/35 mb-4">Embed de bienvenue</p>
+                                    <p className="text-[12px] text-white/30 mb-4">Envoyé dans le salon du ticket à l'ouverture. <span className="text-white/50 font-mono">{'{id}'}</span> est remplacé par l'ID du ticket.</p>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Field label="Titre" hint="{id} → ID du ticket">
+                                                <TextInput
+                                                    value={cfg.welcome_title}
+                                                    onChange={e => update({ welcome_title: e.target.value })}
+                                                    placeholder="Ticket #{id}"
+                                                />
+                                            </Field>
+                                            <ColorField
+                                                label="Couleur"
+                                                hint="Vide = couleur de la catégorie"
+                                                value={cfg.welcome_color}
+                                                onChange={v => update({ welcome_color: v })}
+                                            />
+                                        </div>
+                                        <Field label="Footer" hint="{id} → ID du ticket">
+                                            <TextInput
+                                                value={cfg.welcome_footer}
+                                                onChange={e => update({ welcome_footer: e.target.value })}
+                                                placeholder="ID: {id}"
+                                            />
+                                        </Field>
+                                    </div>
+                                </div>
+                            </div>
+                            </>
+                        )}
+
+                        {/* ─ Publier ─ */}
+                        {activeTab === 'deploy' && (
+                            <>
+                            <SectionHeader
+                                title="Publier le panel"
+                                desc="Envoie l'embed dans le salon choisi. Les membres voient un menu déroulant pour choisir leur catégorie."
+                            />
+
+                            {cfg.categories.length === 0 && (
+                                <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/[0.06] border border-amber-500/20 mb-5">
+                                    <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                                    <p className="text-sm text-amber-300/80">
+                                        Aucune catégorie configurée. Ajoutez au moins une catégorie avant de publier.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="space-y-4">
+                                <Field label="Salon cible" hint="Le panel sera envoyé dans ce salon.">
+                                    <Select
+                                        options={channelOpts(channels)}
+                                        value={deployChannelId}
+                                        onChange={setDeployChannelId}
+                                        placeholder="Choisir un salon…"
+                                    />
+                                </Field>
+                                <button
+                                    type="button"
+                                    className="btn-liquid btn-liquid--primary flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold disabled:opacity-40"
+                                    disabled={deployBusy || !deployChannelId || cfg.categories.length === 0}
+                                    onClick={deployPanel}
+                                >
+                                    <Rocket className="w-4 h-4" />
+                                    {deployBusy ? 'Envoi en cours…' : 'Publier le panel'}
+                                </button>
+                            </div>
+                            </>
+                        )}
+
                     </div>
-                    <button
-                        type="button"
-                        className="btn-liquid btn-liquid--primary px-5 py-2.5 rounded-full text-sm font-bold disabled:opacity-40 flex-shrink-0 mb-px"
-                        disabled={deployBusy || !deployChannelId}
-                        onClick={deployPanel}
-                    >
-                        {deployBusy ? 'Envoi…' : 'Publier'}
-                    </button>
                 </div>
-            </SectionCard>
+            </div>
         </div>
 
-        {/* ── Floating unsaved-changes bar ────────────────────────────────────── */}
+        {/* ── Floating save bar ─────────────────────────────────────────────── */}
         <div className="fixed bottom-6 inset-x-0 flex justify-center px-6 z-50 pointer-events-none">
-            <div
-                className={`w-full max-w-3xl transition-all duration-300 ease-out pointer-events-auto ${
-                    isDirty
-                        ? 'translate-y-0 opacity-100'
-                        : 'translate-y-4 opacity-0 pointer-events-none'
-                }`}
-            >
+            <div className={`w-full max-w-2xl transition-all duration-300 ease-out pointer-events-auto ${
+                isDirty ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'
+            }`}>
                 <div
-                    className={`relative overflow-hidden rounded-2xl border bg-[#0d0d10]/92 backdrop-blur-2xl shadow-[0_8px_40px_rgba(0,0,0,0.65)] px-5 py-3.5 flex items-center gap-4 transition-[border-color,box-shadow] duration-300 ${
-                        shaking
-                            ? 'border-amber-400/55 shadow-[0_8px_40px_rgba(0,0,0,0.65),0_0_0_1px_rgba(251,191,36,0.25)]'
-                            : 'border-white/[0.09]'
+                    className={`rounded-2xl border bg-[#0d0d10]/95 backdrop-blur-2xl shadow-[0_8px_40px_rgba(0,0,0,0.7)] px-5 py-3.5 flex items-center gap-4 transition-[border-color] duration-300 ${
+                        shaking ? 'border-amber-400/50' : 'border-white/[0.09]'
                     }`}
                     style={{ animation: shaking ? 'shake 0.55s ease-in-out' : undefined }}
                 >
-                    {/* icon + message */}
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0">
                         <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                        <line x1="12" y1="9" x2="12" y2="13"/>
-                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
-                    <p className="flex-1 min-w-0 text-sm font-semibold text-white/75">
-                        Attention, il reste des modifications non enregistrées !
-                    </p>
-
-                    {/* actions */}
+                    <p className="flex-1 min-w-0 text-sm font-semibold text-white/70">Modifications non enregistrées</p>
                     <div className="flex items-center gap-2 shrink-0">
                         <button
                             type="button"
                             onClick={resetAll}
                             disabled={saving}
-                            className="px-4 py-2 rounded-xl text-sm font-semibold text-white/45 hover:text-white hover:bg-white/[0.07] transition-all disabled:opacity-40"
+                            className="px-4 py-2 rounded-xl text-sm font-semibold text-white/40 hover:text-white hover:bg-white/[0.07] transition-all disabled:opacity-40"
                         >
-                            Réinitialiser
+                            Annuler
                         </button>
                         <button
                             type="button"
                             onClick={saveAll}
                             disabled={saving}
-                            className="px-5 py-2 rounded-xl bg-white/[0.07] border border-white/[0.12] text-sm font-bold text-white/80 hover:bg-white/[0.11] hover:text-white transition-all disabled:opacity-40"
+                            className="px-5 py-2 rounded-xl bg-white/[0.08] border border-white/[0.12] text-sm font-bold text-white hover:bg-white/[0.12] transition-all disabled:opacity-40"
                         >
-                            {saving ? 'Enregistrement…' : 'Enregistrer les modifications'}
+                            {saving ? 'Enregistrement…' : 'Enregistrer'}
                         </button>
                     </div>
                 </div>
