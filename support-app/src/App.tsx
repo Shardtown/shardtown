@@ -8,7 +8,6 @@ import Tickets from "@/pages/tabs/Tickets";
 import Transcripts from "@/pages/tabs/Transcripts";
 import Transcript from "@/pages/tabs/Transcript";
 import Config from "@/pages/tabs/Config";
-import Incidents from "@/pages/tabs/Incidents";
 
 const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
@@ -30,7 +29,6 @@ const router = createBrowserRouter([
       { path: "transcripts",       element: <Transcripts /> },
       { path: "transcript/:id",    element: <Transcript /> },
       { path: "config",            element: <Config /> },
-      { path: "incidents",         element: <Incidents /> },
     ],
   },
   { path: "*", element: <ToMainSite /> },

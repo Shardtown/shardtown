@@ -73,20 +73,26 @@ body {
     border: 1px solid rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.95);
     box-shadow:
+      0 0 6px rgba(0,0,0,0.03),
       0 2px 6px rgba(0,0,0,0.18),
+      inset 3px 3px 0.5px -3.5px rgba(255,255,255,0.85),
+      inset -3px -3px 0.5px -3.5px rgba(255,255,255,0.65),
       inset 1px 1px 1px -0.5px rgba(255,255,255,0.45),
       inset -1px -1px 1px -0.5px rgba(255,255,255,0.4),
-      inset 0 0 6px 6px rgba(255,255,255,0.07);
-    transition: transform 200ms ease, background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+      inset 0 0 6px 6px rgba(255,255,255,0.07),
+      inset 0 0 2px 2px rgba(255,255,255,0.04),
+      0 0 12px rgba(0,0,0,0.18);
+    transition: transform 240ms cubic-bezier(0.2,0.7,0.2,1), background 200ms ease, border-color 200ms ease, box-shadow 240ms ease, filter 200ms ease;
     cursor: pointer;
   }
   .btn-liquid:hover:not(:disabled) {
     background: rgba(255,255,255,0.06);
     border-color: rgba(255,255,255,0.2);
     transform: translateY(-1px);
+    filter: brightness(1.06);
   }
-  .btn-liquid:active:not(:disabled) { transform: scale(0.985); }
-  .btn-liquid:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-liquid:active:not(:disabled) { transform: translateY(0) scale(0.985); filter: brightness(0.96); }
+  .btn-liquid:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
   .btn-liquid--primary {
     background: linear-gradient(180deg,rgba(255,255,255,0.95) 0%,rgba(245,245,245,0.85) 100%);
@@ -101,11 +107,34 @@ body {
     background: linear-gradient(180deg,rgba(96,165,250,0.9) 0%,rgba(59,130,246,0.85) 100%);
     color: #fff;
     border-color: rgba(59,130,246,0.4);
-    box-shadow: 0 0 18px -4px rgba(59,130,246,0.4), 0 2px 6px rgba(0,0,0,0.2),
-      inset 1px 1px 1px -0.5px rgba(255,255,255,0.45);
+    box-shadow:
+      0 0 18px -4px rgba(59,130,246,0.4),
+      0 2px 6px rgba(0,0,0,0.2),
+      inset 3px 3px 0.5px -3.5px rgba(255,255,255,0.65),
+      inset -3px -3px 0.5px -3.5px rgba(255,255,255,0.3),
+      inset 1px 1px 1px -0.5px rgba(255,255,255,0.4),
+      inset -1px -1px 1px -0.5px rgba(0,0,0,0.1),
+      inset 0 0 6px 6px rgba(255,255,255,0.06);
   }
   .btn-liquid--blue:hover:not(:disabled) {
     background: linear-gradient(180deg,#60a5fa 0%,#3b82f6 100%);
+  }
+
+  .btn-liquid--green {
+    background: linear-gradient(180deg,rgba(52,211,153,0.9) 0%,rgba(16,185,129,0.85) 100%);
+    color: #022c22;
+    border-color: rgba(52,211,153,0.45);
+    box-shadow:
+      0 0 18px -4px rgba(52,211,153,0.45),
+      0 2px 6px rgba(0,0,0,0.2),
+      inset 3px 3px 0.5px -3.5px rgba(255,255,255,0.7),
+      inset -3px -3px 0.5px -3.5px rgba(255,255,255,0.35),
+      inset 1px 1px 1px -0.5px rgba(255,255,255,0.5),
+      inset -1px -1px 1px -0.5px rgba(0,0,0,0.1),
+      inset 0 0 6px 6px rgba(255,255,255,0.08);
+  }
+  .btn-liquid--green:hover:not(:disabled) {
+    background: linear-gradient(180deg,#34d399 0%,#10b981 100%);
   }
 
   .card-glass {

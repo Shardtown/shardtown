@@ -315,10 +315,19 @@ export default function Config() {
                                     <button
                                         type="button"
                                         onClick={() => update({ claim_enabled: !cfg.claim_enabled })}
-                                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 ml-4 ${cfg.claim_enabled ? 'bg-blue-500' : 'bg-white/10'}`}
-                                        aria-label="Toggle claim"
+                                        className={`btn-liquid shrink-0 ml-4 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 ${cfg.claim_enabled ? 'btn-liquid--green' : ''}`}
                                     >
-                                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${cfg.claim_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                                        {cfg.claim_enabled ? (
+                                            <>
+                                                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
+                                                Activé
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                                                <span className="text-white/50">Désactivé</span>
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             </div>

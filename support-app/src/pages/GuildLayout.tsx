@@ -14,7 +14,6 @@ const NAV_LINKS = [
     { label: 'Transcriptions', to: (id: string) => `/guild/${id}/transcripts` },
     { label: 'Statistiques',  to: (id: string) => `/guild/${id}/stats`       },
     { label: 'Configuration', to: (id: string) => `/guild/${id}/config`      },
-    { label: 'Incidents',     to: (id: string) => `/guild/${id}/incidents`   },
 ];
 
 export default function GuildLayout() {

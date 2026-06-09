@@ -192,18 +192,16 @@ export default function Stats() {
                     {/* KPIs */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {[
-                            { label: `Ouverts (${days}j)`,      value: totalOpened,     color: '#a78bfa', glow: 'rgba(167,139,250,0.12)' },
-                            { label: `Fermés (${days}j)`,       value: totalClosed,     color: '#34d399', glow: 'rgba(52,211,153,0.10)' },
-                            { label: 'En cours actuellement',   value: stats.openCount, color: '#60a5fa', glow: 'rgba(96,165,250,0.10)' },
+                            { label: `Ouverts (${days}j)`,    value: totalOpened     },
+                            { label: `Fermés (${days}j)`,      value: totalClosed     },
+                            { label: 'En cours actuellement',  value: stats.openCount },
                         ].map(kpi => (
                             <div
                                 key={kpi.label}
-                                className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5"
-                                style={{ boxShadow: `inset 0 0 40px 0 ${kpi.glow}` }}
+                                className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5"
                             >
-                                <div className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${kpi.color}55, transparent)` }} />
                                 <p className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-3">{kpi.label}</p>
-                                <p className="text-5xl font-extrabold tracking-tight" style={{ color: kpi.color }}>{kpi.value}</p>
+                                <p className="text-5xl font-extrabold tracking-tight text-white">{kpi.value}</p>
                             </div>
                         ))}
                     </div>
