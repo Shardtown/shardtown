@@ -34,7 +34,7 @@ export default function GuildLayout() {
     }, [guildId, navigate]);
 
     if (loading) return (
-        <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a]">
+        <div className="flex items-center justify-center min-h-screen">
             <div className="flex gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
                 <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -48,7 +48,7 @@ export default function GuildLayout() {
 
     return (
         <Ctx.Provider value={guild}>
-            <div className="min-h-screen bg-[#0a0a0a] text-white">
+            <div className="min-h-screen text-white">
 
                 {/* Aurora animated background */}
                 <div className="fixed inset-0 pointer-events-none -z-10 opacity-50">

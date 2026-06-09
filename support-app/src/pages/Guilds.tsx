@@ -24,7 +24,7 @@ export default function Guilds() {
     }, []);
 
     return (
-        <div className="min-h-screen bg-[#0a0a0a] text-white">
+        <div className="min-h-screen text-white">
 
             {/* Aurora animated background */}
             <div className="fixed inset-0 pointer-events-none -z-10 opacity-50">
