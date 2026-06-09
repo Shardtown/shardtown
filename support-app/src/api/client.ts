@@ -4,13 +4,60 @@ export class ApiError extends Error {
   }
 }
 
+/* ─── CSRF ───────────────────────────────────────────────────────────────── */
+
+let csrfToken: string | null = null;
+let csrfPromise: Promise<string> | null = null;
+
+async function fetchCsrf(): Promise<string> {
+  const res = await fetch("/api/csrf", { credentials: "include" });
+  if (!res.ok) return "";
+  const data = (await res.json()) as { csrfToken?: string };
+  return data.csrfToken || "";
+}
+
+async function getCsrf(): Promise<string> {
+  if (csrfToken) return csrfToken;
+  if (!csrfPromise) {
+    csrfPromise = fetchCsrf().then(t => {
+      csrfToken = t;
+      csrfPromise = null;
+      return t;
+    });
+  }
+  return csrfPromise;
+}
+
+function clearCsrf() {
+  csrfToken = null;
+}
+
+/* ─── Transport ──────────────────────────────────────────────────────────── */
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(path, {
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+
+  if (method !== "GET" && method !== "HEAD") {
+    headers["X-CSRF-Token"] = await getCsrf();
+  }
+
+  const init: RequestInit = {
     method,
     credentials: "include",
-    headers: body ? { "Content-Type": "application/json" } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  });
+    headers,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  };
+
+  let res = await fetch(path, init);
+
+  // CSRF token stale — refresh once and retry
+  if (res.status === 403 && method !== "GET" && method !== "HEAD") {
+    clearCsrf();
+    headers["X-CSRF-Token"] = await getCsrf();
+    res = await fetch(path, { ...init, headers });
+  }
+
   if (!res.ok) {
     const data = await res.json().catch(() => ({})) as Record<string, unknown>;
     throw new ApiError(res.status, (data.error as string) || res.statusText);
@@ -18,7 +65,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return res.json() as Promise<T>;
 }
 
-export const get  = <T>(path: string)                => request<T>("GET",    path);
-export const post = <T>(path: string, body?: unknown) => request<T>("POST",   path, body);
-export const put  = <T>(path: string, body?: unknown) => request<T>("PUT",    path, body);
-export const del  = <T>(path: string)                 => request<T>("DELETE", path);
+export const get  = <T>(path: string)                 => request<T>("GET",    path);
+export const post = <T>(path: string, body?: unknown)  => request<T>("POST",   path, body);
+export const put  = <T>(path: string, body?: unknown)  => request<T>("PUT",    path, body);
+export const del  = <T>(path: string)                  => request<T>("DELETE", path);

@@ -119,7 +119,7 @@ export default function Header({ navLinks = [], showBack = false, guildName, gui
                                 onClick={() => navigate('/guilds')}
                                 className={`hidden lg:inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold ${pillBase} ${pillSurface} hover:bg-white/[0.08] text-white/70 hover:text-white`}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="7" height="auto" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="7" height="12" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <path d="m9 1-7 7 7 7" />
                                 </svg>
                                 Serveurs
