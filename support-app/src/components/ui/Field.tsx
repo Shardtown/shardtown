@@ -72,7 +72,7 @@ export function Select({
         <ChevronDown className={`w-3.5 h-3.5 text-white/40 transition-transform flex-shrink-0 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 mt-1.5 bg-[#0d0d10]/95 backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
+        <div className="absolute left-0 right-0 mt-1.5 bg-white/[0.06] backdrop-blur-2xl border border-white/[0.12] rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
           {options.length === 0 && <div className="px-4 py-2.5 text-sm text-white/30">Aucune option</div>}
           {options.map(o => (
             <button
@@ -80,7 +80,7 @@ export function Select({
               type="button"
               onClick={() => { onChange(o.value); setOpen(false); }}
               className={`w-full text-left px-4 py-2.5 text-sm font-medium flex items-center justify-between gap-3 transition-colors ${
-                o.value === value ? "bg-white/[0.08] text-white" : "text-white/70 hover:bg-white/5 hover:text-white"
+                o.value === value ? "bg-white/[0.12] text-white" : "text-white/80 hover:bg-white/[0.08] hover:text-white"
               }`}
             >
               <span className="truncate">{o.label}</span>

@@ -20,15 +20,16 @@ export default function GuildLayout() {
     const { guildId } = useParams<{ guildId: string }>();
     const [guild, setGuild] = useState<Guild | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         get<Guild[]>('/api/support/guilds')
             .then(list => {
                 const g = list.find(g => g.id === guildId);
-                if (!g) window.location.replace('https://shardtwn.fr/shard/server');
+                if (!g) setError('Ce serveur est introuvable ou vous n\'y avez pas accès.');
                 else setGuild(g);
             })
-            .catch(() => window.location.replace('https://shardtwn.fr/shard/server'))
+            .catch(() => setError('Impossible de charger les serveurs. Vérifiez votre connexion.'))
             .finally(() => setLoading(false));
     }, [guildId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -41,7 +42,30 @@ export default function GuildLayout() {
             </div>
         </div>
     );
-    if (!guild) return null;
+
+    if (error || !guild) return (
+        <div className="flex items-center justify-center min-h-screen px-6">
+            <div className="text-center max-w-sm space-y-4">
+                <p className="text-white/30 text-xs font-bold uppercase tracking-widest">Accès refusé</p>
+                <p className="text-white/60 text-sm">{error ?? 'Serveur introuvable.'}</p>
+                <div className="flex gap-3 justify-center pt-2">
+                    <a
+                        href="https://shardtwn.fr/shard/server"
+                        className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/[0.06] border border-white/[0.10] text-white/60 hover:text-white hover:bg-white/[0.10] transition-all"
+                    >
+                        Retour au dashboard
+                    </a>
+                    <button
+                        type="button"
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/[0.06] border border-white/[0.10] text-white/60 hover:text-white hover:bg-white/[0.10] transition-all"
+                    >
+                        Réessayer
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 
     const navLinks = NAV_LINKS.map(n => ({ label: n.label, to: n.to(guild.id) }));
 
