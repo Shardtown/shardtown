@@ -62,9 +62,6 @@ function truncate(s: string, n = 80) {
   return s.length > n ? s.slice(0, n) + "…" : s;
 }
 
-function isTextType(t: string) {
-  return ["varchar","char","text","tinytext","mediumtext","longtext","enum","set"].includes(t.toLowerCase());
-}
 function isIntType(t: string) {
   return ["int","tinyint","smallint","mediumint","bigint"].includes(t.toLowerCase());
 }
