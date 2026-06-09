@@ -50,7 +50,9 @@ export default function GuildLayout() {
         <Ctx.Provider value={guild}>
             <div className="min-h-screen text-white flex flex-col">
 
-                {/* Aurora background */}
+                {/* Base sombre */}
+                <div className="fixed inset-0 -z-20 bg-[#0a0a0a]" />
+                {/* Aurora */}
                 <div className="fixed inset-0 pointer-events-none -z-10">
                     <div className="absolute inset-0 [background:radial-gradient(ellipse_110%_60%_at_50%_-5%,rgba(59,130,246,0.28)_0%,rgba(37,99,235,0.14)_40%,transparent_70%)]" />
                     <div className="absolute inset-0 [background:radial-gradient(ellipse_60%_50%_at_85%_15%,rgba(99,102,241,0.18)_0%,transparent_60%)]" />

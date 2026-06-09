@@ -35,7 +35,7 @@ export default function App() {
 
   if (status === "loading") {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a]">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">
           <ShardLogo />
           <div className="flex gap-1.5">
@@ -50,8 +50,10 @@ export default function App() {
 
   if (status === "unauth") {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a] overflow-hidden">
-        {/* aurora bg */}
+      <div className="flex items-center justify-center min-h-screen overflow-hidden">
+        {/* Base sombre */}
+        <div className="fixed inset-0 -z-20 bg-[#0a0a0a]" />
+        {/* Aurora */}
         <div className="fixed inset-0 pointer-events-none -z-10">
           <div className="absolute inset-x-0 top-0 h-[100vh] [background:radial-gradient(ellipse_80%_80%_at_50%_0%,rgba(59,130,246,0.25)_0%,rgba(29,78,216,0.12)_40%,transparent_100%)]" />
         </div>
