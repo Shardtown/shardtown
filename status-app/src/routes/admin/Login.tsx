@@ -79,7 +79,6 @@ export function AdminLogin() {
                     autoCorrect="off"
                     autoCapitalize="off"
                     spellCheck={false}
-                    placeholder="SHARD-XXXXXXXX-XXXXXXXX-…"
                     className="w-full px-4 py-3 pr-11 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/[0.06] text-white placeholder:text-white/20 transition-all font-mono text-[13px] tracking-wider"
                   />
                   <button
@@ -94,9 +93,6 @@ export function AdminLogin() {
                       : <Eye    className="w-4 h-4" />}
                   </button>
                 </div>
-                <p className="mt-2 text-[11px] text-white/25 font-mono">
-                  Générée via <span className="text-white/40">node scripts/genkey.js</span> · valable 14 j
-                </p>
               </div>
 
               <button
@@ -112,10 +108,6 @@ export function AdminLogin() {
             </form>
           </div>
 
-          {/* Footer note */}
-          <p className="mt-8 text-center text-[11px] text-white/30 font-mono-num tracking-wide">
-            Toutes les tentatives sont enregistrées · IP + user-agent
-          </p>
         </div>
       </section>
     </AppLayout>
