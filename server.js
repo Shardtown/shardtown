@@ -8448,6 +8448,9 @@ app.delete('/api/admin/custom-bot/:id', checkAdmin, verifyCsrf, async (req, res)
     }
 });
 
+// ── Admin DB browser ──────────────────────────────────────────────────────────
+require('./lib/adminDBRoutes')(app, db, checkAdmin, verifyCsrf, logAdminAction);
+
 const statsRateLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 30,

@@ -5,6 +5,7 @@ import {
   Bot as BotIcon,
   CheckCircle2,
   ClipboardList,
+  Database,
   LogOut,
   Monitor,
   RefreshCw,
@@ -483,6 +484,12 @@ export function Admin() {
           >
             <LogOut className="w-3.5 h-3.5" /> Déconnexion
           </button>
+          <Link
+            to="/admin/database"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/15 hover:border-blue-500/30 transition-colors text-[11px] font-bold uppercase tracking-[0.18em]"
+          >
+            <Database className="w-3.5 h-3.5" /> Base de données
+          </Link>
         </header>
 
         {/* KPI tiles */}

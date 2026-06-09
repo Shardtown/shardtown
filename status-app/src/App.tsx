@@ -33,6 +33,7 @@ import { ShardGuild } from "@/routes/shard/Guild";
 import { AdminLogin } from "@/routes/admin/Login";
 import { Admin } from "@/routes/admin/Admin";
 import { AdminGuildDetail } from "@/routes/admin/GuildDetail";
+import { DatabaseAdmin } from "@/routes/admin/Database";
 import { AccountLogin } from "@/routes/account/Login";
 import { VerifyEmail } from "@/routes/account/VerifyEmail";
 import { Account } from "@/routes/account/Account";
@@ -132,6 +133,7 @@ function AppMain() {
               {!IS_DESKTOP && <Route path="/admin/login" element={<AdminLogin />} />}
               {!IS_DESKTOP && <Route path="/admin" element={<Admin />} />}
               {!IS_DESKTOP && <Route path="/admin/guild/:guildId" element={<AdminGuildDetail />} />}
+              {!IS_DESKTOP && <Route path="/admin/database" element={<DatabaseAdmin />} />}
               <Route path="/account/signup" element={<Navigate to="/account/login?mode=register" replace />} />
               <Route path="/account/login" element={<AccountLogin />} />
               <Route path="/account/verify" element={<VerifyEmail />} />
