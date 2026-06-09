@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, NavLink } from 'react-router-dom';
-import { get } from '@/api/client';
+import { get, del } from '@/api/client';
 import type { Transcript, SupportConfig } from '@/types';
 import { formatDate } from '@/utils/timeUtils';
 import { Select } from '@/components/ui/Field';
@@ -15,6 +15,8 @@ export default function Transcripts() {
     const [optionId, setOptionId] = useState('');
     const [optionCategory, setOptionCategory] = useState('');
     const [page, setPage] = useState(1);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     // Fetch transcripts
     useEffect(() => {
@@ -54,6 +56,16 @@ export default function Transcripts() {
         if (optionCategory && t.category !== optionCategory) return false;
         return true;
     });
+
+    async function handleDelete(id: string) {
+        setDeleting(true);
+        try {
+            await del(`/api/support/transcript/${id}`);
+            setTranscripts(prev => prev.filter(t => t.id !== id));
+            setConfirmDeleteId(null);
+        } catch { /* silently ignore */ }
+        finally { setDeleting(false); }
+    }
 
     const pages = Math.ceil(filtered.length / PER_PAGE);
     const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
@@ -133,15 +145,48 @@ export default function Transcripts() {
                                             <td className="px-4 py-3 text-white/60">{cat ? cat.label : t.category}</td>
                                             <td className="px-4 py-3 text-white/50 text-xs">{formatDate(t.closed_at)}</td>
                                             <td className="px-4 py-3 text-right">
-                                                <NavLink
-                                                    to={`/guild/${guildId}/transcript/${t.id}`}
-                                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-xs font-semibold text-white/70 hover:text-white hover:bg-white/[0.1] transition-all"
-                                                >
-                                                    Ouvrir
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="6" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                        <path d="m1 1 7 7-7 7" />
-                                                    </svg>
-                                                </NavLink>
+                                                {confirmDeleteId === t.id ? (
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <span className="text-xs text-white/40">Supprimer ?</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDelete(t.id)}
+                                                            disabled={deleting}
+                                                            className="px-3 py-1 rounded-full bg-red-500/15 border border-red-500/25 text-xs font-bold text-red-400 hover:bg-red-500/22 transition-all disabled:opacity-40"
+                                                        >
+                                                            {deleting ? '…' : 'Confirmer'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setConfirmDeleteId(null)}
+                                                            className="px-3 py-1 rounded-full text-xs font-semibold text-white/40 hover:text-white hover:bg-white/[0.06] transition-all"
+                                                        >
+                                                            Annuler
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setConfirmDeleteId(t.id)}
+                                                            className="w-7 h-7 flex items-center justify-center rounded-full text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                            aria-label="Supprimer"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                                            </svg>
+                                                        </button>
+                                                        <NavLink
+                                                            to={`/guild/${guildId}/transcript/${t.id}`}
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-xs font-semibold text-white/70 hover:text-white hover:bg-white/[0.1] transition-all"
+                                                        >
+                                                            Ouvrir
+                                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="6" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                                <path d="m1 1 7 7-7 7" />
+                                                            </svg>
+                                                        </NavLink>
+                                                    </div>
+                                                )}
                                             </td>
                                         </tr>
                                     );

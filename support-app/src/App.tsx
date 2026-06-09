@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import { get, ApiError } from "@/api/client";
 import type { Me } from "@/types";
 import Guilds from "@/pages/Guilds";
@@ -13,6 +13,26 @@ import Incidents from "@/pages/tabs/Incidents";
 
 const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
+
+// createBrowserRouter (data router) — required for useBlocker
+const router = createBrowserRouter([
+  { path: "/",       element: <Navigate to="/guilds" replace /> },
+  { path: "/guilds", element: <Guilds /> },
+  {
+    path: "/guild/:guildId",
+    element: <GuildLayout />,
+    children: [
+      { index: true,               element: <Navigate to="tickets" replace /> },
+      { path: "stats",             element: <Stats /> },
+      { path: "tickets",           element: <Tickets /> },
+      { path: "transcripts",       element: <Transcripts /> },
+      { path: "transcript/:id",    element: <Transcript /> },
+      { path: "config",            element: <Config /> },
+      { path: "incidents",         element: <Incidents /> },
+    ],
+  },
+  { path: "*", element: <Navigate to="/guilds" replace /> },
+]);
 
 const ShardLogo = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60.796 63.39" className="w-16 h-16" style={{ fill: 'white' }}>
@@ -80,22 +100,7 @@ export default function App() {
 
   return (
     <MeCtx.Provider value={me}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/"        element={<Navigate to="/guilds" replace />} />
-          <Route path="/guilds"  element={<Guilds />} />
-          <Route path="/guild/:guildId" element={<GuildLayout />}>
-            <Route index                 element={<Navigate to="tickets" replace />} />
-            <Route path="stats"          element={<Stats />} />
-            <Route path="tickets"        element={<Tickets />} />
-            <Route path="transcripts"    element={<Transcripts />} />
-            <Route path="transcript/:id" element={<Transcript />} />
-            <Route path="config"         element={<Config />} />
-            <Route path="incidents"      element={<Incidents />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/guilds" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </MeCtx.Provider>
   );
 }
