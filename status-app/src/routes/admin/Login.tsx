@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Clock, Eye, EyeOff, KeyRound, ShieldAlert } from "lucide-react";
+import { Clock, Eye, EyeOff, ShieldAlert } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet } from "@/api/client";
 
@@ -29,14 +29,7 @@ export function AdminLogin() {
 
           {/* Hero */}
           <div className="text-center mb-10">
-            <div className="relative inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/25 text-red-300 mb-7 shadow-[0_0_28px_-8px_rgba(239,68,68,0.5)]">
-              <KeyRound className="w-7 h-7" />
-              <span className="absolute -top-1 -right-1 flex w-3 h-3">
-                <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-75" />
-                <span className="relative w-3 h-3 rounded-full bg-red-500 border-2 border-black" />
-              </span>
-            </div>
-            <p className="text-[11px] font-bold tracking-[0.32em] text-red-300/70 uppercase mb-4">
+            <p className="text-[11px] font-bold tracking-[0.32em] text-white/40 uppercase mb-4">
               Accès restreint
             </p>
             <h1 className="font-extrabold tracking-[-0.02em] leading-[0.95] text-5xl md:text-6xl mb-4">
@@ -51,13 +44,13 @@ export function AdminLogin() {
           <div className="relative rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.04] via-white/[0.02] to-transparent backdrop-blur-xl p-7 shadow-[0_24px_64px_-24px_rgba(0,0,0,0.7)]">
 
             {error && (
-              <div className="mb-6 p-3.5 rounded-2xl bg-red-500/10 border border-red-500/25 text-red-300 text-sm font-semibold flex items-start gap-2.5">
+              <div className="mb-6 p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-white/60 text-sm font-semibold flex items-start gap-2.5">
                 <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
                 <span>Clé invalide ou expirée. Accès refusé.</span>
               </div>
             )}
             {locked && (
-              <div className="mb-6 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm font-semibold flex items-start gap-2.5">
+              <div className="mb-6 p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-white/60 text-sm font-semibold flex items-start gap-2.5">
                 <Clock className="w-4 h-4 mt-0.5 shrink-0" />
                 <span>Accès temporairement verrouillé après plusieurs tentatives. Réessayez dans quelques minutes.</span>
               </div>
@@ -101,9 +94,6 @@ export function AdminLogin() {
                 className="btn-liquid btn-liquid--primary group mt-3 inline-flex items-center justify-center gap-2 rounded-full px-6 py-3.5 font-bold text-[14px] tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="relative">{loading ? "Chargement…" : "Accéder au panel"}</span>
-                {!loading && (
-                  <KeyRound className="relative w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
-                )}
               </button>
             </form>
           </div>
