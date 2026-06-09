@@ -229,12 +229,9 @@ export default function Stats() {
                                     return (
                                         <div key={c.category}>
                                             <div className="flex items-center justify-between mb-1.5">
-                                                <div className="flex items-center gap-2 text-sm text-white/70 min-w-0">
-                                                    <span className="w-5 h-5 shrink-0 flex items-center justify-center">
-                                                        {cat?.emoji ? renderEmoji(cat.emoji, 16) : null}
-                                                    </span>
-                                                    <span className="font-medium truncate">{cat?.label ?? c.category}</span>
-                                                </div>
+                                                <span className="text-sm font-medium text-white/70 truncate">
+                                                    {cat?.label ?? c.category}
+                                                </span>
                                                 <span className="text-sm font-bold" style={{ color: col }}>{c.cnt}</span>
                                             </div>
                                             <div className="h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
