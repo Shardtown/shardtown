@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { get } from '@/api/client';
-import type { Ticket } from '@/types';
+import type { Ticket, SupportConfig } from '@/types';
 import { formatDateTime } from '@/utils/timeUtils';
 
 type Filter = 'all' | 'open' | 'closed';
@@ -13,7 +13,24 @@ export default function Tickets() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<Filter>('all');
     const [offset, setOffset] = useState(0);
+    const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
     const limit = 20;
+
+    // Charger les catégories configurées pour afficher le label au lieu de l'ID
+    useEffect(() => {
+        let cancelled = false;
+        get<SupportConfig>(`/api/support/config/${guildId}`)
+            .then(cfg => {
+                if (cancelled || !cfg?.categories?.length) return;
+                const map: Record<string, string> = {};
+                for (const c of cfg.categories) {
+                    map[c.id] = c.emoji ? `${c.emoji} ${c.label}` : c.label;
+                }
+                setCategoryMap(map);
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [guildId]);
 
     useEffect(() => {
         let cancelled = false;
@@ -91,7 +108,7 @@ export default function Tickets() {
                                 {tickets.map((t, i) => (
                                     <tr key={t.id} className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors ${i === tickets.length - 1 ? 'border-0' : ''}`}>
                                         <td className="px-4 py-3 font-mono text-xs text-white/60">{t.id}</td>
-                                        <td className="px-4 py-3 text-white/70 font-medium">{t.category}</td>
+                                        <td className="px-4 py-3 text-white/70 font-medium">{categoryMap[t.category] ?? t.category}</td>
                                         <td className="px-4 py-3 text-white/60">{t.author_pseudo || t.author_id}</td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
