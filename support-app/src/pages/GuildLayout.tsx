@@ -4,6 +4,7 @@ import { get } from '@/api/client';
 import type { Guild } from '@/types';
 import Header from '@/components/Header/Header';
 import { BackgroundGradientAnimation } from '@/components/ui/BackgroundGradientAnimation';
+import { Footer } from '@/components/Footer';
 
 const Ctx = createContext<Guild | null>(null);
 export const useGuild = () => useContext(Ctx);
@@ -66,11 +67,12 @@ export default function GuildLayout() {
                     guildIcon={guild.icon ?? undefined}
                     guildId={guild.id}
                 />
-                <main className="pt-28 pb-16">
+                <main className="pt-28 pb-24">
                     <div className="container-wide">
                         <Outlet />
                     </div>
                 </main>
+                <Footer />
             </div>
         </Ctx.Provider>
     );

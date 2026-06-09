@@ -4,6 +4,7 @@ import { get } from '@/api/client';
 import type { Guild } from '@/types';
 import Header from '@/components/Header/Header';
 import { BackgroundGradientAnimation } from '@/components/ui/BackgroundGradientAnimation';
+import { Footer } from '@/components/Footer';
 
 function guildIconUrl(id: string, icon: string | null): string {
     return icon
@@ -37,7 +38,7 @@ export default function Guilds() {
 
             <Header />
 
-            <main className="pt-28 pb-16">
+            <main className="pt-28 pb-24">
                 <div className="container-wide">
                     <div className="mb-10">
                         <p className="text-xs font-bold tracking-[0.25em] uppercase text-white/40 mb-3">Gestion du support</p>
@@ -88,6 +89,7 @@ export default function Guilds() {
                     )}
                 </div>
             </main>
+            <Footer />
         </div>
     );
 }
