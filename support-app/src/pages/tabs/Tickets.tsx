@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { get, del } from '@/api/client';
 import type { Ticket, SupportConfig } from '@/types';
@@ -16,7 +16,17 @@ export default function Tickets() {
     const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
     const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [lastRefresh, setLastRefresh] = useState(Date.now());
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const limit = 20;
+
+    // Auto-refresh toutes les 30s (uniquement sur la première page sans filtre actif)
+    useEffect(() => {
+        intervalRef.current = setInterval(() => {
+            if (offset === 0) setLastRefresh(Date.now());
+        }, 30_000);
+        return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    }, [offset]);
 
     // Charger les catégories configurées pour afficher le label au lieu de l'ID
     useEffect(() => {
@@ -43,7 +53,7 @@ export default function Tickets() {
             .catch(() => { if (!cancelled) setTickets([]); })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [guildId, filter, offset]);
+    }, [guildId, filter, offset, lastRefresh]);
 
     function changeFilter(f: Filter) { setFilter(f); setOffset(0); }
 

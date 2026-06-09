@@ -34,6 +34,16 @@ export interface SupportConfig {
   welcome_title: string;
   welcome_color: string;
   welcome_footer: string;
+  claim_enabled: boolean;
+}
+
+export interface StaffStat {
+  staff_id: string;
+  staff_pseudo: string;
+  ticket_count: number;
+  total_messages: number;
+  ticket_ids: string[];
+  avg_response_seconds: number | null;
 }
 
 export interface Ticket {

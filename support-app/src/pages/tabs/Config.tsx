@@ -31,6 +31,7 @@ const DEFAULT: SupportConfig = {
     welcome_title: 'Ticket #{id}',
     welcome_color: '',
     welcome_footer: 'ID: {id}',
+    claim_enabled: true,
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -303,6 +304,22 @@ export default function Config() {
                                             onChange={e => update({ afk_timeout_minutes: Number(e.target.value) })}
                                         />
                                     </Field>
+                                </div>
+
+                                {/* Claim button toggle */}
+                                <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.07]">
+                                    <div>
+                                        <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-0.5">Bouton "Prendre en charge"</p>
+                                        <p className="text-[12px] text-white/30">Affiche un bouton claim dans chaque ticket Discord.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => update({ claim_enabled: !cfg.claim_enabled })}
+                                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 ml-4 ${cfg.claim_enabled ? 'bg-blue-500' : 'bg-white/10'}`}
+                                        aria-label="Toggle claim"
+                                    >
+                                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${cfg.claim_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                                    </button>
                                 </div>
                             </div>
                             </>

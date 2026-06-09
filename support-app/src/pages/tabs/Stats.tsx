@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { get } from '@/api/client';
-import type { Stats as StatsType, SupportConfig } from '@/types';
+import type { Stats as StatsType, StaffStat, SupportConfig } from '@/types';
 import ReactECharts from 'echarts-for-react';
 
 /* ── Chart builder ───────────────────────────────────────────────────────── */
@@ -87,6 +87,15 @@ function buildChart(
     };
 }
 
+/* ── Helpers ─────────────────────────────────────────────────────────────── */
+function fmtResponse(seconds: number | null): string {
+    if (seconds === null || seconds <= 0) return '—';
+    if (seconds < 60) return `${seconds}s`;
+    const m = Math.floor(seconds / 60);
+    const s = Math.round(seconds % 60);
+    return s > 0 ? `${m}m ${s}s` : `${m}m`;
+}
+
 /* ── Component ───────────────────────────────────────────────────────────── */
 export default function Stats() {
     const { guildId } = useParams<{ guildId: string }>();
@@ -94,6 +103,8 @@ export default function Stats() {
     const [loading, setLoading] = useState(true);
     const [days, setDays] = useState(30);
     const [categoryMap, setCategoryMap] = useState<Record<string, { label: string; emoji: string }>>({});
+    const [staffStats, setStaffStats] = useState<StaffStat[]>([]);
+    const [staffLoading, setStaffLoading] = useState(true);
 
     useEffect(() => {
         if (!guildId) return;
@@ -115,6 +126,17 @@ export default function Stats() {
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
     }, [guildId, days]);
+
+    useEffect(() => {
+        if (!guildId) return;
+        let cancelled = false;
+        setStaffLoading(true);
+        get<StaffStat[]>(`/api/support/staff-stats/${guildId}`)
+            .then(r => { if (!cancelled) setStaffStats(Array.isArray(r) ? r : []); })
+            .catch(() => { if (!cancelled) setStaffStats([]); })
+            .finally(() => { if (!cancelled) setStaffLoading(false); });
+        return () => { cancelled = true; };
+    }, [guildId]);
 
     const totalOpened = stats?.totals?.find(t => t.event_type === 'opened')?.cnt ?? 0;
     const totalClosed = stats?.totals?.find(t => t.event_type === 'closed')?.cnt ?? 0;
@@ -241,6 +263,80 @@ export default function Stats() {
                     )}
                 </>
             )}
+
+            {/* Staff stats */}
+            <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                <div className="p-5 pb-4 flex items-center justify-between">
+                    <p className="text-xs font-bold tracking-[0.15em] uppercase text-white/35">Staff · activité</p>
+                    {staffStats.length > 0 && (
+                        <span className="text-xs text-white/25 font-medium">{staffStats.length} membre{staffStats.length > 1 ? 's' : ''}</span>
+                    )}
+                </div>
+
+                {staffLoading ? (
+                    <div className="flex gap-1.5 px-5 pb-5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                ) : staffStats.length === 0 ? (
+                    <p className="text-white/30 text-sm px-5 pb-5">Aucune activité staff enregistrée.</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="border-t border-white/[0.05]">
+                                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-white/30 uppercase tracking-wider">Staff</th>
+                                    <th className="px-4 py-2.5 text-center text-xs font-semibold text-white/30 uppercase tracking-wider">Tickets</th>
+                                    <th className="px-4 py-2.5 text-center text-xs font-semibold text-white/30 uppercase tracking-wider">Messages</th>
+                                    <th className="px-4 py-2.5 text-center text-xs font-semibold text-white/30 uppercase tracking-wider">Rép. moy.</th>
+                                    <th className="px-5 py-2.5 text-left text-xs font-semibold text-white/30 uppercase tracking-wider">IDs tickets</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {staffStats.map((s, i) => (
+                                    <tr
+                                        key={s.staff_id}
+                                        className={`border-t border-white/[0.04] hover:bg-white/[0.02] transition-colors ${i === staffStats.length - 1 ? '' : ''}`}
+                                    >
+                                        <td className="px-5 py-3">
+                                            <div>
+                                                <p className="font-semibold text-white/80 text-sm truncate max-w-[160px]">
+                                                    {s.staff_pseudo || 'Staff inconnu'}
+                                                </p>
+                                                <p className="text-xs text-white/30 font-mono">{s.staff_id}</p>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className="text-lg font-extrabold text-violet-400">{s.ticket_count}</span>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className="text-lg font-extrabold text-blue-400">{s.total_messages}</span>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className="text-sm font-semibold text-emerald-400">{fmtResponse(s.avg_response_seconds)}</span>
+                                        </td>
+                                        <td className="px-5 py-3">
+                                            <div className="flex flex-wrap gap-1.5 max-w-xs">
+                                                {s.ticket_ids.map(tid => (
+                                                    <Link
+                                                        key={tid}
+                                                        to={`/guild/${guildId}/transcript/${tid}`}
+                                                        className="font-mono text-xs px-2 py-0.5 rounded-md bg-white/[0.06] border border-white/[0.08] text-white/50 hover:text-white hover:bg-white/[0.10] hover:border-white/[0.15] transition-all"
+                                                    >
+                                                        {tid}
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
