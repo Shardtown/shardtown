@@ -73,7 +73,7 @@ function buildChart(
                 itemStyle: { color, borderColor: 'rgba(255,255,255,0.6)', borderWidth: 2 },
             },
             itemStyle: { color },
-            lineStyle: { color, width: 3, shadowColor: color, shadowBlur: 12, shadowOffsetY: 4 },
+            lineStyle: { color, width: 2, shadowColor: 'transparent', shadowBlur: 0 },
             areaStyle: {
                 color: {
                     type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
@@ -143,10 +143,10 @@ export default function Stats() {
     const catMax = Math.max(...(stats?.byCategory?.map(c => c.cnt) ?? [1]), 1);
 
     const openedChart = stats
-        ? buildChart(stats.opened, '#a78bfa', 'rgba(167,139,250,0.28)', 'rgba(167,139,250,0)')
+        ? buildChart(stats.opened, 'rgba(255,255,255,0.7)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0)')
         : null;
     const closedChart = stats
-        ? buildChart(stats.closed, '#34d399', 'rgba(52,211,153,0.22)', 'rgba(52,211,153,0)')
+        ? buildChart(stats.closed, 'rgba(255,255,255,0.7)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0)')
         : null;
 
     return (
