@@ -1,0 +1,20 @@
+.page-guild-layout {
+    min-height: 100vh;
+}
+
+.page-guild-layout .layout.guild-layout-content {
+    flex-direction: column;
+    margin-top: 4rem;
+    margin-bottom: 5rem;
+    gap: 3rem;
+}
+
+.guild-layout-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    color: var(--paladium-ui-kit-gray);
+    font-size: 1.2em;
+    font-weight: 600;
+}

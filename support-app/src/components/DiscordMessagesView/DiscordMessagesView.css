@@ -1,0 +1,8 @@
+.discord-messages-container {
+    border: none !important;
+    background: none !important;
+}
+
+.discord-messages-container > div {
+    margin-bottom: .75rem;
+}

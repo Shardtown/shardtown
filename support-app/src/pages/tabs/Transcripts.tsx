@@ -1,98 +1,153 @@
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { get } from "@/api/client";
-import type { Transcript } from "@/types";
-import { SectionCard, Spinner, Empty, fmt, Btn } from "@/components/Ui";
-import { ExternalLink } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useParams, NavLink } from 'react-router-dom';
+import { get } from '@/api/client';
+import type { Transcript } from '@/types';
+import { formatDate } from '@/utils/timeUtils';
+import './Transcripts.css';
 
-const BASE = typeof window !== "undefined" && /^https?:/.test(window.location.protocol)
-  ? window.location.origin.replace("support.", "")
-  : "https://shardtwn.fr";
+const TRANSCRIPTS_PER_PAGE = 15;
 
 export default function Transcripts() {
-  const { guildId } = useParams<{ guildId: string }>();
-  const [transcripts, setTranscripts] = useState<Transcript[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [offset, setOffset] = useState(0);
-  const limit = 50;
+    const { guildId } = useParams<{ guildId: string }>();
+    const [transcripts, setTranscripts] = useState<Transcript[]>([]);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    get<{ transcripts: Transcript[]; total: number }>(`/api/support/transcripts/${guildId}?limit=${limit}&offset=${offset}`)
-      .then(r => { if (!cancelled) { setTranscripts(r.transcripts ?? []); setTotal(r.total ?? 0); } })
-      .catch(() => { if (!cancelled) setTranscripts([]); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [guildId, offset]);
+    const [optionId, setOptionId] = useState('');
+    const [optionCategory, setOptionCategory] = useState('');
 
-  const pages = Math.ceil(total / limit);
-  const page  = Math.floor(offset / limit) + 1;
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        get<{ transcripts: Transcript[]; total: number }>(`/api/support/transcripts/${guildId}?limit=200&offset=0`)
+            .then(r => { if (!cancelled) { setTranscripts(r.transcripts ?? []); } })
+            .catch(() => { if (!cancelled) setTranscripts([]); })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [guildId]);
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-black text-white">Transcripts</h2>
-        <p className="text-sm text-white/40">{total} transcript{total !== 1 ? "s" : ""} générés.</p>
-      </div>
+    const filtered = transcripts.filter(t => {
+        if (optionId && !t.id.toLowerCase().includes(optionId.toLowerCase())) return false;
+        if (optionCategory && t.category !== optionCategory) return false;
+        return true;
+    });
 
-      <SectionCard
-        title="Tickets fermés"
-        description="Chaque fermeture de ticket génère une page HTML consultable sans authentification."
-      >
-        {loading ? <Spinner /> : transcripts.length === 0 ? (
-          <Empty message="Aucun transcript pour le moment." />
-        ) : (
-          <>
-            <div className="overflow-x-auto -mx-1">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/[0.06]">
-                    {["ID", "Catégorie", "Auteur", "Fermé le", ""].map((h, i) => (
-                      <th key={i} className="text-left text-[10px] font-bold text-white/30 uppercase tracking-wider pb-2 px-1">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.04]">
-                  {transcripts.map(t => (
-                    <tr key={t.id} className="hover:bg-white/[0.02] transition-colors">
-                      <td className="py-2.5 px-1 font-mono text-[11px] text-white/50">{t.id}</td>
-                      <td className="py-2.5 px-1 capitalize text-white/70 text-xs">{t.category}</td>
-                      <td className="py-2.5 px-1 text-white/70 text-xs truncate max-w-[140px]">{t.author_pseudo || "—"}</td>
-                      <td className="py-2.5 px-1 text-[11px] text-white/40 whitespace-nowrap">{fmt(t.closed_at)}</td>
-                      <td className="py-2.5 px-1 text-right">
-                        <a
-                          href={`${BASE}/transcripts/${t.id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/60 hover:text-white hover:bg-white/[0.08] transition-all"
-                        >
-                          <ExternalLink size={11} /> Voir
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+    const pages = Math.ceil(filtered.length / TRANSCRIPTS_PER_PAGE);
+    const [page, setPage] = useState(1);
+    const paginated = filtered.slice((page - 1) * TRANSCRIPTS_PER_PAGE, page * TRANSCRIPTS_PER_PAGE);
+
+    const categories = Array.from(new Set(transcripts.map(t => t.category)));
+
+    return (
+        <div className="page-transcripts-content">
+            <div className="transcripts-header pala-item pala-item-subtitle primary">
+                <div className="pala-item pala-item-subtitle primary">
+                    <div className="pala-item-subtitle-container">
+                        <h4>Transcriptions</h4>
+                    </div>
+                    <p className="pala-item-subtitle-text">
+                        Retrouvez les transcriptions de tous les anciens tickets Discord.
+                    </p>
+                </div>
             </div>
 
-            {pages > 1 && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/[0.06]">
-                <span className="text-[11px] text-white/30">Page {page} / {pages}</span>
-                <div className="flex gap-2">
-                  <Btn variant="ghost" size="sm" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - limit))}>
-                    Précédent
-                  </Btn>
-                  <Btn variant="ghost" size="sm" disabled={offset + limit >= total} onClick={() => setOffset(offset + limit)}>
-                    Suivant
-                  </Btn>
+            <div className="transcripts-options pala-item">
+                <div className="transcripts-option">
+                    <h6>ID du ticket</h6>
+                    <input
+                        type="text"
+                        className="pala-item-text-input"
+                        value={optionId}
+                        onChange={e => { setOptionId(e.target.value.toUpperCase()); setPage(1); }}
+                        placeholder="ABC123"
+                        maxLength={16}
+                    />
                 </div>
-              </div>
-            )}
-          </>
-        )}
-      </SectionCard>
-    </div>
-  );
+                <div className="transcripts-option">
+                    <h6>Catégorie</h6>
+                    <div className="pala-item-select">
+                        <select value={optionCategory} onChange={e => { setOptionCategory(e.target.value); setPage(1); }}>
+                            <option value="">Toutes</option>
+                            {categories.map(c => (
+                                <option key={c} value={c}>{c}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div className="transcripts-content-area">
+                <div className="pala-item pala-item-title primary">
+                    <h3 className="pala-item-title-subtitle">
+                        {filtered.length} transcription{filtered.length > 1 ? 's' : ''} trouvée{filtered.length > 1 ? 's' : ''}
+                    </h3>
+                </div>
+
+                {loading && <div className="pala-loading"><p>Chargement...</p></div>}
+
+                {!loading && filtered.length === 0 && (
+                    <div className="pala-empty"><p>Aucune transcription trouvée.</p></div>
+                )}
+
+                {!loading && filtered.length > 0 && (
+                    <div className="transcripts-list-container pala-item">
+                        <table className="transcripts-list">
+                            <thead>
+                                <tr>
+                                    <th>ID du ticket</th>
+                                    <th>Utilisateur</th>
+                                    <th>Catégorie</th>
+                                    <th>Fermé le</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {paginated.map(t => (
+                                    <tr key={t.id} className="transcripts-item">
+                                        <td>{t.id}</td>
+                                        <td>{t.author_pseudo || '—'}</td>
+                                        <td className="transcript-category">{t.category}</td>
+                                        <td>{formatDate(t.closed_at)}</td>
+                                        <td>
+                                            <NavLink
+                                                className="pala-item-button-container"
+                                                to={`/guild/${guildId}/transcript/${t.id}`}
+                                            >
+                                                <button className="pala-item-button primary small">
+                                                    <span className="pala-item-button-content">
+                                                        <p>Ouvrir</p>
+                                                    </span>
+                                                </button>
+                                            </NavLink>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        {pages > 1 && (
+                            <div className="transcripts-pagination">
+                                <div
+                                    className={`transcripts-change-page ${page <= 1 ? 'disabled' : 'active'}`}
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                                        <path d="M201.4 297.4C188.9 309.9 188.9 330.2 201.4 342.7L361.4 502.7C373.9 515.2 394.2 515.2 406.7 502.7C419.2 490.2 419.2 469.9 406.7 457.4L269.3 320L406.6 182.6C419.1 170.1 419.1 149.8 406.6 137.3C394.1 124.8 373.8 124.8 361.3 137.3L201.3 297.3z"/>
+                                    </svg>
+                                </div>
+                                <div className="transcripts-page-info">Page {page}</div>
+                                <div
+                                    className={`transcripts-change-page ${page >= pages ? 'disabled' : 'active'}`}
+                                    onClick={() => setPage(p => Math.min(pages, p + 1))}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                                        <path d="M439.1 297.4C451.6 309.9 451.6 330.2 439.1 342.7L279.1 502.7C266.6 515.2 246.3 515.2 233.8 502.7C221.3 490.2 221.3 469.9 233.8 457.4L371.2 320L233.9 182.6C221.4 170.1 221.4 149.8 233.9 137.3C246.4 124.8 266.7 124.8 279.2 137.3L439.2 297.3z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 }

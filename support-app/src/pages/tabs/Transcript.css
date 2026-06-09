@@ -1,0 +1,27 @@
+.page-transcript {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    width: 100%;
+}
+
+.transcript-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 100%;
+    gap: 1rem;
+}
+
+.transcript-info-value {
+    font-weight: 700;
+    color: var(--white);
+    text-transform: capitalize;
+}
+
+.transcript-messages {
+    background-color: var(--paladium-ui-kit-second-black);
+    border-radius: .75rem;
+    padding: 1.5rem;
+    min-height: 200px;
+}

@@ -1,105 +1,183 @@
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { get } from "@/api/client";
-import type { Stats as StatsType } from "@/types";
-import { SectionCard, StatCard, Spinner, Empty } from "@/components/Ui";
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { get } from '@/api/client';
+import type { Stats as StatsType } from '@/types';
+import ReactECharts from 'echarts-for-react';
+import './Stats.css';
 
-function MiniBar({ data, color }: { data: { day: string; cnt: number }[]; color: string }) {
-  if (!data.length) return <Empty message="Aucune donnée sur cette période" />;
-  const max = Math.max(...data.map(d => d.cnt), 1);
-  return (
-    <div className="flex items-end gap-[3px] h-20 w-full mt-2">
-      {data.map(d => (
-        <div key={d.day} className="flex-1 flex flex-col items-center group relative">
-          <div
-            className={`w-full rounded-t-sm ${color} opacity-60 group-hover:opacity-100 transition-opacity min-h-[3px]`}
-            style={{ height: `${Math.max((d.cnt / max) * 100, 4)}%` }}
-          />
-          <span className="absolute -top-7 left-1/2 -translate-x-1/2 bg-[#1a1a2e] text-white text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 border border-white/10">
-            {d.day.slice(5)} · {d.cnt}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
+const colors = ['#ff5c00', '#0F4C5C', '#4B1D3F', '#7A9E7E', '#E6D3B1'];
+
+const hexToRgba = (hex: string, alpha: number): string => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
+
+function buildChartOption(data: { day: string; cnt: number }[], color: string, label: string) {
+    const points = data.map(d => [new Date(d.day).getTime(), d.cnt]);
+    return {
+        backgroundColor: 'transparent',
+        tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(21, 21, 21, 0.95)',
+            borderColor: '#383838',
+            textStyle: { color: '#fff', fontFamily: 'Montserrat' },
+        },
+        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        xAxis: {
+            type: 'time',
+            axisLabel: { color: '#aaa', fontFamily: 'Montserrat', fontSize: 11,
+                formatter: (v: number) => {
+                    const d = new Date(v);
+                    return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
+                }
+            },
+            axisLine: { lineStyle: { color: '#383838' } },
+            splitLine: { show: false },
+        },
+        yAxis: {
+            type: 'value',
+            axisLabel: { color: '#aaa', fontFamily: 'Montserrat', fontSize: 11 },
+            axisLine: { lineStyle: { color: '#383838' } },
+            splitLine: { lineStyle: { color: '#383838' } },
+            minInterval: 1,
+        },
+        series: [{
+            name: label,
+            data: points,
+            type: 'line',
+            smooth: true,
+            showSymbol: false,
+            itemStyle: { color },
+            areaStyle: {
+                color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                    colorStops: [
+                        { offset: 0, color: hexToRgba(color, 0.3) },
+                        { offset: 1, color: hexToRgba(color, 0) },
+                    ],
+                },
+            },
+        }],
+    };
 }
 
 export default function Stats() {
-  const { guildId } = useParams<{ guildId: string }>();
-  const [stats, setStats] = useState<StatsType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [days, setDays] = useState(30);
+    const { guildId } = useParams<{ guildId: string }>();
+    const [stats, setStats] = useState<StatsType | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [days, setDays] = useState(30);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    get<StatsType>(`/api/support/stats/${guildId}?days=${days}`)
-      .then(r => { if (!cancelled) setStats(r); })
-      .catch(() => { if (!cancelled) setStats(null); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [guildId, days]);
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        get<StatsType>(`/api/support/stats/${guildId}?days=${days}`)
+            .then(r => { if (!cancelled) setStats(r); })
+            .catch(() => { if (!cancelled) setStats(null); })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [guildId, days]);
 
-  const totalOpened = stats?.totals?.find(t => t.event_type === "opened")?.cnt ?? 0;
-  const totalClosed = stats?.totals?.find(t => t.event_type === "closed")?.cnt ?? 0;
-  const catMax = Math.max(...(stats?.byCategory?.map(c => c.cnt) ?? [1]), 1);
+    const totalOpened = stats?.totals?.find(t => t.event_type === 'opened')?.cnt ?? 0;
+    const totalClosed = stats?.totals?.find(t => t.event_type === 'closed')?.cnt ?? 0;
+    const catMax = Math.max(...(stats?.byCategory?.map(c => c.cnt) ?? [1]), 1);
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-black text-white">Aperçu</h2>
-        <p className="text-sm text-white/40">Statistiques de votre système de support.</p>
-      </div>
+    return (
+        <div className="page-stats-content">
+            <div className="pala-item pala-item-subtitle primary">
+                <div className="pala-item-subtitle-container">
+                    <h4>Statistiques</h4>
+                </div>
+                <p className="pala-item-subtitle-text">Observez les statistiques des tickets Discord.</p>
+            </div>
 
-      <div className="flex items-center gap-2">
-        {[7, 30, 90].map(d => (
-          <button key={d} type="button" onClick={() => setDays(d)}
-            className={`px-3.5 py-1 rounded-full text-[11px] font-bold border transition-colors ${
-              days === d
-                ? "bg-white text-black border-white"
-                : "border-white/10 text-white/50 hover:border-white/20 hover:text-white"
-            }`}>
-            {d} jours
-          </button>
-        ))}
-      </div>
+            <div className="stats-options pala-item">
+                <h6>Période</h6>
+                <div className="stats-period-buttons">
+                    {[7, 30, 90].map(d => (
+                        <button
+                            key={d}
+                            type="button"
+                            className={`pala-item-button${days === d ? ' primary' : ' second'} small`}
+                            style={{ minHeight: 32, padding: '0 1em', width: 'auto' }}
+                            onClick={() => setDays(d)}
+                        >
+                            {d} jours
+                        </button>
+                    ))}
+                </div>
+            </div>
 
-      {loading ? <Spinner /> : !stats ? (
-        <Empty message="Impossible de charger les statistiques." />
-      ) : (
-        <>
-          <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Ouverts" value={totalOpened} sub={`sur ${days} jours`} />
-            <StatCard label="Fermés" value={totalClosed} sub={`sur ${days} jours`} />
-            <StatCard label="En cours" value={stats.openCount} sub="actuellement" color="text-emerald-400" />
-          </div>
+            {loading && <div className="pala-loading"><p>Chargement...</p></div>}
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <SectionCard title="Tickets ouverts / jour" description={`${days} derniers jours`}>
-              <MiniBar data={stats.opened} color="bg-blue-400" />
-            </SectionCard>
-            <SectionCard title="Tickets fermés / jour" description={`${days} derniers jours`}>
-              <MiniBar data={stats.closed} color="bg-emerald-400" />
-            </SectionCard>
-          </div>
+            {!loading && !stats && (
+                <div className="pala-empty"><p>Impossible de charger les statistiques.</p></div>
+            )}
 
-          {stats.byCategory.length > 0 && (
-            <SectionCard title="Par catégorie" description={`Tickets ouverts sur ${days} jours`}>
-              <div className="space-y-3 mt-1">
-                {stats.byCategory.map(c => (
-                  <div key={c.category} className="flex items-center gap-3">
-                    <span className="text-[12px] font-bold text-white/60 w-28 truncate capitalize">{c.category}</span>
-                    <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                      <div className="h-full rounded-full bg-white/40 transition-all" style={{ width: `${(c.cnt / catMax) * 100}%` }} />
+            {!loading && stats && (
+                <>
+                    <div className="stats-kpis pala-item">
+                        <div className="pala-item-stats">
+                            <h4 className="pala-items-stats-value">{totalOpened}</h4>
+                            <h6 className="pala-items-stats-description">Tickets ouverts ({days}j)</h6>
+                        </div>
+                        <div className="pala-item-stats">
+                            <h4 className="pala-items-stats-value">{totalClosed}</h4>
+                            <h6 className="pala-items-stats-description">Tickets fermés ({days}j)</h6>
+                        </div>
+                        <div className="pala-item-stats">
+                            <h4 className="pala-items-stats-value" style={{ color: 'var(--green)' }}>{stats.openCount}</h4>
+                            <h6 className="pala-items-stats-description">En cours actuellement</h6>
+                        </div>
                     </div>
-                    <span className="text-[11px] text-white/40 w-8 text-right font-mono">{c.cnt}</span>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-          )}
-        </>
-      )}
-    </div>
-  );
+
+                    {stats.opened.length > 0 && (
+                        <div className="stats-chart-container pala-item">
+                            <div className="pala-item pala-item-title primary">
+                                <h3 className="pala-item-title-subtitle">Tickets ouverts / jour</h3>
+                            </div>
+                            <ReactECharts
+                                className="stats-chart"
+                                option={buildChartOption(stats.opened, colors[0], 'Tickets ouverts')}
+                            />
+                        </div>
+                    )}
+
+                    {stats.closed.length > 0 && (
+                        <div className="stats-chart-container pala-item">
+                            <div className="pala-item pala-item-title primary">
+                                <h3 className="pala-item-title-subtitle">Tickets fermés / jour</h3>
+                            </div>
+                            <ReactECharts
+                                className="stats-chart"
+                                option={buildChartOption(stats.closed, colors[1], 'Tickets fermés')}
+                            />
+                        </div>
+                    )}
+
+                    {stats.byCategory.length > 0 && (
+                        <div className="stats-categories pala-item">
+                            <div className="pala-item pala-item-title primary">
+                                <h3 className="pala-item-title-subtitle">Par catégorie</h3>
+                            </div>
+                            <div className="stats-categories-list">
+                                {stats.byCategory.map(c => (
+                                    <div key={c.category} className="stats-category-item">
+                                        <span className="stats-category-label">{c.category}</span>
+                                        <div className="stats-category-bar-wrapper">
+                                            <div
+                                                className="stats-category-bar"
+                                                style={{ width: `${(c.cnt / catMax) * 100}%` }}
+                                            />
+                                        </div>
+                                        <span className="stats-category-count">{c.cnt}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
+    );
 }
