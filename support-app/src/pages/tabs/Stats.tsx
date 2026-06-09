@@ -4,55 +4,93 @@ import { get } from '@/api/client';
 import type { Stats as StatsType, SupportConfig } from '@/types';
 import ReactECharts from 'echarts-for-react';
 
-const hexToRgba = (hex: string, alpha: number): string => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-};
+/* ── Custom emoji rendering ──────────────────────────────────────────────── */
+function renderEmoji(emoji: string, size = 18): React.ReactNode {
+    if (!emoji) return null;
+    const m = emoji.match(/^<(a?):([^:]+):(\d+)>$/);
+    if (m) {
+        const ext = m[1] ? 'gif' : 'webp';
+        return <img src={`https://cdn.discordapp.com/emojis/${m[3]}.${ext}?size=64`} alt={m[2]} width={size} height={size} className="inline-block object-contain align-middle" />;
+    }
+    return <span>{emoji}</span>;
+}
 
-function buildChartOption(data: { day: string; cnt: number }[], color: string, label: string) {
+/* ── Chart builder ───────────────────────────────────────────────────────── */
+function buildChart(
+    data: { day: string; cnt: number }[],
+    color: string,
+    areaTop: string,
+    areaBot: string,
+) {
     const points = data.map(d => [new Date(d.day).getTime(), d.cnt]);
+    const maxY = Math.max(...data.map(d => d.cnt), 1);
+
     return {
         backgroundColor: 'transparent',
         tooltip: {
             trigger: 'axis',
-            backgroundColor: 'rgba(10, 10, 10, 0.95)',
-            borderColor: 'rgba(255,255,255,0.1)',
-            textStyle: { color: '#fff', fontFamily: 'Inter' },
+            backgroundColor: 'rgba(10,10,14,0.97)',
+            borderColor: 'rgba(255,255,255,0.07)',
+            borderWidth: 1,
+            padding: [10, 14],
+            textStyle: { color: '#e2e8f0', fontFamily: 'Inter', fontSize: 12 },
+            formatter: (params: { value: [number, number] }[]) => {
+                const p = params[0];
+                const d = new Date(p.value[0]);
+                const date = `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
+                return `<span style="color:rgba(255,255,255,0.4);font-size:11px">${date}</span><br/><span style="color:${color};font-size:22px;font-weight:800;letter-spacing:-0.5px">${p.value[1]}</span>`;
+            },
+            axisPointer: {
+                type: 'line',
+                lineStyle: { color: 'rgba(255,255,255,0.08)', width: 1, type: 'solid' },
+            },
         },
-        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+        grid: { left: 0, right: 0, top: 8, bottom: 28, containLabel: true },
         xAxis: {
             type: 'time',
-            axisLabel: { color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter', fontSize: 11,
+            minInterval: 86400000,
+            axisLabel: {
+                color: 'rgba(255,255,255,0.22)',
+                fontFamily: 'Inter',
+                fontSize: 11,
                 formatter: (v: number) => {
                     const d = new Date(v);
                     return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}`;
-                }
+                },
             },
-            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
+            axisLine: { show: false },
+            axisTick: { show: false },
             splitLine: { show: false },
         },
         yAxis: {
             type: 'value',
-            axisLabel: { color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter', fontSize: 11 },
-            axisLine: { lineStyle: { color: 'rgba(255,255,255,0.08)' } },
-            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } },
+            max: maxY + Math.ceil(maxY * 0.3),
+            min: 0,
             minInterval: 1,
+            axisLabel: { color: 'rgba(255,255,255,0.18)', fontFamily: 'Inter', fontSize: 11 },
+            axisLine: { show: false },
+            axisTick: { show: false },
+            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.04)', type: 'solid' } },
         },
         series: [{
-            name: label,
             data: points,
             type: 'line',
-            smooth: true,
+            smooth: 0.5,
             showSymbol: false,
+            symbol: 'circle',
+            symbolSize: 7,
+            emphasis: {
+                focus: 'series',
+                itemStyle: { color, borderColor: 'rgba(255,255,255,0.6)', borderWidth: 2 },
+            },
             itemStyle: { color },
-            lineStyle: { color, width: 2 },
+            lineStyle: { color, width: 3, shadowColor: color, shadowBlur: 12, shadowOffsetY: 4 },
             areaStyle: {
-                color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                color: {
+                    type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
                     colorStops: [
-                        { offset: 0, color: hexToRgba(color, 0.25) },
-                        { offset: 1, color: hexToRgba(color, 0) },
+                        { offset: 0, color: areaTop },
+                        { offset: 1, color: areaBot },
                     ],
                 },
             },
@@ -60,6 +98,7 @@ function buildChartOption(data: { day: string; cnt: number }[], color: string, l
     };
 }
 
+/* ── Component ───────────────────────────────────────────────────────────── */
 export default function Stats() {
     const { guildId } = useParams<{ guildId: string }>();
     const [stats, setStats] = useState<StatsType | null>(null);
@@ -67,7 +106,6 @@ export default function Stats() {
     const [days, setDays] = useState(30);
     const [categoryMap, setCategoryMap] = useState<Record<string, { label: string; emoji: string }>>({});
 
-    // Fetch category labels once
     useEffect(() => {
         if (!guildId) return;
         get<SupportConfig>(`/api/support/config/${guildId}`)
@@ -92,6 +130,13 @@ export default function Stats() {
     const totalOpened = stats?.totals?.find(t => t.event_type === 'opened')?.cnt ?? 0;
     const totalClosed = stats?.totals?.find(t => t.event_type === 'closed')?.cnt ?? 0;
     const catMax = Math.max(...(stats?.byCategory?.map(c => c.cnt) ?? [1]), 1);
+
+    const openedChart = stats
+        ? buildChart(stats.opened, '#a78bfa', 'rgba(167,139,250,0.28)', 'rgba(167,139,250,0)')
+        : null;
+    const closedChart = stats
+        ? buildChart(stats.closed, '#34d399', 'rgba(52,211,153,0.22)', 'rgba(52,211,153,0)')
+        : null;
 
     return (
         <div className="space-y-6">
@@ -136,51 +181,74 @@ export default function Stats() {
                     {/* KPIs */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {[
-                            { label: `Tickets ouverts (${days}j)`, value: totalOpened, color: 'text-blue-400' },
-                            { label: `Tickets fermés (${days}j)`, value: totalClosed, color: 'text-white' },
-                            { label: 'En cours actuellement', value: stats.openCount, color: 'text-emerald-400' },
+                            { label: `Ouverts (${days}j)`,      value: totalOpened,     color: '#a78bfa', glow: 'rgba(167,139,250,0.12)' },
+                            { label: `Fermés (${days}j)`,       value: totalClosed,     color: '#34d399', glow: 'rgba(52,211,153,0.10)' },
+                            { label: 'En cours actuellement',   value: stats.openCount, color: '#60a5fa', glow: 'rgba(96,165,250,0.10)' },
                         ].map(kpi => (
-                            <div key={kpi.label} className="card-glass rounded-2xl p-5">
-                                <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-2">{kpi.label}</p>
-                                <p className={`text-4xl font-extrabold tracking-tight ${kpi.color}`}>{kpi.value}</p>
+                            <div
+                                key={kpi.label}
+                                className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5"
+                                style={{ boxShadow: `inset 0 0 40px 0 ${kpi.glow}` }}
+                            >
+                                <div className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${kpi.color}55, transparent)` }} />
+                                <p className="text-xs font-semibold text-white/35 uppercase tracking-wider mb-3">{kpi.label}</p>
+                                <p className="text-5xl font-extrabold tracking-tight" style={{ color: kpi.color }}>{kpi.value}</p>
                             </div>
                         ))}
                     </div>
 
                     {/* Charts */}
-                    {stats.opened.length > 0 && (
-                        <div className="card-glass rounded-2xl p-5">
-                            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">Tickets ouverts / jour</p>
-                            <ReactECharts option={buildChartOption(stats.opened, '#60a5fa', 'Tickets ouverts')} style={{ height: 220 }} />
-                        </div>
+                    {openedChart && stats.opened.length > 0 && (
+                        <ChartCard
+                            title="Tickets ouverts / jour"
+                            color="#a78bfa"
+                            option={openedChart}
+                        />
                     )}
 
-                    {stats.closed.length > 0 && (
-                        <div className="card-glass rounded-2xl p-5">
-                            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">Tickets fermés / jour</p>
-                            <ReactECharts option={buildChartOption(stats.closed, '#34d399', 'Tickets fermés')} style={{ height: 220 }} />
-                        </div>
+                    {closedChart && stats.closed.length > 0 && (
+                        <ChartCard
+                            title="Tickets fermés / jour"
+                            color="#34d399"
+                            option={closedChart}
+                        />
                     )}
 
+                    {/* Par catégorie */}
                     {stats.byCategory.length > 0 && (
-                        <div className="card-glass rounded-2xl p-5">
-                            <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">Par catégorie</p>
-                            <div className="space-y-3">
-                                {stats.byCategory.map(c => {
+                        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5">
+                            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                            <p className="text-xs font-bold tracking-[0.15em] uppercase text-white/35 mb-5">Par catégorie</p>
+                            <div className="space-y-4">
+                                {stats.byCategory.map((c, i) => {
                                     const cat = categoryMap[c.category];
-                                    const label = cat
-                                        ? [cat.emoji, cat.label].filter(Boolean).join(' ')
-                                        : c.category;
+                                    const pct = (c.cnt / catMax) * 100;
+                                    // cycle through accent colours
+                                    const barColors = ['#a78bfa', '#60a5fa', '#34d399', '#f59e0b', '#f472b6'];
+                                    const col = barColors[i % barColors.length];
                                     return (
-                                        <div key={c.category} className="flex items-center gap-3">
-                                            <span className="text-sm text-white/70 w-40 shrink-0 truncate">{label}</span>
-                                            <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                                        <div key={c.category}>
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <div className="flex items-center gap-2 text-sm text-white/70">
+                                                    {cat && (
+                                                        <span className="text-base leading-none">
+                                                            {renderEmoji(cat.emoji, 16)}
+                                                        </span>
+                                                    )}
+                                                    <span className="font-medium">{cat?.label ?? c.category}</span>
+                                                </div>
+                                                <span className="text-sm font-bold" style={{ color: col }}>{c.cnt}</span>
+                                            </div>
+                                            <div className="h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
                                                 <div
-                                                    className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400"
-                                                    style={{ width: `${(c.cnt / catMax) * 100}%` }}
+                                                    className="h-full rounded-full transition-all duration-700"
+                                                    style={{
+                                                        width: `${pct}%`,
+                                                        background: `linear-gradient(90deg, ${col}cc, ${col})`,
+                                                        boxShadow: `0 0 8px ${col}80`,
+                                                    }}
                                                 />
                                             </div>
-                                            <span className="text-sm font-semibold text-white/60 w-8 text-right shrink-0">{c.cnt}</span>
                                         </div>
                                     );
                                 })}
@@ -189,6 +257,25 @@ export default function Stats() {
                     )}
                 </>
             )}
+        </div>
+    );
+}
+
+/* ── Chart card wrapper ──────────────────────────────────────────────────── */
+function ChartCard({ title, color, option }: { title: string; color: string; option: object }) {
+    return (
+        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+            {/* coloured glow at top */}
+            <div className="absolute inset-x-0 top-0 h-40 pointer-events-none" style={{ background: `radial-gradient(ellipse 60% 100% at 50% 0%, ${color}18 0%, transparent 100%)` }} />
+            <div className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color}55, transparent)` }} />
+            <div className="relative p-5 pb-4">
+                <p className="text-xs font-bold tracking-[0.15em] uppercase mb-4" style={{ color: `${color}99` }}>{title}</p>
+                <ReactECharts
+                    option={option}
+                    style={{ height: 200 }}
+                    opts={{ renderer: 'svg' }}
+                />
+            </div>
         </div>
     );
 }

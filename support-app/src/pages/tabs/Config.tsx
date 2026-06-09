@@ -17,6 +17,17 @@ const DEFAULT: SupportConfig = {
     welcome_footer: 'ID: {id}',
 };
 
+/* ── Custom emoji rendering ──────────────────────────────────────────────── */
+function renderEmoji(emoji: string, size = 22): React.ReactNode {
+    if (!emoji) return null;
+    const m = emoji.match(/^<(a?):([^:]+):(\d+)>$/);
+    if (m) {
+        const ext = m[1] ? 'gif' : 'webp';
+        return <img src={`https://cdn.discordapp.com/emojis/${m[3]}.${ext}?size=64`} alt={m[2]} width={size} height={size} className="inline-block object-contain" />;
+    }
+    return <span style={{ fontSize: size }}>{emoji}</span>;
+}
+
 function channelOpts(ch: DChannel[]) {
     return [{ value: '', label: 'Aucun' }, ...ch.filter(c => c.type === 0).map(c => ({ value: c.id, label: `# ${c.name}` }))];
 }
@@ -282,12 +293,17 @@ export default function Config() {
                                             placeholder="Support"
                                         />
                                     </Field>
-                                    <Field label="Emoji">
-                                        <TextInput
-                                            value={cat.emoji}
-                                            onChange={e => updateCat(i, { emoji: e.target.value })}
-                                            placeholder="🎫"
-                                        />
+                                    <Field label="Emoji" hint="Unicode ou <:nom:id> Discord">
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-9 h-9 rounded-lg border border-white/[0.08] bg-white/[0.02] flex items-center justify-center shrink-0">
+                                                {renderEmoji(cat.emoji)}
+                                            </span>
+                                            <TextInput
+                                                value={cat.emoji}
+                                                onChange={e => updateCat(i, { emoji: e.target.value })}
+                                                placeholder="🎫 ou <:nom:id>"
+                                            />
+                                        </div>
                                     </Field>
                                     <Field label="Catégorie Discord">
                                         <Select
