@@ -8449,7 +8449,9 @@ app.delete('/api/admin/custom-bot/:id', checkAdmin, verifyCsrf, async (req, res)
 });
 
 // ── Admin DB browser ──────────────────────────────────────────────────────────
-require('./lib/adminDBRoutes')(app, db, checkAdmin, verifyCsrf, logAdminAction);
+// Pass () => db (getter) instead of db directly: db is assigned asynchronously
+// inside connectDB().then(), so it's still undefined at this sync code point.
+require('./lib/adminDBRoutes')(app, () => db, checkAdmin, verifyCsrf, logAdminAction);
 
 const statsRateLimiter = rateLimit({
     windowMs: 60 * 1000,
