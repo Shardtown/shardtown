@@ -1,19 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useParams, NavLink } from 'react-router-dom';
 import { get } from '@/api/client';
-import type { Transcript } from '@/types';
+import type { Transcript, SupportConfig } from '@/types';
 import { formatDate } from '@/utils/timeUtils';
+import { Select } from '@/components/ui/Field';
 
 const PER_PAGE = 15;
 
 export default function Transcripts() {
     const { guildId } = useParams<{ guildId: string }>();
     const [transcripts, setTranscripts] = useState<Transcript[]>([]);
+    const [categories, setCategories] = useState<{ value: string; label: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [optionId, setOptionId] = useState('');
     const [optionCategory, setOptionCategory] = useState('');
     const [page, setPage] = useState(1);
 
+    // Fetch transcripts
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
@@ -24,6 +27,28 @@ export default function Transcripts() {
         return () => { cancelled = true; };
     }, [guildId]);
 
+    // Fetch configured categories from config API
+    useEffect(() => {
+        let cancelled = false;
+        get<SupportConfig>(`/api/support/config/${guildId}`)
+            .then(cfg => {
+                if (cancelled) return;
+                if (cfg?.categories?.length) {
+                    setCategories(cfg.categories.map(c => ({
+                        value: c.id,
+                        label: c.emoji ? `${c.emoji} ${c.label}` : c.label,
+                    })));
+                }
+            })
+            .catch(() => { /* non-fatal — fallback below */ });
+        return () => { cancelled = true; };
+    }, [guildId]);
+
+    // Fallback: derive unique categories from transcripts if config returned nothing
+    const categoryOptions = categories.length > 0
+        ? categories
+        : Array.from(new Set(transcripts.map(t => t.category))).map(c => ({ value: c, label: c }));
+
     const filtered = transcripts.filter(t => {
         if (optionId && !t.id.toLowerCase().includes(optionId.toLowerCase())) return false;
         if (optionCategory && t.category !== optionCategory) return false;
@@ -32,7 +57,6 @@ export default function Transcripts() {
 
     const pages = Math.ceil(filtered.length / PER_PAGE);
     const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-    const categories = Array.from(new Set(transcripts.map(t => t.category)));
 
     return (
         <div className="space-y-6">
@@ -58,15 +82,17 @@ export default function Transcripts() {
                 </div>
                 <div className="flex items-center gap-2">
                     <label className="text-xs font-semibold text-white/40 uppercase tracking-wider">Catégorie</label>
-                    <select
-                        value={optionCategory}
-                        onChange={e => { setOptionCategory(e.target.value); setPage(1); }}
-                        className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-sm text-white outline-none focus:border-blue-500/40 transition-all appearance-none cursor-pointer"
-                        style={{ background: 'rgba(255,255,255,0.04)' }}
-                    >
-                        <option value="" style={{ background: '#111' }}>Toutes</option>
-                        {categories.map(c => <option key={c} value={c} style={{ background: '#111' }}>{c}</option>)}
-                    </select>
+                    <div className="w-52">
+                        <Select
+                            placeholder="Toutes"
+                            value={optionCategory}
+                            onChange={v => { setOptionCategory(v); setPage(1); }}
+                            options={[
+                                { value: '', label: 'Toutes les catégories' },
+                                ...categoryOptions,
+                            ]}
+                        />
+                    </div>
                 </div>
                 {filtered.length !== transcripts.length && (
                     <span className="text-xs text-blue-400 font-semibold">{filtered.length} résultat{filtered.length > 1 ? 's' : ''}</span>
@@ -98,25 +124,28 @@ export default function Transcripts() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {paginated.map((t, i) => (
-                                    <tr key={t.id} className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors ${i === paginated.length - 1 ? 'border-0' : ''}`}>
-                                        <td className="px-4 py-3 font-mono text-xs text-white/60">{t.id}</td>
-                                        <td className="px-4 py-3 text-white/70">{t.author_pseudo || '—'}</td>
-                                        <td className="px-4 py-3 text-white/60">{t.category}</td>
-                                        <td className="px-4 py-3 text-white/50 text-xs">{formatDate(t.closed_at)}</td>
-                                        <td className="px-4 py-3 text-right">
-                                            <NavLink
-                                                to={`/guild/${guildId}/transcript/${t.id}`}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-xs font-semibold text-white/70 hover:text-white hover:bg-white/[0.1] transition-all"
-                                            >
-                                                Ouvrir
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="6" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                    <path d="m1 1 7 7-7 7" />
-                                                </svg>
-                                            </NavLink>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {paginated.map((t, i) => {
+                                    const cat = categoryOptions.find(c => c.value === t.category);
+                                    return (
+                                        <tr key={t.id} className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors ${i === paginated.length - 1 ? 'border-0' : ''}`}>
+                                            <td className="px-4 py-3 font-mono text-xs text-white/60">{t.id}</td>
+                                            <td className="px-4 py-3 text-white/70">{t.author_pseudo || '—'}</td>
+                                            <td className="px-4 py-3 text-white/60">{cat ? cat.label : t.category}</td>
+                                            <td className="px-4 py-3 text-white/50 text-xs">{formatDate(t.closed_at)}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                <NavLink
+                                                    to={`/guild/${guildId}/transcript/${t.id}`}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/[0.06] border border-white/[0.1] text-xs font-semibold text-white/70 hover:text-white hover:bg-white/[0.1] transition-all"
+                                                >
+                                                    Ouvrir
+                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="6" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                        <path d="m1 1 7 7-7 7" />
+                                                    </svg>
+                                                </NavLink>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
