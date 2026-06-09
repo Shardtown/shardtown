@@ -12,6 +12,9 @@ const DEFAULT: SupportConfig = {
     panel_description: 'Sélectionnez une catégorie ci-dessous pour ouvrir un ticket.\nNotre équipe vous répondra dans les meilleurs délais.',
     panel_footer: '',
     panel_color: '#7c3aed',
+    welcome_title: 'Ticket #{id}',
+    welcome_color: '',
+    welcome_footer: 'ID: {id}',
 };
 
 function channelOpts(ch: DChannel[]) {
@@ -23,11 +26,17 @@ function categoryOpts(ch: DChannel[]) {
 
 export default function Config() {
     const { guildId } = useParams<{ guildId: string }>();
+
+    // Server-side state (reference for reset)
+    const [savedConfig, setSavedConfig] = useState<SupportConfig | null>(null);
+    // Local draft (what the user is editing)
     const [config, setConfig] = useState<SupportConfig | null>(null);
+
     const [channels, setChannels] = useState<DChannel[]>([]);
     const [roles, setRoles] = useState<DRole[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
     const [deployChannelId, setDeployChannelId] = useState('');
     const [deployBusy, setDeployBusy] = useState(false);
     const [flash, setFlash] = useState<{ text: string; ok: boolean } | null>(null);
@@ -38,6 +47,7 @@ export default function Config() {
             get<DChannel[]>(`/api/support/discord/channels/${guildId}`).catch(() => []),
             get<DRole[]>(`/api/support/discord/roles/${guildId}`).catch(() => []),
         ]).then(([cfg, ch, ro]) => {
+            setSavedConfig(cfg);
             setConfig(cfg);
             setChannels(ch as DChannel[]);
             setRoles(ro as DRole[]);
@@ -49,18 +59,33 @@ export default function Config() {
         setTimeout(() => setFlash(null), 3500);
     }
 
-    async function save(patch: Partial<SupportConfig>) {
-        const updated = { ...DEFAULT, ...config, ...patch };
-        setConfig(updated);
+    /** Update local draft only — does NOT call the API */
+    function update(patch: Partial<SupportConfig>) {
+        setConfig(prev => prev ? { ...DEFAULT, ...prev, ...patch } : null);
+        setIsDirty(true);
+    }
+
+    /** Save current draft to the server */
+    async function saveAll() {
+        if (!config) return;
         setSaving(true);
         try {
-            await put(`/api/support/config/${guildId}`, patch);
+            await put(`/api/support/config/${guildId}`, config);
+            setSavedConfig({ ...config });
+            setIsDirty(false);
             showFlash('Configuration enregistrée !', true);
         } catch {
             showFlash('Erreur lors de la sauvegarde.', false);
         } finally {
             setSaving(false);
         }
+    }
+
+    /** Discard local changes and restore last saved state */
+    function resetAll() {
+        if (!savedConfig) return;
+        setConfig({ ...savedConfig });
+        setIsDirty(false);
     }
 
     async function deployPanel() {
@@ -78,15 +103,15 @@ export default function Config() {
 
     function updateCat(i: number, patch: Partial<TicketCategory>) {
         if (!config) return;
-        save({ categories: config.categories.map((c, idx) => idx === i ? { ...c, ...patch } : c) });
+        update({ categories: config.categories.map((c, idx) => idx === i ? { ...c, ...patch } : c) });
     }
     function addCat() {
         if (!config) return;
-        save({ categories: [...config.categories, { id: `cat_${Date.now()}`, label: 'Nouvelle catégorie', emoji: '📋', description: '', discord_category_id: null }] });
+        update({ categories: [...config.categories, { id: `cat_${Date.now()}`, label: 'Nouvelle catégorie', emoji: '📋', description: '', discord_category_id: null }] });
     }
     function removeCat(i: number) {
         if (!config) return;
-        save({ categories: config.categories.filter((_, idx) => idx !== i) });
+        update({ categories: config.categories.filter((_, idx) => idx !== i) });
     }
 
     if (loading) return (
@@ -105,7 +130,8 @@ export default function Config() {
     const cfg = { ...DEFAULT, ...config };
 
     return (
-        <div className="space-y-6">
+        <>
+        <div className="space-y-6 pb-32">
 
             {/* Page header */}
             <div className="flex items-start justify-between gap-4 mb-2">
@@ -114,25 +140,15 @@ export default function Config() {
                     <h1 className="text-3xl font-extrabold tracking-tight">Paramètres</h1>
                     <p className="text-white/50 text-sm mt-2">Personnalisez le système de support de ce serveur.</p>
                 </div>
-                <div className="flex items-center gap-3 flex-shrink-0 pt-1">
-                    {flash && (
-                        <span className={`text-sm font-semibold px-3 py-1.5 rounded-full border ${
-                            flash.ok
-                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                : 'bg-red-500/10 border-red-500/20 text-red-400'
-                        }`}>
-                            {flash.text}
-                        </span>
-                    )}
-                    <button
-                        type="button"
-                        className="btn-liquid btn-liquid--primary px-5 py-2 rounded-full text-sm font-bold disabled:opacity-40"
-                        onClick={() => save(cfg)}
-                        disabled={saving}
-                    >
-                        {saving ? 'Enregistrement…' : 'Enregistrer'}
-                    </button>
-                </div>
+                {flash && (
+                    <span className={`mt-1 text-sm font-semibold px-3 py-1.5 rounded-full border flex-shrink-0 ${
+                        flash.ok
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                            : 'bg-red-500/10 border-red-500/20 text-red-400'
+                    }`}>
+                        {flash.text}
+                    </span>
+                )}
             </div>
 
             {/* Paramètres généraux */}
@@ -145,14 +161,14 @@ export default function Config() {
                         <Select
                             options={channelOpts(channels)}
                             value={cfg.log_channel_id || ''}
-                            onChange={v => save({ log_channel_id: v || null })}
+                            onChange={v => update({ log_channel_id: v || null })}
                         />
                     </Field>
                     <Field label="Salon des transcriptions" hint="Les transcriptions de tickets fermés sont envoyées ici.">
                         <Select
                             options={channelOpts(channels)}
                             value={cfg.transcript_channel_id || ''}
-                            onChange={v => save({ transcript_channel_id: v || null })}
+                            onChange={v => update({ transcript_channel_id: v || null })}
                         />
                     </Field>
                     <Field label="Max tickets par utilisateur" hint="Limite le nombre de tickets ouverts simultanément par personne.">
@@ -160,7 +176,7 @@ export default function Config() {
                             value={cfg.max_tickets_per_user}
                             min={1}
                             max={10}
-                            onChange={e => save({ max_tickets_per_user: Number(e.target.value) })}
+                            onChange={e => update({ max_tickets_per_user: Number(e.target.value) })}
                         />
                     </Field>
                     <Field label="Timeout AFK (minutes)" hint="Ferme automatiquement les tickets inactifs après ce délai.">
@@ -168,7 +184,7 @@ export default function Config() {
                             value={cfg.afk_timeout_minutes}
                             min={10}
                             max={10080}
-                            onChange={e => save({ afk_timeout_minutes: Number(e.target.value) })}
+                            onChange={e => update({ afk_timeout_minutes: Number(e.target.value) })}
                         />
                     </Field>
                 </div>
@@ -195,7 +211,7 @@ export default function Config() {
                                         <button
                                             key={r.id}
                                             type="button"
-                                            onClick={() => save({
+                                            onClick={() => update({
                                                 [field]: active
                                                     ? (cfg[field] as string[]).filter(x => x !== r.id)
                                                     : [...(cfg[field] as string[]), r.id]
@@ -303,7 +319,7 @@ export default function Config() {
                     <Field label="Titre de l'embed">
                         <TextInput
                             value={cfg.panel_title}
-                            onChange={e => save({ panel_title: e.target.value })}
+                            onChange={e => update({ panel_title: e.target.value })}
                             placeholder="Support Shardtown"
                         />
                     </Field>
@@ -315,7 +331,7 @@ export default function Config() {
                             />
                             <TextInput
                                 value={cfg.panel_color}
-                                onChange={e => save({ panel_color: e.target.value })}
+                                onChange={e => update({ panel_color: e.target.value })}
                                 placeholder="#7c3aed"
                             />
                         </div>
@@ -324,7 +340,7 @@ export default function Config() {
                 <Field label="Description" hint="Supports le markdown Discord (**, __, ~~, `)">
                     <textarea
                         value={cfg.panel_description}
-                        onChange={e => save({ panel_description: e.target.value })}
+                        onChange={e => update({ panel_description: e.target.value })}
                         placeholder="Sélectionnez une catégorie ci-dessous…"
                         rows={3}
                         className="w-full px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] focus:border-white/25 focus:bg-white/[0.04] focus:outline-none text-white placeholder:text-white/25 transition-colors text-sm resize-y"
@@ -333,8 +349,44 @@ export default function Config() {
                 <Field label="Footer" hint="Optionnel — texte affiché en bas de l'embed">
                     <TextInput
                         value={cfg.panel_footer}
-                        onChange={e => save({ panel_footer: e.target.value })}
+                        onChange={e => update({ panel_footer: e.target.value })}
                         placeholder="Shardtown · Réponse sous 24h"
+                    />
+                </Field>
+            </SectionCard>
+
+            {/* Apparence du message de bienvenue */}
+            <SectionCard
+                title="Embed de bienvenue"
+                description="L'embed envoyé dans le salon du ticket lors de son ouverture. Utilisez {id} pour l'ID du ticket."
+            >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Field label="Titre" hint="{id} sera remplacé par l'ID du ticket">
+                        <TextInput
+                            value={cfg.welcome_title}
+                            onChange={e => update({ welcome_title: e.target.value })}
+                            placeholder="Ticket #{id}"
+                        />
+                    </Field>
+                    <Field label="Couleur (hex)" hint="Vide = couleur de la catégorie">
+                        <div className="flex items-center gap-2">
+                            <span
+                                className="w-9 h-9 rounded-lg border border-white/10 flex-shrink-0"
+                                style={{ background: cfg.welcome_color || '#7c3aed' }}
+                            />
+                            <TextInput
+                                value={cfg.welcome_color}
+                                onChange={e => update({ welcome_color: e.target.value })}
+                                placeholder="#7c3aed (ou vide)"
+                            />
+                        </div>
+                    </Field>
+                </div>
+                <Field label="Footer" hint="{id} sera remplacé par l'ID du ticket">
+                    <TextInput
+                        value={cfg.welcome_footer}
+                        onChange={e => update({ welcome_footer: e.target.value })}
+                        placeholder="ID: {id}"
                     />
                 </Field>
             </SectionCard>
@@ -366,5 +418,50 @@ export default function Config() {
                 </div>
             </SectionCard>
         </div>
+
+        {/* ── Floating unsaved-changes bar ────────────────────────────────────── */}
+        <div
+            className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ease-out ${
+                isDirty
+                    ? 'translate-y-0 opacity-100 pointer-events-auto'
+                    : 'translate-y-5 opacity-0 pointer-events-none'
+            }`}
+        >
+            <div className="relative overflow-hidden rounded-2xl border border-amber-500/25 bg-[#0d0d10]/90 backdrop-blur-2xl shadow-[0_8px_40px_rgba(0,0,0,0.6)] p-4 min-w-[310px]">
+                {/* top gradient line */}
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-400/60 to-transparent" />
+
+                <div className="flex items-start gap-2.5 mb-3.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0 mt-0.5">
+                        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <p className="text-sm font-semibold text-white/90 leading-snug">
+                        Attention, il reste des modifications<br className="hidden sm:block" /> non enregistrées !
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={resetAll}
+                        disabled={saving}
+                        className="flex-1 py-2 rounded-xl bg-white/[0.05] border border-white/[0.09] text-sm font-semibold text-white/55 hover:text-white hover:bg-white/[0.09] transition-all disabled:opacity-40"
+                    >
+                        Réinitialiser
+                    </button>
+                    <button
+                        type="button"
+                        onClick={saveAll}
+                        disabled={saving}
+                        className="flex-[2] py-2 rounded-xl bg-blue-500/20 border border-blue-500/35 text-sm font-bold text-blue-300 hover:bg-blue-500/28 hover:text-blue-100 transition-all disabled:opacity-40"
+                    >
+                        {saving ? 'Enregistrement…' : 'Enregistrer les modifications'}
+                    </button>
+                </div>
+            </div>
+        </div>
+        </>
     );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { get } from '@/api/client';
-import type { Stats as StatsType } from '@/types';
+import type { Stats as StatsType, SupportConfig } from '@/types';
 import ReactECharts from 'echarts-for-react';
 
 const hexToRgba = (hex: string, alpha: number): string => {
@@ -65,6 +65,19 @@ export default function Stats() {
     const [stats, setStats] = useState<StatsType | null>(null);
     const [loading, setLoading] = useState(true);
     const [days, setDays] = useState(30);
+    const [categoryMap, setCategoryMap] = useState<Record<string, { label: string; emoji: string }>>({});
+
+    // Fetch category labels once
+    useEffect(() => {
+        if (!guildId) return;
+        get<SupportConfig>(`/api/support/config/${guildId}`)
+            .then(cfg => {
+                const map: Record<string, { label: string; emoji: string }> = {};
+                for (const cat of cfg.categories) map[cat.id] = { label: cat.label, emoji: cat.emoji };
+                setCategoryMap(map);
+            })
+            .catch(() => {});
+    }, [guildId]);
 
     useEffect(() => {
         let cancelled = false;
@@ -153,18 +166,24 @@ export default function Stats() {
                         <div className="card-glass rounded-2xl p-5">
                             <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-4">Par catégorie</p>
                             <div className="space-y-3">
-                                {stats.byCategory.map(c => (
-                                    <div key={c.category} className="flex items-center gap-3">
-                                        <span className="text-sm text-white/70 w-36 shrink-0 truncate">{c.category}</span>
-                                        <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                                            <div
-                                                className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400"
-                                                style={{ width: `${(c.cnt / catMax) * 100}%` }}
-                                            />
+                                {stats.byCategory.map(c => {
+                                    const cat = categoryMap[c.category];
+                                    const label = cat
+                                        ? [cat.emoji, cat.label].filter(Boolean).join(' ')
+                                        : c.category;
+                                    return (
+                                        <div key={c.category} className="flex items-center gap-3">
+                                            <span className="text-sm text-white/70 w-40 shrink-0 truncate">{label}</span>
+                                            <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                                                <div
+                                                    className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-400"
+                                                    style={{ width: `${(c.cnt / catMax) * 100}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-sm font-semibold text-white/60 w-8 text-right shrink-0">{c.cnt}</span>
                                         </div>
-                                        <span className="text-sm font-semibold text-white/60 w-8 text-right shrink-0">{c.cnt}</span>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
