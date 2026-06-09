@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Clock, Eye, EyeOff, ShieldAlert } from "lucide-react";
+import { Clock, ShieldAlert } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet } from "@/api/client";
 
@@ -12,7 +12,6 @@ export function AdminLogin() {
 
   const [csrfToken, setCsrfToken] = useState("");
   const [loading, setLoading]     = useState(true);
-  const [showKey, setShowKey]     = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
@@ -63,29 +62,16 @@ export function AdminLogin() {
                 <label className="text-[10px] font-bold text-white/40 uppercase tracking-[0.22em] block mb-2.5">
                   Clé d'administration
                 </label>
-                <div className="relative">
-                  <input
-                    type={showKey ? "text" : "password"}
-                    name="key"
-                    required
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck={false}
-                    className="w-full px-4 py-3 pr-11 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/[0.06] text-white placeholder:text-white/20 transition-all font-mono text-[13px] tracking-wider"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowKey(v => !v)}
-                    tabIndex={-1}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                    aria-label={showKey ? "Masquer la clé" : "Afficher la clé"}
-                  >
-                    {showKey
-                      ? <EyeOff className="w-4 h-4" />
-                      : <Eye    className="w-4 h-4" />}
-                  </button>
-                </div>
+                <input
+                  type="password"
+                  name="key"
+                  required
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/10 focus:border-white/30 focus:bg-black/60 focus:outline-none focus:ring-2 focus:ring-white/[0.06] text-white placeholder:text-white/20 transition-all font-mono text-[13px] tracking-wider"
+                />
               </div>
 
               <button
