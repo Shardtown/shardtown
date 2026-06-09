@@ -4,6 +4,7 @@ import { get } from '@/api/client';
 import type { Guild } from '@/types';
 import Header from '@/components/Header/Header';
 import { Footer } from '@/components/Footer';
+import { BackgroundGradientAnimation } from '@/components/ui/BackgroundGradientAnimation';
 
 function guildIconUrl(id: string, icon: string | null): string {
     return icon
@@ -25,6 +26,12 @@ export default function Guilds() {
 
     return (
         <div className="min-h-screen text-white flex flex-col">
+
+            {/* Aurora — identique AppLayout.tsx */}
+            <div className="fixed inset-0 pointer-events-none -z-10 opacity-60">
+                <BackgroundGradientAnimation />
+                <div aria-hidden className="absolute inset-x-0 top-0 h-[140vh] [background:radial-gradient(ellipse_90%_100%_at_50%_0%,rgba(91,109,255,0.45)_0%,rgba(139,92,246,0.22)_35%,rgba(91,109,255,0.10)_60%,transparent_100%)]" />
+            </div>
 
             <Header />
 

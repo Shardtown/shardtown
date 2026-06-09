@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState, useEffect } from "react";
 
 export function BackgroundGradientAnimation({
   gradientBackgroundStart = "rgb(7, 11, 24)",
@@ -24,29 +24,26 @@ export function BackgroundGradientAnimation({
   containerClassName?: string;
 }) {
   const [isSafari, setIsSafari] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     setIsSafari(/^((?!chrome|android).)*safari/i.test(navigator.userAgent));
   }, []);
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    el.style.setProperty("--gradient-background-start", gradientBackgroundStart);
-    el.style.setProperty("--gradient-background-end", gradientBackgroundEnd);
-    el.style.setProperty("--first-color", firstColor);
-    el.style.setProperty("--second-color", secondColor);
-    el.style.setProperty("--third-color", thirdColor);
-    el.style.setProperty("--fourth-color", fourthColor);
-    el.style.setProperty("--fifth-color", fifthColor);
-    el.style.setProperty("--size", size);
-    el.style.setProperty("--blending-value", blendingValue);
-  }, [gradientBackgroundStart, gradientBackgroundEnd, firstColor, secondColor, thirdColor, fourthColor, fifthColor, size, blendingValue]);
+  // CSS vars inline → disponibles dès le premier rendu, pas de flash
+  const cssVars = {
+    "--gradient-background-start": gradientBackgroundStart,
+    "--gradient-background-end": gradientBackgroundEnd,
+    "--first-color": firstColor,
+    "--second-color": secondColor,
+    "--third-color": thirdColor,
+    "--fourth-color": fourthColor,
+    "--fifth-color": fifthColor,
+    "--size": size,
+    "--blending-value": blendingValue,
+  } as React.CSSProperties;
 
   return (
     <div
-      ref={containerRef}
+      style={cssVars}
       className={`h-full w-full relative overflow-hidden bg-[linear-gradient(40deg,var(--gradient-background-start),var(--gradient-background-end))] ${containerClassName}`}
     >
       <svg className="hidden">
