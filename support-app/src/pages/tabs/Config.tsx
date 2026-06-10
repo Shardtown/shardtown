@@ -608,7 +608,7 @@ export default function Config() {
                 isDirty ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0 pointer-events-none'
             }`}>
                 <div
-                    className={`rounded-2xl border bg-[#0d0d10]/95 backdrop-blur-2xl shadow-[0_8px_40px_rgba(0,0,0,0.7)] px-5 py-3.5 flex items-center gap-4 transition-[border-color] duration-300 ${
+                    className={`rounded-2xl border bg-white/[0.06] backdrop-blur-2xl shadow-[0_8px_40px_rgba(0,0,0,0.5)] px-5 py-3.5 flex items-center gap-4 transition-[border-color] duration-300 ${
                         shaking ? 'border-amber-400/50' : 'border-white/[0.09]'
                     }`}
                     style={{ animation: shaking ? 'shake 0.55s ease-in-out' : undefined }}
