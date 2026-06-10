@@ -8977,7 +8977,11 @@ if (require('fs').existsSync(SUPPORT_DIST)) {
     app.use((req, res, next) => {
         if (req.hostname !== 'support.shardtwn.fr') return next();
         if (req.path.startsWith('/api/') || req.path.startsWith('/transcripts/')) return next();
-        supportStatic(req, res, () => res.sendFile(path.join(SUPPORT_DIST, 'index.html')));
+        supportStatic(req, res, () => {
+            res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.set('Pragma', 'no-cache');
+            res.sendFile(path.join(SUPPORT_DIST, 'index.html'));
+        });
     });
 }
 

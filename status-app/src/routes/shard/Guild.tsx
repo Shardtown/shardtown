@@ -956,9 +956,11 @@ function OverviewPanel({
       className="space-y-8"
     >
       {/* ─── Support ────────────────────────────────────────────────── */}
-      <button
-        type="button"
-        onClick={() => openExternal(supportUrl)}
+      <a
+        href={supportUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={IS_DESKTOP ? (e) => { e.preventDefault(); openExternal(supportUrl); } : undefined}
         className="group w-full text-left rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.04] hover:bg-indigo-500/[0.08] hover:border-indigo-500/30 transition-colors p-5 flex items-center gap-4"
       >
         <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-300 shrink-0">
@@ -969,7 +971,7 @@ function OverviewPanel({
           <p className="text-[12px] text-white/40 mt-0.5">Gérer les tickets, transcripts et la configuration de ce serveur.</p>
         </div>
         <ExternalLink className="w-4 h-4 text-white/25 group-hover:text-white/50 transition-colors shrink-0" strokeWidth={1.8} />
-      </button>
+      </a>
 
       {/* ─── Modules ────────────────────────────────────────────────── */}
       <div>
