@@ -7,7 +7,6 @@ const { Strategy } = require('passport-discord');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
-const bodyParser = require('body-parser');
 const mysql = require('mysql2/promise');
 const crypto = require('crypto');
 const { rateLimit } = require('express-rate-limit');
@@ -50,7 +49,7 @@ const authenticator = {
 const QRCode = require('qrcode');
 const { SHARDTOWN_KNOWLEDGE } = require('./chatbot-knowledge');
 const presence = require('./presence');
-const { cryptoShuffle, timingSafeEqual, verifyAdminPassword } = require('./lib/security');
+const { cryptoShuffle, timingSafeEqual } = require('./lib/security');
 const argon2 = require('argon2');
 const apns = require('./lib/apns');
 const customBotManager = require('./lib/customBotManager');
@@ -223,7 +222,8 @@ async function connectDB() {
                     member_count INT,
                     shard_count INT DEFAULT 0,
                     avg_latency INT DEFAULT 0,
-                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_timestamp (timestamp)
                 )
             `);
             await db.execute(`ALTER TABLE bot_stats ADD COLUMN IF NOT EXISTS shard_count INT DEFAULT 0`).catch(() => {});
@@ -851,13 +851,14 @@ async function connectDB() {
 console.log('Démarrage de connectDB()...');
 connectDB().then(() => {
     console.log('connectDB() terminé.');
-    // Init du manager une fois `db` peuplé + encryptToken/decryptToken
-    // définis, puis on relance les bots custom des serveurs Premium.
     customBotManager.init({ db, decryptToken });
     require('./lib/ticketDB').init(db).catch(err => console.error('[ticketDB] init error:', err.message));
     customBotManager.startAll().catch(err => {
         console.error('[customBot] startAll fatal', err.message);
     });
+}).catch(err => {
+    console.error('❌ Échec de connectDB() — arrêt du processus.', err);
+    process.exit(1);
 });
 console.log('Chargement des routes...');
 
@@ -1186,11 +1187,10 @@ app.post('/webhook/stripe', express.raw({ type: 'application/json' }), async (re
     res.json({ received: true });
 });
 
-// Limit pour le custom-bot PUT (avatar + banner en base64 ~1 MB combiné).
-// 4 MB global est confortable et reste loin du DoS — l'auth middleware
-// rejette de toute façon les requêtes anonymes.
-app.use(express.json({ limit: '4mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '4mb' }));
+// Global body limit conservatif. La route custom-bot (avatar + banner base64
+// ~1 MB) applique sa propre limite de 4 MB via middleware inline.
+app.use(express.json({ limit: '256kb' }));
+app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
 const MAX_STRING_LEN = 4000;
 function clampStrings(value, depth = 0) {
@@ -5018,10 +5018,12 @@ app.get('/api/shard/guild/:guildID', checkAuthShard, async (req, res) => {
         settings.levelThresholds = safeParse(settings.levelThresholds, defaultThresholds);
         if (!Array.isArray(settings.levelThresholds) || !settings.levelThresholds.length) settings.levelThresholds = defaultThresholds;
 
-        const [giveaways] = await db.execute(`SELECT * FROM shard_giveaways WHERE guildId = ? AND ended = 0 ORDER BY endsAt ASC`, [guildID]).catch(() => [[]]);
-        const [scheduledAnnouncements] = await db.execute(`SELECT * FROM shard_scheduled WHERE guildId = ? ORDER BY nextRun ASC`, [guildID]).catch(() => [[]]);
-        const [shopItems] = await db.execute(`SELECT * FROM shard_shop WHERE guildId = ? ORDER BY price ASC`, [guildID]).catch(() => [[]]);
-        const [polls] = await db.execute(`SELECT * FROM shard_polls WHERE guildId = ? AND ended = 0 ORDER BY id DESC`, [guildID]).catch(() => [[]]);
+        const [[giveaways], [scheduledAnnouncements], [shopItems], [polls]] = await Promise.all([
+            db.execute(`SELECT * FROM shard_giveaways WHERE guildId = ? AND ended = 0 ORDER BY endsAt ASC`, [guildID]).catch(() => [[]]),
+            db.execute(`SELECT * FROM shard_scheduled WHERE guildId = ? ORDER BY nextRun ASC`, [guildID]).catch(() => [[]]),
+            db.execute(`SELECT * FROM shard_shop WHERE guildId = ? ORDER BY price ASC`, [guildID]).catch(() => [[]]),
+            db.execute(`SELECT * FROM shard_polls WHERE guildId = ? AND ended = 0 ORDER BY id DESC`, [guildID]).catch(() => [[]]),
+        ]);
         res.json({
             guild: { id: userGuild.id, name: userGuild.name, icon: userGuild.icon || null },
             channels: channels.map(c => ({ id: c.id, name: c.name })),
@@ -5219,7 +5221,7 @@ app.get('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res)
 // Upsert : crée ou met à jour la config. Token requis à la création,
 // optionnel à l'update (si vide on garde l'ancien). Validation Discord
 // faite avant l'INSERT pour éviter de stocker un token mort.
-app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, async (req, res) => {
+app.put('/api/shard/guild/:guildID/custom-bot', checkAuthShard, express.json({ limit: '4mb' }), async (req, res) => {
     const guildID = req.params.guildID;
     const shardUser = req.session.shardUser;
     const userGuild = shardUser.guilds.find(g => g.id === guildID && hasGuildAdmin(g));
@@ -8837,15 +8839,6 @@ app.get(/.*/, (req, res, next) => {
     });
 });
 
-// Global error handler — last line of defense for synchronous throws or
-// unhandled promise rejections that bubble up. Always returns a generic
-// message; the original error is only logged server-side.
-app.use((err, req, res, next) => {
-    console.error('[unhandled]', req.method, req.path, err);
-    if (res.headersSent) return next(err);
-    res.status(500).json({ error: 'Erreur serveur' });
-});
-
 // ── Ticket system API ─────────────────────────────────────────────────────────
 const ticketRoutes = require('./lib/ticketRoutes');
 app.use('/api/support', ticketRoutes);
@@ -8861,6 +8854,13 @@ if (require('fs').existsSync(SUPPORT_DIST)) {
     });
 }
 
+
+// Global error handler — last line of defense. Must be registered after all routes.
+app.use((err, req, res, next) => {
+    console.error('[unhandled]', req.method, req.path, err);
+    if (res.headersSent) return next(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+});
 
 console.log('Tentative de démarrage du serveur...');
 app.listen(PORT, () => console.log(`Tableau de bord démarré sur http://localhost:${PORT}`));

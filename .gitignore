@@ -13,3 +13,5 @@ desktop-tauri/latest.json
 # Local screenshot captures (Playwright + Playwright-MCP debugging)
 .captures/
 .playwright-mcp/
+ticket-app/
+mobile-app-mockup/

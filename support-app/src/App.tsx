@@ -13,7 +13,7 @@ const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
 
 // createBrowserRouter (data router) — required for useBlocker
-const MAIN_SITE = 'https://shardtwn.fr/shard/server';
+const MAIN_SITE = import.meta.env.VITE_MAIN_SITE_URL ?? 'https://shardtwn.fr/shard/server';
 const ToMainSite = () => { window.location.replace(MAIN_SITE); return null; };
 
 const router = createBrowserRouter([
@@ -85,7 +85,7 @@ export default function App() {
             </p>
           </div>
           <a
-            href={`https://shardtwn.fr/shard/login?returnTo=${encodeURIComponent(window.location.href)}`}
+            href={`${import.meta.env.VITE_MAIN_SITE_URL ?? 'https://shardtwn.fr'}/shard/login?returnTo=${encodeURIComponent(window.location.href)}`}
             className="btn-liquid btn-liquid--primary inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm"
           >
             Se connecter

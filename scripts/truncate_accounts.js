@@ -1,4 +1,15 @@
-require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+// ⚠️  SCRIPT DESTRUCTIF — efface toutes les données comptes.
+// Usage UNIQUEMENT en dev / reset de staging. Jamais en production.
+// Passer --force en argument pour confirmer l'exécution.
+if (!process.argv.includes('--force')) {
+    console.error('❌  Passe --force pour confirmer. Ce script efface toutes les tables comptes.');
+    process.exit(1);
+}
+if (process.env.NODE_ENV === 'production') {
+    console.error('❌  Refusé en NODE_ENV=production.');
+    process.exit(1);
+}
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const mysql = require('mysql2/promise');
 
 const TABLES = [

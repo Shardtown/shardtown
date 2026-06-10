@@ -50,7 +50,7 @@ export default function GuildLayout() {
                 <p className="text-white/60 text-sm">{error ?? 'Serveur introuvable.'}</p>
                 <div className="flex gap-3 justify-center pt-2">
                     <a
-                        href="https://shardtwn.fr/shard/server"
+                        href={import.meta.env.VITE_MAIN_SITE_URL ?? 'https://shardtwn.fr/shard/server'}
                         className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/[0.06] border border-white/[0.10] text-white/60 hover:text-white hover:bg-white/[0.10] transition-all"
                     >
                         Retour au dashboard
