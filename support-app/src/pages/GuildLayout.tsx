@@ -1,6 +1,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
-import { get } from '@/api/client';
+import { get, ApiError } from '@/api/client';
 import type { Guild } from '@/types';
 import Header from '@/components/Header/Header';
 import { Footer } from '@/components/Footer';
@@ -23,13 +23,15 @@ export default function GuildLayout() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        get<Guild[]>('/api/support/guilds')
-            .then(list => {
-                const g = list.find(g => g.id === guildId);
-                if (!g) setError('Ce serveur est introuvable ou vous n\'y avez pas accès.');
-                else setGuild(g);
+        get<Guild>(`/api/support/guild/${guildId}`)
+            .then(g => setGuild(g))
+            .catch(e => {
+                if (e instanceof ApiError && e.status === 403) {
+                    setError('Vous n\'avez pas accès à ce serveur ou il est introuvable.');
+                } else {
+                    setError('Impossible de charger le serveur. Vérifiez votre connexion.');
+                }
             })
-            .catch(() => setError('Impossible de charger les serveurs. Vérifiez votre connexion.'))
             .finally(() => setLoading(false));
     }, [guildId]); // eslint-disable-line react-hooks/exhaustive-deps
 
