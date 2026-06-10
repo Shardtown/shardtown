@@ -8,8 +8,6 @@ import ReactECharts from 'echarts-for-react';
 function buildChart(
     data: { day: string; cnt: number }[],
     color: string,
-    areaTop: string,
-    areaBot: string,
 ) {
     const points = data.map(d => [new Date(d.day).getTime(), d.cnt]);
     const maxY = Math.max(...data.map(d => d.cnt), 1);
@@ -34,7 +32,7 @@ function buildChart(
                 lineStyle: { color: 'rgba(255,255,255,0.08)', width: 1, type: 'solid' },
             },
         },
-        grid: { left: 0, right: 0, top: 8, bottom: 28, containLabel: true },
+        grid: { left: 0, right: 16, top: 8, bottom: 28, containLabel: true },
         xAxis: {
             type: 'time',
             minInterval: 86400000,
@@ -74,15 +72,6 @@ function buildChart(
             },
             itemStyle: { color },
             lineStyle: { color, width: 2, shadowColor: 'transparent', shadowBlur: 0 },
-            areaStyle: {
-                color: {
-                    type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
-                    colorStops: [
-                        { offset: 0, color: areaTop },
-                        { offset: 1, color: areaBot },
-                    ],
-                },
-            },
         }],
     };
 }
@@ -143,10 +132,10 @@ export default function Stats() {
     const catMax = Math.max(...(stats?.byCategory?.map(c => c.cnt) ?? [1]), 1);
 
     const openedChart = stats
-        ? buildChart(stats.opened, 'rgba(255,255,255,0.7)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0)')
+        ? buildChart(stats.opened, 'rgba(255,255,255,0.7)')
         : null;
     const closedChart = stats
-        ? buildChart(stats.closed, 'rgba(255,255,255,0.7)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0)')
+        ? buildChart(stats.closed, 'rgba(255,255,255,0.7)')
         : null;
 
     return (
@@ -340,14 +329,11 @@ export default function Stats() {
 }
 
 /* ── Chart card wrapper ──────────────────────────────────────────────────── */
-function ChartCard({ title, color, option }: { title: string; color: string; option: object }) {
+function ChartCard({ title, option }: { title: string; color?: string; option: object }) {
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.02]">
-            {/* coloured glow at top */}
-            <div className="absolute inset-x-0 top-0 h-40 pointer-events-none" style={{ background: `radial-gradient(ellipse 60% 100% at 50% 0%, ${color}18 0%, transparent 100%)` }} />
-            <div className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${color}55, transparent)` }} />
-            <div className="relative p-5 pb-4">
-                <p className="text-xs font-bold tracking-[0.15em] uppercase mb-4" style={{ color: `${color}99` }}>{title}</p>
+        <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+            <div className="p-5 pb-4">
+                <p className="text-xs font-bold tracking-[0.15em] uppercase mb-4 text-white/35">{title}</p>
                 <ReactECharts
                     option={option}
                     style={{ height: 200 }}
