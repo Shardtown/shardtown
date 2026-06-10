@@ -412,7 +412,7 @@ export default function Config() {
                                     <button
                                         type="button"
                                         onClick={addCat}
-                                        className="mt-4 text-xs text-blue-400 hover:text-blue-300 font-semibold transition-colors"
+                                        className="mt-4 bg-transparent text-xs text-blue-400 hover:text-blue-300 font-semibold transition-colors"
                                     >
                                         + Ajouter la première catégorie
                                     </button>
@@ -485,7 +485,7 @@ export default function Config() {
                                                             type="button"
                                                             onClick={() => addModalField(i)}
                                                             disabled={(cat.modal_fields?.length ?? 0) >= 5}
-                                                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all disabled:opacity-30 disabled:pointer-events-none"
+                                                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-transparent text-[11px] font-semibold text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all disabled:opacity-30 disabled:pointer-events-none"
                                                         >
                                                             <Plus className="w-3 h-3" />
                                                             Ajouter
