@@ -26,8 +26,10 @@ export default function GuildLayout() {
         get<Guild>(`/api/support/guild/${guildId}`)
             .then(g => setGuild(g))
             .catch(e => {
-                if (e instanceof ApiError && e.status === 403) {
+                if (e instanceof ApiError && (e.status === 403 || e.status === 404)) {
                     setError('Vous n\'avez pas accès à ce serveur ou il est introuvable.');
+                } else if (e instanceof ApiError && e.status === 503) {
+                    setError('Service Discord indisponible — réessayez dans quelques secondes.');
                 } else {
                     setError('Impossible de charger le serveur. Vérifiez votre connexion.');
                 }
