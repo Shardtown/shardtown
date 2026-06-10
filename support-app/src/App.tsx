@@ -8,6 +8,7 @@ import Tickets from "@/pages/tabs/Tickets";
 import Transcripts from "@/pages/tabs/Transcripts";
 import Transcript from "@/pages/tabs/Transcript";
 import Config from "@/pages/tabs/Config";
+import { GooeyFilter } from "@/components/ui/Toggle";
 
 const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
@@ -100,6 +101,7 @@ export default function App() {
 
   return (
     <MeCtx.Provider value={me}>
+      <GooeyFilter />
       <RouterProvider router={router} />
     </MeCtx.Provider>
   );

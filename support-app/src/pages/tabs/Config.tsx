@@ -7,6 +7,7 @@ import {
 import { get, put, post } from '@/api/client';
 import type { SupportConfig, TicketCategory, DChannel, DRole } from '@/types';
 import { Field, TextInput, NumberInput, Select } from '@/components/ui/Field';
+import { Toggle } from '@/components/ui/Toggle';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Tab = 'general' | 'roles' | 'categories' | 'appearance' | 'deploy';
@@ -312,23 +313,11 @@ export default function Config() {
                                         <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-0.5">Bouton "Prendre en charge"</p>
                                         <p className="text-[12px] text-white/30">Affiche un bouton claim dans chaque ticket Discord.</p>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => update({ claim_enabled: !cfg.claim_enabled })}
-                                        className={`btn-liquid shrink-0 ml-4 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 ${cfg.claim_enabled ? 'btn-liquid--green' : ''}`}
-                                    >
-                                        {cfg.claim_enabled ? (
-                                            <>
-                                                <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70" />
-                                                Activé
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span className="w-1.5 h-1.5 rounded-full bg-white/30" />
-                                                <span className="text-white/50">Désactivé</span>
-                                            </>
-                                        )}
-                                    </button>
+                                    <Toggle
+                                        checked={cfg.claim_enabled}
+                                        onCheckedChange={v => update({ claim_enabled: v })}
+                                        variant="success"
+                                    />
                                 </div>
                             </div>
                             </>
@@ -414,9 +403,9 @@ export default function Config() {
                             ) : (
                                 <div className="space-y-3">
                                     {cfg.categories.map((cat, i) => (
-                                        <div key={cat.id} className="rounded-xl border border-white/[0.07] bg-black/20 overflow-hidden">
+                                        <div key={cat.id} className="rounded-xl border border-white/[0.07] bg-black/20">
                                             {/* Cat header */}
-                                            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.05] bg-white/[0.02]">
+                                            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.05] bg-white/[0.02] rounded-t-xl">
                                                 <span className="w-6 h-6 rounded-md bg-white/[0.06] flex items-center justify-center text-[11px] font-bold text-white/40 shrink-0">
                                                     {i + 1}
                                                 </span>
