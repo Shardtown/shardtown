@@ -41,7 +41,7 @@ export function FilterSelect({ options, value, onChange }: Props) {
         </svg>
       </button>
       {open && (
-        <div className="absolute right-0 mt-1.5 min-w-full bg-[#0f0f0f] border border-white/10 rounded-xl shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 mt-1.5 min-w-full bg-white/[0.06] backdrop-blur-2xl border border-white/[0.12] rounded-xl shadow-xl z-50 overflow-hidden">
           {options.map(o => (
             <button
               key={o.value}

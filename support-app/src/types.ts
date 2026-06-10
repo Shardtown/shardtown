@@ -76,15 +76,6 @@ export interface Stats {
   closedCount: number;
 }
 
-export interface Incident {
-  id: number;
-  service_name: string;
-  status: "up" | "down" | "degraded";
-  message: string | null;
-  started_at: string;
-  ended_at: string | null;
-}
-
 export interface DChannel {
   id: string;
   name: string;
