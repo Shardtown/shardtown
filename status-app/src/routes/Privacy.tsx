@@ -24,7 +24,7 @@ export function Privacy() {
       overline="Légal · Vie privée"
       title="VIE PRIVÉE"
       subtitle="Politique de confidentialité, comment Shardtown traite vos données personnelles, conformément au RGPD."
-      lastUpdated="1er mai 2026"
+      lastUpdated="10 juin 2026"
       toc={TOC}
     >
       <LegalSection id="responsable" title="1. Responsable de traitement">
@@ -140,11 +140,11 @@ export function Privacy() {
             <a href="https://stripe.com/fr/privacy" target="_blank" rel="noopener noreferrer" className="underline ml-1">Politique Stripe</a>.
           </li>
           <li>
-            <strong>Hébergeur</strong>, serveur dédié situé en
-            <strong> Allemagne (Union Européenne)</strong>. Stockage de la
-            base de données, exécution du backend Node.js, hébergement du
+            <strong>Winheberg</strong> (France), hébergeur VPS. Stockage de
+            la base de données, exécution du backend Node.js, hébergement du
             modèle d'IA Shard (auto-hébergé via Ollama, aucune requête
-            sortante vers une IA tierce).
+            sortante vers une IA tierce).{" "}
+            <a href="https://www.winheberg.fr" target="_blank" rel="noopener noreferrer" className="underline">winheberg.fr</a>.
           </li>
           <li>
             <strong>Service email transactionnel</strong>, pour l'envoi des
@@ -168,8 +168,8 @@ export function Privacy() {
         </p>
         <p>
           Toutes les autres données (configuration, paiement, IA Shard,
-          email, sauvegardes) restent <strong>hébergées au sein de l'Union
-          Européenne</strong>.
+          email, sauvegardes) restent <strong>hébergées en France (Union
+          Européenne)</strong>, chez Winheberg.
         </p>
       </LegalSection>
 

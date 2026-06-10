@@ -15,8 +15,9 @@ export function Footer() {
           </Link>
           <div className="flex flex-wrap justify-center gap-6 md:gap-8">
             <Link to="/status" className="text-xs font-bold text-white/30 hover:text-white transition-colors">Statut</Link>
-            <Link to="/terms" className="text-xs font-bold text-white/30 hover:text-white transition-colors">Conditions Générales</Link>
-            <Link to="/privacy" className="text-xs font-bold text-white/30 hover:text-white transition-colors">Politique de Confidentialité</Link>
+            <Link to="/legal" className="text-xs font-bold text-white/30 hover:text-white transition-colors">Mentions Légales</Link>
+            <Link to="/terms" className="text-xs font-bold text-white/30 hover:text-white transition-colors">CGU</Link>
+            <Link to="/privacy" className="text-xs font-bold text-white/30 hover:text-white transition-colors">Confidentialité</Link>
             <Link to="/admin" className="text-xs font-bold text-white/30 hover:text-white transition-colors">Administrateur</Link>
           </div>
           <p className="text-xs font-bold text-white/30 text-center">

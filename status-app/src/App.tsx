@@ -17,6 +17,7 @@ import { Index } from "@/routes/Index";
 import { Wiki } from "@/routes/Wiki";
 import { Terms } from "@/routes/Terms";
 import { Privacy } from "@/routes/Privacy";
+import { Legal } from "@/routes/Legal";
 import { Outils } from "@/routes/Outils";
 import { DesktopOverview } from "@/routes/desktop/Overview";
 import { DesktopRpc } from "@/routes/desktop/Rpc";
@@ -104,6 +105,7 @@ function AppMain() {
                   <Route path="/wiki" element={<Navigate to="/outils" replace />} />
                   <Route path="/terms" element={<Navigate to="/outils" replace />} />
                   <Route path="/privacy" element={<Navigate to="/outils" replace />} />
+                  <Route path="/legal" element={<Navigate to="/outils" replace />} />
                   <Route path="/produits" element={<Navigate to="/outils" replace />} />
                   <Route path="/status" element={<Navigate to="/statut" replace />} />
                   <Route path="/statut" element={<DesktopStatus />} />
@@ -119,6 +121,7 @@ function AppMain() {
                   <Route path="/assistant" element={<Navigate to="/outils" replace />} />
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/legal" element={<Legal />} />
                   <Route path="/premium" element={<Premium />} />
                   <Route path="/produits" element={<Produits />} />
                 </>

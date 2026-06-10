@@ -31,7 +31,7 @@ export function Terms() {
       overline="Légal · CGU"
       title="CGU"
       subtitle="Conditions Générales d'Utilisation des services Shardtown."
-      lastUpdated="1er mai 2026"
+      lastUpdated="10 juin 2026"
       toc={TOC}
     >
       <LegalSection id="objet" title="1. Objet">
