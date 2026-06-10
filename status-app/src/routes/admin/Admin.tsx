@@ -7,11 +7,15 @@ import {
   CheckCircle2,
   ClipboardList,
   Database,
+  Eye,
   KeyRound,
   LogOut,
+  Mail,
   Monitor,
+  Plus,
   RefreshCw,
   Search,
+  Send,
   Server,
   ShieldAlert,
   ShieldCheck,
@@ -149,6 +153,18 @@ export function Admin() {
   const [customBots, setCustomBots] = useState<CustomBotAdmin[] | null>(null);
   const [customBotsLoading, setCustomBotsLoading] = useState(false);
   const [keyStatus, setKeyStatus] = useState<KeyStatus | null>(null);
+
+  // ── Mailer ──
+  const [mailSubject,       setMailSubject]       = useState('');
+  const [mailBody,          setMailBody]           = useState('');
+  const [mailMode,          setMailMode]           = useState<'all' | 'selected'>('all');
+  const [mailSearch,        setMailSearch]         = useState('');
+  const [mailSearchResults, setMailSearchResults]  = useState<UserAdmin[]>([]);
+  const [mailSearching,     setMailSearching]      = useState(false);
+  const [mailSelected,      setMailSelected]       = useState<Map<number, UserAdmin>>(new Map());
+  const [mailPreview,       setMailPreview]        = useState(false);
+  const [mailSending,       setMailSending]        = useState(false);
+  const [mailResult,        setMailResult]         = useState<{ sent: number; failed: number; total: number } | null>(null);
 
   const refreshKeyStatus = useCallback(async () => {
     try {
@@ -380,6 +396,55 @@ export function Admin() {
           refreshAudit();
         } else {
           showToast(r.error || "Erreur", "error");
+        }
+      },
+    });
+  }
+
+  /* ───── Mailer helpers ───── */
+
+  async function searchMailUsers(q: string) {
+    if (!q.trim()) { setMailSearchResults([]); return; }
+    setMailSearching(true);
+    try {
+      const r = await apiGet<{ users: UserAdmin[] }>(`/api/admin/users?q=${encodeURIComponent(q)}`);
+      setMailSearchResults(r.users.slice(0, 8));
+    } catch { setMailSearchResults([]); }
+    finally { setMailSearching(false); }
+  }
+
+  function toggleMailRecipient(u: UserAdmin) {
+    setMailSelected(prev => {
+      const next = new Map(prev);
+      if (next.has(u.id)) next.delete(u.id); else next.set(u.id, u);
+      return next;
+    });
+  }
+
+  async function sendMail() {
+    if (!mailSubject.trim() || !mailBody.trim()) return;
+    if (mailMode === 'selected' && mailSelected.size === 0) return;
+    const recipients = mailMode === 'all' ? 'all' : Array.from(mailSelected.keys());
+    const count = mailMode === 'all' ? (users?.length ?? '?') : mailSelected.size;
+    setPending({
+      label: 'Envoi en masse',
+      title: `Envoyer à ${count} destinataire${typeof count === 'number' && count > 1 ? 's' : ''} ?`,
+      desc: `Objet : "${mailSubject.trim()}" — cette action est irréversible.`,
+      variant: 'warning',
+      confirm: async () => {
+        setMailSending(true);
+        setMailResult(null);
+        try {
+          const r = await apiPost<{ sent: number; failed: number; total: number }>(
+            '/api/admin/mailer/send',
+            { subject: mailSubject.trim(), body: mailBody, recipients },
+          );
+          setMailResult(r);
+          showToast(`${r.sent} email(s) envoyé(s)${r.failed ? ` · ${r.failed} erreur(s)` : ''}`, r.failed ? 'error' : 'success');
+        } catch (e) {
+          showToast(e instanceof Error ? e.message : 'Erreur', 'error');
+        } finally {
+          setMailSending(false);
         }
       },
     });
@@ -816,6 +881,186 @@ export function Admin() {
           </div>
         </div>
 
+        {/* Mailing */}
+        <div className="mt-16">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-300">
+              <Mail className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold tracking-[0.22em] text-amber-300/70 uppercase">Communication</p>
+              <h2 className="text-xl font-extrabold tracking-tight">Mailing</h2>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-br from-white/[0.03] to-transparent p-6 space-y-5">
+
+            {/* Mode */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-2.5">Destinataires</p>
+              <div className="inline-flex p-1 rounded-full bg-white/[0.03] border border-white/[0.06]">
+                {([
+                  { v: 'all',      label: `Tous les utilisateurs${users ? ` (${users.length})` : ''}` },
+                  { v: 'selected', label: `Sélection${mailSelected.size > 0 ? ` (${mailSelected.size})` : ''}` },
+                ] as { v: 'all' | 'selected'; label: string }[]).map(m => (
+                  <button
+                    key={m.v}
+                    type="button"
+                    onClick={() => setMailMode(m.v)}
+                    className={`px-4 py-1.5 rounded-full text-xs font-bold tracking-tight transition-colors ${
+                      mailMode === m.v ? 'bg-white text-black' : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Recipient search (selected mode) */}
+            {mailMode === 'selected' && (
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-white/35 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  {mailSearching && (
+                    <RefreshCw className="w-3 h-3 text-white/30 absolute right-3 top-1/2 -translate-y-1/2 animate-spin" />
+                  )}
+                  <input
+                    type="search"
+                    value={mailSearch}
+                    onChange={e => { setMailSearch(e.target.value); searchMailUsers(e.target.value); }}
+                    placeholder="Rechercher pseudo, email, Discord…"
+                    className="w-full pl-9 pr-9 py-2.5 text-sm bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder:text-white/30 outline-none focus:border-white/20 focus:bg-white/[0.05] transition-colors"
+                  />
+                </div>
+                {mailSearchResults.length > 0 && (
+                  <div className="rounded-xl border border-white/[0.08] overflow-hidden">
+                    {mailSearchResults.map(u => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => toggleMailRecipient(u)}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors text-left ${
+                          mailSelected.has(u.id)
+                            ? 'bg-amber-500/10 text-amber-200'
+                            : 'text-white/70 hover:bg-white/[0.05] hover:text-white'
+                        }`}
+                      >
+                        <span className="w-7 h-7 rounded-full bg-white/[0.06] flex items-center justify-center text-[10px] font-bold text-white/50 shrink-0">
+                          {u.pseudo[0]?.toUpperCase()}
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="font-semibold">{u.pseudo}</span>
+                          <span className="text-white/40 ml-2 text-xs">{u.email}</span>
+                        </span>
+                        {mailSelected.has(u.id) && (
+                          <CheckCircle2 className="w-4 h-4 text-amber-400 shrink-0" />
+                        )}
+                        {!mailSelected.has(u.id) && (
+                          <Plus className="w-4 h-4 text-white/25 shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {mailSelected.size > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(mailSelected.values()).map(u => (
+                      <span
+                        key={u.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs font-semibold"
+                      >
+                        {u.pseudo}
+                        <button
+                          type="button"
+                          onClick={() => toggleMailRecipient(u)}
+                          className="text-amber-400/60 hover:text-amber-400 transition-colors"
+                          aria-label={`Retirer ${u.pseudo}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setMailSelected(new Map())}
+                      className="text-[11px] text-white/30 hover:text-white/60 transition-colors self-center ml-1"
+                    >
+                      Tout effacer
+                    </button>
+                  </div>
+                )}
+                {mailSelected.size === 0 && mailSearch === '' && (
+                  <p className="text-xs text-white/25 italic">Recherchez des utilisateurs ci-dessus pour les ajouter.</p>
+                )}
+              </div>
+            )}
+
+            {/* Subject */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-2">Objet</p>
+              <input
+                type="text"
+                value={mailSubject}
+                onChange={e => setMailSubject(e.target.value)}
+                placeholder="Objet de l'email…"
+                className="w-full px-4 py-2.5 text-sm bg-white/[0.02] border border-white/[0.08] rounded-xl text-white placeholder:text-white/25 outline-none focus:border-white/25 focus:bg-white/[0.04] transition-colors"
+              />
+            </div>
+
+            {/* Body */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-2">Corps <span className="normal-case tracking-normal font-normal text-white/25">(HTML)</span></p>
+              <textarea
+                value={mailBody}
+                onChange={e => setMailBody(e.target.value)}
+                rows={9}
+                placeholder={"<p>Bonjour,</p>\n<p>…</p>"}
+                className="w-full px-4 py-3 text-sm bg-white/[0.02] border border-white/[0.08] rounded-xl text-white placeholder:text-white/20 outline-none focus:border-white/25 focus:bg-white/[0.04] transition-colors resize-y font-mono leading-relaxed"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setMailPreview(true)}
+                disabled={!mailBody.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/[0.05] border border-white/10 text-sm font-bold text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <Eye className="w-4 h-4" />
+                Prévisualiser
+              </button>
+              <button
+                type="button"
+                onClick={sendMail}
+                disabled={mailSending || !mailSubject.trim() || !mailBody.trim() || (mailMode === 'selected' && mailSelected.size === 0)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-500 text-black text-sm font-bold hover:opacity-90 transition-opacity disabled:opacity-30 disabled:pointer-events-none"
+              >
+                <Send className="w-4 h-4" />
+                {mailSending ? 'Envoi…' : mailMode === 'all'
+                  ? `Envoyer à tous${users ? ` (${users.length})` : ''}`
+                  : `Envoyer à ${mailSelected.size} destinataire${mailSelected.size > 1 ? 's' : ''}`}
+              </button>
+            </div>
+
+            {/* Result */}
+            {mailResult && (
+              <div className={`flex items-center gap-3 p-4 rounded-xl border text-sm font-semibold ${
+                mailResult.failed > 0
+                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+              }`}>
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                {mailResult.sent} envoyé{mailResult.sent > 1 ? 's' : ''} sur {mailResult.total}
+                {mailResult.failed > 0 && <span className="text-red-400 ml-1">· {mailResult.failed} erreur{mailResult.failed > 1 ? 's' : ''}</span>}
+                <button type="button" onClick={() => setMailResult(null)} className="ml-auto text-white/30 hover:text-white transition-colors">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Audit log */}
         <div className="mt-16">
           <div className="flex items-center gap-3 mb-5">
@@ -930,6 +1175,67 @@ export function Admin() {
               >
                 Confirmer
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Mail preview modal */}
+      {mailPreview && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          onClick={() => setMailPreview(false)}
+          onKeyDown={e => e.key === 'Escape' && setMailPreview(false)}
+        >
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+          <div
+            className="relative bg-[#0a0a0a]/98 backdrop-blur-xl border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] shadow-2xl flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-3 p-4 border-b border-white/[0.08] shrink-0">
+              <div className="w-8 h-8 rounded-full bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-300 shrink-0">
+                <Mail className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/35 mb-0.5">Prévisualisation</p>
+                <p className="text-sm font-semibold truncate">{mailSubject || '(sans objet)'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMailPreview(false)}
+                className="w-8 h-8 rounded-full bg-white/[0.04] hover:bg-white/[0.08] flex items-center justify-center transition-colors shrink-0"
+                aria-label="Fermer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            {/* Meta */}
+            <div className="px-5 py-3 border-b border-white/[0.06] text-xs space-y-1.5 shrink-0">
+              <div className="flex gap-3">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/25 w-12 shrink-0 pt-px">De</span>
+                <span className="text-white/50">noreply@shardtwn.fr</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/25 w-12 shrink-0 pt-px">À</span>
+                <span className="text-white/50 truncate">
+                  {mailMode === 'all'
+                    ? `Tous les utilisateurs${users ? ` (${users.length})` : ''}`
+                    : Array.from(mailSelected.values()).map(u => u.email).join(', ') || '(aucun)'}
+                </span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/25 w-12 shrink-0 pt-px">Objet</span>
+                <span className="text-white/70 font-semibold">{mailSubject || '(sans objet)'}</span>
+              </div>
+            </div>
+            {/* Rendered body */}
+            <div className="flex-1 overflow-hidden rounded-b-2xl">
+              <iframe
+                srcDoc={mailBody}
+                title="Prévisualisation email"
+                className="w-full h-full border-0 min-h-[380px]"
+                sandbox="allow-same-origin"
+              />
             </div>
           </div>
         </div>

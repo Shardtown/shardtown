@@ -8505,6 +8505,50 @@ app.delete('/api/admin/custom-bot/:id', checkAdmin, verifyCsrf, async (req, res)
     }
 });
 
+// ── Admin mailer ──────────────────────────────────────────────────────────────
+app.post('/api/admin/mailer/send', checkAdmin, verifyCsrf, async (req, res) => {
+    const { subject, body, recipients } = req.body || {};
+    if (!subject?.trim()) return res.status(400).json({ error: 'Sujet requis' });
+    if (!body?.trim())    return res.status(400).json({ error: 'Corps requis' });
+
+    try {
+        let emails = [];
+        if (recipients === 'all') {
+            const [rows] = await db.execute(
+                `SELECT email FROM accounts WHERE email_verified = 1 ORDER BY id`,
+            );
+            emails = rows.map(r => r.email);
+        } else if (Array.isArray(recipients) && recipients.length > 0) {
+            const ids = recipients.map(Number).filter(n => Number.isInteger(n) && n > 0);
+            if (!ids.length) return res.status(400).json({ error: 'Aucun ID valide' });
+            const [rows] = await db.execute(
+                `SELECT email FROM accounts WHERE id IN (${ids.map(() => '?').join(',')})`,
+                ids,
+            );
+            emails = rows.map(r => r.email);
+        } else {
+            return res.status(400).json({ error: '"recipients" doit être "all" ou un tableau d\'IDs' });
+        }
+
+        if (!emails.length) return res.status(400).json({ error: 'Aucun destinataire trouvé' });
+
+        const transport = getMailer();
+        if (!transport) return res.status(503).json({ error: 'SMTP non configuré sur ce serveur' });
+
+        const FROM = process.env.SMTP_FROM || '"Shardtown" <noreply@shardtwn.fr>';
+        const results = await Promise.allSettled(
+            emails.map(to => transport.sendMail({ from: FROM, to, subject: subject.trim(), html: body })),
+        );
+        const sent   = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected').length;
+
+        await logAdminAction(req, 'mailer.send', null, { subject: subject.trim(), sent, failed, total: emails.length });
+        res.json({ success: true, sent, failed, total: emails.length });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ── Admin DB browser ──────────────────────────────────────────────────────────
 // Pass () => db (getter) instead of db directly: db is assigned asynchronously
 // inside connectDB().then(), so it's still undefined at this sync code point.
