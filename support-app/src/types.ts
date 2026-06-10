@@ -11,12 +11,23 @@ export interface Guild {
   permissions: string;
 }
 
+export interface ModalField {
+  id: string;
+  label: string;
+  style: 'short' | 'paragraph';
+  placeholder: string;
+  required: boolean;
+  min_length: number;
+  max_length: number;
+}
+
 export interface TicketCategory {
   id: string;
   label: string;
   emoji: string;
   description: string;
   discord_category_id: string | null;
+  modal_fields?: ModalField[];
 }
 
 export interface SupportConfig {

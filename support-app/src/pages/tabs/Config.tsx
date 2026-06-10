@@ -5,7 +5,7 @@ import {
     Plus, Trash2, AlertTriangle,
 } from 'lucide-react';
 import { get, put, post } from '@/api/client';
-import type { SupportConfig, TicketCategory, DChannel, DRole } from '@/types';
+import type { SupportConfig, TicketCategory, DChannel, DRole, ModalField } from '@/types';
 import { Field, TextInput, NumberInput, Select } from '@/components/ui/Field';
 import { Toggle } from '@/components/ui/Toggle';
 
@@ -175,11 +175,28 @@ export default function Config() {
     }
     function addCat() {
         if (!config) return;
-        update({ categories: [...config.categories, { id: `cat_${Date.now()}`, label: 'Nouvelle catégorie', emoji: '📋', description: '', discord_category_id: null }] });
+        update({ categories: [...config.categories, { id: `cat_${Date.now()}`, label: 'Nouvelle catégorie', emoji: '📋', description: '', discord_category_id: null, modal_fields: [] }] });
     }
     function removeCat(i: number) {
         if (!config) return;
         update({ categories: config.categories.filter((_, idx) => idx !== i) });
+    }
+    function addModalField(catIdx: number) {
+        if (!config) return;
+        const cat = config.categories[catIdx];
+        if ((cat.modal_fields?.length ?? 0) >= 5) return;
+        const field: ModalField = { id: Math.random().toString(36).slice(2, 8), label: '', style: 'paragraph', placeholder: '', required: true, min_length: 0, max_length: 1000 };
+        updateCat(catIdx, { modal_fields: [...(cat.modal_fields ?? []), field] });
+    }
+    function removeModalField(catIdx: number, fi: number) {
+        if (!config) return;
+        const cat = config.categories[catIdx];
+        updateCat(catIdx, { modal_fields: (cat.modal_fields ?? []).filter((_, j) => j !== fi) });
+    }
+    function updateModalField(catIdx: number, fi: number, patch: Partial<ModalField>) {
+        if (!config) return;
+        const cat = config.categories[catIdx];
+        updateCat(catIdx, { modal_fields: (cat.modal_fields ?? []).map((f, j) => j === fi ? { ...f, ...patch } : f) });
     }
 
     // ── Loading / error ───────────────────────────────────────────────────────
@@ -457,6 +474,100 @@ export default function Config() {
                                                         placeholder="Décrivez votre problème…"
                                                     />
                                                 </Field>
+
+                                                {/* ── Modal fields ── */}
+                                                <div className="pt-3 border-t border-white/[0.04]">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-widest text-white/30">
+                                                            Champs du modal · {cat.modal_fields?.length ?? 0}/5
+                                                        </p>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => addModalField(i)}
+                                                            disabled={(cat.modal_fields?.length ?? 0) >= 5}
+                                                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 transition-all disabled:opacity-30 disabled:pointer-events-none"
+                                                        >
+                                                            <Plus className="w-3 h-3" />
+                                                            Ajouter
+                                                        </button>
+                                                    </div>
+                                                    {(cat.modal_fields?.length ?? 0) === 0 ? (
+                                                        <p className="text-[12px] text-white/25 italic">
+                                                            Aucun champ — modal par défaut (description libre).
+                                                        </p>
+                                                    ) : (
+                                                        <div className="space-y-2">
+                                                            {cat.modal_fields!.map((f, fi) => (
+                                                                <div key={f.id} className="p-3 rounded-xl border border-white/[0.06] bg-white/[0.02] space-y-2.5">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/25">Champ {fi + 1}</span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => removeModalField(i, fi)}
+                                                                            className="w-6 h-6 rounded-md flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                                                                        >
+                                                                            <Trash2 className="w-3 h-3" />
+                                                                        </button>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-2 gap-2">
+                                                                        <Field label="Label" hint="max 45 car.">
+                                                                            <TextInput
+                                                                                value={f.label}
+                                                                                maxLength={45}
+                                                                                onChange={e => updateModalField(i, fi, { label: e.target.value })}
+                                                                                placeholder="Votre problème"
+                                                                            />
+                                                                        </Field>
+                                                                        <Field label="Type">
+                                                                            <Select
+                                                                                options={[
+                                                                                    { value: 'paragraph', label: 'Paragraphe' },
+                                                                                    { value: 'short', label: 'Court (1 ligne)' },
+                                                                                ]}
+                                                                                value={f.style}
+                                                                                onChange={v => updateModalField(i, fi, { style: v as 'short' | 'paragraph' })}
+                                                                            />
+                                                                        </Field>
+                                                                    </div>
+                                                                    <Field label="Placeholder" hint="max 100 car.">
+                                                                        <TextInput
+                                                                            value={f.placeholder}
+                                                                            maxLength={100}
+                                                                            onChange={e => updateModalField(i, fi, { placeholder: e.target.value })}
+                                                                            placeholder="Ex : Soyez le plus précis possible…"
+                                                                        />
+                                                                    </Field>
+                                                                    <div className="flex items-center gap-4 flex-wrap">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">Obligatoire</span>
+                                                                            <Toggle checked={f.required} onCheckedChange={v => updateModalField(i, fi, { required: v })} variant="success" />
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">Min</span>
+                                                                            <NumberInput
+                                                                                value={f.min_length}
+                                                                                min={0}
+                                                                                max={4000}
+                                                                                style={{ width: '5rem' }}
+                                                                                onChange={e => updateModalField(i, fi, { min_length: parseInt((e.target as HTMLInputElement).value) || 0 })}
+                                                                            />
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">Max</span>
+                                                                            <NumberInput
+                                                                                value={f.max_length}
+                                                                                min={1}
+                                                                                max={4000}
+                                                                                style={{ width: '5rem' }}
+                                                                                onChange={e => updateModalField(i, fi, { max_length: parseInt((e.target as HTMLInputElement).value) || 1000 })}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
