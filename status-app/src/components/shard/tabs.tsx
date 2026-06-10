@@ -791,7 +791,7 @@ function useSupportConfig(guildId: string) {
   return { config, loading, error, save };
 }
 
-type TicketTab = "config" | "stats" | "transcripts" | "incidents";
+type TicketTab = "config" | "stats" | "transcripts";
 
 export function TicketsTab({ guildId, channels, categories, roles }: TabBase) {
   const [tab, setTab] = useState<TicketTab>("config");
@@ -801,12 +801,10 @@ export function TicketsTab({ guildId, channels, categories, roles }: TabBase) {
         <TicketSubTab active={tab === "config"} onClick={() => setTab("config")}>Configuration</TicketSubTab>
         <TicketSubTab active={tab === "stats"} onClick={() => setTab("stats")}>Statistiques</TicketSubTab>
         <TicketSubTab active={tab === "transcripts"} onClick={() => setTab("transcripts")}>Transcripts</TicketSubTab>
-        <TicketSubTab active={tab === "incidents"} onClick={() => setTab("incidents")}>Incidents</TicketSubTab>
       </div>
       {tab === "config"      && <TicketsConfig guildId={guildId} channels={channels} categories={categories} roles={roles} />}
       {tab === "stats"       && <TicketsStats guildId={guildId} />}
       {tab === "transcripts" && <TicketsTranscripts guildId={guildId} />}
-      {tab === "incidents"   && <TicketsIncidents guildId={guildId} />}
     </div>
   );
 }
@@ -1152,101 +1150,6 @@ function TicketsStats({ guildId }: { guildId: string }) {
                   </div>
                 ))}
               </div>
-            </SectionCard>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Incidents ─────────────────────────────────────────────────────────────────
-
-interface Incident {
-  id: number;
-  service_name: string;
-  status: "up" | "down" | "degraded";
-  message: string | null;
-  started_at: string;
-  ended_at: string | null;
-}
-
-const INCIDENT_BADGE: Record<string, string> = {
-  down:     "bg-red-500/20 text-red-400 border-red-500/30",
-  degraded: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  up:       "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-};
-
-const INCIDENT_DOT: Record<string, string> = {
-  down:     "bg-red-400",
-  degraded: "bg-amber-400",
-  up:       "bg-emerald-400",
-};
-
-function IncidentRow({ i, fmt }: { i: Incident; fmt: (s: string) => string }) {
-  const active = !i.ended_at;
-  return (
-    <div className={`flex items-start gap-3 py-3 border-b border-white/[0.04] last:border-0 ${active ? "opacity-100" : "opacity-60"}`}>
-      <span className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${INCIDENT_DOT[i.status] ?? "bg-white/20"} ${active && i.status !== "up" ? "animate-pulse" : ""}`} />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-bold text-white">{i.service_name}</p>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${INCIDENT_BADGE[i.status] ?? ""}`}>
-            {i.status}
-          </span>
-          {active && <span className="text-[10px] text-white/30 font-bold uppercase tracking-wider">En cours</span>}
-        </div>
-        {i.message && <p className="text-[11.5px] text-white/50 mt-0.5">{i.message}</p>}
-        <p className="text-[11px] text-white/30 mt-0.5">
-          Débuté le {fmt(i.started_at)}
-          {i.ended_at && <> · Résolu le {fmt(i.ended_at)}</>}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function TicketsIncidents({ guildId }: { guildId: string }) {
-  const [incidents, setIncidents] = useState<Incident[] | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    apiGet<Incident[]>(`/api/support/incidents/${guildId}`)
-      .then(r => { if (!cancelled) setIncidents(Array.isArray(r) ? r : []); })
-      .catch(() => { if (!cancelled) setIncidents([]); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [guildId]);
-
-  const fmt = (iso: string) => {
-    try {
-      return new Date(iso).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-    } catch { return ""; }
-  };
-
-  const active   = incidents?.filter(i => !i.ended_at)  ?? [];
-  const resolved = incidents?.filter(i =>  i.ended_at)  ?? [];
-
-  return (
-    <div className="space-y-4">
-      {loading ? (
-        <p className="text-[12px] text-white/30 italic">Chargement…</p>
-      ) : !incidents || incidents.length === 0 ? (
-        <SectionCard title="Aucun incident enregistré">
-          <p className="text-[12px] text-white/30 italic">Les incidents sont créés automatiquement via le webhook Uptime Kuma.</p>
-        </SectionCard>
-      ) : (
-        <>
-          {active.length > 0 && (
-            <SectionCard title={`Incidents actifs (${active.length})`}>
-              {active.map(i => <IncidentRow key={i.id} i={i} fmt={fmt} />)}
-            </SectionCard>
-          )}
-          {resolved.length > 0 && (
-            <SectionCard title="Historique">
-              {resolved.map(i => <IncidentRow key={i.id} i={i} fmt={fmt} />)}
             </SectionCard>
           )}
         </>

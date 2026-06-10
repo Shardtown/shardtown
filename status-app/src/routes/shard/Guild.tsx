@@ -966,7 +966,7 @@ function OverviewPanel({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[14px] font-extrabold tracking-tight text-white">Tickets Support</p>
-          <p className="text-[12px] text-white/40 mt-0.5">Gérer les tickets, transcripts et incidents de ce serveur.</p>
+          <p className="text-[12px] text-white/40 mt-0.5">Gérer les tickets, transcripts et la configuration de ce serveur.</p>
         </div>
         <ExternalLink className="w-4 h-4 text-white/25 group-hover:text-white/50 transition-colors shrink-0" strokeWidth={1.8} />
       </button>
