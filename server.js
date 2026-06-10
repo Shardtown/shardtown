@@ -2008,6 +2008,87 @@ function getMailer() {
     return mailer;
 }
 
+// ── Email template ────────────────────────────────────────────────────────────
+
+function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+function buildEmailHtml(subject, bodyContent) {
+    const year = new Date().getFullYear();
+    // Auto-detect plain text vs HTML; wrap paragraphs if no tags found
+    const hasHtml = /<[a-z][\s\S]*?>/i.test(bodyContent);
+    const body = hasHtml
+        ? bodyContent
+        : bodyContent.trim().split(/\n{2,}/).map(p =>
+            `<p style="margin:0 0 16px;color:rgba(255,255,255,0.82);font-size:15px;line-height:1.75;">${p.replace(/\n/g, '<br>')}</p>`
+          ).join('');
+
+    return `<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark"><title>${escHtml(subject)}</title>
+</head>
+<body style="margin:0;padding:0;background:#09090b;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#09090b">
+<tr><td align="center" style="padding:48px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+
+<!-- Logo -->
+<tr><td align="center" style="padding-bottom:24px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td style="background:linear-gradient(135deg,#6d28d9,#4f46e5);border-radius:12px;padding:9px 18px;">
+      <span style="font-size:13px;font-weight:900;letter-spacing:0.18em;color:#fff;text-transform:uppercase;font-family:system-ui,-apple-system,sans-serif;">SHARDTOWN</span>
+    </td>
+  </tr></table>
+</td></tr>
+
+<!-- Card -->
+<tr><td style="background:#111113;border-radius:20px;border:1px solid rgba(255,255,255,0.07);">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+
+    <!-- Purple accent -->
+    <tr><td style="height:3px;background:linear-gradient(90deg,#7c3aed,#6366f1,#7c3aed);border-radius:20px 20px 0 0;font-size:0;line-height:0;">&nbsp;</td></tr>
+
+    <!-- Content -->
+    <tr><td style="padding:36px 36px 32px;">
+      <div style="font-size:15px;line-height:1.75;color:rgba(255,255,255,0.82);font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+        ${body}
+      </div>
+    </td></tr>
+
+    <!-- Card footer -->
+    <tr><td style="border-top:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.015);border-radius:0 0 20px 20px;padding:18px 36px;">
+      <p style="margin:0;font-size:12px;line-height:1.6;color:rgba(255,255,255,0.3);font-family:system-ui,-apple-system,sans-serif;">
+        Cet email a été envoyé par l'équipe <strong style="color:rgba(255,255,255,0.42);font-weight:600;">Shardtown</strong>.
+        Tu reçois ce message car tu as un compte sur
+        <a href="https://shardtwn.fr" style="color:rgba(255,255,255,0.42);text-decoration:underline;">shardtwn.fr</a>.
+      </p>
+    </td></tr>
+
+  </table>
+</td></tr>
+
+<!-- Bottom footer -->
+<tr><td align="center" style="padding-top:22px;">
+  <p style="margin:0 0 5px;font-size:11px;color:rgba(255,255,255,0.2);letter-spacing:0.1em;text-transform:uppercase;font-family:system-ui,-apple-system,sans-serif;">— L'équipe Shardtown</p>
+  <p style="margin:0;font-size:11px;font-family:system-ui,-apple-system,sans-serif;">
+    <a href="https://shardtwn.fr" style="color:rgba(255,255,255,0.2);text-decoration:none;">shardtwn.fr</a>
+    <span style="color:rgba(255,255,255,0.12);margin:0 6px;">·</span>
+    <a href="https://discord.gg/shardtown" style="color:rgba(255,255,255,0.2);text-decoration:none;">Discord</a>
+    <span style="color:rgba(255,255,255,0.12);margin:0 6px;">·</span>
+    <span style="color:rgba(255,255,255,0.15);">© ${year} Shardtown</span>
+  </p>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body></html>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 async function sendVerificationEmail(account, code) {
     const m = getMailer();
     const subject = `Ton code Shardtown : ${code}`;
@@ -8535,9 +8616,11 @@ app.post('/api/admin/mailer/send', checkAdmin, verifyCsrf, async (req, res) => {
         const transport = getMailer();
         if (!transport) return res.status(503).json({ error: 'SMTP non configuré sur ce serveur' });
 
-        const FROM = process.env.SMTP_FROM || '"Shardtown" <noreply@shardtwn.fr>';
+        const FROM    = process.env.SMTP_FROM || '"Shardtown" <noreply@shardtwn.fr>';
+        const subj    = subject.trim();
+        const htmlOut = buildEmailHtml(subj, body);
         const results = await Promise.allSettled(
-            emails.map(to => transport.sendMail({ from: FROM, to, subject: subject.trim(), html: body })),
+            emails.map(to => transport.sendMail({ from: FROM, to, subject: subj, html: htmlOut })),
         );
         const sent   = results.filter(r => r.status === 'fulfilled').length;
         const failed = results.filter(r => r.status === 'rejected').length;

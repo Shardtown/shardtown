@@ -118,6 +118,57 @@ interface PendingAction {
 
 type Tab = "all" | "active" | "blocked";
 
+function buildPreviewHtml(subject: string, bodyContent: string): string {
+  const year = new Date().getFullYear();
+  const hasHtml = /<[a-z][\s\S]*?>/i.test(bodyContent);
+  const body = hasHtml
+    ? bodyContent
+    : bodyContent.trim().split(/\n{2,}/).map(p =>
+        `<p style="margin:0 0 16px;color:rgba(255,255,255,0.82);font-size:15px;line-height:1.75;">${p.replace(/\n/g, '<br>')}</p>`
+      ).join('');
+
+  return `<!DOCTYPE html><html lang="fr"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark"><title>${subject}</title></head>
+<body style="margin:0;padding:0;background:#09090b;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#09090b">
+<tr><td align="center" style="padding:48px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+<tr><td align="center" style="padding-bottom:24px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td style="background:linear-gradient(135deg,#6d28d9,#4f46e5);border-radius:12px;padding:9px 18px;">
+      <span style="font-size:13px;font-weight:900;letter-spacing:0.18em;color:#fff;text-transform:uppercase;">SHARDTOWN</span>
+    </td>
+  </tr></table>
+</td></tr>
+<tr><td style="background:#111113;border-radius:20px;border:1px solid rgba(255,255,255,0.07);">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr><td style="height:3px;background:linear-gradient(90deg,#7c3aed,#6366f1,#7c3aed);border-radius:20px 20px 0 0;font-size:0;">&nbsp;</td></tr>
+    <tr><td style="padding:36px 36px 32px;">
+      <div style="font-size:15px;line-height:1.75;color:rgba(255,255,255,0.82);">${body}</div>
+    </td></tr>
+    <tr><td style="border-top:1px solid rgba(255,255,255,0.05);background:rgba(255,255,255,0.015);border-radius:0 0 20px 20px;padding:18px 36px;">
+      <p style="margin:0;font-size:12px;line-height:1.6;color:rgba(255,255,255,0.3);">
+        Cet email a été envoyé par l'équipe <strong style="color:rgba(255,255,255,0.42);">Shardtown</strong>.
+        Tu reçois ce message car tu as un compte sur
+        <a href="https://shardtwn.fr" style="color:rgba(255,255,255,0.42);">shardtwn.fr</a>.
+      </p>
+    </td></tr>
+  </table>
+</td></tr>
+<tr><td align="center" style="padding-top:22px;">
+  <p style="margin:0 0 5px;font-size:11px;color:rgba(255,255,255,0.2);letter-spacing:0.1em;text-transform:uppercase;">— L'équipe Shardtown</p>
+  <p style="margin:0;font-size:11px;">
+    <a href="https://shardtwn.fr" style="color:rgba(255,255,255,0.2);text-decoration:none;">shardtwn.fr</a>
+    <span style="color:rgba(255,255,255,0.12);margin:0 6px;">·</span>
+    <a href="https://discord.gg/shardtown" style="color:rgba(255,255,255,0.2);text-decoration:none;">Discord</a>
+    <span style="color:rgba(255,255,255,0.12);margin:0 6px;">·</span>
+    <span style="color:rgba(255,255,255,0.15);">© ${year} Shardtown</span>
+  </p>
+</td></tr>
+</table></td></tr></table></body></html>`;
+}
+
 function initials(name: string) {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 }
@@ -1009,13 +1060,16 @@ export function Admin() {
 
             {/* Body */}
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-2">Corps <span className="normal-case tracking-normal font-normal text-white/25">(HTML)</span></p>
+              <div className="flex items-baseline justify-between mb-2">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">Contenu du message</p>
+                <p className="text-[11px] text-white/25">Texte simple ou HTML · le template Shardtown est appliqué automatiquement</p>
+              </div>
               <textarea
                 value={mailBody}
                 onChange={e => setMailBody(e.target.value)}
                 rows={9}
-                placeholder={"<p>Bonjour,</p>\n<p>…</p>"}
-                className="w-full px-4 py-3 text-sm bg-white/[0.02] border border-white/[0.08] rounded-xl text-white placeholder:text-white/20 outline-none focus:border-white/25 focus:bg-white/[0.04] transition-colors resize-y font-mono leading-relaxed"
+                placeholder={"Bonjour,\n\nNous avons une annonce importante…\n\nL'équipe Shardtown"}
+                className="w-full px-4 py-3 text-sm bg-white/[0.02] border border-white/[0.08] rounded-xl text-white placeholder:text-white/20 outline-none focus:border-white/25 focus:bg-white/[0.04] transition-colors resize-y leading-relaxed"
               />
             </div>
 
@@ -1231,9 +1285,9 @@ export function Admin() {
             {/* Rendered body */}
             <div className="flex-1 overflow-hidden rounded-b-2xl">
               <iframe
-                srcDoc={mailBody}
+                srcDoc={buildPreviewHtml(mailSubject, mailBody)}
                 title="Prévisualisation email"
-                className="w-full h-full border-0 min-h-[380px]"
+                className="w-full h-full border-0 min-h-[420px]"
                 sandbox="allow-same-origin"
               />
             </div>
