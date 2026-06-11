@@ -59,6 +59,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
 
   if (!res.ok) {
+    if (res.status === 401) {
+      const mainSite = import.meta.env.VITE_MAIN_SITE_URL ?? 'https://shardtwn.fr';
+      window.location.replace(`${mainSite}/shard/login?returnTo=${encodeURIComponent(window.location.href)}`);
+      throw new ApiError(401, 'Non authentifié');
+    }
     const data = await res.json().catch(() => ({})) as Record<string, unknown>;
     throw new ApiError(res.status, (data.error as string) || res.statusText);
   }
