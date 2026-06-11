@@ -35,9 +35,13 @@ const ToMainSite = ({ from }: { from: string }) => {
   );
 };
 
-// Redirect explicite vers /guild/:guildId/tickets — chemin absolu pour éviter
-// tout problème de résolution relative en React Router v7.
 function GuildIndexRedirect() {
+  const { guildId } = useParams<{ guildId: string }>();
+  return <Navigate to={`/guild/${guildId}/tickets`} replace />;
+}
+
+// Compat : l'ancien lien du site principal utilisait /shard/guild/:guildId
+function ShardGuildRedirect() {
   const { guildId } = useParams<{ guildId: string }>();
   return <Navigate to={`/guild/${guildId}/tickets`} replace />;
 }
@@ -45,6 +49,9 @@ function GuildIndexRedirect() {
 const router = createBrowserRouter([
   { path: "/",       element: <ToMainSite from="/" /> },
   { path: "/guilds", element: <ToMainSite from="/guilds" /> },
+  // Compat ancien lien (/shard/guild/:id → /guild/:id/tickets)
+  { path: "/shard/guild/:guildId",   element: <ShardGuildRedirect /> },
+  { path: "/shard/guild/:guildId/*", element: <ShardGuildRedirect /> },
   {
     path: "/guild/:guildId",
     element: <GuildLayout />,
