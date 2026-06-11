@@ -32,7 +32,7 @@ export function NumberInput(props: React.InputHTMLAttributes<HTMLInputElement>) 
     <input
       type="number"
       {...props}
-      className={`w-full px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] focus:border-white/25 focus:bg-white/[0.04] focus:outline-none text-white font-mono placeholder:text-white/25 transition-colors text-sm ${props.className || ""}`}
+      className={`w-full px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.08] focus:border-white/25 focus:bg-white/[0.04] focus:outline-none text-white font-mono placeholder:text-white/25 transition-colors text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${props.className || ""}`}
     />
   );
 }
