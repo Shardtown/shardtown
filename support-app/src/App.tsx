@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext } from "react";
-import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate, useParams } from "react-router-dom";
 import { get, ApiError } from "@/api/client";
 import type { Me } from "@/types";
 import GuildLayout from "@/pages/GuildLayout";
@@ -13,9 +13,15 @@ import { GooeyFilter } from "@/components/ui/Toggle";
 const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
 
-// createBrowserRouter (data router) — required for useBlocker
 const MAIN_SITE = import.meta.env.VITE_MAIN_SITE_URL ?? 'https://shardtwn.fr/shard/server';
 const ToMainSite = () => { window.location.replace(MAIN_SITE); return null; };
+
+// Redirect explicite vers /guild/:guildId/tickets — chemin absolu pour éviter
+// tout problème de résolution relative en React Router v7.
+function GuildIndexRedirect() {
+  const { guildId } = useParams<{ guildId: string }>();
+  return <Navigate to={`/guild/${guildId}/tickets`} replace />;
+}
 
 const router = createBrowserRouter([
   { path: "/",       element: <ToMainSite /> },
@@ -24,7 +30,7 @@ const router = createBrowserRouter([
     path: "/guild/:guildId",
     element: <GuildLayout />,
     children: [
-      { index: true,               element: <Navigate to="tickets" replace /> },
+      { index: true,               element: <GuildIndexRedirect /> },
       { path: "stats",             element: <Stats /> },
       { path: "tickets",           element: <Tickets /> },
       { path: "transcripts",       element: <Transcripts /> },
