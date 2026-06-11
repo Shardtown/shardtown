@@ -4877,7 +4877,19 @@ app.get('/api/shard/server', checkAuthShard, async (req, res) => {
             if (!aIn && bIn) return 1;
             return 0;
         });
-        res.json({ user: userPayload, guilds: adminGuilds, botGuildIds, clientId: process.env.SHARD_CLIENT_ID || '' });
+        // Enrichir avec le flag isPremium (source : shard_settings)
+        const guildIds = adminGuilds.map(g => g.id);
+        const premiumSet = new Set();
+        if (guildIds.length > 0) {
+            const ph = guildIds.map(() => '?').join(',');
+            const [premRows] = await db.execute(
+                `SELECT guildId FROM shard_settings WHERE guildId IN (${ph}) AND isPremium = 1`,
+                guildIds
+            );
+            premRows.forEach(r => premiumSet.add(String(r.guildId)));
+        }
+        const guildsOut = adminGuilds.map(g => ({ ...g, isPremium: premiumSet.has(g.id) }));
+        res.json({ user: userPayload, guilds: guildsOut, botGuildIds, clientId: process.env.SHARD_CLIENT_ID || '' });
     } catch (error) {
         console.error('Erreur /api/shard/server:', error.response?.data || error.message);
         res.json({ user: userPayload, guilds: adminGuilds, botGuildIds: [], clientId: process.env.SHARD_CLIENT_ID || '' });
@@ -6674,7 +6686,19 @@ app.get(['/api/shardguard/server', '/api/shard/mod/server'], checkAuth, async (r
             if (!aIn && bIn) return 1;
             return 0;
         });
-        res.json({ user: userPayload, guilds: adminGuilds, botGuildIds, clientId: process.env.CLIENT_ID || '' });
+        // Enrichir avec le flag isPremium (source : settings)
+        const guildIds = adminGuilds.map(g => g.id);
+        const premiumSet = new Set();
+        if (guildIds.length > 0) {
+            const ph = guildIds.map(() => '?').join(',');
+            const [premRows] = await db.execute(
+                `SELECT guildId FROM settings WHERE guildId IN (${ph}) AND isPremium = 1`,
+                guildIds
+            );
+            premRows.forEach(r => premiumSet.add(String(r.guildId)));
+        }
+        const guildsOut = adminGuilds.map(g => ({ ...g, isPremium: premiumSet.has(g.id) }));
+        res.json({ user: userPayload, guilds: guildsOut, botGuildIds, clientId: process.env.CLIENT_ID || '' });
     } catch (error) {
         console.error('Erreur /api/shardguard/server:', error.response?.data || error.message);
         res.json({ user: userPayload, guilds: adminGuilds, botGuildIds: [], clientId: process.env.CLIENT_ID || '' });

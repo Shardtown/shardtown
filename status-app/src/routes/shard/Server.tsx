@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Lock, ArrowRight } from "lucide-react";
+import { Lock, ArrowRight, Crown } from "lucide-react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { apiGet, isApiError } from "@/api/client";
 import { useAccount } from "@/api/account";
@@ -10,6 +10,7 @@ interface Guild {
   id: string;
   name: string;
   icon: string | null;
+  isPremium?: boolean;
 }
 
 interface BotServerData {
@@ -102,8 +103,8 @@ export function ShardServer() {
       <AppLayout>
         <section className="container-wide pt-12">
           <div className="h-8 w-32 bg-white/5 rounded animate-pulse mb-8" />
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
-            {[0, 1, 2].map(i => (
+          <div className="grid grid-cols-2 gap-6 mb-12">
+            {[0, 1].map(i => (
               <div key={i} className="bg-[#0a0a0a] border border-white/5 rounded-2xl h-32 animate-pulse" />
             ))}
           </div>
@@ -204,7 +205,7 @@ export function ShardServer() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-20">
+        <div className="grid grid-cols-2 gap-4 mb-20">
           <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-7 hover:border-white/15 transition-colors">
             <div className="text-4xl md:text-5xl font-extrabold font-mono-num mb-2">{guilds.length}</div>
             <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Communautés</p>
@@ -212,10 +213,6 @@ export function ShardServer() {
           <div className="bg-white/[0.02] border border-blue-500/20 rounded-2xl p-7 hover:border-blue-500/40 transition-colors">
             <div className="text-4xl md:text-5xl font-extrabold font-mono-num mb-2 text-blue-400">{guildsWithBot.length}</div>
             <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Serveurs actifs</p>
-          </div>
-          <div className="bg-white/[0.02] border border-white/[0.08] rounded-2xl p-7 hover:border-white/15 transition-colors col-span-2 md:col-span-1">
-            <div className="text-4xl md:text-5xl font-extrabold mb-2 text-white/30">GRATUIT</div>
-            <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Statut du compte</p>
           </div>
         </div>
 
@@ -250,9 +247,17 @@ export function ShardServer() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-base truncate mb-1.5">{g.name}</h3>
-                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest bg-blue-500/10 border border-blue-500/20 text-blue-400">
-                    Configurer
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                      Configurer
+                    </span>
+                    {g.isPremium && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-widest bg-yellow-400/10 border border-yellow-400/25 text-yellow-400">
+                        <Crown className="w-2.5 h-2.5" />
+                        Premium
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-white/30 group-hover:text-white group-hover:translate-x-1 transition-all flex-shrink-0" strokeWidth={2.5} />
               </Link>
