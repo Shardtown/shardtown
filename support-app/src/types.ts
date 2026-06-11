@@ -72,6 +72,7 @@ export interface Ticket {
 
 export interface Transcript {
   id: string;
+  author_id: string;
   author_pseudo: string;
   category: string;
   created_at: string;

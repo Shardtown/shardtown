@@ -20,6 +20,16 @@ export default function Tickets() {
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const limit = 20;
 
+    // Préférences d'affichage (persistées en localStorage)
+    const [catMode, _setCatMode] = useState<'label'|'id'>(() =>
+        (localStorage.getItem('st_cat_display') as 'label'|'id') ?? 'label'
+    );
+    const [userMode, _setUserMode] = useState<'pseudo'|'id'>(() =>
+        (localStorage.getItem('st_user_display') as 'pseudo'|'id') ?? 'pseudo'
+    );
+    const setCatMode  = (v: 'label'|'id')  => { _setCatMode(v);  localStorage.setItem('st_cat_display',  v); };
+    const setUserMode = (v: 'pseudo'|'id') => { _setUserMode(v); localStorage.setItem('st_user_display', v); };
+
     // Auto-refresh toutes les 30s (uniquement sur la première page sans filtre actif)
     useEffect(() => {
         intervalRef.current = setInterval(() => {
@@ -102,6 +112,26 @@ export default function Tickets() {
                 ))}
             </div>
 
+            {/* Affichage */}
+            <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-semibold text-white/40 uppercase tracking-wider mr-1">Affichage</span>
+                <span className="text-xs text-white/25 font-medium">Catégorie</span>
+                {(['label', 'id'] as const).map(m => (
+                    <button key={m} type="button" onClick={() => setCatMode(m)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${catMode === m ? 'bg-white/[0.1] border-white/20 text-white' : 'bg-transparent border-white/[0.08] text-white/40 hover:text-white/70 hover:bg-white/[0.05]'}`}>
+                        {m === 'label' ? 'Nom' : 'ID'}
+                    </button>
+                ))}
+                <span className="text-white/15 mx-0.5 select-none">·</span>
+                <span className="text-xs text-white/25 font-medium">Utilisateur</span>
+                {(['pseudo', 'id'] as const).map(m => (
+                    <button key={m} type="button" onClick={() => setUserMode(m)}
+                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${userMode === m ? 'bg-white/[0.1] border-white/20 text-white' : 'bg-transparent border-white/[0.08] text-white/40 hover:text-white/70 hover:bg-white/[0.05]'}`}>
+                        {m === 'pseudo' ? 'Pseudo' : 'ID'}
+                    </button>
+                ))}
+            </div>
+
             {/* Content */}
             {loading ? (
                 <div className="flex gap-1.5 p-6">
@@ -132,8 +162,12 @@ export default function Tickets() {
                                 {tickets.map((t, i) => (
                                     <tr key={t.id} className={`border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors ${i === tickets.length - 1 ? 'border-0' : ''}`}>
                                         <td className="px-4 py-3 font-mono text-xs text-white/60">{t.id}</td>
-                                        <td className="px-4 py-3 text-white/70 font-medium">{categoryMap[t.category] ?? t.category}</td>
-                                        <td className="px-4 py-3 text-white/60">{t.author_pseudo || t.author_id}</td>
+                                        <td className="px-4 py-3 text-white/70 font-medium">
+                                            {catMode === 'label' ? (categoryMap[t.category] ?? t.category) : t.category}
+                                        </td>
+                                        <td className="px-4 py-3 text-white/60 font-mono text-xs">
+                                            {userMode === 'pseudo' ? (t.author_pseudo || t.author_id) : t.author_id}
+                                        </td>
                                         <td className="px-4 py-3">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${
                                                 t.status === 'open'
