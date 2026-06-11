@@ -344,7 +344,7 @@ export default function Config() {
                                         <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-0.5">Nom du salon du ticket</p>
                                         <p className="text-[12px] text-white/30">
                                             {cfg.channel_name_format === 'pseudo'
-                                                ? 'ticket-hugo, ticket-marie…'
+                                                ? 'ticket-joe, ticket-rembog…'
                                                 : 'ticket-a1b2c3, ticket-x9y8z7…'}
                                         </p>
                                     </div>
