@@ -14,7 +14,26 @@ const MeCtx = createContext<Me | null>(null);
 export const useMe = () => useContext(MeCtx);
 
 const MAIN_SITE = import.meta.env.VITE_MAIN_SITE_URL ?? 'https://shardtwn.fr/shard/server';
-const ToMainSite = () => { window.location.replace(MAIN_SITE); return null; };
+// Debug overlay — à retirer après diagnostic
+const ToMainSite = ({ from }: { from: string }) => {
+  useEffect(() => {
+    const t = setTimeout(() => window.location.replace(MAIN_SITE), 5000);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div style={{
+      position:'fixed',inset:0,background:'#0f172a',color:'#e2e8f0',
+      display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+      fontFamily:'monospace',fontSize:'13px',gap:'10px',zIndex:9999,padding:'20px',textAlign:'center'
+    }}>
+      <div style={{color:'#f87171',fontSize:'16px'}}>⚠ ToMainSite déclenché</div>
+      <div>route: <b>"{from}"</b></div>
+      <div>pathname: <b>{window.location.pathname}</b></div>
+      <div>search: <b>{window.location.search}</b></div>
+      <div style={{color:'#94a3b8',marginTop:'8px'}}>Redirect vers {MAIN_SITE} dans 5s…</div>
+    </div>
+  );
+};
 
 // Redirect explicite vers /guild/:guildId/tickets — chemin absolu pour éviter
 // tout problème de résolution relative en React Router v7.
@@ -24,8 +43,8 @@ function GuildIndexRedirect() {
 }
 
 const router = createBrowserRouter([
-  { path: "/",       element: <ToMainSite /> },
-  { path: "/guilds", element: <ToMainSite /> },
+  { path: "/",       element: <ToMainSite from="/" /> },
+  { path: "/guilds", element: <ToMainSite from="/guilds" /> },
   {
     path: "/guild/:guildId",
     element: <GuildLayout />,
@@ -38,7 +57,7 @@ const router = createBrowserRouter([
       { path: "config",            element: <Config /> },
     ],
   },
-  { path: "*", element: <ToMainSite /> },
+  { path: "*", element: <ToMainSite from="*" /> },
 ]);
 
 const ShardLogo = () => (
