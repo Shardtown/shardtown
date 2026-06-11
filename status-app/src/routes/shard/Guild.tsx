@@ -957,7 +957,7 @@ function OverviewPanel({
     >
       {/* ─── Support ────────────────────────────────────────────────── */}
       <a
-        href={supportUrl}
+        href={`${supportUrl}?nc=1`}
         target="_blank"
         rel="noopener noreferrer"
         onClick={IS_DESKTOP ? (e) => { e.preventDefault(); openExternal(supportUrl); } : undefined}
