@@ -352,7 +352,7 @@ export default function Config() {
                                         {/* Pastille glissante */}
                                         <div
                                             aria-hidden
-                                            className="absolute top-1 bottom-1 rounded-md bg-white/[0.13] pointer-events-none transition-transform duration-200 ease-out"
+                                            className="absolute top-1 bottom-1 rounded-md bg-emerald-500/20 pointer-events-none transition-transform duration-200 ease-out"
                                             style={{
                                                 left: '4px',
                                                 width: 'calc(50% - 4px)',
@@ -365,7 +365,7 @@ export default function Config() {
                                                 type="button"
                                                 onClick={() => update({ channel_name_format: opt })}
                                                 className={`relative z-10 flex-1 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors duration-150 ${
-                                                    cfg.channel_name_format === opt ? 'text-white' : 'text-white/35 hover:text-white/60'
+                                                    cfg.channel_name_format === opt ? 'text-emerald-400' : 'text-white/35 hover:text-white/60'
                                                 }`}
                                             >
                                                 {opt === 'pseudo' ? 'Pseudo' : 'ID ticket'}
