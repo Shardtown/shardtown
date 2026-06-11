@@ -348,16 +348,24 @@ export default function Config() {
                                                 : 'ticket-a1b2c3, ticket-x9y8z7…'}
                                         </p>
                                     </div>
-                                    <div className="flex gap-1 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06] flex-shrink-0">
+                                    <div className="relative flex p-1 rounded-lg bg-white/[0.04] border border-white/[0.06] flex-shrink-0">
+                                        {/* Pastille glissante */}
+                                        <div
+                                            aria-hidden
+                                            className="absolute top-1 bottom-1 rounded-md bg-white/[0.13] pointer-events-none transition-transform duration-200 ease-out"
+                                            style={{
+                                                left: '4px',
+                                                width: 'calc(50% - 4px)',
+                                                transform: cfg.channel_name_format === 'id' ? 'translateX(100%)' : 'translateX(0)',
+                                            }}
+                                        />
                                         {(['pseudo', 'id'] as const).map(opt => (
                                             <button
                                                 key={opt}
                                                 type="button"
                                                 onClick={() => update({ channel_name_format: opt })}
-                                                className={`px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
-                                                    cfg.channel_name_format === opt
-                                                        ? 'bg-white/[0.12] text-white'
-                                                        : 'text-white/35 hover:text-white/60'
+                                                className={`relative z-10 flex-1 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors duration-150 ${
+                                                    cfg.channel_name_format === opt ? 'text-white' : 'text-white/35 hover:text-white/60'
                                                 }`}
                                             >
                                                 {opt === 'pseudo' ? 'Pseudo' : 'ID ticket'}
