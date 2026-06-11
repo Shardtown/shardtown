@@ -46,6 +46,7 @@ export interface SupportConfig {
   welcome_color: string;
   welcome_footer: string;
   claim_enabled: boolean;
+  channel_name_format: 'pseudo' | 'id';
 }
 
 export interface StaffStat {
@@ -72,7 +73,6 @@ export interface Ticket {
 
 export interface Transcript {
   id: string;
-  author_id: string;
   author_pseudo: string;
   category: string;
   created_at: string;

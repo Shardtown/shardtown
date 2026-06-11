@@ -33,6 +33,7 @@ const DEFAULT: SupportConfig = {
     welcome_color: '',
     welcome_footer: 'ID: {id}',
     claim_enabled: true,
+    channel_name_format: 'pseudo',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -335,6 +336,34 @@ export default function Config() {
                                         onCheckedChange={v => update({ claim_enabled: v })}
                                         variant="success"
                                     />
+                                </div>
+
+                                {/* Channel name format */}
+                                <div className="flex items-center justify-between gap-4 p-4 rounded-xl bg-white/[0.02] border border-white/[0.07]">
+                                    <div className="min-w-0">
+                                        <p className="text-[11px] font-bold uppercase tracking-widest text-white/40 mb-0.5">Nom du salon du ticket</p>
+                                        <p className="text-[12px] text-white/30">
+                                            {cfg.channel_name_format === 'pseudo'
+                                                ? 'ticket-hugo, ticket-marie…'
+                                                : 'ticket-a1b2c3, ticket-x9y8z7…'}
+                                        </p>
+                                    </div>
+                                    <div className="flex gap-1 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06] flex-shrink-0">
+                                        {(['pseudo', 'id'] as const).map(opt => (
+                                            <button
+                                                key={opt}
+                                                type="button"
+                                                onClick={() => update({ channel_name_format: opt })}
+                                                className={`px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider transition-all ${
+                                                    cfg.channel_name_format === opt
+                                                        ? 'bg-white/[0.12] text-white'
+                                                        : 'text-white/35 hover:text-white/60'
+                                                }`}
+                                            >
+                                                {opt === 'pseudo' ? 'Pseudo' : 'ID ticket'}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                             </>
