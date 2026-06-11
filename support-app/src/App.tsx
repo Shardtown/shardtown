@@ -83,33 +83,10 @@ export default function App() {
   }
 
   if (status === "unauth") {
-    return (
-      <div className="flex items-center justify-center min-h-screen overflow-hidden">
-        <div className="flex flex-col items-center gap-8 px-6 text-center max-w-md">
-          <div className="p-5 rounded-3xl bg-white/[0.04] border border-white/[0.08] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)]">
-            <ShardLogo />
-          </div>
-          <div className="flex flex-col gap-3">
-            <p className="text-xs font-bold tracking-[0.25em] uppercase text-white/40">Accès restreint</p>
-            <h1 className="text-4xl font-extrabold tracking-tight uppercase leading-tight">
-              SHARDTOWN<br /><span className="text-white/50 text-2xl">Support</span>
-            </h1>
-            <p className="text-white/55 text-base leading-relaxed">
-              Connectez-vous via le dashboard SHARDTOWN pour accéder au panel de support.
-            </p>
-          </div>
-          <a
-            href={`${import.meta.env.VITE_MAIN_SITE_URL ?? 'https://shardtwn.fr'}/shard/login?returnTo=${encodeURIComponent(window.location.href)}`}
-            className="btn-liquid btn-liquid--primary inline-flex items-center gap-2 px-6 py-3 rounded-full font-bold text-sm"
-          >
-            Se connecter
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 16" width="8" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="m1 1 7 7-7 7" />
-            </svg>
-          </a>
-        </div>
-      </div>
+    window.location.replace(
+      `${import.meta.env.VITE_MAIN_SITE_URL ?? 'https://shardtwn.fr'}/shard/login?returnTo=${encodeURIComponent(window.location.href)}`
     );
+    return null;
   }
 
   return (
